@@ -1,45 +1,33 @@
 package exams
 
 import (
-	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/prepyo/backend/pkg/httpx"
 )
 
-type Handler struct{}
+type Handler struct {
+	repo *Repository
+	log  *slog.Logger
+}
 
-func NewHandler() *Handler {
-	return &Handler{}
+func NewHandler(repo *Repository, log *slog.Logger) *Handler {
+	return &Handler{repo: repo, log: log}
 }
 
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Get("/", h.GetExams)
+	r.Get("/", h.list)
 	return r
 }
 
-func (h *Handler) GetExams(w http.ResponseWriter, r *http.Request) {
-	exams := []map[string]interface{}{
-		{
-			"id":          "PTE",
-			"name":        "PTE Academic",
-			"version":     "v2026.1",
-			"description": "Pearson Test of English Academic preparation with 2-hour full simulation.",
-			"skills": []string{"speaking", "writing", "reading", "listening"},
-		},
-		{
-			"id":          "IELTS",
-			"name":        "IELTS Academic",
-			"version":     "v2026.1",
-			"description": "IELTS Academic examination simulator with Band 0-9 rubric evaluation.",
-			"skills": []string{"listening", "reading", "writing", "speaking"},
-		},
+func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
+	versions, err := h.repo.List(r.Context())
+	if err != nil {
+		httpx.Internal(w, h.log, "exams.list", err)
+		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"exams":   exams,
-	})
+	httpx.JSON(w, http.StatusOK, map[string]any{"examVersions": versions})
 }

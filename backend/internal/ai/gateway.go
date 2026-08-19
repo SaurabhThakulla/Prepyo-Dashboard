@@ -1,131 +1,199 @@
+// Package ai is the only place in the backend that talks to a model provider.
+//
+// Product modules ask for a capability ("evaluate this essay"), never for a
+// specific model. Model choice, retries, timeouts and usage accounting all live
+// here, so swapping providers touches this package and nothing else.
+//
+// When no provider is configured the gateway returns ErrUnavailable. It does
+// not fall back to a canned score: a made-up band that looks real is worse for
+// a learner than an honest "not available".
 package ai
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
-	"strings"
+	"io"
+	"log/slog"
+	"net/http"
 	"time"
 
-	"github.com/prepyo/backend/internal/models"
 	"github.com/prepyo/backend/pkg/config"
 )
 
+var (
+	// ErrUnavailable means the gateway cannot reach a provider right now.
+	ErrUnavailable = errors.New("ai provider unavailable")
+	// ErrBadOutput means the model replied with something that failed
+	// validation. The caller must not persist anything.
+	ErrBadOutput = errors.New("ai response failed validation")
+)
+
+const (
+	openRouterURL = "https://openrouter.ai/api/v1/chat/completions"
+	// maxAttempts covers one retry. Evaluations run while a learner waits, so
+	// a long retry chain is worse than failing quickly.
+	maxAttempts = 2
+)
+
 type Gateway struct {
-	cfg *config.Config
+	client  *http.Client
+	apiKey  string
+	models  config.AIModels
+	enabled bool
+	log     *slog.Logger
 }
 
-func NewGateway(cfg *config.Config) *Gateway {
-	return &Gateway{cfg: cfg}
+func NewGateway(cfg *config.Config, log *slog.Logger) *Gateway {
+	return &Gateway{
+		client:  &http.Client{Timeout: cfg.AIRequestTimeout},
+		apiKey:  cfg.OpenRouterAPIKey,
+		models:  cfg.AIModels,
+		enabled: cfg.AIEnabled(),
+		log:     log,
+	}
 }
 
-func (g *Gateway) EvaluateWriting(ctx context.Context, q *models.Question, userText string) (*models.AIEvaluationResult, error) {
-	wordCount := len(strings.Fields(userText))
-	isPTE := q.Exam == models.ExamPTE
+func (g *Gateway) Available() bool { return g.enabled }
 
-	var estimatedScore float64
-	var criteria []models.EvaluationCriterion
-	var strengths, weaknesses []string
-	var sentenceFeedback []models.SentenceFeedback
+// Usage is what one provider call cost. Token counts come from the provider
+// response, never from an estimate, so cost reporting reflects reality.
+type Usage struct {
+	Provider         string
+	Model            string
+	PromptVersion    string
+	PromptTokens     int
+	CompletionTokens int
+	LatencyMS        int
+}
 
-	if isPTE {
-		estimatedScore = 74.0
-		if wordCount >= 200 && wordCount <= 300 {
-			estimatedScore = 78.0
-		}
-		criteria = []models.EvaluationCriterion{
-			{Name: "Content", Score: 2.5, MaxScore: 3.0, Feedback: "Clear development of arguments with relevant supporting points.", Status: "good"},
-			{Name: "Form", Score: 2.0, MaxScore: 2.0, Feedback: fmt.Sprintf("Response length (%d words) is within standard PTE boundaries.", wordCount), Status: "good"},
-			{Name: "Grammar", Score: 1.8, MaxScore: 2.0, Feedback: "Consistent sentence structure with accurate complex clauses.", Status: "good"},
-			{Name: "Vocabulary", Score: 1.8, MaxScore: 2.0, Feedback: "Effective academic collocations and low lexical repetition.", Status: "good"},
-			{Name: "Spelling", Score: 2.0, MaxScore: 2.0, Feedback: "Zero spelling errors detected.", Status: "good"},
-		}
-		strengths = []string{"Well-structured 4-paragraph architecture", "Effective academic discourse markers"}
-		weaknesses = []string{"Elevate nominalizations in paragraph 2 to reach PTE 85+"}
-		sentenceFeedback = []models.SentenceFeedback{
-			{
-				Original:    "Computers are having very big influence on everyone.",
-				Correction:  "Digital computation exerts a profound influence across modern society.",
-				IssueType:   "vocabulary",
-				Explanation: "Academic register enhancement.",
-			},
-		}
-	} else {
-		// IELTS Writing
-		estimatedScore = 7.5
-		criteria = []models.EvaluationCriterion{
-			{Name: "Task Achievement", Score: 7.5, MaxScore: 9.0, Feedback: "Addresses all parts of the prompt with a clear position throughout.", Status: "good"},
-			{Name: "Coherence & Cohesion", Score: 7.5, MaxScore: 9.0, Feedback: "Logically organized with varied cohesive devices.", Status: "good"},
-			{Name: "Lexical Resource", Score: 7.0, MaxScore: 9.0, Feedback: "Sufficient range of vocabulary with good flexibility.", Status: "good"},
-			{Name: "Grammatical Range & Accuracy", Score: 7.5, MaxScore: 9.0, Feedback: "Wide range of structures with rare minor slips.", Status: "good"},
-		}
-		strengths = []string{"Clear thesis statement in the introduction", "Well-supported topic sentences"}
-		weaknesses = []string{"Ensure concluding sentence reinforces primary stance"}
+// chatRequest is the OpenRouter payload. Kept unexported: no other package
+// should be able to construct a raw model call.
+type chatRequest struct {
+	Model          string        `json:"model"`
+	Messages       []chatMessage `json:"messages"`
+	ResponseFormat *responseFmt  `json:"response_format,omitempty"`
+	Temperature    float64       `json:"temperature"`
+	MaxTokens      int           `json:"max_tokens,omitempty"`
+}
+
+type chatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type responseFmt struct {
+	Type string `json:"type"`
+}
+
+type chatResponse struct {
+	Choices []struct {
+		Message      chatMessage `json:"message"`
+		FinishReason string      `json:"finish_reason"`
+	} `json:"choices"`
+	Usage struct {
+		PromptTokens     int `json:"prompt_tokens"`
+		CompletionTokens int `json:"completion_tokens"`
+	} `json:"usage"`
+	Error *struct {
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+// complete sends one chat request and returns the assistant text plus usage.
+func (g *Gateway) complete(ctx context.Context, model, promptVersion string, messages []chatMessage, wantJSON bool) (string, Usage, error) {
+	if !g.enabled {
+		return "", Usage{}, ErrUnavailable
 	}
 
-	return &models.AIEvaluationResult{
-		ID:                   fmt.Sprintf("eval-%d", time.Now().UnixMilli()),
-		QuestionID:           q.ID,
-		Exam:                 q.Exam,
-		Skill:                models.SkillWriting,
-		EstimatedScore:       estimatedScore,
-		OverallBandOrPTE:     estimatedScore,
-		ScoreConfidence:      "high",
-		Summary:              fmt.Sprintf("Strong written submission evaluated at %0.1f. Logical flow and clear academic register.", estimatedScore),
-		Criteria:             criteria,
-		Strengths:            strengths,
-		Weaknesses:           weaknesses,
-		SentenceFeedback:     sentenceFeedback,
-		ModelRewrite:         "In contemporary society, digital automation and technological innovation represent a fundamental transformation...",
-		EvaluatedAt:          time.Now(),
-		ProviderModelUsed:    g.cfg.AIModelWriting,
-		TokenCostEstimateNPR: 1.95,
-	}, nil
-}
+	payload := chatRequest{
+		Model:    model,
+		Messages: messages,
+		// Low temperature: evaluation should be as repeatable as the provider
+		// allows, so two learners with similar work get similar feedback.
+		Temperature: 0.2,
+		MaxTokens:   2000,
+	}
+	if wantJSON {
+		payload.ResponseFormat = &responseFmt{Type: "json_object"}
+	}
 
-func (g *Gateway) EvaluateSpeaking(ctx context.Context, q *models.Question, durationSeconds int) (*models.AIEvaluationResult, error) {
-	isPTE := q.Exam == models.ExamPTE
-	var estimatedScore float64
-	var criteria []models.EvaluationCriterion
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", Usage{}, fmt.Errorf("encode ai request: %w", err)
+	}
 
-	if isPTE {
-		estimatedScore = 78.0
-		criteria = []models.EvaluationCriterion{
-			{Name: "Oral Fluency", Score: 80.0, MaxScore: 90.0, Feedback: "Smooth rhythm with steady pace and natural stress timing.", Status: "good"},
-			{Name: "Pronunciation", Score: 76.0, MaxScore: 90.0, Feedback: "Vowels and consonants articulated clearly with good intelligibility.", Status: "good"},
-			{Name: "Content Coverage", Score: 78.0, MaxScore: 90.0, Feedback: "Covered all salient data trends within the designated 40s.", Status: "good"},
+	var lastErr error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		started := time.Now()
+		text, usage, err := g.send(ctx, body, model, promptVersion, started)
+		if err == nil {
+			return text, usage, nil
 		}
-	} else {
-		estimatedScore = 7.5
-		criteria = []models.EvaluationCriterion{
-			{Name: "Fluency & Coherence", Score: 7.5, MaxScore: 9.0, Feedback: "Spoke at length with ease and minimal hesitation.", Status: "good"},
-			{Name: "Lexical Resource", Score: 7.5, MaxScore: 9.0, Feedback: "Used idiomatic expressions and varied vocabulary.", Status: "good"},
-			{Name: "Grammar Range", Score: 7.5, MaxScore: 9.0, Feedback: "Effective mix of simple and complex sentence patterns.", Status: "good"},
-			{Name: "Pronunciation", Score: 7.5, MaxScore: 9.0, Feedback: "Natural intonation and phonological control.", Status: "good"},
+		lastErr = err
+
+		// The caller's context being done means the learner is gone or the
+		// deadline passed; another attempt would only waste a call.
+		if ctx.Err() != nil {
+			return "", Usage{}, ErrUnavailable
+		}
+		if attempt < maxAttempts {
+			g.log.Warn("ai request failed, retrying", "model", model, "attempt", attempt, "error", err)
+			time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
 		}
 	}
 
-	return &models.AIEvaluationResult{
-		ID:                   fmt.Sprintf("eval-spk-%d", time.Now().UnixMilli()),
-		QuestionID:           q.ID,
-		Exam:                 q.Exam,
-		Skill:                models.SkillSpeaking,
-		EstimatedScore:       estimatedScore,
-		OverallBandOrPTE:     estimatedScore,
-		ScoreConfidence:      "high",
-		Summary:              "Fluent spoken delivery with consistent rhythm and phonetic clarity.",
-		Criteria:             criteria,
-		Strengths:            []string{"Continuous speech without false starts", "Natural sentence stress"},
-		Weaknesses:           []string{"Maintain voice projection until the final second"},
-		EvaluatedAt:          time.Now(),
-		ProviderModelUsed:    g.cfg.AIModelSpeaking,
-		TokenCostEstimateNPR: 2.25,
-	}, nil
+	g.log.Error("ai request failed", "model", model, "error", lastErr)
+	return "", Usage{}, ErrUnavailable
 }
 
-func (g *Gateway) TutorReply(ctx context.Context, prompt string, exam models.ExamType) string {
-	lower := strings.ToLower(prompt)
-	if strings.Contains(lower, "template") || strings.Contains(lower, "describe image") {
-		return fmt.Sprintf("### 🎯 Proven %s Speaking Template\n\n1. **Introduction (0-8s):** 'The provided chart illustrates key data regarding [Topic]...'\n2. **Key Data (8-22s):** 'The maximum figure is observed in [Category A], whereas [Category B] exhibits the lowest figure...'\n3. **Conclusion (22-35s):** 'In conclusion, the data highlights vital trends in [Topic].'", exam)
+func (g *Gateway) send(ctx context.Context, body []byte, model, promptVersion string, started time.Time) (string, Usage, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, openRouterURL, bytes.NewReader(body))
+	if err != nil {
+		return "", Usage{}, err
 	}
-	return fmt.Sprintf("Hello! I am your **Prepyo AI Coach** for **%s Academic**.\n\nI can help you with:\n- High-scoring speaking and writing templates\n- Live sentence corrections & grammar polish\n- Dictation and vocabulary checklists for Nepali test takers.\n\nWhat would you like to practice today?", exam)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+g.apiKey)
+
+	res, err := g.client.Do(req)
+	if err != nil {
+		return "", Usage{}, err
+	}
+	defer res.Body.Close()
+
+	// Cap the read so a malformed or hostile response cannot exhaust memory.
+	raw, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
+	if err != nil {
+		return "", Usage{}, err
+	}
+	if res.StatusCode != http.StatusOK {
+		return "", Usage{}, fmt.Errorf("provider returned %d", res.StatusCode)
+	}
+
+	var parsed chatResponse
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		return "", Usage{}, fmt.Errorf("decode provider response: %w", err)
+	}
+	if parsed.Error != nil {
+		return "", Usage{}, fmt.Errorf("provider error: %s", parsed.Error.Message)
+	}
+	if len(parsed.Choices) == 0 {
+		return "", Usage{}, errors.New("provider returned no choices")
+	}
+	// A truncated reply cannot be trusted to be complete JSON.
+	if parsed.Choices[0].FinishReason == "length" {
+		return "", Usage{}, errors.New("provider response was truncated")
+	}
+
+	usage := Usage{
+		Provider:         "openrouter",
+		Model:            model,
+		PromptVersion:    promptVersion,
+		PromptTokens:     parsed.Usage.PromptTokens,
+		CompletionTokens: parsed.Usage.CompletionTokens,
+		LatencyMS:        int(time.Since(started).Milliseconds()),
+	}
+	return parsed.Choices[0].Message.Content, usage, nil
 }

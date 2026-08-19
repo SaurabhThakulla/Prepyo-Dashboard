@@ -1,38 +1,59 @@
 package leaderboards
 
 import (
-	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/prepyo/backend/internal/models"
-	"github.com/prepyo/backend/internal/store"
+	"github.com/prepyo/backend/internal/reqctx"
+	"github.com/prepyo/backend/pkg/httpx"
 )
 
+// regions are the districts the board can be filtered by.
+var regions = []string{"all", "Kathmandu", "Lalitpur", "Bhaktapur", "Pokhara", "Chitwan", "Butwal", "Dharan", "Biratnagar"}
+
 type Handler struct {
-	store *store.Store
+	repo *Repository
+	log  *slog.Logger
 }
 
-func NewHandler(s *store.Store) *Handler {
-	return &Handler{store: s}
+func NewHandler(repo *Repository, log *slog.Logger) *Handler {
+	return &Handler{repo: repo, log: log}
 }
 
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Get("/", h.GetLeaderboard)
+	r.Get("/", h.list)
 	return r
 }
 
-func (h *Handler) GetLeaderboard(w http.ResponseWriter, r *http.Request) {
-	exam := models.ExamType(r.URL.Query().Get("exam"))
-	region := r.URL.Query().Get("region")
+func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
+	user := reqctx.MustUser(r.Context())
+	query := r.URL.Query()
+	page := httpx.ReadPage(r)
 
-	users := h.store.GetLeaderboard(exam, region)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":     true,
-		"count":       len(users),
-		"leaderboard": users,
-		"regions":     []string{"all", "Kathmandu", "Pokhara", "Chitwan", "Lalitpur", "Butwal", "Dharan"},
+	exam := models.ExamType(query.Get("exam"))
+	if exam == "" {
+		exam = user.TargetExam
+	}
+	period := parsePeriod(query.Get("period"))
+
+	entries, err := h.repo.List(r.Context(), ListParams{
+		Exam:     exam,
+		Region:   query.Get("region"),
+		Period:   period,
+		ViewerID: user.ID,
+		Limit:    page.Limit,
+	})
+	if err != nil {
+		httpx.Internal(w, h.log, "leaderboards.list", err)
+		return
+	}
+
+	httpx.JSON(w, http.StatusOK, map[string]any{
+		"leaderboard": entries,
+		"period":      period,
+		"regions":     regions,
 	})
 }

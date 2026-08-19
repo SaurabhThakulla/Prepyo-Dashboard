@@ -1,50 +1,48 @@
 package progress
 
 import (
-	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/prepyo/backend/internal/models"
-	"github.com/prepyo/backend/internal/store"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prepyo/backend/internal/reqctx"
+	"github.com/prepyo/backend/pkg/httpx"
 )
 
 type Handler struct {
-	store *store.Store
+	db      *pgxpool.Pool
+	service *Service
+	log     *slog.Logger
 }
 
-func NewHandler(s *store.Store) *Handler {
-	return &Handler{store: s}
+func NewHandler(db *pgxpool.Pool, service *Service, log *slog.Logger) *Handler {
+	return &Handler{db: db, service: service, log: log}
 }
 
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Get("/", h.GetProgress)
+	r.Get("/", h.summary)
 	return r
 }
 
-func (h *Handler) GetProgress(w http.ResponseWriter, r *http.Request) {
-	user := h.store.GetUser()
-	isPTE := user.TargetExam == models.ExamPTE
+func (h *Handler) summary(w http.ResponseWriter, r *http.Request) {
+	user := reqctx.MustUser(r.Context())
 
-	skillBreakdown := []map[string]interface{}{
-		{"skill": "speaking", "name": "Speaking", "estimate": 76, "target": user.TargetScore, "accuracy": 82, "status": "strong"},
-		{"skill": "writing", "name": "Writing", "estimate": 68, "target": user.TargetScore, "accuracy": 71, "status": "weak"},
-		{"skill": "reading", "name": "Reading", "estimate": 72, "target": user.TargetScore, "accuracy": 78, "status": "moderate"},
-		{"skill": "listening", "name": "Listening", "estimate": 75, "target": user.TargetScore, "accuracy": 84, "status": "strong"},
+	estimate, err := h.service.Estimate(r.Context(), h.db, user)
+	if err != nil {
+		httpx.Internal(w, h.log, "progress.estimate", err)
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":        true,
-		"user":           user,
-		"skillBreakdown": skillBreakdown,
-		"targetGapInfo": map[string]interface{}{
-			"gap":           user.TargetScore - user.EstimatedScore,
-			"formattedText": "3 points to target",
-			"isTargetMet":   user.EstimatedScore >= user.TargetScore,
-		},
-		"readinessScore": user.ReadinessPercentage,
-		"isPTE":          isPTE,
+	skills, err := h.service.Skills(r.Context(), h.db, user)
+	if err != nil {
+		httpx.Internal(w, h.log, "progress.skills", err)
+		return
+	}
+
+	httpx.JSON(w, http.StatusOK, map[string]any{
+		"estimate": estimate,
+		"skills":   skills,
 	})
 }

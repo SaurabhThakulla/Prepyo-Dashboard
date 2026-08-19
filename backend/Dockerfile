@@ -1,30 +1,31 @@
-# Build Stage
-FROM golang:1.24-alpine AS builder
+# ---- build ----
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
-# Install git and build tools
-RUN apk add --no-cache git ca-certificates tzdata
-
-COPY go.mod go.sum* ./
+# Dependencies are copied first so a source-only change does not re-download
+# the module cache.
+COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
-RUN go mod tidy
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app/bin/prepyo-api ./cmd/api
+# CGO off produces a static binary that runs on a bare image.
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/bin/api ./cmd/api
 
-# Final Minimal Stage
+RUN go test ./...
+
+# ---- run ----
 FROM alpine:3.20
 
+# ca-certificates for outbound HTTPS to the AI provider; tzdata because streak
+# day boundaries are computed in the learner's own timezone.
+RUN apk add --no-cache ca-certificates tzdata
+
 WORKDIR /app
-
-RUN apk add --no-cache ca-certificates tzdata curl
-
-COPY --from=builder /app/bin/prepyo-api /app/prepyo-api
-
-EXPOSE 8080
+COPY --from=builder /app/bin/api /app/api
 
 USER nobody:nobody
+EXPOSE 8080
 
-ENTRYPOINT ["/app/prepyo-api"]
+ENTRYPOINT ["/app/api"]

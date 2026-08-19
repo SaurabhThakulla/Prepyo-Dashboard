@@ -1,62 +1,67 @@
 package billing
 
 import (
-	"encoding/json"
-	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/prepyo/backend/internal/models"
-	"github.com/prepyo/backend/internal/store"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prepyo/backend/internal/reqctx"
+	"github.com/prepyo/backend/pkg/httpx"
 )
 
 type Handler struct {
-	store *store.Store
+	db      *pgxpool.Pool
+	repo    *Repository
+	service *Service
+	log     *slog.Logger
 }
 
-func NewHandler(s *store.Store) *Handler {
-	return &Handler{store: s}
+func NewHandler(db *pgxpool.Pool, repo *Repository, service *Service, log *slog.Logger) *Handler {
+	return &Handler{db: db, repo: repo, service: service, log: log}
 }
 
-func (h *Handler) Routes() chi.Router {
+// Routes: /plans is public so the pricing page works signed out; the rest need
+// a session.
+func (h *Handler) Routes(requireUser func(http.Handler) http.Handler) chi.Router {
 	r := chi.NewRouter()
-	r.Get("/plans", h.GetPlans)
-	r.Post("/checkout", h.Checkout)
+	r.Get("/plans", h.plans)
+
+	r.Group(func(private chi.Router) {
+		private.Use(requireUser)
+		private.Get("/", h.state)
+		private.Post("/checkout", h.checkout)
+	})
 	return r
 }
 
-func (h *Handler) GetPlans(w http.ResponseWriter, r *http.Request) {
-	plans := []models.SubscriptionPlan{
-		{ID: "free", Name: "Free Learner", PriceNPR: 0, DurationMonths: 0, Features: []string{"Core practice tasks", "3 AI evaluations/day", "1 Full Mock Exam"}, AIEvaluationsPerDay: 3, MockTestsIncluded: 1},
-		{ID: "pro", Name: "Pro Prep (Monthly)", PriceNPR: 1499, DurationMonths: 1, Features: []string{"Unlimited practice", "30 AI evaluations/day", "5 Full Mock Exams", "Sentence rewrites"}, AIEvaluationsPerDay: 30, MockTestsIncluded: 5, Popular: true},
-		{ID: "elite", Name: "Elite Master (3 Months)", PriceNPR: 2999, DurationMonths: 3, Features: []string{"90 days all access", "Unlimited AI evaluations", "15 Mock Exams", "Streak freeze packs"}, AIEvaluationsPerDay: 100, MockTestsIncluded: 15},
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"plans":   plans,
-	})
-}
-
-func (h *Handler) Checkout(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		PlanID         string `json:"planId"`
-		PaymentGateway string `json:"paymentGateway"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+func (h *Handler) plans(w http.ResponseWriter, r *http.Request) {
+	plans, err := h.repo.Plans(r.Context())
+	if err != nil {
+		httpx.Internal(w, h.log, "billing.plans", err)
 		return
 	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"plans": plans})
+}
 
-	updated := h.store.UpgradeSubscription(body.PlanID)
-	h.store.AwardXP(250, "Subscription Upgraded")
+func (h *Handler) state(w http.ResponseWriter, r *http.Request) {
+	user := reqctx.MustUser(r.Context())
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": fmt.Sprintf("Payment successful via %s! Subscription upgraded to %s.", body.PaymentGateway, body.PlanID),
-		"user":    updated,
-	})
+	state, err := h.service.State(r.Context(), h.db, user)
+	if err != nil {
+		httpx.Internal(w, h.log, "billing.state", err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"subscription": state})
+}
+
+// checkout is intentionally unimplemented.
+//
+// Granting a plan here without a verified payment would be the same bug the
+// previous version had: an endpoint anyone could call to upgrade themselves for
+// free. Wiring this up needs a payment provider, a webhook that verifies its
+// signature, and only then a plan change.
+func (h *Handler) checkout(w http.ResponseWriter, r *http.Request) {
+	httpx.Error(w, http.StatusNotImplemented, httpx.CodeInternal,
+		"Payments are not available yet. No charge was made and your plan is unchanged.")
 }
