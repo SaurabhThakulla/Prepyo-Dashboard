@@ -1,83 +1,65 @@
 package gamification
 
 import (
-	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prepyo/backend/internal/models"
-	"github.com/prepyo/backend/internal/store"
+	"github.com/prepyo/backend/internal/reqctx"
+	"github.com/prepyo/backend/pkg/httpx"
 )
 
 type Handler struct {
-	store *store.Store
+	db      *pgxpool.Pool
+	service *Service
+	log     *slog.Logger
 }
 
-func NewHandler(s *store.Store) *Handler {
-	return &Handler{store: s}
+func NewHandler(db *pgxpool.Pool, service *Service, log *slog.Logger) *Handler {
+	return &Handler{db: db, service: service, log: log}
 }
 
+// Routes exposes reads only.
+//
+// There is deliberately no endpoint to add XP or complete a mission. Both
+// happen as a side effect of real work in the practice, mocks and evaluations
+// modules, which is what keeps them unforgeable.
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Get("/", h.GetGamification)
-	r.Post("/", h.HandleAction)
+	r.Get("/", h.summary)
+	r.Get("/history", h.history)
 	return r
 }
 
-func (h *Handler) GetGamification(w http.ResponseWriter, r *http.Request) {
-	user := h.store.GetUser()
-	missions := h.store.GetMissions()
+func (h *Handler) summary(w http.ResponseWriter, r *http.Request) {
+	user := reqctx.MustUser(r.Context())
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"user": map[string]interface{}{
-			"xp":                   user.XP,
-			"level":                user.Level,
-			"streakDays":           user.StreakDays,
-			"streakFrozen":         user.StreakFrozen,
-			"streakLastActiveDate": user.StreakLastActiveDate,
-		},
-		"dailyMissions":  missions,
-		"xpToNextLevel": (user.Level * 400) - user.XP,
+	missions, err := h.service.TodayMissions(r.Context(), h.db, user)
+	if err != nil {
+		httpx.Internal(w, h.log, "gamification.summary", err)
+		return
+	}
+
+	level := models.LevelForXP(user.XP)
+	httpx.JSON(w, http.StatusOK, map[string]any{
+		"xp":            user.XP,
+		"level":         level,
+		"xpToNextLevel": level*models.XPPerLevel - user.XP,
+		"streakDays":    user.StreakDays,
+		"dailyMissions": missions,
 	})
 }
 
-func (h *Handler) HandleAction(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Action    string `json:"action"`
-		MissionID string `json:"missionId"`
-	}
+func (h *Handler) history(w http.ResponseWriter, r *http.Request) {
+	user := reqctx.MustUser(r.Context())
+	page := httpx.ReadPage(r)
 
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	transactions, err := h.service.History(r.Context(), h.db, user.ID, page.Limit)
+	if err != nil {
+		httpx.Internal(w, h.log, "gamification.history", err)
 		return
 	}
-
-	if body.Action == "complete-mission" && body.MissionID != "" {
-		mission := h.store.CompleteMission(body.MissionID)
-		if mission != nil {
-			h.store.AwardXP(mission.XPReward, "Daily Mission Completed")
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": true,
-			"mission": mission,
-			"user":    h.store.GetUser(),
-		})
-		return
-	}
-
-	if body.Action == "freeze-streak" {
-		updated := h.store.UpdateUser(&models.UserProfile{StreakFrozen: true})
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": true,
-			"user":    updated,
-			"message": "Streak Freeze activated for 24 hours!",
-		})
-		return
-	}
-
-	http.Error(w, "Invalid action", http.StatusBadRequest)
+	httpx.JSON(w, http.StatusOK, map[string]any{"transactions": transactions})
 }

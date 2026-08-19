@@ -1,58 +1,69 @@
 package notifications
 
 import (
-	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/prepyo/backend/internal/store"
+	"github.com/prepyo/backend/internal/reqctx"
+	"github.com/prepyo/backend/pkg/httpx"
 )
 
 type Handler struct {
-	store *store.Store
+	repo *Repository
+	log  *slog.Logger
 }
 
-func NewHandler(s *store.Store) *Handler {
-	return &Handler{store: s}
+func NewHandler(repo *Repository, log *slog.Logger) *Handler {
+	return &Handler{repo: repo, log: log}
 }
 
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Get("/", h.GetNotifications)
-	r.Post("/", h.MarkRead)
+	r.Get("/", h.list)
+	r.Post("/read-all", h.markAllRead)
+	r.Post("/{notificationID}/read", h.markRead)
 	return r
 }
 
-func (h *Handler) GetNotifications(w http.ResponseWriter, r *http.Request) {
-	notifs := h.store.GetNotifications()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":       true,
-		"count":         len(notifs),
-		"notifications": notifs,
+func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
+	user := reqctx.MustUser(r.Context())
+	page := httpx.ReadPage(r)
+
+	list, total, unread, err := h.repo.List(r.Context(), user.ID, page.Limit, page.Offset)
+	if err != nil {
+		httpx.Internal(w, h.log, "notifications.list", err)
+		return
+	}
+
+	httpx.JSON(w, http.StatusOK, map[string]any{
+		"notifications": list,
+		"unreadCount":   unread,
+		"pagination":    page.Meta(total),
 	})
 }
 
-func (h *Handler) MarkRead(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Action string `json:"action"`
-		ID     string `json:"id"`
-	}
+func (h *Handler) markRead(w http.ResponseWriter, r *http.Request) {
+	user := reqctx.MustUser(r.Context())
 
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := h.repo.MarkRead(r.Context(), user.ID, chi.URLParam(r, "notificationID")); err != nil {
+		if errors.Is(err, ErrNotFound) {
+			httpx.Error(w, http.StatusNotFound, httpx.CodeNotFound, "That notification does not exist.")
+			return
+		}
+		httpx.Internal(w, h.log, "notifications.markRead", err)
 		return
 	}
+	httpx.JSON(w, http.StatusOK, nil)
+}
 
-	if body.Action == "mark-read" && body.ID != "" {
-		h.store.MarkNotificationRead(body.ID)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": true,
-			"message": "Notification marked as read",
-		})
+func (h *Handler) markAllRead(w http.ResponseWriter, r *http.Request) {
+	user := reqctx.MustUser(r.Context())
+
+	if err := h.repo.MarkAllRead(r.Context(), user.ID); err != nil {
+		httpx.Internal(w, h.log, "notifications.markAllRead", err)
 		return
 	}
-
-	http.Error(w, "Invalid action", http.StatusBadRequest)
+	httpx.JSON(w, http.StatusOK, nil)
 }

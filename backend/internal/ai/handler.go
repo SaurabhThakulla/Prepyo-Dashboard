@@ -1,56 +1,71 @@
 package ai
 
 import (
-	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/prepyo/backend/internal/models"
+	"github.com/prepyo/backend/internal/reqctx"
+	"github.com/prepyo/backend/pkg/httpx"
 )
 
 type Handler struct {
 	gateway *Gateway
+	log     *slog.Logger
 }
 
-func NewHandler(g *Gateway) *Handler {
-	return &Handler{gateway: g}
+func NewHandler(gateway *Gateway, log *slog.Logger) *Handler {
+	return &Handler{gateway: gateway, log: log}
 }
 
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Post("/tutor", h.ChatTutor)
+	r.Post("/tutor", h.tutor)
 	return r
 }
 
-func (h *Handler) ChatTutor(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Messages []struct {
-			Role    string `json:"role"`
-			Content string `json:"content"`
-		} `json:"messages"`
-		Exam models.ExamType `json:"exam"`
+func (h *Handler) tutor(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Messages    []TutorMessage `json:"messages"`
+		TaskContext string         `json:"taskContext"`
 	}
-
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if !httpx.Decode(w, r, &req) {
+		return
+	}
+	if len(req.Messages) == 0 {
+		httpx.ValidationError(w, map[string]string{"messages": "Send at least one message."})
 		return
 	}
 
-	lastPrompt := ""
-	if len(body.Messages) > 0 {
-		lastPrompt = body.Messages[len(body.Messages)-1].Content
-	}
-
-	exam := body.Exam
-	if exam == "" {
+	user := reqctx.MustUser(r.Context())
+	exam := user.TargetExam
+	if !exam.Valid() {
 		exam = models.ExamPTE
 	}
 
-	reply := h.gateway.TutorReply(r.Context(), lastPrompt, exam)
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"reply":   reply,
+	reply, usage, err := h.gateway.Tutor(r.Context(), TutorRequest{
+		Exam:        exam,
+		Messages:    req.Messages,
+		TaskContext: req.TaskContext,
 	})
+	if err != nil {
+		if errors.Is(err, ErrUnavailable) || errors.Is(err, ErrBadOutput) {
+			httpx.Error(w, http.StatusServiceUnavailable, httpx.CodeAIUnavailable,
+				"The tutor is unavailable right now. Please try again shortly.")
+			return
+		}
+		httpx.Internal(w, h.log, "ai.tutor", err)
+		return
+	}
+
+	h.log.Info("tutor reply",
+		"userId", user.ID,
+		"model", usage.Model,
+		"promptTokens", usage.PromptTokens,
+		"completionTokens", usage.CompletionTokens,
+		"latencyMs", usage.LatencyMS)
+
+	httpx.JSON(w, http.StatusOK, map[string]any{"reply": reply})
 }

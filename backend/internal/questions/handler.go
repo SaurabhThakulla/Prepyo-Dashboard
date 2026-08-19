@@ -1,68 +1,79 @@
 package questions
 
 import (
-	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/prepyo/backend/internal/models"
-	"github.com/prepyo/backend/internal/store"
+	"github.com/prepyo/backend/pkg/httpx"
 )
 
 type Handler struct {
-	store *store.Store
+	repo *Repository
+	log  *slog.Logger
 }
 
-func NewHandler(s *store.Store) *Handler {
-	return &Handler{store: s}
+func NewHandler(repo *Repository, log *slog.Logger) *Handler {
+	return &Handler{repo: repo, log: log}
 }
 
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Get("/", h.GetQuestions)
-	r.Post("/", h.CreateQuestion)
+	r.Get("/", h.list)
+	r.Get("/{questionID}", h.get)
 	return r
 }
 
-func (h *Handler) GetQuestions(w http.ResponseWriter, r *http.Request) {
-	exam := models.ExamType(r.URL.Query().Get("exam"))
-	skill := models.SkillType(r.URL.Query().Get("skill"))
-	id := r.URL.Query().Get("id")
+func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	exam := models.ExamType(query.Get("exam"))
+	skill := models.SkillType(query.Get("skill"))
 
-	if id != "" {
-		q := h.store.GetQuestionByID(id)
-		if q == nil {
-			http.Error(w, "Question not found", http.StatusNotFound)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success":  true,
-			"question": q,
-		})
+	if exam != "" && !exam.Valid() {
+		httpx.Error(w, http.StatusBadRequest, httpx.CodeBadRequest, "Unknown exam. Use PTE or IELTS.")
+		return
+	}
+	if skill != "" && !skill.Valid() {
+		httpx.Error(w, http.StatusBadRequest, httpx.CodeBadRequest, "Unknown skill.")
 		return
 	}
 
-	questions := h.store.GetQuestions(exam, skill)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":   true,
-		"count":     len(questions),
-		"questions": questions,
+	page := httpx.ReadPage(r)
+	list, total, err := h.repo.List(r.Context(), ListParams{
+		Exam:   exam,
+		Skill:  skill,
+		TypeID: query.Get("typeId"),
+		Limit:  page.Limit,
+		Offset: page.Offset,
+	})
+	if err != nil {
+		httpx.Internal(w, h.log, "questions.list", err)
+		return
+	}
+
+	// Strip the answer key: this list feeds the practice screen.
+	safe := make([]models.Question, len(list))
+	for i, q := range list {
+		safe[i] = q.PublicQuestion()
+	}
+
+	httpx.JSON(w, http.StatusOK, map[string]any{
+		"questions":  safe,
+		"pagination": page.Meta(total),
 	})
 }
 
-func (h *Handler) CreateQuestion(w http.ResponseWriter, r *http.Request) {
-	var q models.Question
-	if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
+	q, err := h.repo.ByID(r.Context(), chi.URLParam(r, "questionID"))
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			httpx.Error(w, http.StatusNotFound, httpx.CodeNotFound, "That question does not exist.")
+			return
+		}
+		httpx.Internal(w, h.log, "questions.get", err)
 		return
 	}
-
-	created := h.store.AddQuestion(q)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":  true,
-		"question": created,
-	})
+	httpx.JSON(w, http.StatusOK, map[string]any{"question": q.PublicQuestion()})
 }

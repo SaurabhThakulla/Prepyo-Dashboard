@@ -1,3 +1,8 @@
+// Package models holds the types shared across modules and sent to the client.
+//
+// Fields that can be worked out from other data are marked "derived": they are
+// computed when a response is built, never stored. Level always agrees with XP
+// because there is only one place it can come from.
 package models
 
 import "time"
@@ -9,6 +14,8 @@ const (
 	ExamIELTS ExamType = "IELTS"
 )
 
+func (e ExamType) Valid() bool { return e == ExamPTE || e == ExamIELTS }
+
 type SkillType string
 
 const (
@@ -18,112 +25,287 @@ const (
 	SkillListening SkillType = "listening"
 )
 
+func (s SkillType) Valid() bool {
+	switch s {
+	case SkillSpeaking, SkillWriting, SkillReading, SkillListening:
+		return true
+	}
+	return false
+}
+
+// AllSkills is the canonical order used by dashboards and progress views.
+var AllSkills = []SkillType{SkillSpeaking, SkillWriting, SkillReading, SkillListening}
+
+// ---------------------------------------------------------------------------
+// Users
+// ---------------------------------------------------------------------------
+
+// User is the stored row. It never leaves the backend, because it carries the
+// password hash and the role.
+type User struct {
+	ID                   string
+	Email                string
+	PasswordHash         string
+	Name                 string
+	Role                 string
+	TargetExam           ExamType
+	TargetScore          *float64
+	ExamDate             *time.Time
+	NepalRegion          string
+	XP                   int
+	StreakDays           int
+	StreakLastActiveDate *time.Time
+	Timezone             string
+	PlanID               string
+	PlanValidUntil       *time.Time
+	CreatedAt            time.Time
+}
+
+const RoleAdmin = "admin"
+
+func (u User) IsAdmin() bool { return u.Role == RoleAdmin }
+
+// UserProfile is what the client receives. Build it with NewUserProfile so the
+// derived fields are always filled the same way.
 type UserProfile struct {
-	ID                    string    `json:"id"`
-	Email                 string    `json:"email"`
-	Name                  string    `json:"name"`
-	TargetExam            ExamType  `json:"targetExam"`
-	TargetScore           float64   `json:"targetScore"`
-	EstimatedScore        float64   `json:"estimatedScore"`
-	ReadinessPercentage   int       `json:"readinessPercentage"`
-	ExamDate              string    `json:"examDate,omitempty"`
-	NepalRegion           string    `json:"nepalRegion"`
-	XP                    int       `json:"xp"`
-	Level                 int       `json:"level"`
-	StreakDays            int       `json:"streakDays"`
-	StreakFrozen          bool      `json:"streakFrozen"`
-	StreakLastActiveDate  string    `json:"streakLastActiveDate"`
-	SubscriptionTier      string    `json:"subscriptionTier"`
-	SubscriptionValidUntil string   `json:"subscriptionValidUntil,omitempty"`
-	DailyEvaluationsUsed  int       `json:"dailyEvaluationsUsed"`
-	DailyEvaluationsLimit int       `json:"dailyEvaluationsLimit"`
-	CreatedAt             time.Time `json:"createdAt"`
+	ID          string    `json:"id"`
+	Email       string    `json:"email"`
+	Name        string    `json:"name"`
+	Role        string    `json:"role"`
+	TargetExam  ExamType  `json:"targetExam"`
+	TargetScore *float64  `json:"targetScore"`
+	ExamDate    string    `json:"examDate,omitempty"`
+	NepalRegion string    `json:"nepalRegion"`
+	XP          int       `json:"xp"`
+	StreakDays  int       `json:"streakDays"`
+	Timezone    string    `json:"timezone"`
+	CreatedAt   time.Time `json:"createdAt"`
+
+	// Derived.
+	Level         int `json:"level"`
+	XPToNextLevel int `json:"xpToNextLevel"`
+
+	// Filled from other tables by the caller. Nil when not requested, so a
+	// cheap endpoint does not pay for an estimate it will not use.
+	Estimate     *ScoreEstimate     `json:"estimate,omitempty"`
+	Subscription *SubscriptionState `json:"subscription,omitempty"`
+}
+
+// XPPerLevel is the width of one level. Levels start at 1.
+const XPPerLevel = 400
+
+func LevelForXP(xp int) int { return xp/XPPerLevel + 1 }
+
+func NewUserProfile(u User) UserProfile {
+	level := LevelForXP(u.XP)
+	profile := UserProfile{
+		ID:            u.ID,
+		Email:         u.Email,
+		Name:          u.Name,
+		Role:          u.Role,
+		TargetExam:    u.TargetExam,
+		TargetScore:   u.TargetScore,
+		NepalRegion:   u.NepalRegion,
+		XP:            u.XP,
+		StreakDays:    u.StreakDays,
+		Timezone:      u.Timezone,
+		CreatedAt:     u.CreatedAt,
+		Level:         level,
+		XPToNextLevel: level*XPPerLevel - u.XP,
+	}
+	if u.ExamDate != nil {
+		profile.ExamDate = u.ExamDate.Format(time.DateOnly)
+	}
+	return profile
+}
+
+// ScoreEstimate is the learner's current standing. Nil Value means there is not
+// enough evidence yet, which the UI shows as "not enough data" rather than
+// inventing a number.
+type ScoreEstimate struct {
+	Value       *float64  `json:"value"`
+	Confidence  string    `json:"confidence"` // low, medium, high
+	BasedOn     int       `json:"basedOn"`    // attempts behind the estimate
+	TargetScore *float64  `json:"targetScore"`
+	TargetGap   *float64  `json:"targetGap"`
+	Readiness   *int      `json:"readiness"` // percent of target reached
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+type SubscriptionState struct {
+	PlanID                string `json:"planId"`
+	PlanName              string `json:"planName"`
+	ValidUntil            string `json:"validUntil,omitempty"`
+	IsActive              bool   `json:"isActive"`
+	DailyEvaluationsUsed  int    `json:"dailyEvaluationsUsed"`
+	DailyEvaluationsLimit int    `json:"dailyEvaluationsLimit"`
+	MockTestsIncluded     int    `json:"mockTestsIncluded"`
+	MockTestsUsed         int    `json:"mockTestsUsed"`
+}
+
+type Plan struct {
+	ID                  string   `json:"id"`
+	Name                string   `json:"name"`
+	PriceNPR            int      `json:"priceNPR"`
+	DurationMonths      int      `json:"durationMonths"`
+	Features            []string `json:"features"`
+	AIEvaluationsPerDay int      `json:"aiEvaluationsPerDay"`
+	MockTestsIncluded   int      `json:"mockTestsIncluded"`
+	IsPopular           bool     `json:"isPopular"`
+}
+
+// ---------------------------------------------------------------------------
+// Exam content
+// ---------------------------------------------------------------------------
+
+// ExamVersion freezes the scoring scale for an exam. Attempts store the version
+// they ran under so an old result keeps its original meaning.
+type ExamVersion struct {
+	ID          string   `json:"id"`
+	Exam        ExamType `json:"exam"`
+	Label       string   `json:"label"`
+	Description string   `json:"description"`
+	MinScore    float64  `json:"minScore"`
+	MaxScore    float64  `json:"maxScore"`
+	ScoreStep   float64  `json:"scoreStep"`
+	IsCurrent   bool     `json:"isCurrent"`
 }
 
 type QuestionOption struct {
-	ID        string `json:"id"`
-	Text      string `json:"text"`
-	IsCorrect bool   `json:"isCorrect,omitempty"`
+	ID   string `json:"id"`
+	Text string `json:"text"`
 }
 
-type BlankOption struct {
-	ID            string   `json:"id"`
-	Options       []string `json:"options"`
-	CorrectAnswer string   `json:"correctAnswer"`
+type Blank struct {
+	ID      string   `json:"id"`
+	Options []string `json:"options,omitempty"`
+	// CorrectAnswer is stripped before a question is sent to a learner.
+	CorrectAnswer string `json:"correctAnswer,omitempty"`
 }
 
 type Question struct {
-	ID              string           `json:"id"`
-	Exam            ExamType         `json:"exam"`
-	Skill           SkillType        `json:"skill"`
-	TypeID          string           `json:"typeId"`
-	TypeName        string           `json:"typeName"`
-	Title           string           `json:"title"`
-	Prompt          string           `json:"prompt"`
-	ContextPassage  string           `json:"contextPassage,omitempty"`
-	AudioURL        string           `json:"audioUrl,omitempty"`
-	AudioTranscript string           `json:"audioTranscript,omitempty"`
-	ImageURL        string           `json:"imageUrl,omitempty"`
-	PrepTimeSeconds int              `json:"prepTimeSeconds,omitempty"`
-	TimeLimitSeconds int             `json:"timeLimitSeconds"`
-	Options         []QuestionOption `json:"options,omitempty"`
-	CorrectAnswers  interface{}      `json:"correctAnswers,omitempty"` // string or []string
-	Blanks          []BlankOption    `json:"blanks,omitempty"`
-	ModelAnswer     string           `json:"modelAnswer,omitempty"`
-	Explanation     string           `json:"explanation,omitempty"`
-	Difficulty      string           `json:"difficulty"`
-	Tags            []string         `json:"tags"`
-	Points          int              `json:"points"`
+	ID               string           `json:"id"`
+	ExamVersionID    string           `json:"examVersionId"`
+	Exam             ExamType         `json:"exam"`
+	Skill            SkillType        `json:"skill"`
+	TypeID           string           `json:"typeId"`
+	TypeName         string           `json:"typeName"`
+	Title            string           `json:"title"`
+	Prompt           string           `json:"prompt"`
+	ContextPassage   string           `json:"contextPassage,omitempty"`
+	AudioURL         string           `json:"audioUrl,omitempty"`
+	AudioTranscript  string           `json:"audioTranscript,omitempty"`
+	ImageURL         string           `json:"imageUrl,omitempty"`
+	PrepTimeSeconds  int              `json:"prepTimeSeconds,omitempty"`
+	TimeLimitSeconds int              `json:"timeLimitSeconds"`
+	Options          []QuestionOption `json:"options,omitempty"`
+	Blanks           []Blank          `json:"blanks,omitempty"`
+	Difficulty       string           `json:"difficulty"`
+	Tags             []string         `json:"tags"`
+	Points           int              `json:"points"`
+
+	// Answer key. Never serialised: PublicQuestion drops these before the
+	// question reaches a learner, so the browser cannot read the answers.
+	CorrectAnswers []string `json:"-"`
+	ModelAnswer    string   `json:"-"`
+	Explanation    string   `json:"-"`
 }
 
-type UserAnswerSubmission struct {
-	QuestionID           string            `json:"questionId"`
-	Exam                 ExamType          `json:"exam"`
-	Skill                SkillType         `json:"skill"`
-	TypeID               string            `json:"typeId"`
-	TextResponse         string            `json:"textResponse,omitempty"`
-	SelectedOptions      []string          `json:"selectedOptions,omitempty"`
-	BlankResponses       map[string]string `json:"blankResponses,omitempty"`
-	AudioBlobURL         string            `json:"audioBlobUrl,omitempty"`
-	AudioDurationSeconds int               `json:"audioDurationSeconds,omitempty"`
-	TimeSpentSeconds     int               `json:"timeSpentSeconds"`
+// PublicQuestion is the question as a learner sees it while answering: no
+// answer key, no explanation.
+func (q Question) PublicQuestion() Question {
+	safe := q
+	safe.CorrectAnswers = nil
+	safe.ModelAnswer = ""
+	safe.Explanation = ""
+
+	safe.Blanks = make([]Blank, len(q.Blanks))
+	for i, b := range q.Blanks {
+		safe.Blanks[i] = Blank{ID: b.ID, Options: b.Options}
+	}
+	return safe
 }
 
-type EvaluationCriterion struct {
-	Name     string  `json:"name"`
-	Score    float64 `json:"score"`
-	MaxScore float64 `json:"maxScore"`
-	Feedback string  `json:"feedback"`
-	Status   string  `json:"status"` // good, average, needs_work
+// ReviewQuestion is the question as shown after submission, with the answer key
+// and explanation restored.
+type ReviewQuestion struct {
+	Question
+	CorrectAnswers []string `json:"correctAnswers,omitempty"`
+	ModelAnswer    string   `json:"modelAnswer,omitempty"`
+	Explanation    string   `json:"explanation,omitempty"`
 }
 
-type SentenceFeedback struct {
-	Original    string `json:"original"`
-	Correction  string `json:"correction"`
-	IssueType   string `json:"issueType"`
-	Explanation string `json:"explanation"`
+func (q Question) ForReview() ReviewQuestion {
+	return ReviewQuestion{
+		Question:       q,
+		CorrectAnswers: q.CorrectAnswers,
+		ModelAnswer:    q.ModelAnswer,
+		Explanation:    q.Explanation,
+	}
 }
 
-type AIEvaluationResult struct {
-	ID                   string                `json:"id"`
-	QuestionID           string                `json:"questionId"`
-	Exam                 ExamType              `json:"exam"`
-	Skill                SkillType             `json:"skill"`
-	EstimatedScore       float64               `json:"estimatedScore"`
-	OverallBandOrPTE     float64               `json:"overallBandOrPTE"`
-	ScoreConfidence      string                `json:"scoreConfidence"`
-	Summary              string                `json:"summary"`
-	Criteria             []EvaluationCriterion `json:"criteria"`
-	Strengths            []string              `json:"strengths"`
-	Weaknesses           []string              `json:"weaknesses"`
-	SentenceFeedback     []SentenceFeedback    `json:"sentenceFeedback"`
-	ModelRewrite         string                `json:"modelRewrite,omitempty"`
-	EvaluatedAt          time.Time             `json:"evaluatedAt"`
-	ProviderModelUsed    string                `json:"providerModelUsed"`
-	TokenCostEstimateNPR float64               `json:"tokenCostEstimateNPR"`
+type MockSection struct {
+	ID              string    `json:"id"`
+	Name            string    `json:"name"`
+	Skill           SkillType `json:"skill"`
+	DurationMinutes int       `json:"durationMinutes"`
+	QuestionIDs     []string  `json:"questionIds"`
 }
 
-type MistakeItem struct {
+type Mock struct {
+	ID                   string        `json:"id"`
+	ExamVersionID        string        `json:"examVersionId"`
+	Exam                 ExamType      `json:"exam"`
+	Title                string        `json:"title"`
+	Description          string        `json:"description"`
+	TotalDurationMinutes int           `json:"totalDurationMinutes"`
+	TotalQuestions       int           `json:"totalQuestions"`
+	IsDiagnostic         bool          `json:"isDiagnostic"`
+	Sections             []MockSection `json:"sections"`
+}
+
+// ---------------------------------------------------------------------------
+// Learner activity
+// ---------------------------------------------------------------------------
+
+// AnswerSubmission is one answer sent by the client. Note what is absent: no
+// score, no correctness flag. The server works those out.
+type AnswerSubmission struct {
+	QuestionID       string            `json:"questionId"`
+	TextResponse     string            `json:"textResponse,omitempty"`
+	SelectedOptions  []string          `json:"selectedOptions,omitempty"`
+	BlankResponses   map[string]string `json:"blankResponses,omitempty"`
+	TimeSpentSeconds int               `json:"timeSpentSeconds,omitempty"`
+}
+
+type PracticeAttempt struct {
+	ID                 string    `json:"id"`
+	QuestionID         string    `json:"questionId"`
+	ExamVersionID      string    `json:"examVersionId"`
+	IsCorrect          bool      `json:"isCorrect"`
+	Score              float64   `json:"score"`
+	MaxScore           float64   `json:"maxScore"`
+	AccuracyPercentage int       `json:"accuracyPercentage"`
+	Feedback           string    `json:"feedback"`
+	UserResponse       string    `json:"userResponse,omitempty"`
+	TimeSpentSeconds   int       `json:"timeSpentSeconds"`
+	CreatedAt          time.Time `json:"createdAt"`
+}
+
+type MockAttempt struct {
+	ID              string                `json:"id"`
+	MockID          string                `json:"mockId"`
+	ExamVersionID   string                `json:"examVersionId"`
+	Exam            ExamType              `json:"exam"`
+	UserScore       float64               `json:"userScore"`
+	SkillScores     map[SkillType]float64 `json:"skillScores"`
+	TotalCorrect    int                   `json:"totalCorrect"`
+	TotalQuestions  int                   `json:"totalQuestions"`
+	DurationSeconds int                   `json:"durationSeconds"`
+	CompletedAt     time.Time             `json:"completedAt"`
+}
+
+type Mistake struct {
 	ID              string    `json:"id"`
 	QuestionID      string    `json:"questionId"`
 	QuestionTitle   string    `json:"questionTitle"`
@@ -140,62 +322,64 @@ type MistakeItem struct {
 	LastAttemptedAt time.Time `json:"lastAttemptedAt"`
 }
 
-type MockExamSection struct {
-	ID              string    `json:"id"`
-	Name            string    `json:"name"`
-	Skill           SkillType `json:"skill"`
-	DurationMinutes int       `json:"durationMinutes"`
-	QuestionIDs     []string  `json:"questionIds"`
+// ---------------------------------------------------------------------------
+// AI evaluation
+// ---------------------------------------------------------------------------
+
+type EvaluationCriterion struct {
+	Name     string  `json:"name"`
+	Score    float64 `json:"score"`
+	MaxScore float64 `json:"maxScore"`
+	Feedback string  `json:"feedback"`
 }
 
-type MockExamBlueprint struct {
-	ID                   string            `json:"id"`
-	Exam                 ExamType          `json:"exam"`
-	Title                string            `json:"title"`
-	Description          string            `json:"description"`
-	TotalDurationMinutes int               `json:"totalDurationMinutes"`
-	TotalQuestions       int               `json:"totalQuestions"`
-	Sections             []MockExamSection `json:"sections"`
-	IsDiagnostic         bool              `json:"isDiagnostic"`
+type SentenceFeedback struct {
+	Original    string `json:"original"`
+	Correction  string `json:"correction"`
+	IssueType   string `json:"issueType"`
+	Explanation string `json:"explanation"`
 }
 
-type MockAttemptResult struct {
-	ID                string             `json:"id"`
-	MockID            string             `json:"mockId"`
-	Exam              ExamType           `json:"exam"`
-	UserScore         float64            `json:"userScore"`
-	SkillScores       map[SkillType]float64 `json:"skillScores"`
-	EnablingSkills    map[string]int     `json:"enablingSkills,omitempty"`
-	TotalCorrect      int                `json:"totalCorrect"`
-	TotalQuestions    int                `json:"totalQuestions"`
-	DurationSeconds   int                `json:"durationSeconds"`
-	TargetGap         float64            `json:"targetGap"`
-	ReadinessImpact   int                `json:"readinessImpact"`
-	CompletedAt       time.Time          `json:"completedAt"`
+// Evaluation is qualitative AI feedback plus an estimate. EstimatedScore is a
+// practice estimate, never an official result; the client labels it that way.
+type Evaluation struct {
+	ID                string                `json:"id"`
+	QuestionID        string                `json:"questionId,omitempty"`
+	Exam              ExamType              `json:"exam"`
+	Skill             SkillType             `json:"skill"`
+	EvaluationVersion string                `json:"evaluationVersion"`
+	EstimatedScore    *float64              `json:"estimatedScore"`
+	ScoreConfidence   string                `json:"scoreConfidence"`
+	Summary           string                `json:"summary"`
+	Criteria          []EvaluationCriterion `json:"criteria"`
+	Strengths         []string              `json:"strengths"`
+	Weaknesses        []string              `json:"weaknesses"`
+	SentenceFeedback  []SentenceFeedback    `json:"sentenceFeedback"`
+	ModelRewrite      string                `json:"modelRewrite,omitempty"`
+	CreatedAt         time.Time             `json:"createdAt"`
+
+	// Usage is recorded for cost tracking and shown only to admins.
+	Usage EvaluationUsage `json:"usage,omitempty"`
 }
 
-type LeaderboardUser struct {
-	Rank           int      `json:"rank"`
-	UserID         string   `json:"userId"`
-	Name           string   `json:"name"`
-	NepalRegion    string   `json:"nepalRegion"`
-	Exam           ExamType `json:"exam"`
-	XP             int      `json:"xp"`
-	Level          int      `json:"level"`
-	StreakDays     int      `json:"streakDays"`
-	EstimatedScore float64  `json:"estimatedScore"`
-	Tier           string   `json:"tier"`
+type EvaluationUsage struct {
+	Provider         string `json:"provider"`
+	Model            string `json:"model"`
+	PromptVersion    string `json:"promptVersion"`
+	PromptTokens     int    `json:"promptTokens"`
+	CompletionTokens int    `json:"completionTokens"`
+	LatencyMS        int    `json:"latencyMs"`
 }
 
-type SubscriptionPlan struct {
-	ID                  string   `json:"id"`
-	Name                string   `json:"name"`
-	PriceNPR            int      `json:"priceNPR"`
-	DurationMonths      int      `json:"durationMonths"`
-	Features            []string `json:"features"`
-	AIEvaluationsPerDay int      `json:"aiEvaluationsPerDay"`
-	MockTestsIncluded   int      `json:"mockTestsIncluded"`
-	Popular             bool     `json:"popular,omitempty"`
+// ---------------------------------------------------------------------------
+// Gamification and notifications
+// ---------------------------------------------------------------------------
+
+type XPTransaction struct {
+	ID        string    `json:"id"`
+	Amount    int       `json:"amount"`
+	Reason    string    `json:"reason"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type DailyMission struct {
@@ -203,19 +387,31 @@ type DailyMission struct {
 	Title          string    `json:"title"`
 	Description    string    `json:"description"`
 	Skill          SkillType `json:"skill"`
-	TaskType       string    `json:"taskType"`
+	TaskType       string    `json:"taskType,omitempty"`
 	TargetCount    int       `json:"targetCount"`
 	CompletedCount int       `json:"completedCount"`
 	XPReward       int       `json:"xpReward"`
 	Completed      bool      `json:"completed"`
 }
 
-type NotificationItem struct {
+type LeaderboardEntry struct {
+	Rank        int      `json:"rank"`
+	UserID      string   `json:"userId"`
+	Name        string   `json:"name"`
+	NepalRegion string   `json:"nepalRegion"`
+	Exam        ExamType `json:"exam"`
+	XP          int      `json:"xp"`
+	Level       int      `json:"level"`
+	StreakDays  int      `json:"streakDays"`
+	IsYou       bool     `json:"isYou"`
+}
+
+type Notification struct {
 	ID        string    `json:"id"`
 	Title     string    `json:"title"`
 	Message   string    `json:"message"`
 	Type      string    `json:"type"`
 	Read      bool      `json:"read"`
-	CreatedAt time.Time `json:"createdAt"`
 	ActionURL string    `json:"actionUrl,omitempty"`
+	CreatedAt time.Time `json:"createdAt"`
 }

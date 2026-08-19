@@ -1,95 +1,291 @@
 package mocks
 
 import (
-	"encoding/json"
-	"fmt"
+	"errors"
+	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prepyo/backend/internal/exams"
+	"github.com/prepyo/backend/internal/gamification"
 	"github.com/prepyo/backend/internal/models"
-	"github.com/prepyo/backend/internal/store"
+	"github.com/prepyo/backend/internal/questions"
+	"github.com/prepyo/backend/internal/reqctx"
+	"github.com/prepyo/backend/internal/scoring"
+	"github.com/prepyo/backend/pkg/httpx"
 )
 
 type Handler struct {
-	store *store.Store
+	db        *pgxpool.Pool
+	repo      *Repository
+	questions *questions.Repository
+	exams     *exams.Repository
+	xp        *gamification.Service
+	log       *slog.Logger
 }
 
-func NewHandler(s *store.Store) *Handler {
-	return &Handler{store: s}
+func NewHandler(
+	db *pgxpool.Pool,
+	repo *Repository,
+	questionRepo *questions.Repository,
+	examRepo *exams.Repository,
+	xp *gamification.Service,
+	log *slog.Logger,
+) *Handler {
+	return &Handler{db: db, repo: repo, questions: questionRepo, exams: examRepo, xp: xp, log: log}
 }
 
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Get("/", h.GetMocks)
-	r.Post("/", h.SubmitMock)
+	r.Get("/", h.list)
+	r.Get("/attempts", h.attempts)
+	r.Get("/{mockID}", h.get)
+	r.Post("/{mockID}/submit", h.submit)
 	return r
 }
 
-func (h *Handler) GetMocks(w http.ResponseWriter, r *http.Request) {
-	exam := models.ExamType(r.URL.Query().Get("exam"))
-	mocks := h.store.GetMocks(exam)
-	attempts := h.store.GetMockAttempts()
+func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
+	user := reqctx.MustUser(r.Context())
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":      true,
-		"mocks":        mocks,
-		"pastAttempts": attempts,
+	exam := models.ExamType(r.URL.Query().Get("exam"))
+	if exam == "" {
+		exam = user.TargetExam
+	}
+
+	list, err := h.repo.List(r.Context(), exam)
+	if err != nil {
+		httpx.Internal(w, h.log, "mocks.list", err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"mocks": list})
+}
+
+// get returns the blueprint plus its questions, with the answer key stripped.
+func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
+	mock, err := h.repo.ByID(r.Context(), chi.URLParam(r, "mockID"))
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			httpx.Error(w, http.StatusNotFound, httpx.CodeNotFound, "That mock exam does not exist.")
+			return
+		}
+		httpx.Internal(w, h.log, "mocks.get", err)
+		return
+	}
+
+	found, err := h.questions.ByIDs(r.Context(), questionIDsOf(mock))
+	if err != nil {
+		httpx.Internal(w, h.log, "mocks.get.questions", err)
+		return
+	}
+
+	safe := make([]models.Question, 0, len(found))
+	for _, q := range found {
+		safe = append(safe, q.PublicQuestion())
+	}
+
+	httpx.JSON(w, http.StatusOK, map[string]any{"mock": mock, "questions": safe})
+}
+
+func (h *Handler) attempts(w http.ResponseWriter, r *http.Request) {
+	user := reqctx.MustUser(r.Context())
+	page := httpx.ReadPage(r)
+
+	list, total, err := h.repo.Attempts(r.Context(), user.ID, page.Limit, page.Offset)
+	if err != nil {
+		httpx.Internal(w, h.log, "mocks.attempts", err)
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{
+		"attempts":   list,
+		"pagination": page.Meta(total),
 	})
 }
 
-func (h *Handler) SubmitMock(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		MockID          string `json:"mockId"`
-		DurationSeconds int    `json:"durationSeconds"`
-	}
+type submitRequest struct {
+	Answers         []models.AnswerSubmission `json:"answers"`
+	DurationSeconds int                       `json:"durationSeconds"`
+}
 
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+// submit grades every answer the learner gave and stores the result.
+//
+// The score comes from their answers. Speaking and writing sections are left
+// out of the score rather than guessed at, and the response says how many
+// questions the score covers.
+func (h *Handler) submit(w http.ResponseWriter, r *http.Request) {
+	var req submitRequest
+	if !httpx.Decode(w, r, &req) {
 		return
 	}
 
-	mock := h.store.GetMockByID(body.MockID)
-	if mock == nil {
-		http.Error(w, "Mock not found", http.StatusNotFound)
+	user := reqctx.MustUser(r.Context())
+	ctx := r.Context()
+
+	mock, err := h.repo.ByID(ctx, chi.URLParam(r, "mockID"))
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			httpx.Error(w, http.StatusNotFound, httpx.CodeNotFound, "That mock exam does not exist.")
+			return
+		}
+		httpx.Internal(w, h.log, "mocks.submit.mock", err)
 		return
 	}
 
-	isPTE := mock.Exam == models.ExamPTE
-	userScore := 76.0
-	if !isPTE {
-		userScore = 7.5
+	version, err := h.exams.ByID(ctx, mock.ExamVersionID)
+	if err != nil {
+		httpx.Internal(w, h.log, "mocks.submit.version", err)
+		return
 	}
 
-	skillScores := map[models.SkillType]float64{
-		models.SkillSpeaking:  78,
-		models.SkillWriting:   74,
-		models.SkillReading:   75,
-		models.SkillListening: 77,
+	bank, err := h.questions.ByIDs(ctx, questionIDsOf(mock))
+	if err != nil {
+		httpx.Internal(w, h.log, "mocks.submit.questions", err)
+		return
 	}
 
-	attempt := models.MockAttemptResult{
-		ID:              fmt.Sprintf("attempt-%d", time.Now().UnixMilli()),
+	graded := gradeAll(bank, req.Answers)
+	if graded.total == 0 {
+		httpx.Error(w, http.StatusBadRequest, httpx.CodeBadRequest,
+			"None of the submitted answers belong to this mock exam.")
+		return
+	}
+
+	scale := scoring.Scale{Min: version.MinScore, Max: version.MaxScore, Step: version.ScoreStep}
+	overall := scale.EstimateFromAccuracy(graded.accuracy())
+
+	skillScores := make(map[models.SkillType]float64, len(graded.bySkill))
+	for skill, tally := range graded.bySkill {
+		skillScores[skill] = scale.EstimateFromAccuracy(tally.accuracy())
+	}
+
+	tx, err := h.db.Begin(ctx)
+	if err != nil {
+		httpx.Internal(w, h.log, "mocks.submit.begin", err)
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	attempt, err := h.repo.SaveAttempt(ctx, tx, SaveAttemptParams{
+		UserID:          user.ID,
 		MockID:          mock.ID,
+		ExamVersionID:   mock.ExamVersionID,
 		Exam:            mock.Exam,
-		UserScore:       userScore,
+		UserScore:       overall,
 		SkillScores:     skillScores,
-		TotalCorrect:    6,
-		TotalQuestions:  mock.TotalQuestions,
-		DurationSeconds: body.DurationSeconds,
-		TargetGap:       3.0,
-		ReadinessImpact: 5,
-		CompletedAt:     time.Now(),
+		TotalCorrect:    graded.correct,
+		TotalQuestions:  graded.total,
+		DurationSeconds: req.DurationSeconds,
+	})
+	if err != nil {
+		httpx.Internal(w, h.log, "mocks.submit.save", err)
+		return
 	}
 
-	saved := h.store.SaveMockAttempt(attempt)
-	h.store.AwardXP(300, "Full Mock Exam Completed")
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"attempt": saved,
-		"user":    h.store.GetUser(),
+	// Keyed by mock and day: retaking a mock is useful practice and the result
+	// is still stored, but the 300 XP is paid once per mock per day rather than
+	// on every retake.
+	awarded, err := h.xp.Award(ctx, tx, gamification.AwardParams{
+		UserID:    user.ID,
+		Amount:    gamification.XPMockCompleted,
+		Reason:    "Completed mock: " + mock.Title,
+		SourceKey: "mock:" + mock.ID + ":" + gamification.LocalDay(user),
 	})
+	if err != nil {
+		httpx.Internal(w, h.log, "mocks.submit.xp", err)
+		return
+	}
+
+	streak, err := h.xp.TouchStreak(ctx, tx, user)
+	if err != nil {
+		httpx.Internal(w, h.log, "mocks.submit.streak", err)
+		return
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		httpx.Internal(w, h.log, "mocks.submit.commit", err)
+		return
+	}
+
+	httpx.JSON(w, http.StatusCreated, map[string]any{
+		"attempt":   attempt,
+		"xpAwarded": awarded,
+		"streak":    streak,
+		// Says plainly what the score is based on, so a mock with speaking
+		// sections does not look like it graded everything.
+		"scoredQuestions":   graded.total,
+		"ungradedQuestions": graded.ungraded,
+		"scoreConfidence":   scoring.Confidence(graded.total),
+	})
+}
+
+// tally accumulates marks for a group of questions.
+type tally struct {
+	earned float64
+	max    float64
+}
+
+func (t tally) accuracy() float64 {
+	if t.max <= 0 {
+		return 0
+	}
+	return t.earned / t.max
+}
+
+type gradedMock struct {
+	tally
+	correct  int
+	total    int
+	ungraded int
+	bySkill  map[models.SkillType]tally
+}
+
+// gradeAll scores each answer that belongs to this mock.
+//
+// Answers for questions outside the blueprint are ignored, so a client cannot
+// pad its score by submitting extra answers.
+func gradeAll(bank map[string]models.Question, answers []models.AnswerSubmission) gradedMock {
+	result := gradedMock{bySkill: map[models.SkillType]tally{}}
+	seen := map[string]bool{}
+
+	for _, answer := range answers {
+		question, ok := bank[answer.QuestionID]
+		if !ok || seen[answer.QuestionID] {
+			continue
+		}
+		seen[answer.QuestionID] = true
+
+		if !scoring.Deterministic(question.Skill) {
+			// Speaking and writing need evaluation; they are reported
+			// separately instead of being counted as right or wrong.
+			result.ungraded++
+			continue
+		}
+
+		graded, ok := scoring.Grade(question, answer)
+		if !ok {
+			result.ungraded++
+			continue
+		}
+
+		result.earned += graded.Score
+		result.max += graded.MaxScore
+		result.total++
+		if graded.IsCorrect {
+			result.correct++
+		}
+
+		skill := result.bySkill[question.Skill]
+		skill.earned += graded.Score
+		skill.max += graded.MaxScore
+		result.bySkill[question.Skill] = skill
+	}
+	return result
+}
+
+func questionIDsOf(mock models.Mock) []string {
+	var ids []string
+	for _, section := range mock.Sections {
+		ids = append(ids, section.QuestionIDs...)
+	}
+	return ids
 }
