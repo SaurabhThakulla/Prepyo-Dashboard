@@ -12,16 +12,11 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  Sparkles,
   CheckCircle2,
   Sun,
   Moon,
-  Gift,
-  Target,
-  MapPin,
   Trophy,
   Star,
-  Tag,
   ShieldCheck,
   Zap,
   Loader2,
@@ -30,23 +25,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/toast';
-import { ExamType } from '@/lib/types';
 
 export type AuthMode = 'login' | 'signup';
-
-const NEPAL_REGIONS = [
-  'Kathmandu',
-  'Pokhara',
-  'Lalitpur',
-  'Chitwan',
-  'Bhaktapur',
-  'Biratnagar',
-  'Butwal',
-  'Dharan',
-  'Hetauda',
-  'Nepalgunj',
-  'Other / Abroad',
-];
 
 interface UnifiedAuthProps {
   initialMode?: AuthMode;
@@ -55,7 +35,7 @@ interface UnifiedAuthProps {
 export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { refreshUserData, theme, toggleTheme, setActiveExam } = useApp();
+  const { refreshUserData, theme, toggleTheme } = useApp();
   const toast = useToast();
 
   // Mode: 'login' | 'signup'
@@ -66,15 +46,12 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
   const [email, setEmail] = useState('aprapya.student@prepyo.np');
   const [password, setPassword] = useState('password123');
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedExam, setSelectedExamState] = useState<ExamType>('PTE');
-  const [targetScore, setTargetScore] = useState<number>(79);
-  const [nepalRegion, setNepalRegion] = useState('Kathmandu');
-  const [referralCode, setReferralCode] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [agreeTerms, setAgreeTerms] = useState(true);
 
   // Status
   const [loading, setLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,16 +60,11 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
   const passwordId = useId();
   const nameId = useId();
 
-  // Sync mode and referral code from URL
+  // Sync mode from URL
   useEffect(() => {
     const urlMode = searchParams.get('mode');
     if (urlMode === 'login' || urlMode === 'signup') {
       setMode(urlMode);
-    }
-    const ref = searchParams.get('ref');
-    if (ref) {
-      setReferralCode(ref.toUpperCase().trim());
-      setMode('signup');
     }
   }, [searchParams]);
 
@@ -106,15 +78,6 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
     } else {
       if (!email) setEmail('aprapya.student@prepyo.np');
       if (!password) setPassword('password123');
-    }
-  };
-
-  const handleExamChange = (exam: ExamType) => {
-    setSelectedExamState(exam);
-    if (exam === 'PTE') {
-      setTargetScore(79);
-    } else {
-      setTargetScore(7.5);
     }
   };
 
@@ -168,16 +131,11 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
             name: name.trim() || 'New Learner',
             email: email.trim(),
             password: password,
-            targetExam: selectedExam,
-            targetScore,
-            nepalRegion,
-            referralCode: referralCode.trim() || undefined,
           }),
         });
         const data = await res.json();
         if (data.success) {
           toast.success('Account Created! 🎉', 'Welcome to Prepyo! 1 Free AI Mock Exam & 100 XP unlocked.');
-          setActiveExam(selectedExam);
           await refreshUserData();
           router.push('/dashboard');
         } else {
@@ -192,6 +150,47 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
       toast.error('Network Error', msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Social Login Handler (Google, Apple, Facebook)
+  const handleSocialLogin = async (provider: 'google' | 'apple' | 'facebook') => {
+    setSocialLoading(provider);
+    setError(null);
+
+    const providerNames: Record<string, string> = {
+      google: 'Google',
+      apple: 'Apple',
+      facebook: 'Facebook',
+    };
+
+    try {
+      const res = await fetch('/api/v1/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'social-login',
+          provider,
+          email: `student.${provider}@prepyo.np`,
+          name: `${providerNames[provider]} Student`,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Signed in with ${providerNames[provider]}!`, 'Welcome to Prepyo AI Platform.');
+        await refreshUserData();
+        router.push('/dashboard');
+      } else {
+        const msg = data.error || `Unable to authenticate with ${providerNames[provider]}.`;
+        setError(msg);
+        toast.error('Social Sign-In Issue', msg);
+      }
+    } catch (err) {
+      const msg = `Failed to connect to ${providerNames[provider]}. Please try again.`;
+      setError(msg);
+      toast.error('Connection Error', msg);
+    } finally {
+      setSocialLoading(null);
     }
   };
 
@@ -303,15 +302,13 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
                   <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
                   <span><strong>1 Free AI Mock Exam</strong> (All 4 Sections)</span>
                 </li>
-                {referralCode && (
-                  <li className="flex items-center gap-2 text-emerald-300 font-semibold bg-emerald-500/20 p-1.5 rounded-lg border border-emerald-500/30">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-                    <span><strong>+100 Bonus XP</strong> applied ({referralCode})</span>
-                  </li>
-                )}
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
                   <span><strong>3 Daily AI Evaluations</strong> refreshed daily</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  <span><strong>Instant Real-Time Feedback</strong> on pronunciation</span>
                 </li>
               </ul>
             </div>
@@ -340,7 +337,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
       </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* RIGHT HALF: Interactive Senior-Architected Auth Form          */}
+      {/* RIGHT HALF: Streamlined Auth with Google, Apple & Facebook    */}
       {/* ───────────────────────────────────────────────────────────── */}
       <div className="w-full lg:w-7/12 xl:w-1/2 min-h-screen flex flex-col justify-between p-6 sm:p-10 md:p-14 xl:p-16 overflow-y-auto bg-background">
         
@@ -373,7 +370,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
         </div>
 
         {/* Main Center Auth Container */}
-        <div className="w-full max-w-lg mx-auto space-y-6 my-auto py-4">
+        <div className="w-full max-w-lg mx-auto space-y-5 my-auto py-4">
           
           {/* Seamless Mode Switcher Pill */}
           <div className="p-1 rounded-2xl bg-muted/70 border border-border flex items-center gap-1 shadow-xs">
@@ -407,7 +404,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
           </div>
 
           {/* Form Header */}
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <h1 className="font-display text-2xl sm:text-3xl font-black text-foreground tracking-tight">
               {mode === 'login' ? 'Welcome back to Prepyo' : 'Start your free prep journey'}
             </h1>
@@ -418,20 +415,6 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
             </p>
           </div>
 
-          {/* Referral Banner (if applicable) */}
-          {mode === 'signup' && referralCode && (
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3 text-xs animate-in fade-in">
-              <div className="flex items-center gap-2.5">
-                <Tag className="w-4 h-4 text-emerald-400 shrink-0" />
-                <div>
-                  <span className="font-bold text-foreground">Referral Bonus Applied: </span>
-                  <span className="font-mono text-emerald-400 font-bold">{referralCode}</span>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">+100 bonus XP will unlock on your first diagnostic or practice drill!</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Error Alert */}
           {error && (
             <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs font-medium flex items-center gap-2 animate-in fade-in">
@@ -440,12 +423,98 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
             </div>
           )}
 
-          {/* Dynamic Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* ───────────────────────────────────────────────────────────── */}
+          {/* SOCIAL AUTH BUTTONS: Google, Apple, Facebook                  */}
+          {/* ───────────────────────────────────────────────────────────── */}
+          <div className="space-y-2.5 pt-1">
+            {/* Google Button */}
+            <button
+              type="button"
+              onClick={() => handleSocialLogin('google')}
+              disabled={!!socialLoading || loading}
+              className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-border bg-card hover:bg-muted/60 text-foreground text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer disabled:opacity-50"
+            >
+              {socialLoading === 'google' ? (
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              ) : (
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                  />
+                </svg>
+              )}
+              <span>Continue with Google</span>
+            </button>
+
+            {/* Apple & Facebook Grid */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Apple Button */}
+              <button
+                type="button"
+                onClick={() => handleSocialLogin('apple')}
+                disabled={!!socialLoading || loading}
+                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border border-border bg-card hover:bg-muted/60 text-foreground text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer disabled:opacity-50"
+              >
+                {socialLoading === 'apple' ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                ) : (
+                  <svg className="w-4 h-4 shrink-0 fill-current" viewBox="0 0 170 170">
+                    <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.6-7.79-11.72-14.24-5.33-8.39-9.58-18.06-12.74-29.02-3.17-10.96-4.76-21.46-4.76-31.5 0-14.42 3.65-26.3 10.96-35.64 7.3-9.34 16.59-14.12 27.84-14.34 4.58 0 9.77 1.25 15.57 3.75 5.8 2.5 9.78 3.75 11.95 3.75 1.96 0 6.04-1.29 12.24-3.87 6.2-2.58 11.66-3.76 16.39-3.53 12.63.65 22.84 5.44 30.63 14.36-10.99 6.64-16.38 15.67-16.17 27.09.22 8.92 3.64 16.33 10.27 22.25 6.63 5.92 14.41 9.4 23.34 10.45-2.39 7.08-5.26 13.9-8.61 20.47zM119.22 31.02c0-7.18 2.61-13.82 7.83-19.92 5.22-6.1 11.64-9.98 19.26-11.1-1.09 7.4-4.03 14.04-8.82 19.92-4.79 5.88-10.88 9.58-18.27 11.1z" />
+                  </svg>
+                )}
+                <span>Apple</span>
+              </button>
+
+              {/* Facebook Button */}
+              <button
+                type="button"
+                onClick={() => handleSocialLogin('facebook')}
+                disabled={!!socialLoading || loading}
+                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border border-border bg-card hover:bg-muted/60 text-foreground text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer disabled:opacity-50"
+              >
+                {socialLoading === 'facebook' ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                ) : (
+                  <svg className="w-4 h-4 shrink-0 fill-[#1877F2]" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                  </svg>
+                )}
+                <span>Facebook</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="relative my-2">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-[10px] uppercase">
+              <span className="bg-background px-2 text-muted-foreground font-bold tracking-wider">
+                Or continue with email
+              </span>
+            </div>
+          </div>
+
+          {/* Dynamic Email/Password Form */}
+          <form onSubmit={handleSubmit} className="space-y-3.5">
             
-            {/* Signup Only: Name */}
+            {/* Signup Only: Full Name */}
             {mode === 'signup' && (
-              <div className="space-y-1.5 animate-in fade-in duration-300">
+              <div className="space-y-1.5 animate-in fade-in duration-200">
                 <label htmlFor={nameId} className="text-xs font-bold text-foreground">Full Name</label>
                 <div className="relative">
                   <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -497,7 +566,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={mode === 'signup' ? 'Create a strong password (min. 8 chars)' : 'Enter your password'}
+                  placeholder={mode === 'signup' ? 'Create password (min. 8 chars)' : 'Enter your password'}
                   className="w-full rounded-xl border border-input bg-card pl-10 pr-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all font-medium shadow-xs"
                 />
                 <button
@@ -528,132 +597,27 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
               )}
             </div>
 
-            {/* Signup Specific Fields */}
+            {/* Signup Only: Terms Acceptance */}
             {mode === 'signup' && (
-              <div className="space-y-3.5 pt-1 animate-in fade-in duration-300">
-                {/* Target Exam Switcher */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-foreground flex items-center justify-between">
-                    <span>Target Exam</span>
-                    <span className="text-[10px] text-muted-foreground font-normal">Can switch anytime</span>
-                  </label>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => handleExamChange('PTE')}
-                      className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
-                        selectedExam === 'PTE'
-                          ? 'border-primary bg-primary/10 text-primary font-bold shadow-sm ring-1 ring-primary/30'
-                          : 'border-border bg-card text-muted-foreground hover:border-border/80'
-                      }`}
-                    >
-                      <div>
-                        <div className="text-xs font-bold text-foreground">PTE Academic</div>
-                        <div className="text-[10px] text-muted-foreground">Scored 10 – 90</div>
-                      </div>
-                      <span className="text-[10px] font-mono font-bold bg-primary/20 text-primary px-2 py-0.5 rounded-md">
-                        79+
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleExamChange('IELTS')}
-                      className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
-                        selectedExam === 'IELTS'
-                          ? 'border-amber-500 bg-amber-500/10 text-amber-600 font-bold shadow-sm ring-1 ring-amber-500/30'
-                          : 'border-border bg-card text-muted-foreground hover:border-border/80'
-                      }`}
-                    >
-                      <div>
-                        <div className="text-xs font-bold text-foreground">IELTS Academic</div>
-                        <div className="text-[10px] text-muted-foreground">Bands 0 – 9.0</div>
-                      </div>
-                      <span className="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-600 px-2 py-0.5 rounded-md">
-                        8.0
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Target Score & Nepal Region */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-foreground">
-                      Target Score ({selectedExam === 'PTE' ? '10-90' : 'Band 0-9'})
-                    </label>
-                    <div className="relative">
-                      <Target className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <input
-                        type="number"
-                        step={selectedExam === 'IELTS' ? '0.5' : '1'}
-                        min={selectedExam === 'IELTS' ? '4.0' : '30'}
-                        max={selectedExam === 'IELTS' ? '9.0' : '90'}
-                        value={targetScore}
-                        onChange={(e) => setTargetScore(parseFloat(e.target.value) || (selectedExam === 'PTE' ? 79 : 7.5))}
-                        className="w-full rounded-xl border border-input bg-card pl-10 pr-3 py-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all font-mono font-bold shadow-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-foreground">Region in Nepal</label>
-                    <div className="relative">
-                      <MapPin className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <select
-                        value={nepalRegion}
-                        onChange={(e) => setNepalRegion(e.target.value)}
-                        className="w-full rounded-xl border border-input bg-card pl-10 pr-3 py-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all font-medium shadow-xs cursor-pointer"
-                      >
-                        {NEPAL_REGIONS.map((region) => (
-                          <option key={region} value={region} className="bg-card text-foreground">
-                            {region}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Optional Referral Input */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-foreground flex items-center justify-between">
-                    <span>Referral Code (Optional)</span>
-                    <span className="text-[10px] text-muted-foreground font-normal">Earn +100 bonus XP</span>
-                  </label>
-                  <div className="relative">
-                    <Tag className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      type="text"
-                      value={referralCode}
-                      onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                      placeholder="PREP-XXXXXX"
-                      className="w-full rounded-xl border border-input bg-card pl-10 pr-3 py-2.5 text-xs text-foreground placeholder:text-muted-foreground uppercase font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-xs"
-                    />
-                  </div>
-                </div>
-
-                {/* Terms Acceptance */}
-                <div className="pt-0.5">
-                  <label className="flex items-start gap-2.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={agreeTerms}
-                      onChange={(e) => setAgreeTerms(e.target.checked)}
-                      className="rounded border-input text-primary focus:ring-primary h-3.5 w-3.5 mt-0.5 cursor-pointer"
-                    />
-                    <span className="text-[11px] text-muted-foreground leading-tight font-medium">
-                      I agree to the Terms of Service & Privacy Policy, claiming my 1 Free AI Mock Test.
-                    </span>
-                  </label>
-                </div>
+              <div className="pt-0.5 animate-in fade-in">
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={agreeTerms}
+                    onChange={(e) => setAgreeTerms(e.target.checked)}
+                    className="rounded border-input text-primary focus:ring-primary h-3.5 w-3.5 mt-0.5 cursor-pointer"
+                  />
+                  <span className="text-[11px] text-muted-foreground leading-tight font-medium">
+                    I agree to the Terms of Service & Privacy Policy, claiming my 1 Free AI Mock Test.
+                  </span>
+                </label>
               </div>
             )}
 
             {/* Login Only: Remember Me */}
             {mode === 'login' && (
               <div className="flex items-center justify-between pt-0.5">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={rememberMe}
@@ -668,7 +632,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
             {/* Primary Submit Button */}
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || !!socialLoading}
               className="w-full rounded-xl font-bold text-xs h-11 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               {loading ? (
@@ -688,7 +652,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
           {/* Quick Trial Mode (Login Mode) */}
           {mode === 'login' && (
             <>
-              <div className="relative my-4">
+              <div className="relative my-2">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-border" />
                 </div>
@@ -703,7 +667,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
                 type="button"
                 variant="outline"
                 onClick={handleDemoLogin}
-                disabled={demoLoading}
+                disabled={demoLoading || !!socialLoading}
                 className="w-full rounded-xl font-bold text-xs h-10 border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />

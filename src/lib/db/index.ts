@@ -6,6 +6,7 @@ import {
   MistakeItem,
   LeaderboardUser,
   SubscriptionPlan,
+  PaidTier,
   DailyMission,
   NotificationItem,
   AIEvaluationResult,
@@ -299,19 +300,42 @@ class PrepyoDatabase {
     return [...SUBSCRIPTION_PLANS];
   }
 
-  upgradeSubscription(planId: 'pro' | 'elite'): UserProfile {
-    this.user.subscriptionTier = planId;
-    this.user.dailyEvaluationsLimit = planId === 'elite' ? 100 : 30;
-    const now = new Date();
-    const expiry = new Date(now.setMonth(now.getMonth() + (planId === 'elite' ? 3 : 1)));
+  upgradeSubscription(planId: PaidTier): UserProfile {
+    const plan = SUBSCRIPTION_PLANS.find(p => p.id === planId);
+    if (!plan) {
+      throw new Error(`Unknown plan: ${planId}`);
+    }
+
+    // Entitlements come from the plan itself rather than per-tier branches, so a
+    // new tier can't silently inherit another tier's limits. Mirrors the day
+    // maths in backend/internal/billing/billing.go.
+    const baseDays = plan.durationDays || plan.durationMonths * 30;
+    const effectiveDays = baseDays + (plan.bonusDays || 0);
+
+    this.user.subscriptionTier = plan.id;
+    this.user.dailyEvaluationsLimit = plan.aiEvaluationsPerDay;
+
+    // Renewing early extends the remaining time instead of discarding it, which
+    // is what the backend's GREATEST(plan_valid_until, CURRENT_DATE) does.
+    const today = new Date();
+    const currentExpiry = this.user.subscriptionValidUntil
+      ? new Date(this.user.subscriptionValidUntil)
+      : today;
+    const expiry = currentExpiry > today ? new Date(currentExpiry) : new Date(today);
+    expiry.setDate(expiry.getDate() + effectiveDays);
     this.user.subscriptionValidUntil = expiry.toISOString().split('T')[0];
-    this.awardXP(250, `Subscribed to ${planId.toUpperCase()} Prep Plan`);
-    
+
+    this.awardXP(250, `Subscribed to ${plan.name}`);
+
+    const bonusNote = plan.bonusDays
+      ? ` That includes ${plan.bonusDays} bonus days on top of the ${baseDays}-day plan.`
+      : '';
+
     // Add notification
     this.notifications.unshift({
       id: `notif-${Date.now()}`,
-      title: `🎉 Welcome to Prepyo ${planId.toUpperCase()}!`,
-      message: `Your payment was processed successfully via Nepal Payment Gateway. All mock exams and AI evaluation limits are now unlocked!`,
+      title: `🎉 Welcome to ${plan.name}!`,
+      message: `Your payment was processed successfully via Nepal Payment Gateway. You now have ${effectiveDays} days of access and ${plan.aiEvaluationsPerDay} AI evaluations per day.${bonusNote}`,
       type: 'system',
       read: false,
       createdAt: new Date().toISOString(),

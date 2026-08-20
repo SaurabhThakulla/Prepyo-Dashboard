@@ -4,6 +4,10 @@ export type ExamType = 'PTE' | 'IELTS';
 export type SkillType = 'speaking' | 'writing' | 'reading' | 'listening';
 export type IELTSType = 'academic' | 'general';
 
+export type SubscriptionTier = 'free' | 'weekly' | 'pro' | 'elite';
+/** Tiers that can actually be bought — 'free' is the default, not a purchase. */
+export type PaidTier = Exclude<SubscriptionTier, 'free'>;
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -20,7 +24,7 @@ export interface UserProfile {
   streakDays: number;
   streakFrozen: boolean;
   streakLastActiveDate: string;
-  subscriptionTier: 'free' | 'weekly' | 'pro' | 'elite';
+  subscriptionTier: SubscriptionTier;
   subscriptionValidUntil?: string;
   dailyEvaluationsUsed: number;
   dailyEvaluationsLimit: number;
@@ -222,7 +226,7 @@ export interface LeaderboardUser {
 }
 
 export interface SubscriptionPlan {
-  id: 'free' | 'weekly' | 'pro' | 'elite' | string;
+  id: SubscriptionTier;
   name: string;
   priceNPR: number;
   durationMonths: number;

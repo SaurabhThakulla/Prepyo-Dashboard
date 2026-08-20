@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { isPaidTier } from '@/lib/subscriptions';
 
 export async function GET() {
   const plans = db.getPlans();
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
   try {
     const { planId, paymentGateway } = await req.json();
 
-    if (planId !== 'pro' && planId !== 'elite') {
+    if (!isPaidTier(planId)) {
       return NextResponse.json({ success: false, error: 'Invalid plan selected' }, { status: 400 });
     }
 
