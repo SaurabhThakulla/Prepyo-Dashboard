@@ -13,7 +13,9 @@ import {
   ShieldCheck,
   ChevronRight,
   Sun,
-  Moon
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,9 +23,10 @@ import NotificationDrawer from './NotificationDrawer';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
+  isSecondaryOpen?: boolean;
 }
 
-export default function Header({ onToggleSidebar }: HeaderProps) {
+export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps) {
   const { user, activeExam, unreadCount, setIsTutorOpen, theme, toggleTheme } = useApp();
   const pathname = usePathname();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -50,18 +53,23 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
       <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border bg-card/80 px-4 sm:px-6 backdrop-blur-xl transition-colors">
         
         {/* Left: Sidebar Toggle & Breadcrumb */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
-            className="lg:hidden h-9 w-9 text-muted-foreground"
+            className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted/70 rounded-xl"
+            title={isSecondaryOpen ? "Close sidebar" : "Open sidebar"}
           >
-            <Menu className="w-5 h-5" />
+            {isSecondaryOpen ? (
+              <PanelLeftClose className="w-4 h-4" />
+            ) : (
+              <PanelLeftOpen className="w-4 h-4" />
+            )}
           </Button>
 
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground hidden sm:inline">Prepyo</span>
+            <span className="text-muted-foreground hidden sm:inline font-medium">Prepyo</span>
             <ChevronRight className="w-3.5 h-3.5 text-muted-foreground hidden sm:inline" />
             <span className="font-bold text-foreground text-sm">{title}</span>
             <Badge variant="indigo" className="hidden md:inline-flex text-[9px] px-1.5 py-0">

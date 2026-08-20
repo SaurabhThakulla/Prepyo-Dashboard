@@ -80,7 +80,7 @@ export default function ProfilePage() {
     <div className="space-y-6 max-w-4xl mx-auto py-4">
       
       <div className="border-b border-border pb-4">
-        <h1 className="font-display text-2xl font-bold text-white">Learner Profile & Goals</h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">Learner Profile & Goals</h1>
         <p className="text-xs text-muted-foreground">Manage your study targets, exam timelines, and habit preservation.</p>
       </div>
 
@@ -99,7 +99,7 @@ export default function ProfilePage() {
           <div className="p-3 bg-background rounded-xl border border-border flex justify-around text-xs font-bold">
             <div>
               <span className="text-[10px] text-muted-foreground block">Streak</span>
-              <span className="text-amber-400">{user?.streakDays || 6}d</span>
+              <span className="text-amber-500">{user?.streakDays || 6}d</span>
             </div>
             <div>
               <span className="text-[10px] text-muted-foreground block">Level</span>
@@ -107,7 +107,7 @@ export default function ProfilePage() {
             </div>
             <div>
               <span className="text-[10px] text-muted-foreground block">Tier</span>
-              <span className="text-white uppercase">{user?.subscriptionTier || 'pro'}</span>
+              <span className="text-foreground uppercase">{user?.subscriptionTier || 'pro'}</span>
             </div>
           </div>
 
@@ -116,9 +116,9 @@ export default function ProfilePage() {
             disabled={user?.streakFrozen || freezing}
             variant="outline"
             size="sm"
-            className="w-full font-bold text-xs gap-1.5 border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
+            className="w-full font-bold text-xs gap-1.5 border-amber-500/30 text-amber-600 dark:text-amber-300 hover:bg-amber-500/10"
           >
-            <Flame className="w-3.5 h-3.5 fill-amber-400" />
+            <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
             <span>{user?.streakFrozen ? '🛡️ Streak Freeze Active' : 'Activate 24h Streak Freeze'}</span>
           </Button>
         </Card>
@@ -129,16 +129,16 @@ export default function ProfilePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300">Full Name</label>
+              <label className="text-xs font-bold text-foreground">Full Name</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300">Primary Exam</label>
+              <label className="text-xs font-bold text-foreground">Primary Exam</label>
               <select
                 value={activeExam}
                 onChange={(e) => setActiveExam(e.target.value as any)}
-                className="w-full h-9 rounded-xl border border-input bg-card px-3 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full h-9 rounded-xl border border-input bg-card px-3 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 <option value="PTE">PTE Academic</option>
                 <option value="IELTS">IELTS Academic</option>
@@ -146,7 +146,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300">Target Score</label>
+              <label className="text-xs font-bold text-foreground">Target Score</label>
               <Input
                 type="number"
                 step="0.5"
@@ -157,16 +157,16 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300">Exam Test Date</label>
+              <label className="text-xs font-bold text-foreground">Exam Test Date</label>
               <Input type="date" value={examDate} onChange={(e) => setExamDate(e.target.value)} />
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
-              <label className="text-xs font-bold text-slate-300">Nepal District / Region</label>
+              <label className="text-xs font-bold text-foreground">Nepal District / Region</label>
               <select
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
-                className="w-full h-9 rounded-xl border border-input bg-card px-3 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full h-9 rounded-xl border border-input bg-card px-3 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 {['Kathmandu', 'Pokhara', 'Chitwan', 'Lalitpur', 'Butwal', 'Dharan', 'Biratnagar'].map(r => (
                   <option key={r} value={r}>{r}</option>

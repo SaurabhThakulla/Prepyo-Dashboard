@@ -50,7 +50,7 @@ export default function LeaderboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-display text-2xl font-bold text-white">Nepal National Leaderboard</h1>
+            <h1 className="font-display text-2xl font-bold text-foreground">Nepal National Leaderboard</h1>
             <Badge variant="indigo">🇳🇵 Verified XP</Badge>
           </div>
           <p className="text-xs text-muted-foreground">
@@ -113,11 +113,11 @@ export default function LeaderboardPage() {
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground block">Streak</span>
-                <span className="text-amber-400">{top3[1]?.streakDays}d</span>
+                <span className="text-amber-500">{top3[1]?.streakDays}d</span>
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground block">Estimate</span>
-                <span className="text-white">{top3[1]?.estimatedScore}</span>
+                <span className="text-foreground font-extrabold">{top3[1]?.estimatedScore}</span>
               </div>
             </div>
           </Card>
@@ -133,21 +133,21 @@ export default function LeaderboardPage() {
             <div>
               <CardTitle className="text-lg">{top3[0]?.name}</CardTitle>
               <CardDescription className="flex items-center justify-center gap-1 mt-0.5">
-                <MapPin className="w-3 h-3 text-amber-400" /> {top3[0]?.nepalRegion}
+                <MapPin className="w-3 h-3 text-amber-500" /> {top3[0]?.nepalRegion}
               </CardDescription>
             </div>
             <div className="p-3 rounded-xl bg-background border border-border flex justify-around text-xs font-bold">
               <div>
                 <span className="text-[10px] text-muted-foreground block">XP</span>
-                <span className="text-amber-400 font-extrabold">{top3[0]?.xp}</span>
+                <span className="text-amber-500 font-extrabold">{top3[0]?.xp}</span>
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground block">Streak</span>
-                <span className="text-amber-400">{top3[0]?.streakDays}d</span>
+                <span className="text-amber-500">{top3[0]?.streakDays}d</span>
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground block">Estimate</span>
-                <span className="text-white font-extrabold">{top3[0]?.estimatedScore}</span>
+                <span className="text-foreground font-extrabold">{top3[0]?.estimatedScore}</span>
               </div>
             </div>
           </Card>
@@ -170,11 +170,11 @@ export default function LeaderboardPage() {
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground block">Streak</span>
-                <span className="text-amber-400">{top3[2]?.streakDays}d</span>
+                <span className="text-amber-500">{top3[2]?.streakDays}d</span>
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground block">Estimate</span>
-                <span className="text-white">{top3[2]?.estimatedScore}</span>
+                <span className="text-foreground font-extrabold">{top3[2]?.estimatedScore}</span>
               </div>
             </div>
           </Card>
@@ -197,7 +197,7 @@ export default function LeaderboardPage() {
                     <AvatarFallback>{u.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <h4 className="font-bold text-sm text-white">{u.name}</h4>
+                    <h4 className="font-bold text-sm text-foreground">{u.name}</h4>
                     <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                       <MapPin className="w-3 h-3 text-primary" /> {u.nepalRegion} • Level {u.level}
                     </p>

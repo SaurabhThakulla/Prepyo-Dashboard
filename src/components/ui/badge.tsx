@@ -15,11 +15,11 @@ const badgeVariants = cva(
           "border-transparent bg-destructive text-destructive-foreground shadow",
         outline: "text-foreground border-border",
         success:
-          "border-emerald-500/30 bg-emerald-500/15 text-emerald-400 font-semibold",
+          "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-semibold",
         warning:
-          "border-amber-500/30 bg-amber-500/15 text-amber-400 font-semibold",
+          "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400 font-semibold",
         indigo:
-          "border-indigo-500/30 bg-indigo-500/15 text-indigo-300 font-semibold",
+          "border-indigo-500/30 bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-semibold",
       },
     },
     defaultVariants: {

@@ -71,7 +71,7 @@ export default function EvaluationsPage() {
       
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white">AI Rubric Evaluator Lab</h1>
+          <h1 className="font-display text-2xl font-bold text-foreground">AI Rubric Evaluator Lab</h1>
           <p className="text-xs text-muted-foreground">
             Submit custom essays or spoken transcripts for instant examiner-level scoring and model rewrites.
           </p>
@@ -103,13 +103,13 @@ export default function EvaluationsPage() {
         <div className="lg:col-span-7 space-y-4">
           <Card className="p-6 space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300">Exam Prompt / Topic</label>
+              <label className="text-xs font-bold text-foreground">Exam Prompt / Topic</label>
               <Input value={promptText} onChange={(e) => setPromptText(e.target.value)} />
             </div>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
-                <label className="font-bold text-slate-300">
+                <label className="font-bold text-foreground">
                   {evalMode === 'writing' ? 'Your Essay / Report Draft' : 'Spoken Response Transcript'}
                 </label>
                 <Badge variant="outline">{wordCount} Words</Badge>
@@ -130,7 +130,7 @@ export default function EvaluationsPage() {
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-300" />
+                  <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
                   <span>Run Complete AI Evaluation</span>
                 </>
               )}
@@ -149,10 +149,10 @@ export default function EvaluationsPage() {
             <div className="space-y-4 animate-in fade-in duration-200">
               <Card className="p-5 text-center space-y-1 border-primary/40">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase">Practice Estimate</span>
-                <div className="font-display text-4xl font-black text-white">
+                <div className="font-display text-4xl font-black text-foreground">
                   {result.estimatedScore} <span className="text-xs text-muted-foreground font-bold">/ {isPTE ? '90' : '9.0'}</span>
                 </div>
-                <p className="text-xs text-slate-300 pt-1 leading-relaxed">{result.summary}</p>
+                <p className="text-xs text-foreground pt-1 leading-relaxed">{result.summary}</p>
               </Card>
 
               <Card className="p-5 space-y-2.5">
@@ -160,7 +160,7 @@ export default function EvaluationsPage() {
                 <div className="space-y-2">
                   {result.criteria.map((c, i) => (
                     <div key={i} className="p-2.5 rounded-lg bg-background border border-border text-xs space-y-1">
-                      <div className="flex justify-between font-bold text-slate-200">
+                      <div className="flex justify-between font-bold text-foreground">
                         <span>{c.name}</span>
                         <span className="text-primary">{c.score}/{c.maxScore}</span>
                       </div>
@@ -176,7 +176,7 @@ export default function EvaluationsPage() {
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>Band 8.0+ / PTE 79+ Model Sample</span>
                   </div>
-                  <p className="p-3 bg-background rounded-lg border border-border text-xs text-slate-300 leading-relaxed italic">
+                  <p className="p-3 bg-background rounded-lg border border-border text-xs text-foreground leading-relaxed italic">
                     {result.modelRewrite}
                   </p>
                 </Card>
