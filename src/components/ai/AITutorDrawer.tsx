@@ -113,9 +113,9 @@ export default function AITutorDrawer() {
         }`}
       />
 
-      {/* Slide-in Drawer Container with Spring Easing */}
+      {/* Slide-in Drawer Container */}
       <div
-        className={`fixed inset-y-0 right-0 max-w-lg w-full bg-card/95 backdrop-blur-2xl border-l border-border shadow-2xl flex flex-col z-50 transition-transform duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`fixed inset-y-0 right-0 max-w-lg w-full bg-card/95 backdrop-blur-2xl border-l border-border shadow-2xl flex flex-col z-50 transition-transform duration-300 ease-out ${
           isTutorOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
