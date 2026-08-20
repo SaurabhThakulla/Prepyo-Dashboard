@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useId, useTransition } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -26,7 +26,6 @@ import {
   Zap,
   Loader2,
   AlertCircle,
-  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -56,7 +55,6 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refreshUserData, theme, toggleTheme, setActiveExam } = useApp();
-  const [isPending, startTransition] = useTransition();
 
   // Mode: 'login' | 'signup'
   const [mode, setMode] = useState<AuthMode>(initialMode);
@@ -64,7 +62,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
   // Form Fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('aprapya.student@prepyo.np');
-  const [password, setPassword] = useState('••••••••••••');
+  const [password, setPassword] = useState('password123');
   const [showPassword, setShowPassword] = useState(false);
   const [selectedExam, setSelectedExamState] = useState<ExamType>('PTE');
   const [targetScore, setTargetScore] = useState<number>(79);
@@ -73,12 +71,12 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
   const [rememberMe, setRememberMe] = useState(true);
   const [agreeTerms, setAgreeTerms] = useState(true);
 
-  // States
+  // Status
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Form IDs for Accessibility
+  // Form IDs
   const emailId = useId();
   const passwordId = useId();
   const nameId = useId();
@@ -96,19 +94,17 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
     }
   }, [searchParams]);
 
-  // Mode switch helper
+  // Mode Switcher
   const handleModeSwitch = (newMode: AuthMode) => {
     setMode(newMode);
     setError(null);
     if (newMode === 'signup') {
       if (email === 'aprapya.student@prepyo.np') setEmail('');
-      if (password === '••••••••••••') setPassword('');
+      if (password === 'password123') setPassword('');
     } else {
       if (!email) setEmail('aprapya.student@prepyo.np');
-      if (!password) setPassword('••••••••••••');
+      if (!password) setPassword('password123');
     }
-    // Update URL query without full reload
-    window.history.replaceState(null, '', `/${newMode}`);
   };
 
   const handleExamChange = (exam: ExamType) => {
@@ -131,7 +127,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
 
   const passwordStrength = getPasswordStrength(password);
 
-  // Form Submit Handler
+  // Form Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (mode === 'signup' && !agreeTerms) {
@@ -187,7 +183,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
     }
   };
 
-  // 1-Click Instant Demo Login
+  // 1-Click Demo Login
   const handleDemoLogin = async () => {
     setDemoLoading(true);
     setError(null);
@@ -213,14 +209,14 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-background overflow-x-hidden select-none">
+    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-background overflow-x-hidden">
       
       {/* ───────────────────────────────────────────────────────────── */}
       {/* LEFT HALF: Genuine Nepali Student Full-Screen Hero Showcase  */}
       {/* ───────────────────────────────────────────────────────────── */}
       <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 min-h-screen relative flex-col justify-between p-10 xl:p-14 overflow-hidden bg-slate-950 text-white">
-        {/* Full Bleed Background Image */}
-        <div className="absolute inset-0 z-0">
+        {/* Background Image */}
+        <div className="absolute inset-0 z-0 pointer-events-none">
           <Image
             src="/images/auth-hero.jpg"
             alt="Nepali student preparing for PTE and IELTS in Kathmandu"
@@ -228,7 +224,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
             priority
             className="object-cover object-center w-full h-full scale-105 hover:scale-100 transition-transform duration-1000 brightness-90"
           />
-          {/* Cinematic Vignette & Gradient */}
+          {/* Cinematic Vignette Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/45 to-slate-950/25 backdrop-brightness-95" />
           <div className="absolute inset-0 bg-radial-gradient from-transparent via-transparent to-slate-950/60" />
         </div>
@@ -305,7 +301,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
           )}
         </div>
 
-        {/* Bottom Nepali Trust Section */}
+        {/* Bottom Trust Section */}
         <div className="relative z-10 space-y-3.5">
           <div className="p-4 rounded-2xl bg-slate-900/80 backdrop-blur-md border border-white/10 flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary shrink-0">
@@ -327,7 +323,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
       </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* RIGHT HALF: Unified Senior-Architected Auth Form               */}
+      {/* RIGHT HALF: Interactive Senior-Architected Auth Form          */}
       {/* ───────────────────────────────────────────────────────────── */}
       <div className="w-full lg:w-7/12 xl:w-1/2 min-h-screen flex flex-col justify-between p-6 sm:p-10 md:p-14 xl:p-16 overflow-y-auto bg-background">
         
@@ -490,7 +486,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -622,12 +618,12 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
 
                 {/* Terms Acceptance */}
                 <div className="pt-0.5">
-                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={agreeTerms}
                       onChange={(e) => setAgreeTerms(e.target.checked)}
-                      className="rounded border-input text-primary focus:ring-primary h-3.5 w-3.5 mt-0.5"
+                      className="rounded border-input text-primary focus:ring-primary h-3.5 w-3.5 mt-0.5 cursor-pointer"
                     />
                     <span className="text-[11px] text-muted-foreground leading-tight font-medium">
                       I agree to the Terms of Service & Privacy Policy, claiming my 1 Free AI Mock Test.
@@ -640,12 +636,12 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
             {/* Login Only: Remember Me */}
             {mode === 'login' && (
               <div className="flex items-center justify-between pt-0.5">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded border-input text-primary focus:ring-primary h-3.5 w-3.5"
+                    className="rounded border-input text-primary focus:ring-primary h-3.5 w-3.5 cursor-pointer"
                   />
                   <span className="text-xs text-muted-foreground font-medium">Remember this device</span>
                 </label>
