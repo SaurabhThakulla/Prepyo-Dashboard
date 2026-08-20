@@ -11,6 +11,7 @@ import AITutorDrawer from '@/components/ai/AITutorDrawer';
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSecondaryOpen, setIsSecondaryOpen] = useState(true);
 
   const isPublicLanding = pathname === '/';
   const isAuthPage = pathname === '/login' || pathname === '/signup';
@@ -39,12 +40,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col transition-colors duration-200">
-      {/* Shadcn Sidebar (App pages only) */}
-      <AppSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+      {/* 2-Level Sidebar (App pages only) */}
+      <AppSidebar
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
+        isSecondaryOpen={isSecondaryOpen}
+        setIsSecondaryOpen={setIsSecondaryOpen}
+      />
 
       {/* Main Content Area */}
-      <div className="lg:pl-64 flex flex-col min-h-screen">
-        <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
+      <div
+        className={`${
+          isSecondaryOpen ? 'lg:pl-[384px]' : 'lg:pl-16'
+        } flex flex-col min-h-screen transition-[padding] duration-300 ease-in-out`}
+      >
+        <Header
+          isSecondaryOpen={isSecondaryOpen}
+          onToggleSidebar={() => {
+            if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+              setIsSidebarOpen(prev => !prev);
+              setIsSecondaryOpen(true);
+            } else {
+              setIsSecondaryOpen(prev => !prev);
+            }
+          }}
+        />
         
         {/* 80vw is a comfortable reading width on a laptop but wastes a third
             of a phone screen, so it only kicks in from lg up. */}

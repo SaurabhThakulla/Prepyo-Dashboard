@@ -216,7 +216,7 @@ export default function SubscriptionPage() {
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto py-4">
-      
+
       <div className="text-center space-y-2">
         <Badge variant="indigo" className="px-3 py-1">🇳🇵 Local Nepal Pricing</Badge>
         <h1 className="font-display text-3xl sm:text-4xl font-black text-foreground">
@@ -242,12 +242,11 @@ export default function SubscriptionPage() {
             return (
               <Card
                 key={plan.id}
-                className={`p-6 flex flex-col justify-between space-y-6 relative transition-all ${
-                  plan.popular ? 'border-primary/60 shadow-xl shadow-primary/10 bg-card/90 ring-1 ring-primary/40' : 'border-border'
-                }`}
+                className={`p-6 flex flex-col justify-between space-y-6 relative transition-all ${plan.popular ? 'border-primary/60 shadow-xl shadow-primary/10 bg-card/90 ring-1 ring-primary/40' : 'border-border'
+                  }`}
               >
                 {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-[9px] font-black uppercase tracking-wider px-3 py-0.5 rounded-full shadow-md">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-wider px-3 py-0.5 rounded-full shadow-md">
                     Most Popular
                   </div>
                 )}
@@ -259,20 +258,14 @@ export default function SubscriptionPage() {
                       {plan.priceNPR === 0
                         ? '1 free AI mock on signup'
                         : plan.id === 'weekly'
-                        ? '7 days sprint duration'
-                        : `${totalDays} Days total (${totalDays - bonusDays} + ${bonusDays} bonus)`}
+                          ? '7 days sprint duration'
+                          : `${totalDays} Days total (${totalDays - bonusDays} + ${bonusDays} bonus)`}
                     </CardDescription>
                   </div>
 
                   <div className="pt-2">
-                    <span className="font-display text-2xl sm:text-3xl font-black text-foreground">
-                      NPR {plan.priceNPR.toLocaleString()}
-                    </span>
-                    {plan.priceNPR > 0 && (
-                      <span className="text-xs text-muted-foreground font-semibold">
-                        {' '}/ {plan.id === 'weekly' ? '7 days' : plan.durationMonths === 1 ? 'month' : `${plan.durationMonths || 3} months`}
-                      </span>
-                    )}
+                    <span className="font-display text-3xl font-black text-foreground">NPR {plan.priceNPR.toLocaleString()}</span>
+                    {plan.durationMonths > 0 && <span className="text-xs text-muted-foreground font-semibold"> / term</span>}
                   </div>
 
                   {/* Bonus Tag */}
@@ -285,8 +278,8 @@ export default function SubscriptionPage() {
 
                   <div className="space-y-2.5 pt-2 border-t border-border">
                     {plan.features.map((f, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs text-foreground/90 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <div key={i} className="flex items-center gap-2 text-xs text-foreground font-medium">
+                        <CheckCircle2 className="w-4 h-4 text-nepal-emerald shrink-0" />
                         <span>{f}</span>
                       </div>
                     ))}
@@ -318,8 +311,8 @@ export default function SubscriptionPage() {
           </DialogHeader>
 
           {successMessage ? (
-            <div className="p-4 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold text-center space-y-1">
-              <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
+            <div className="p-4 rounded-xl bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-xs font-bold text-center space-y-1">
+              <CheckCircle2 className="w-8 h-8 text-nepal-emerald mx-auto" />
               <div>{successMessage}</div>
             </div>
           ) : (
@@ -330,11 +323,10 @@ export default function SubscriptionPage() {
                     key={gw}
                     type="button"
                     onClick={() => setSelectedGateway(gw)}
-                    className={`p-3 rounded-xl border text-center font-bold text-xs capitalize transition-all ${
-                      selectedGateway === gw
-                        ? 'bg-primary text-white border-primary shadow-sm'
+                    className={`p-3 rounded-xl border text-center font-bold text-xs capitalize transition-all ${selectedGateway === gw
+                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                         : 'bg-background border-border text-muted-foreground hover:text-foreground'
-                    }`}
+                      }`}
                   >
                     {gw}
                   </button>
@@ -342,7 +334,7 @@ export default function SubscriptionPage() {
               </div>
 
               <div className="p-4 rounded-xl bg-background border border-border text-center space-y-2">
-                <QrCode className="w-28 h-28 mx-auto text-foreground p-1 bg-white rounded-lg" />
+                <QrCode className="w-28 h-28 mx-auto text-foreground p-1 bg-white dark:bg-slate-900 rounded-lg" />
                 <p className="text-[11px] text-muted-foreground">
                   Scan with your {selectedGateway.toUpperCase()} App to authorize NPR {selectedPlan?.priceNPR}.
                 </p>

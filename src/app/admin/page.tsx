@@ -90,7 +90,7 @@ export default function AdminPage() {
       <div className="border-b border-border pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-display text-2xl font-bold text-white">Admin CMS & AI Observability</h1>
+            <h1 className="font-display text-2xl font-bold text-foreground">Admin CMS & AI Observability</h1>
             <Badge variant="destructive">Internal Portal</Badge>
           </div>
           <p className="text-xs text-muted-foreground">Monitor AI token expenditure, evaluate gateway latencies, and inject curriculum items.</p>
@@ -104,16 +104,16 @@ export default function AdminPage() {
             <span>Total Questions</span>
             <Activity className="w-4 h-4 text-primary" />
           </div>
-          <div className="font-display text-3xl font-black text-white">{metrics?.totalQuestions || 24}</div>
+          <div className="font-display text-3xl font-black text-foreground">{metrics?.totalQuestions || 24}</div>
           <p className="text-[10px] text-muted-foreground">PTE & IELTS Curated Items</p>
         </Card>
 
         <Card className="p-5 space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold">
             <span>AI Token Invocations</span>
-            <Sparkles className="w-4 h-4 text-amber-400" />
+            <Sparkles className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="font-display text-3xl font-black text-amber-400">
+          <div className="font-display text-3xl font-black text-amber-500">
             {metrics?.totalTokensUsed?.toLocaleString() || '5,400'}
           </div>
           <p className="text-[10px] text-muted-foreground">Across LLM Evaluators</p>
@@ -135,7 +135,7 @@ export default function AdminPage() {
             <span>AI Gateway Latency</span>
             <Bot className="w-4 h-4 text-indigo-400" />
           </div>
-          <div className="font-display text-3xl font-black text-white">
+          <div className="font-display text-3xl font-black text-foreground">
             {metrics?.averageLatencyMs || 450} <span className="text-xs text-muted-foreground font-bold">ms</span>
           </div>
           <p className="text-[10px] text-muted-foreground">Healthy P95 Latency</p>
@@ -151,11 +151,11 @@ export default function AdminPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300">Exam</label>
+            <label className="text-xs font-bold text-foreground">Exam</label>
             <select
               value={exam}
               onChange={(e) => setExam(e.target.value as any)}
-              className="w-full h-9 rounded-xl border border-input bg-card px-3 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-ring"
+              className="w-full h-9 rounded-xl border border-input bg-card px-3 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             >
               <option value="PTE">PTE Academic</option>
               <option value="IELTS">IELTS Academic</option>
@@ -163,11 +163,11 @@ export default function AdminPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300">Skill</label>
+            <label className="text-xs font-bold text-foreground">Skill</label>
             <select
               value={skill}
               onChange={(e) => setSkill(e.target.value as any)}
-              className="w-full h-9 rounded-xl border border-input bg-card px-3 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-ring"
+              className="w-full h-9 rounded-xl border border-input bg-card px-3 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             >
               <option value="writing">Writing</option>
               <option value="speaking">Speaking</option>
@@ -177,23 +177,23 @@ export default function AdminPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300">Task Type</label>
+            <label className="text-xs font-bold text-foreground">Task Type</label>
             <Input value={typeName} onChange={(e) => { setTypeName(e.target.value); setTypeId(e.target.value.toLowerCase().replace(/\s+/g, '-')); }} />
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-slate-300">Question Title</label>
+          <label className="text-xs font-bold text-foreground">Question Title</label>
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Urban Green Spaces and Mental Health" />
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-slate-300">Prompt Instructions</label>
+          <label className="text-xs font-bold text-foreground">Prompt Instructions</label>
           <Textarea rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Full test taker prompt..." />
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-slate-300">Model Answer / Benchmark</label>
+          <label className="text-xs font-bold text-foreground">Model Answer / Benchmark</label>
           <Textarea rows={3} value={modelAnswer} onChange={(e) => setModelAnswer(e.target.value)} placeholder="Exemplary 90/90 or Band 9 answer..." />
         </div>
 

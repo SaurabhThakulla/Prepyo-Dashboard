@@ -128,7 +128,7 @@ export default function DashboardPage() {
               <div
                 key={idx}
                 className={`flex-1 h-5 rounded-md flex items-center justify-center text-[9px] font-bold ${
-                  idx <= 5 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-background text-muted-foreground border border-border'
+                  idx <= 5 ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30' : 'bg-background text-muted-foreground border border-border'
                 }`}
               >
                 {day}
@@ -230,11 +230,11 @@ export default function DashboardPage() {
               className="rounded-xl border border-amber-500/30 bg-card p-4 flex items-center gap-3 hover:border-amber-500/60 hover:-translate-y-0.5 transition-all"
             >
               <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-                <RotateCcw className="w-4 h-4 text-amber-400" />
+                <RotateCcw className="w-4 h-4 text-amber-500" />
               </div>
               <div>
                 <div className="text-xs font-bold text-foreground">Mistake Bank</div>
-                <div className="text-[10px] text-amber-400 font-semibold">3 Pending</div>
+                <div className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">3 Pending</div>
               </div>
               <ArrowRight className="w-3.5 h-3.5 text-muted-foreground ml-auto shrink-0" />
             </Link>
@@ -245,7 +245,7 @@ export default function DashboardPage() {
         <Card className="p-5 space-y-4 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-destructive/10 text-rose-400">
+              <div className="p-2 rounded-xl bg-destructive/10 text-rose-600 dark:text-rose-400">
                 <AlertTriangle className="w-4 h-4" />
               </div>
               <div>
@@ -256,7 +256,7 @@ export default function DashboardPage() {
 
             <div className="bg-background p-3.5 rounded-xl border border-destructive/20 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-rose-400">
+                <span className="text-xs font-bold text-rose-600 dark:text-rose-400">
                   {isPTE ? 'PTE Summarize Written Text' : 'IELTS Writing Task 2 Cohesion'}
                 </span>
                 <Badge variant="destructive" className="text-[9px]">{isPTE ? '68/90' : '6.5/9.0'}</Badge>

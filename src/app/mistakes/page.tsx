@@ -80,7 +80,7 @@ export default function MistakesPage() {
       
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white">Mistake Bank & Spaced Review</h1>
+          <h1 className="font-display text-2xl font-bold text-foreground">Mistake Bank & Spaced Review</h1>
           <p className="text-xs text-muted-foreground">
             Review errors made during practice tasks and replay them to achieve mastery.
           </p>
@@ -132,12 +132,12 @@ export default function MistakesPage() {
           </div>
 
           <div className="space-y-3">
-            <div className="p-4 rounded-xl bg-background border border-border text-xs text-slate-200 leading-relaxed">
+            <div className="p-4 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed">
               {activeReplayItem.prompt}
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300">Type the correct answer:</label>
+              <label className="text-xs font-bold text-foreground">Type the correct answer:</label>
               <Input
                 value={replayAnswer}
                 onChange={(e) => setReplayAnswer(e.target.value)}
@@ -147,7 +147,7 @@ export default function MistakesPage() {
 
             {replaySuccess !== null && (
               <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
-                replaySuccess ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-destructive/20 text-rose-400 border border-destructive/30'
+                replaySuccess ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30' : 'bg-destructive/20 text-rose-600 dark:text-rose-400 border border-destructive/30'
               }`}>
                 {replaySuccess ? (
                   <>
@@ -215,25 +215,25 @@ export default function MistakesPage() {
                 </div>
               </div>
 
-              <h4 className="font-display font-bold text-sm text-white">{item.questionTitle}</h4>
+              <h4 className="font-display font-bold text-sm text-foreground">{item.questionTitle}</h4>
               <p className="text-xs text-muted-foreground bg-background p-3 rounded-xl border border-border leading-relaxed">
                 {item.prompt}
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 space-y-1">
-                  <span className="text-[10px] font-bold text-rose-400 uppercase">Your Wrong Attempt:</span>
-                  <div className="text-rose-200 font-semibold">{item.userResponse}</div>
+                  <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase">Your Wrong Attempt:</span>
+                  <div className="text-rose-700 dark:text-rose-200 font-semibold">{item.userResponse}</div>
                 </div>
                 <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
-                  <span className="text-[10px] font-bold text-emerald-400 uppercase">Correct Answer:</span>
-                  <div className="text-emerald-200 font-semibold">{item.correctResponse}</div>
+                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">Correct Answer:</span>
+                  <div className="text-emerald-700 dark:text-emerald-200 font-semibold">{item.correctResponse}</div>
                 </div>
               </div>
 
               <div className="p-3 rounded-xl bg-background border border-border text-xs text-muted-foreground space-y-1">
-                <span className="text-[10px] font-bold text-slate-300 uppercase">Examiner Explanation:</span>
-                <p className="leading-relaxed text-slate-300">{item.explanation}</p>
+                <span className="text-[10px] font-bold text-foreground uppercase">Examiner Explanation:</span>
+                <p className="leading-relaxed text-foreground">{item.explanation}</p>
               </div>
             </Card>
           ))}

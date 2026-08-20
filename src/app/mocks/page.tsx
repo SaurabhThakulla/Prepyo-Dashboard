@@ -120,7 +120,7 @@ export default function MocksPage() {
             <div className="flex items-center gap-3">
               <Badge variant="default">{activeMock.exam}</Badge>
               <div>
-                <h3 className="font-display text-sm font-bold text-white">{activeMock.title}</h3>
+                <h3 className="font-display text-sm font-bold text-foreground">{activeMock.title}</h3>
                 <p className="text-[11px] text-muted-foreground">
                   {activeMock.sections[currentSectionIndex]?.name} • Section {currentSectionIndex + 1} of {activeMock.sections.length}
                 </p>
@@ -142,7 +142,7 @@ export default function MocksPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <Card className="lg:col-span-8 p-6 space-y-6">
               <div className="flex items-center justify-between border-b border-border pb-3">
-                <span className="text-xs font-bold text-slate-300">
+                <span className="text-xs font-bold text-foreground">
                   Question {currentQuestionIndex + 1} of {activeMock.totalQuestions}
                 </span>
                 <Button
@@ -164,10 +164,10 @@ export default function MocksPage() {
               </div>
 
               <div className="space-y-4">
-                <h4 className="font-display font-bold text-base text-white">
+                <h4 className="font-display font-bold text-base text-foreground">
                   {isPTE ? 'Read Aloud / Academic Argumentative Task' : 'Reading Comprehension & Writing Task'}
                 </h4>
-                <div className="p-4 rounded-xl bg-background border border-border text-xs sm:text-sm text-slate-200 leading-relaxed">
+                <div className="p-4 rounded-xl bg-background border border-border text-xs sm:text-sm text-foreground leading-relaxed">
                   {isPTE
                     ? 'The transition towards decarbonized energy systems necessitates robust policy intervention and strategic investments in grid storage technologies.'
                     : 'Analyze the primary socioeconomic factors influencing urbanization rates in South Asia over the past two decades.'}
@@ -226,10 +226,10 @@ export default function MocksPage() {
                         isCurrent
                           ? 'bg-primary text-primary-foreground border-primary shadow-sm scale-105'
                           : isFlagged
-                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                          ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40'
                           : isAnswered
-                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                          : 'bg-background text-muted-foreground border-border hover:border-white/20'
+                          ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                          : 'bg-background text-muted-foreground border-border hover:border-primary/40'
                       }`}
                     >
                       {idx + 1}
@@ -249,7 +249,7 @@ export default function MocksPage() {
             <div>
               <div className="flex items-center gap-2">
                 <Award className="w-6 h-6 text-amber-400" />
-                <h2 className="font-display text-2xl font-bold text-white">Simulation Score Report</h2>
+                <h2 className="font-display text-2xl font-bold text-foreground">Simulation Score Report</h2>
               </div>
               <p className="text-xs text-muted-foreground">
                 Completed on {new Date(attemptReport.completedAt).toLocaleDateString()}
@@ -269,7 +269,7 @@ export default function MocksPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="bg-background p-5 text-center space-y-1">
               <span className="text-xs font-bold text-muted-foreground uppercase">Estimated Overall</span>
-              <div className="font-display text-4xl font-black text-white">
+              <div className="font-display text-4xl font-black text-foreground">
                 {attemptReport.userScore} <span className="text-xs text-muted-foreground font-bold">/ {isPTE ? '90' : '9.0'}</span>
               </div>
               <Badge variant="success">Practice Estimate</Badge>
@@ -296,7 +296,7 @@ export default function MocksPage() {
       {!activeMock && !attemptReport && (
         <div className="space-y-6">
           <div>
-            <h1 className="font-display text-2xl font-bold text-white">{activeExam} Mock Exam Center</h1>
+            <h1 className="font-display text-2xl font-bold text-foreground">{activeExam} Mock Exam Center</h1>
             <p className="text-xs text-muted-foreground">Full-length simulations under real exam conditions</p>
           </div>
 

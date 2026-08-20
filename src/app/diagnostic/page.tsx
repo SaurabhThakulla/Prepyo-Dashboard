@@ -113,7 +113,7 @@ export default function DiagnosticPage() {
 
           <div className="space-y-2 max-w-xl mx-auto">
             <Badge variant="indigo">15-Minute Adaptive Assessment</Badge>
-            <h1 className="font-display text-3xl sm:text-4xl font-black text-white">
+            <h1 className="font-display text-3xl sm:text-4xl font-black text-foreground">
               Discover Your {activeExam} Baseline Score
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
@@ -123,19 +123,19 @@ export default function DiagnosticPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-left text-xs">
             <div className="p-4 rounded-xl bg-background border border-border space-y-1">
-              <span className="font-bold text-white flex items-center gap-1.5">
+              <span className="font-bold text-foreground flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-primary" /> 15 Minutes
               </span>
               <p className="text-muted-foreground">Fast micro-drills covering Speaking, Writing, Reading & Listening.</p>
             </div>
             <div className="p-4 rounded-xl bg-background border border-border space-y-1">
-              <span className="font-bold text-white flex items-center gap-1.5">
-                <Award className="w-3.5 h-3.5 text-amber-400" /> AI Calibrated
+              <span className="font-bold text-foreground flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5 text-amber-500" /> AI Calibrated
               </span>
               <p className="text-muted-foreground">Instant rubric breakdown matching official score benchmarks.</p>
             </div>
             <div className="p-4 rounded-xl bg-background border border-border space-y-1">
-              <span className="font-bold text-white flex items-center gap-1.5">
+              <span className="font-bold text-foreground flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-nepal-emerald" /> +150 XP
               </span>
               <p className="text-muted-foreground">Immediate level boost and customized study mission.</p>
@@ -159,7 +159,7 @@ export default function DiagnosticPage() {
           <div className="flex items-center justify-between">
             <div>
               <span className="text-xs font-bold text-muted-foreground uppercase">Diagnostic Task {currentStep + 1} of {diagnosticTasks.length}</span>
-              <h3 className="font-display text-lg font-bold text-white">{diagnosticTasks[currentStep].title}</h3>
+              <h3 className="font-display text-lg font-bold text-foreground">{diagnosticTasks[currentStep].title}</h3>
             </div>
             <Badge variant="warning" className="gap-1 font-mono">
               <Clock className="w-3.5 h-3.5" /> {diagnosticTasks[currentStep].timeLimit}s
@@ -169,13 +169,13 @@ export default function DiagnosticPage() {
           <Progress value={((currentStep + 1) / diagnosticTasks.length) * 100} />
 
           <Card className="p-6 sm:p-8 space-y-6">
-            <div className="p-4 rounded-xl bg-background border border-border text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
+            <div className="p-4 rounded-xl bg-background border border-border text-xs sm:text-sm text-foreground leading-relaxed font-medium">
               {diagnosticTasks[currentStep].prompt}
             </div>
 
             {diagnosticTasks[currentStep].options ? (
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-300">Choose your answer:</label>
+                <label className="text-xs font-bold text-foreground">Choose your answer:</label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {diagnosticTasks[currentStep].options!.map(opt => (
                     <button
@@ -184,7 +184,7 @@ export default function DiagnosticPage() {
                       className={`p-3 rounded-xl border text-xs font-bold transition-all ${
                         diagnosticAnswers[currentStep] === opt
                           ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                          : 'bg-background border-border text-muted-foreground hover:text-white'
+                          : 'bg-background border-border text-muted-foreground hover:text-foreground'
                       }`}
                     >
                       {opt}
@@ -194,7 +194,7 @@ export default function DiagnosticPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-300">Your response:</label>
+                <label className="text-xs font-bold text-foreground">Your response:</label>
                 <Textarea
                   rows={6}
                   value={diagnosticAnswers[currentStep] || ''}
@@ -227,7 +227,7 @@ export default function DiagnosticPage() {
         <Card className="p-8 sm:p-10 space-y-8 border-primary/40">
           <div className="text-center space-y-2">
             <Badge variant="success" className="px-3 py-1">Diagnostic Completed</Badge>
-            <h2 className="font-display text-3xl font-black text-white">
+            <h2 className="font-display text-3xl font-black text-foreground">
               Your Estimated Baseline: <span className="text-primary">{estimatedBaseline}</span>
             </h2>
             <p className="text-xs text-muted-foreground">
@@ -238,12 +238,12 @@ export default function DiagnosticPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
             <div className="p-5 rounded-2xl bg-background border border-border space-y-1">
               <span className="text-xs font-bold text-muted-foreground uppercase">Estimated Score</span>
-              <div className="font-display text-4xl font-black text-white">{estimatedBaseline}</div>
+              <div className="font-display text-4xl font-black text-foreground">{estimatedBaseline}</div>
               <p className="text-[10px] text-muted-foreground">Calibrated Baseline</p>
             </div>
             <div className="p-5 rounded-2xl bg-background border border-border space-y-1">
               <span className="text-xs font-bold text-muted-foreground uppercase">Target Score</span>
-              <div className="font-display text-4xl font-black text-amber-400">{targetScore}</div>
+              <div className="font-display text-4xl font-black text-amber-500">{targetScore}</div>
               <p className="text-[10px] text-muted-foreground">Desired Goal</p>
             </div>
             <div className="p-5 rounded-2xl bg-background border border-border space-y-1">

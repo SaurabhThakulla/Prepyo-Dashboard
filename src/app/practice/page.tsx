@@ -31,6 +31,13 @@ function PracticeContent() {
   const initialSkill = (searchParams.get('skill') as SkillType) || 'speaking';
 
   const [selectedSkill, setSelectedSkill] = useState<SkillType>(initialSkill);
+
+  useEffect(() => {
+    const skillParam = searchParams.get('skill') as SkillType;
+    if (skillParam && ['speaking', 'writing', 'reading', 'listening'].includes(skillParam)) {
+      setSelectedSkill(skillParam);
+    }
+  }, [searchParams]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [loading, setLoading] = useState(true);
@@ -143,7 +150,7 @@ function PracticeContent() {
       {/* Skill Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-white">
+          <h1 className="font-display text-2xl font-bold text-foreground">
             {activeExam} Practice Studio
           </h1>
           <p className="text-xs text-muted-foreground">
@@ -165,7 +172,10 @@ function PracticeContent() {
                 key={tab.id}
                 size="sm"
                 variant={active ? 'default' : 'ghost'}
-                onClick={() => setSelectedSkill(tab.id as SkillType)}
+                onClick={() => {
+                  setSelectedSkill(tab.id as SkillType);
+                  window.history.pushState(null, '', `/practice?skill=${tab.id}`);
+                }}
                 className="font-bold text-xs gap-1.5"
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -184,7 +194,7 @@ function PracticeContent() {
       ) : !currentQuestion ? (
         <div className="text-center py-20 bg-card rounded-2xl border border-border space-y-3">
           <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
-          <h3 className="text-sm font-bold text-white">No questions available</h3>
+          <h3 className="text-sm font-bold text-foreground">No questions available</h3>
           <p className="text-xs text-muted-foreground">Please switch skills or check back shortly.</p>
         </div>
       ) : (
@@ -214,8 +224,8 @@ function PracticeContent() {
               </div>
 
               <div className="space-y-2">
-                <h3 className="font-display font-bold text-lg text-white">{currentQuestion.title}</h3>
-                <div className="p-3.5 rounded-xl bg-background border border-border text-xs text-slate-200 leading-relaxed font-medium">
+                <h3 className="font-display font-bold text-lg text-foreground">{currentQuestion.title}</h3>
+                <div className="p-3.5 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed font-medium">
                   {currentQuestion.prompt}
                 </div>
               </div>
@@ -246,7 +256,7 @@ function PracticeContent() {
               )}
 
               {currentQuestion.contextPassage && !currentQuestion.blanks && (
-                <div className="p-4 rounded-xl bg-background border border-border text-xs text-slate-200 leading-relaxed max-h-56 overflow-y-auto">
+                <div className="p-4 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed max-h-56 overflow-y-auto">
                   {currentQuestion.contextPassage}
                 </div>
               )}
@@ -266,7 +276,7 @@ function PracticeContent() {
                   >
                     {isRecording ? <Square className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
                   </button>
-                  <div className="font-display font-bold text-lg text-white">
+                  <div className="font-display font-bold text-lg text-foreground">
                     {isRecording ? `Recording: ${audioTimer}s` : audioTimer > 0 ? `Recorded: ${audioTimer}s` : 'Tap to Record Voice'}
                   </div>
                 </div>
@@ -275,7 +285,7 @@ function PracticeContent() {
               {currentQuestion.skill === 'writing' && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-300">Your Draft</span>
+                    <span className="font-bold text-foreground">Your Draft</span>
                     <Badge variant={wordCount >= 200 ? 'success' : 'warning'}>
                       {wordCount} Words
                     </Badge>
@@ -291,14 +301,14 @@ function PracticeContent() {
 
               {currentQuestion.blanks && (
                 <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-300">Select words for each blank:</h4>
+                  <h4 className="text-xs font-bold text-foreground">Select words for each blank:</h4>
                   {currentQuestion.blanks.map((b, idx) => (
                     <div key={b.id} className="flex items-center justify-between p-3 bg-background rounded-xl border border-border text-xs">
                       <span className="font-bold text-primary">Blank [{idx + 1}]:</span>
                       <select
                         value={blankResponses[b.id] || ''}
                         onChange={(e) => setBlankResponses({ ...blankResponses, [b.id]: e.target.value })}
-                        className="bg-card border border-border text-xs font-medium text-white px-3 py-1.5 rounded-lg focus:outline-none focus:border-primary"
+                        className="bg-card border border-border text-xs font-medium text-foreground px-3 py-1.5 rounded-lg focus:outline-none focus:border-primary"
                       >
                         <option value="">-- Choose Option --</option>
                         {b.options.map(opt => (
@@ -354,7 +364,7 @@ function PracticeContent() {
                       className={`p-2.5 rounded-xl border text-left text-xs transition-all ${
                         isCurrent
                           ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                          : 'bg-background border-border text-muted-foreground hover:text-white'
+                          : 'bg-background border-border text-muted-foreground hover:text-foreground'
                       }`}
                     >
                       <div className="font-bold truncate">{idx + 1}. {q.typeName}</div>
@@ -377,11 +387,11 @@ function PracticeContent() {
 
                 <div className="bg-background p-4 rounded-xl border border-border text-center space-y-1">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase">Practice Estimate</span>
-                  <div className="font-display text-4xl font-black text-white">
+                  <div className="font-display text-4xl font-black text-foreground">
                     {evaluationResult.evaluation.score}
                     <span className="text-xs text-muted-foreground font-bold"> / {evaluationResult.evaluation.maxScore}</span>
                   </div>
-                  <p className="text-xs text-slate-300 pt-1">{evaluationResult.evaluation.feedback}</p>
+                  <p className="text-xs text-foreground pt-1">{evaluationResult.evaluation.feedback}</p>
                 </div>
 
                 {evaluationResult.aiEvaluation?.criteria && (
@@ -390,7 +400,7 @@ function PracticeContent() {
                     <div className="space-y-2">
                       {evaluationResult.aiEvaluation.criteria.map((c: any, i: number) => (
                         <div key={i} className="p-2.5 rounded-lg bg-background border border-border text-xs space-y-1">
-                          <div className="flex justify-between font-bold text-slate-200">
+                          <div className="flex justify-between font-bold text-foreground">
                             <span>{c.name}</span>
                             <span className="text-primary">{c.score}/{c.maxScore}</span>
                           </div>
