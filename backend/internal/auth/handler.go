@@ -46,11 +46,12 @@ func (h *Handler) Routes() chi.Router {
 }
 
 type registerRequest struct {
-	Email       string `json:"email"`
-	Password    string `json:"password"`
-	Name        string `json:"name"`
-	NepalRegion string `json:"nepalRegion"`
-	Timezone    string `json:"timezone"`
+	Email        string `json:"email"`
+	Password     string `json:"password"`
+	Name         string `json:"name"`
+	NepalRegion  string `json:"nepalRegion"`
+	Timezone     string `json:"timezone"`
+	ReferralCode string `json:"referralCode"`
 }
 
 func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
@@ -75,11 +76,12 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, token, err := h.service.Register(r.Context(), RegisterParams{
-		Email:       req.Email,
-		Password:    req.Password,
-		Name:        req.Name,
-		NepalRegion: req.NepalRegion,
-		Timezone:    req.Timezone,
+		Email:        req.Email,
+		Password:     req.Password,
+		Name:         req.Name,
+		NepalRegion:  req.NepalRegion,
+		Timezone:     req.Timezone,
+		ReferralCode: req.ReferralCode,
 	})
 	if err != nil {
 		if errors.Is(err, ErrEmailTaken) {

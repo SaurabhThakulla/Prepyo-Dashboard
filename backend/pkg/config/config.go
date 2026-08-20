@@ -18,6 +18,7 @@ type Config struct {
 	Env            string
 	Port           string
 	AllowedOrigins []string
+	WebAppURL      string
 
 	DatabaseURL string
 	RedisURL    string
@@ -62,6 +63,7 @@ func Load() (*Config, error) {
 		Env:              env,
 		Port:             stringOr("PORT", "8080"),
 		AllowedOrigins:   listOr("ALLOWED_ORIGINS", []string{"http://localhost:3000"}),
+		WebAppURL:        stringOr("WEB_APP_URL", "http://localhost:3000"),
 		RedisURL:         os.Getenv("REDIS_URL"),
 		OpenRouterAPIKey: os.Getenv("OPENROUTER_API_KEY"),
 		AIModels: AIModels{

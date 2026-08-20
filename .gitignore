@@ -27,3 +27,8 @@
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# IDE / Agent tooling
+.claude/
+.gemini/
+

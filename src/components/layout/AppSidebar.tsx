@@ -22,7 +22,8 @@ import {
   Flame,
   ChevronRight,
   Sun,
-  Moon
+  Moon,
+  Gift
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -88,7 +89,8 @@ export default function AppSidebar({ isOpen, setIsOpen }: AppSidebarProps) {
     {
       label: 'Account & Plan',
       items: [
-        { href: '/subscription', label: 'Subscriptions (NPR)', icon: CreditCard, badge: user?.subscriptionTier === 'elite' ? 'ELITE' : user?.subscriptionTier === 'pro' ? 'PRO' : 'FREE' },
+        { href: '/referrals', label: 'Refer & Earn Rewards', icon: Gift, badge: '+200 XP' },
+        { href: '/subscription', label: 'Subscriptions (NPR)', icon: CreditCard, badge: user?.subscriptionTier === 'elite' ? 'ELITE' : user?.subscriptionTier === 'pro' ? 'PRO' : user?.subscriptionTier === 'weekly' ? 'WEEKLY' : 'FREE' },
         { href: '/profile', label: 'Profile & Target Score', icon: User },
         { href: '/admin', label: 'Admin CMS', icon: ShieldCheck },
       ],

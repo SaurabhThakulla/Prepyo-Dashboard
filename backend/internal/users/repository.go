@@ -12,7 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prepyo/backend/internal/database"
 	"github.com/prepyo/backend/internal/models"
 )
 
@@ -23,14 +23,14 @@ var (
 	selectUserFields = `
 		id, email, password_hash, name, role, target_exam, target_score, exam_date,
 		nepal_region, xp, streak_days, streak_last_active_date, timezone,
-		plan_id, plan_valid_until, created_at`
+		plan_id, plan_valid_until, referral_code, bonus_mock_tests, bonus_pro_days, created_at`
 )
 
 type Repository struct {
-	db *pgxpool.Pool
+	db database.DB
 }
 
-func NewRepository(db *pgxpool.Pool) *Repository {
+func NewRepository(db database.DB) *Repository {
 	return &Repository{db: db}
 }
 
@@ -40,14 +40,19 @@ type CreateParams struct {
 	Name         string
 	NepalRegion  string
 	Timezone     string
+	ReferralCode string
 }
 
 func (r *Repository) Create(ctx context.Context, p CreateParams) (models.User, error) {
-	row := r.db.QueryRow(ctx, `
-		INSERT INTO users (email, password_hash, name, nepal_region, timezone)
-		VALUES ($1, $2, $3, $4, $5)
+	return r.CreateTx(ctx, r.db, p)
+}
+
+func (r *Repository) CreateTx(ctx context.Context, db database.DB, p CreateParams) (models.User, error) {
+	row := db.QueryRow(ctx, `
+		INSERT INTO users (email, password_hash, name, nepal_region, timezone, referral_code)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING `+selectUserFields,
-		p.Email, p.PasswordHash, p.Name, p.NepalRegion, p.Timezone)
+		p.Email, p.PasswordHash, p.Name, p.NepalRegion, p.Timezone, p.ReferralCode)
 
 	user, err := scanUser(row)
 	if err != nil {
@@ -140,6 +145,7 @@ func scanUser(row pgx.Row) (models.User, error) {
 		&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.Role, &u.TargetExam,
 		&u.TargetScore, &u.ExamDate, &u.NepalRegion, &u.XP, &u.StreakDays,
 		&u.StreakLastActiveDate, &u.Timezone, &u.PlanID, &u.PlanValidUntil,
+		&u.ReferralCode, &u.BonusMockTests, &u.BonusProDays,
 		&u.CreatedAt,
 	)
 	return u, err
