@@ -730,30 +730,25 @@ export default function AppSidebar({
                     <>
                       <div className="flex items-center gap-2.5 min-w-0">
                         <Icon className={`w-4 h-4 shrink-0 transition-colors ${active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
-                        <div className="truncate">
-                          <span className="block truncate">{item.label}</span>
-                          {item.sublabel && (
-                            <span className="block text-[10px] text-muted-foreground font-normal truncate">
-                              {item.sublabel}
-                            </span>
-                          )}
-                        </div>
+                        <span className="truncate font-medium">{item.label}</span>
                       </div>
 
                       {item.badge && (
-                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-border text-muted-foreground">
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-border text-muted-foreground shrink-0 ml-2">
                           {item.badge}
                         </Badge>
                       )}
                       {item.count !== undefined && (
-                        <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-300 font-bold px-1.5 py-0.2 rounded-full border border-amber-500/30">
+                        <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-300 font-bold px-1.5 py-0.2 rounded-full border border-amber-500/30 shrink-0 ml-2">
                           {item.count}
                         </span>
                       )}
                     </>
                   );
 
-                  const className = `group flex items-center justify-between w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all ${active
+                  const tooltipTitle = item.sublabel ? `${item.label} (${item.sublabel})` : item.label;
+
+                  const className = `group flex items-center justify-between w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${active
                       ? 'bg-accent text-accent-foreground font-semibold shadow-xs'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                     }`;
@@ -763,6 +758,7 @@ export default function AppSidebar({
                       <Link
                         key={idx}
                         href={item.href}
+                        title={tooltipTitle}
                         onClick={() => {
                           setIsOpen(false);
                         }}
@@ -777,6 +773,7 @@ export default function AppSidebar({
                     <button
                       key={idx}
                       type="button"
+                      title={tooltipTitle}
                       onClick={() => {
                         if (item.onClick) item.onClick();
                         setIsOpen(false);
