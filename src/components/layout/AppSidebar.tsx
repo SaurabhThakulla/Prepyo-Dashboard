@@ -33,6 +33,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@/components/ui/tooltip';
 
 export type PrimarySectionId =
   | 'dashboard'
@@ -585,38 +591,41 @@ export default function AppSidebar({
           </div>
 
           {/* Primary Navigation Icons (Clean top alignment without big gap) */}
-          <nav className="flex flex-col items-center gap-2 mt-2 mb-auto w-full">
-            {sections.map(section => {
-              const Icon = section.icon;
-              const isSelected = activeSection === section.id;
-              const isIndicatorActive = isSelected && isSecondaryOpen;
-              return (
-                <button
-                  key={section.id}
-                  onClick={() => handlePrimaryClick(section.id)}
-                  title={section.label}
-                  className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${isIndicatorActive
-                      ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25 scale-105'
-                      : isSelected
-                        ? 'bg-muted text-foreground'
-                        : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground hover:scale-105'
-                    }`}
-                >
-                  <Icon className="w-5 h-5" />
+          <TooltipProvider delayDuration={100}>
+            <nav className="flex flex-col items-center gap-2 mt-2 mb-auto w-full">
+              {sections.map(section => {
+                const Icon = section.icon;
+                const isSelected = activeSection === section.id;
+                const isIndicatorActive = isSelected && isSecondaryOpen;
+                return (
+                  <Tooltip key={section.id}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => handlePrimaryClick(section.id)}
+                        className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${isIndicatorActive
+                            ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25 scale-105'
+                            : isSelected
+                              ? 'bg-muted text-foreground'
+                              : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground hover:scale-105'
+                          }`}
+                      >
+                        <Icon className="w-5 h-5" />
 
-                  {/* Active Indicator Bar */}
-                  {isIndicatorActive && (
-                    <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
-                  )}
-
-                  {/* Tooltip on Hover */}
-                  <span className="absolute left-14 z-50 hidden rounded-lg bg-popover px-2.5 py-1 text-xs font-semibold text-popover-foreground shadow-lg border border-border group-hover:block whitespace-nowrap">
-                    {section.label}
-                  </span>
-                </button>
-              );
-            })}
-          </nav>
+                        {/* Active Indicator Bar */}
+                        {isIndicatorActive && (
+                          <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
+                        )}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={10} className="px-3 py-1.5 font-bold">
+                      <div className="text-xs font-bold text-foreground">{section.label}</div>
+                      <div className="text-[10px] text-muted-foreground font-normal">{section.description}</div>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </nav>
+          </TooltipProvider>
 
           {/* Bottom Actions: Theme & Profile Trigger */}
           <div className="flex flex-col items-center gap-2 mt-auto pt-3 border-t border-border/60 w-full">
@@ -721,44 +730,40 @@ export default function AppSidebar({
                 {currentSectionConfig.label} Options
               </h4>
 
-              <div className="space-y-1 pt-1">
-                {currentSectionConfig.items.map((item, idx) => {
-                  const Icon = item.icon;
-                  const active = isItemActive(item);
+              <TooltipProvider delayDuration={120}>
+                <div className="space-y-1 pt-1">
+                  {currentSectionConfig.items.map((item, idx) => {
+                    const Icon = item.icon;
+                    const active = isItemActive(item);
 
-                  const itemContent = (
-                    <>
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Icon className={`w-4 h-4 shrink-0 transition-colors ${active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
-                        <span className="truncate font-medium">{item.label}</span>
-                      </div>
+                    const itemContent = (
+                      <>
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1">
+                          <Icon className={`w-4 h-4 shrink-0 transition-colors ${active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
+                          <span className="truncate font-medium text-xs text-foreground/90">{item.label}</span>
+                        </div>
 
-                      {item.badge && (
-                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-border text-muted-foreground shrink-0 ml-2">
-                          {item.badge}
-                        </Badge>
-                      )}
-                      {item.count !== undefined && (
-                        <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-300 font-bold px-1.5 py-0.2 rounded-full border border-amber-500/30 shrink-0 ml-2">
-                          {item.count}
-                        </span>
-                      )}
-                    </>
-                  );
+                        {item.badge && (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-border text-muted-foreground shrink-0 ml-1.5 font-semibold">
+                            {item.badge}
+                          </Badge>
+                        )}
+                        {item.count !== undefined && (
+                          <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-300 font-bold px-1.5 py-0.2 rounded-full border border-amber-500/30 shrink-0 ml-1.5">
+                            {item.count}
+                          </span>
+                        )}
+                      </>
+                    );
 
-                  const tooltipTitle = item.sublabel ? `${item.label} (${item.sublabel})` : item.label;
+                    const className = `group flex items-center justify-between w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all ${active
+                        ? 'bg-accent text-accent-foreground font-semibold shadow-xs ring-1 ring-primary/20'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                      }`;
 
-                  const className = `group flex items-center justify-between w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${active
-                      ? 'bg-accent text-accent-foreground font-semibold shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                    }`;
-
-                  if (item.href) {
-                    return (
+                    const itemElement = item.href ? (
                       <Link
-                        key={idx}
                         href={item.href}
-                        title={tooltipTitle}
                         onClick={() => {
                           setIsOpen(false);
                         }}
@@ -766,25 +771,49 @@ export default function AppSidebar({
                       >
                         {itemContent}
                       </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (item.onClick) item.onClick();
+                          setIsOpen(false);
+                        }}
+                        className={className}
+                      >
+                        {itemContent}
+                      </button>
                     );
-                  }
 
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      title={tooltipTitle}
-                      onClick={() => {
-                        if (item.onClick) item.onClick();
-                        setIsOpen(false);
-                      }}
-                      className={className}
-                    >
-                      {itemContent}
-                    </button>
-                  );
-                })}
-              </div>
+                    return (
+                      <Tooltip key={idx}>
+                        <TooltipTrigger asChild>
+                          {itemElement}
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="right"
+                          align="center"
+                          sideOffset={8}
+                          className="p-2.5 space-y-0.5 rounded-xl border border-border/90 bg-popover/95 backdrop-blur-xl shadow-2xl"
+                        >
+                          <div className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                            <span>{item.label}</span>
+                            {item.badge && (
+                              <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0 rounded font-semibold uppercase">
+                                {item.badge}
+                              </span>
+                            )}
+                          </div>
+                          {item.sublabel && (
+                            <p className="text-[11px] text-muted-foreground font-normal leading-tight max-w-[220px]">
+                              {item.sublabel}
+                            </p>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </TooltipProvider>
             </div>
 
             <Separator className="bg-border" />

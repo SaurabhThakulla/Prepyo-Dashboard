@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Bot, Send, X, Sparkles, BookOpen, Lightbulb, RefreshCw } from 'lucide-react';
+import { Bot, Send, X, Sparkles, RefreshCw, Zap, MessageSquare } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -14,13 +16,36 @@ export default function AITutorDrawer() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      content: `Namaste! 🙏 I am your **Prepyo AI Coach** for **${activeExam} Academic**. Ask me for 79+ / Band 8.0 templates, essay breakdowns, grammar rules, or advice on your weak areas!`,
+      content: `Namaste! 🙏 I am your **Prepyo AI Coach** for **${activeExam} Academic**.\n\nAsk me for 79+ / Band 8.0 scoring templates, essay breakdowns, grammar rules, or advice on your weak areas!`,
     },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  if (!isTutorOpen) return null;
+  // Auto-scroll to bottom on new message
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (isTutorOpen) {
+      scrollToBottom();
+      setTimeout(() => inputRef.current?.focus(), 250);
+    }
+  }, [messages, isTutorOpen]);
+
+  // Handle escape key to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isTutorOpen) {
+        setIsTutorOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isTutorOpen, setIsTutorOpen]);
 
   const handleSend = async (textToSend?: string) => {
     const text = textToSend || input;
@@ -74,42 +99,66 @@ export default function AITutorDrawer() {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsTutorOpen(false)} />
+    <div
+      className={`fixed inset-0 z-50 overflow-hidden transition-all duration-300 ${
+        isTutorOpen ? 'pointer-events-auto visible' : 'pointer-events-none invisible'
+      }`}
+      aria-hidden={!isTutorOpen}
+    >
+      {/* Dim Backdrop with Fade Animation */}
+      <div
+        onClick={() => setIsTutorOpen(false)}
+        className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-out ${
+          isTutorOpen ? 'opacity-100' : 'opacity-0'
+        }`}
+      />
 
-      <div className="fixed inset-y-0 right-0 max-w-lg w-full bg-card border-l border-border shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-200">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border bg-card/70">
+      {/* Slide-in Drawer Container with Spring Easing */}
+      <div
+        className={`fixed inset-y-0 right-0 max-w-lg w-full bg-card/95 backdrop-blur-2xl border-l border-border shadow-2xl flex flex-col z-50 transition-transform duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          isTutorOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {/* Subtle Ambient Radial Glow */}
+        <div className="absolute top-0 right-0 w-72 h-72 bg-primary/10 blur-3xl rounded-full pointer-events-none -z-10" />
+
+        {/* Drawer Header */}
+        <div className="flex items-center justify-between p-4 border-b border-border/80 bg-card/80 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-primary to-emerald-600 text-white shadow-lg shadow-primary/20">
-              <Bot className="w-5 h-5" />
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary via-indigo-600 to-emerald-500 text-white shadow-lg shadow-primary/25">
+              <Bot className="w-5 h-5 animate-pulse" />
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-card" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-display font-bold text-sm text-foreground">Prepyo AI Tutor</h3>
-                <span className="text-[10px] font-extrabold uppercase bg-primary/10 text-primary border border-primary/30 px-1.5 py-0.5 rounded">
+                <h3 className="font-display font-black text-sm text-foreground">Prepyo AI Coach</h3>
+                <Badge variant="indigo" className="text-[9px] px-1.5 py-0 font-bold uppercase">
                   {activeExam} Engine
-                </span>
+                </Badge>
               </div>
-              <p className="text-xs text-muted-foreground">Contextual exam coach & instant feedback</p>
+              <p className="text-[11px] text-muted-foreground">24/7 Contextual exam tutor & scoring mentor</p>
             </div>
           </div>
-          <button
+
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setIsTutorOpen(false)}
-            className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
+            className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+            title="Close Coach (Esc)"
           >
-            <X className="w-5 h-5" />
-          </button>
+            <X className="w-4 h-4" />
+          </Button>
         </div>
 
         {/* Quick Suggestion Chips */}
-        <div className="px-4 py-2.5 bg-muted/40 border-b border-border flex gap-1.5 overflow-x-auto no-scrollbar">
+        <div className="px-4 py-2.5 bg-muted/40 border-b border-border/80 flex gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
           {quickPrompts.map((q, idx) => (
             <button
               key={idx}
+              type="button"
               onClick={() => handleSend(q)}
-              className="text-[11px] font-medium text-muted-foreground hover:text-foreground bg-card hover:bg-primary/10 border border-border hover:border-primary/40 px-2.5 py-1 rounded-full whitespace-nowrap transition-all shrink-0"
+              className="text-[11px] font-medium text-muted-foreground hover:text-foreground bg-card hover:bg-primary/10 border border-border hover:border-primary/40 px-3 py-1 rounded-full whitespace-nowrap transition-all duration-200 shrink-0 hover:scale-[1.02] active:scale-[0.98]"
             >
               {q}
             </button>
@@ -121,23 +170,26 @@ export default function AITutorDrawer() {
           {messages.map((m, i) => (
             <div
               key={i}
-              className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}
+              className={`flex flex-col animate-in fade-in-50 slide-in-from-bottom-2 duration-300 ${
+                m.role === 'user' ? 'items-end' : 'items-start'
+              }`}
             >
               <div className="flex items-center gap-1.5 mb-1 px-1">
                 {m.role === 'assistant' ? (
                   <>
-                    <Sparkles className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-[11px] font-semibold text-primary">Prepyo AI Coach</span>
+                    <Sparkles className="w-3 h-3 text-primary" />
+                    <span className="text-[11px] font-bold text-primary">Prepyo AI Coach</span>
                   </>
                 ) : (
-                  <span className="text-[11px] font-semibold text-muted-foreground">You</span>
+                  <span className="text-[11px] font-bold text-muted-foreground">You</span>
                 )}
               </div>
+
               <div
-                className={`p-3.5 rounded-2xl max-w-[90%] text-xs leading-relaxed ${
+                className={`p-3.5 rounded-2xl max-w-[90%] text-xs leading-relaxed shadow-sm transition-all ${
                   m.role === 'user'
-                    ? 'bg-primary text-primary-foreground rounded-tr-none'
-                    : 'bg-background border border-border text-foreground rounded-tl-none prose-invert'
+                    ? 'bg-primary text-primary-foreground rounded-tr-none font-medium'
+                    : 'bg-background/90 border border-border text-foreground rounded-tl-none prose prose-invert'
                 }`}
               >
                 <div className="whitespace-pre-line">{m.content}</div>
@@ -146,15 +198,17 @@ export default function AITutorDrawer() {
           ))}
 
           {loading && (
-            <div className="flex items-center gap-2 text-xs text-primary bg-background p-3 rounded-2xl border border-border w-fit">
-              <RefreshCw className="w-4 h-4 animate-spin text-primary" />
-              <span>Thinking & formulating guidance...</span>
+            <div className="flex items-center gap-2.5 text-xs text-primary bg-background/90 p-3 rounded-2xl border border-border w-fit animate-pulse shadow-sm">
+              <RefreshCw className="w-4 h-4 animate-spin text-primary shrink-0" />
+              <span>Analyzing rubric & formulating response...</span>
             </div>
           )}
+
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input Form */}
-        <div className="p-3 border-t border-border bg-card">
+        <div className="p-3 border-t border-border/80 bg-card/90 backdrop-blur-md">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -163,19 +217,21 @@ export default function AITutorDrawer() {
             className="flex items-center gap-2"
           >
             <input
+              ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={`Ask anything about ${activeExam} scoring, tasks, or strategy...`}
-              className="flex-1 bg-background border border-border focus:border-primary rounded-xl px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors"
+              placeholder={`Ask anything about ${activeExam} scoring, templates, or strategy...`}
+              className="flex-1 bg-background border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none transition-all"
             />
-            <button
+            <Button
               type="submit"
               disabled={loading || !input.trim()}
-              className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground p-2.5 rounded-xl transition-all shadow-md shadow-primary/30 shrink-0"
+              size="icon"
+              className="h-9 w-9 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 shrink-0 transition-transform active:scale-95"
             >
               <Send className="w-4 h-4" />
-            </button>
+            </Button>
           </form>
         </div>
       </div>

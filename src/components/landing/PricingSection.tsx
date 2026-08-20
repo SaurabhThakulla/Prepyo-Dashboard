@@ -54,21 +54,23 @@ export default function PricingSection() {
       />
 
       {status === 'loading' ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[0, 1, 2].map(i => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[0, 1, 2, 3].map(i => (
             <div key={i} className="rounded-2xl border border-border bg-card p-6 h-[420px] animate-pulse" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
           {plans.map(plan => {
             const isFree = plan.priceNPR === 0;
+            const hasBonus = plan.bonusDays && plan.bonusDays > 0;
+            const totalDays = (plan.durationDays || (plan.durationMonths * 30)) + (plan.bonusDays || 0);
 
             return (
               <div
                 key={plan.id}
                 className={`relative rounded-2xl border bg-card p-6 space-y-5 transition-all hover:-translate-y-1 duration-200 ${
-                  plan.popular ? 'border-primary/60 shadow-card md:-mt-3 md:pb-8' : 'border-border'
+                  plan.popular ? 'border-primary/60 shadow-card lg:-mt-3 lg:pb-8' : 'border-border'
                 }`}
               >
                 {plan.popular && (
@@ -80,18 +82,30 @@ export default function PricingSection() {
                 <div className="space-y-1">
                   <h3 className="font-display text-base font-bold text-foreground">{plan.name}</h3>
                   <p className="text-[11px] text-muted-foreground">
-                    {plan.durationMonths === 0
-                      ? 'Free forever'
-                      : `${plan.durationMonths} month${plan.durationMonths > 1 ? 's' : ''} of full access`}
+                    {plan.priceNPR === 0
+                      ? 'Free starter'
+                      : plan.id === 'weekly'
+                      ? '7 days intensive sprint'
+                      : `${totalDays} Days (${totalDays - (plan.bonusDays || 0)} + ${plan.bonusDays || 0} bonus)`}
                   </p>
                 </div>
 
                 <div className="flex items-baseline gap-1.5">
-                  <span className="font-display text-3xl font-black text-foreground">
+                  <span className="font-display text-2xl lg:text-3xl font-black text-foreground">
                     {isFree ? 'Free' : `NPR ${plan.priceNPR.toLocaleString()}`}
                   </span>
-                  {!isFree && <span className="text-xs font-semibold text-muted-foreground">/ term</span>}
+                  {!isFree && (
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      / {plan.id === 'weekly' ? '7d' : plan.durationMonths === 1 ? 'mo' : '3mo'}
+                    </span>
+                  )}
                 </div>
+
+                {hasBonus && (
+                  <div className="inline-flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                    +{plan.bonusDays} Bonus Days Included
+                  </div>
+                )}
 
                 <div className="flex items-center gap-3 rounded-xl bg-muted/50 border border-border p-3 text-center">
                   <div className="flex-1">
