@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
 import { ExamType } from '@/lib/types';
 
 export type AuthMode = 'login' | 'signup';
@@ -55,6 +56,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refreshUserData, theme, toggleTheme, setActiveExam } = useApp();
+  const toast = useToast();
 
   // Mode: 'login' | 'signup'
   const [mode, setMode] = useState<AuthMode>(initialMode);
@@ -131,7 +133,9 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (mode === 'signup' && !agreeTerms) {
-      setError('Please accept the Terms of Service to create your account.');
+      const msg = 'Please accept the Terms of Service to create your account.';
+      setError(msg);
+      toast.warning('Terms Required', msg);
       return;
     }
 
@@ -147,10 +151,13 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
         });
         const data = await res.json();
         if (data.success) {
+          toast.success('Welcome back!', 'Successfully signed in to your Prepyo dashboard.');
           await refreshUserData();
           router.push('/dashboard');
         } else {
-          setError(data.error || 'Invalid credentials. Please verify your email.');
+          const msg = data.error || 'Invalid credentials. Please verify your email.';
+          setError(msg);
+          toast.error('Sign In Failed', msg);
         }
       } else {
         const res = await fetch('/api/v1/auth', {
@@ -169,15 +176,20 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
         });
         const data = await res.json();
         if (data.success) {
+          toast.success('Account Created! 🎉', 'Welcome to Prepyo! 1 Free AI Mock Exam & 100 XP unlocked.');
           setActiveExam(selectedExam);
           await refreshUserData();
           router.push('/dashboard');
         } else {
-          setError(data.error || 'Failed to create account. Please try again.');
+          const msg = data.error || 'Failed to create account. Please try again.';
+          setError(msg);
+          toast.error('Registration Issue', msg);
         }
       }
     } catch (err: any) {
-      setError('A connection error occurred. Please try again.');
+      const msg = 'A connection error occurred. Please try again.';
+      setError(msg);
+      toast.error('Network Error', msg);
     } finally {
       setLoading(false);
     }
@@ -196,13 +208,18 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
       });
       const data = await res.json();
       if (data.success) {
+        toast.info('Demo Mode Activated', 'Exploring Prepyo as Aprapya Rana (Trial Student).');
         await refreshUserData();
         router.push('/dashboard');
       } else {
-        setError('Unable to load demo account.');
+        const msg = 'Unable to load demo account.';
+        setError(msg);
+        toast.error('Trial Error', msg);
       }
     } catch (err: any) {
-      setError('Failed to log in as demo student.');
+      const msg = 'Failed to log in as demo student.';
+      setError(msg);
+      toast.error('Trial Error', msg);
     } finally {
       setDemoLoading(false);
     }

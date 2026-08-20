@@ -117,7 +117,7 @@ const formatRelativeTime = (ts: number, now: number): string => {
   return `${diffDay}d ago`;
 };
 
-export default function AppSidebar({
+function AppSidebarContent({
   isOpen,
   setIsOpen,
   isSecondaryOpen,
@@ -861,6 +861,14 @@ export default function AppSidebar({
         </aside>
       </div>
     </>
+  );
+}
+
+export default function AppSidebar(props: AppSidebarProps) {
+  return (
+    <React.Suspense fallback={<aside className="w-16 shrink-0 border-r border-border bg-card" />}>
+      <AppSidebarContent {...props} />
+    </React.Suspense>
   );
 }
 
