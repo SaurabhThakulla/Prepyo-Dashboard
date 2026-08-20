@@ -58,6 +58,9 @@ type User struct {
 	Timezone             string
 	PlanID               string
 	PlanValidUntil       *time.Time
+	ReferralCode         string
+	BonusMockTests       int
+	BonusProDays         int
 	CreatedAt            time.Time
 }
 
@@ -68,18 +71,21 @@ func (u User) IsAdmin() bool { return u.Role == RoleAdmin }
 // UserProfile is what the client receives. Build it with NewUserProfile so the
 // derived fields are always filled the same way.
 type UserProfile struct {
-	ID          string    `json:"id"`
-	Email       string    `json:"email"`
-	Name        string    `json:"name"`
-	Role        string    `json:"role"`
-	TargetExam  ExamType  `json:"targetExam"`
-	TargetScore *float64  `json:"targetScore"`
-	ExamDate    string    `json:"examDate,omitempty"`
-	NepalRegion string    `json:"nepalRegion"`
-	XP          int       `json:"xp"`
-	StreakDays  int       `json:"streakDays"`
-	Timezone    string    `json:"timezone"`
-	CreatedAt   time.Time `json:"createdAt"`
+	ID             string    `json:"id"`
+	Email          string    `json:"email"`
+	Name           string    `json:"name"`
+	Role           string    `json:"role"`
+	TargetExam     ExamType  `json:"targetExam"`
+	TargetScore    *float64  `json:"targetScore"`
+	ExamDate       string    `json:"examDate,omitempty"`
+	NepalRegion    string    `json:"nepalRegion"`
+	XP             int       `json:"xp"`
+	StreakDays     int       `json:"streakDays"`
+	Timezone       string    `json:"timezone"`
+	ReferralCode   string    `json:"referralCode"`
+	BonusMockTests int       `json:"bonusMockTests"`
+	BonusProDays   int       `json:"bonusProDays"`
+	CreatedAt      time.Time `json:"createdAt"`
 
 	// Derived.
 	Level         int `json:"level"`
@@ -99,19 +105,22 @@ func LevelForXP(xp int) int { return xp/XPPerLevel + 1 }
 func NewUserProfile(u User) UserProfile {
 	level := LevelForXP(u.XP)
 	profile := UserProfile{
-		ID:            u.ID,
-		Email:         u.Email,
-		Name:          u.Name,
-		Role:          u.Role,
-		TargetExam:    u.TargetExam,
-		TargetScore:   u.TargetScore,
-		NepalRegion:   u.NepalRegion,
-		XP:            u.XP,
-		StreakDays:    u.StreakDays,
-		Timezone:      u.Timezone,
-		CreatedAt:     u.CreatedAt,
-		Level:         level,
-		XPToNextLevel: level*XPPerLevel - u.XP,
+		ID:             u.ID,
+		Email:          u.Email,
+		Name:           u.Name,
+		Role:           u.Role,
+		TargetExam:     u.TargetExam,
+		TargetScore:    u.TargetScore,
+		NepalRegion:    u.NepalRegion,
+		XP:             u.XP,
+		StreakDays:     u.StreakDays,
+		Timezone:       u.Timezone,
+		ReferralCode:   u.ReferralCode,
+		BonusMockTests: u.BonusMockTests,
+		BonusProDays:   u.BonusProDays,
+		CreatedAt:      u.CreatedAt,
+		Level:          level,
+		XPToNextLevel:  level*XPPerLevel - u.XP,
 	}
 	if u.ExamDate != nil {
 		profile.ExamDate = u.ExamDate.Format(time.DateOnly)
@@ -140,7 +149,10 @@ type SubscriptionState struct {
 	DailyEvaluationsUsed  int    `json:"dailyEvaluationsUsed"`
 	DailyEvaluationsLimit int    `json:"dailyEvaluationsLimit"`
 	MockTestsIncluded     int    `json:"mockTestsIncluded"`
+	BonusMockTests        int    `json:"bonusMockTests"`
+	TotalMockTestsAllowed int    `json:"totalMockTestsAllowed"`
 	MockTestsUsed         int    `json:"mockTestsUsed"`
+	BonusDays             int    `json:"bonusDays"`
 }
 
 type Plan struct {
@@ -148,10 +160,91 @@ type Plan struct {
 	Name                string   `json:"name"`
 	PriceNPR            int      `json:"priceNPR"`
 	DurationMonths      int      `json:"durationMonths"`
+	DurationDays        int      `json:"durationDays"`
+	BonusDays           int      `json:"bonusDays"`
 	Features            []string `json:"features"`
 	AIEvaluationsPerDay int      `json:"aiEvaluationsPerDay"`
 	MockTestsIncluded   int      `json:"mockTestsIncluded"`
 	IsPopular           bool     `json:"isPopular"`
+}
+
+// ---------------------------------------------------------------------------
+// Referrals & Subscriptions
+// ---------------------------------------------------------------------------
+
+type ReferralStatus string
+
+const (
+	ReferralPending   ReferralStatus = "pending"
+	ReferralCompleted ReferralStatus = "completed"
+	ReferralCancelled ReferralStatus = "cancelled"
+)
+
+type Referral struct {
+	ID               string         `json:"id"`
+	ReferrerID       string         `json:"referrerId"`
+	RefereeID        string         `json:"refereeId"`
+	ReferralCode     string         `json:"referralCode"`
+	Status           ReferralStatus `json:"status"`
+	RewardReferrerXP int            `json:"rewardReferrerXP"`
+	RewardRefereeXP  int            `json:"rewardRefereeXP"`
+	CreatedAt        time.Time      `json:"createdAt"`
+	CompletedAt      *time.Time     `json:"completedAt,omitempty"`
+}
+
+type ReferralMilestone struct {
+	Required  int  `json:"required"`
+	Current   int  `json:"current"`
+	Completed bool `json:"completed"`
+}
+
+type ReferralMilestones struct {
+	ThreeReferrals ReferralMilestone `json:"threeReferrals"`
+	FiveReferrals  ReferralMilestone `json:"fiveReferrals"`
+}
+
+type ReferralStats struct {
+	TotalInvited  int `json:"totalInvited"`
+	Pending       int `json:"pending"`
+	Completed     int `json:"completed"`
+	TotalXPEarned int `json:"totalXpEarned"`
+}
+
+type RecentReferralItem struct {
+	ID          string     `json:"id"`
+	FriendName  string     `json:"friendName"`
+	Status      string     `json:"status"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+}
+
+type ReferralOverview struct {
+	ReferralCode    string               `json:"referralCode"`
+	ShareLink       string               `json:"shareLink"`
+	Stats           ReferralStats        `json:"stats"`
+	Milestones      ReferralMilestones   `json:"milestones"`
+	RecentReferrals []RecentReferralItem `json:"recentReferrals"`
+}
+
+type ReferralValidation struct {
+	Valid        bool   `json:"valid"`
+	ReferrerName string `json:"referrerName,omitempty"`
+	Message      string `json:"message"`
+}
+
+type SubscriptionPayment struct {
+	ID             string     `json:"id"`
+	UserID         string     `json:"userId"`
+	PlanID         string     `json:"planId"`
+	PaymentGateway string     `json:"paymentGateway"`
+	TransactionID  string     `json:"transactionId"`
+	AmountNPR      int        `json:"amountNPR"`
+	Status         string     `json:"status"`
+	BaseDays       int        `json:"baseDays"`
+	BonusDays      int        `json:"bonusDays"`
+	EffectiveDays  int        `json:"effectiveDays"`
+	ProcessedAt    *time.Time `json:"processedAt,omitempty"`
+	CreatedAt      time.Time  `json:"createdAt"`
 }
 
 // ---------------------------------------------------------------------------

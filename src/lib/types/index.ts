@@ -20,10 +20,13 @@ export interface UserProfile {
   streakDays: number;
   streakFrozen: boolean;
   streakLastActiveDate: string;
-  subscriptionTier: 'free' | 'pro' | 'elite';
+  subscriptionTier: 'free' | 'weekly' | 'pro' | 'elite';
   subscriptionValidUntil?: string;
   dailyEvaluationsUsed: number;
   dailyEvaluationsLimit: number;
+  referralCode?: string;
+  bonusMockTests?: number;
+  bonusProDays?: number;
   createdAt: string;
 }
 
@@ -112,19 +115,22 @@ export interface AIEvaluationResult {
   questionId: string;
   exam: ExamType;
   skill: SkillType;
+  overallScore?: number;
   estimatedScore: number;
-  overallBandOrPTE: number;
+  overallBandOrPTE?: number;
+  maxScore?: number;
   scoreConfidence: 'high' | 'medium' | 'low';
   summary: string;
   criteria: EvaluationCriterion[];
   strengths: string[];
   weaknesses: string[];
-  sentenceFeedback: SentenceFeedback[];
+  sentenceFeedback?: SentenceFeedback[] | any[];
   modelRewrite?: string;
   vocabularySuggestions?: { original: string; betterAlternative: string; reason: string }[];
-  evaluatedAt: string;
-  providerModelUsed: string;
-  tokenCostEstimateNPR: number;
+  evaluatedAt?: string;
+  providerModelUsed?: string;
+  tokenCostEstimateNPR?: number;
+  createdAt?: string;
 }
 
 export interface MistakeItem {
@@ -167,7 +173,9 @@ export interface MockAttemptResult {
   id: string;
   mockId: string;
   exam: ExamType;
+  title?: string;
   userScore: number; // Estimated PTE overall or IELTS Overall Band
+  maxScore?: number;
   skillScores: Record<SkillType, number>;
   enablingSkills?: {
     grammar: number;
@@ -179,16 +187,18 @@ export interface MockAttemptResult {
   totalCorrect: number;
   totalQuestions: number;
   durationSeconds: number;
-  targetGap: number;
-  readinessImpact: number;
+  targetGap?: number;
+  readinessImpact?: number;
   completedAt: string;
-  sectionBreakdowns: {
+  sectionBreakdowns?: {
     sectionName: string;
     skill: SkillType;
     score: number;
     maxScore: number;
   }[];
 }
+
+export type MockAttempt = MockAttemptResult;
 
 export interface XPTransaction {
   id: string;
@@ -212,10 +222,12 @@ export interface LeaderboardUser {
 }
 
 export interface SubscriptionPlan {
-  id: 'free' | 'pro' | 'elite';
+  id: 'free' | 'weekly' | 'pro' | 'elite' | string;
   name: string;
   priceNPR: number;
   durationMonths: number;
+  durationDays?: number;
+  bonusDays?: number;
   features: string[];
   aiEvaluationsPerDay: number;
   mockTestsIncluded: number;
@@ -226,8 +238,42 @@ export interface NotificationItem {
   id: string;
   title: string;
   message: string;
-  type: 'streak' | 'mission' | 'evaluation' | 'system';
+  type: 'streak' | 'mission' | 'evaluation' | 'system' | 'referral';
   read: boolean;
   createdAt: string;
   actionUrl?: string;
+}
+
+export interface ReferralMilestone {
+  required: number;
+  current: number;
+  completed: boolean;
+}
+
+export interface ReferralMilestones {
+  threeReferrals: ReferralMilestone;
+  fiveReferrals: ReferralMilestone;
+}
+
+export interface ReferralStats {
+  totalInvited: number;
+  pending: number;
+  completed: number;
+  totalXpEarned: number;
+}
+
+export interface RecentReferralItem {
+  id: string;
+  friendName: string;
+  status: 'pending' | 'completed' | 'cancelled' | string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface ReferralOverview {
+  referralCode: string;
+  shareLink: string;
+  stats: ReferralStats;
+  milestones: ReferralMilestones;
+  recentReferrals: RecentReferralItem[];
 }

@@ -16,6 +16,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, user, message: 'Logged in as Demo Student' });
     }
 
+    if (action === 'login') {
+      let user = db.getUser();
+      if (email && email.trim() !== '') {
+        user = db.updateUser({ email });
+      }
+      return NextResponse.json({ success: true, user, message: 'Logged in successfully' });
+    }
+
     if (action === 'register' || action === 'signup') {
       const updated = db.updateUser({
         email: email || 'learner@prepyo.np',
@@ -25,7 +33,7 @@ export async function POST(req: Request) {
         nepalRegion: nepalRegion || 'Kathmandu',
       });
       db.awardXP(100, 'Completed Registration & Goal Setup');
-      return NextResponse.json({ success: true, user: updated, message: 'Account created successfully!' });
+      return NextResponse.json({ success: true, user: updated, message: 'Account created successfully! +100 XP awarded.' });
     }
 
     const user = db.getUser();

@@ -26,6 +26,7 @@ import (
 	"github.com/prepyo/backend/internal/practice"
 	"github.com/prepyo/backend/internal/progress"
 	"github.com/prepyo/backend/internal/questions"
+	"github.com/prepyo/backend/internal/referrals"
 	"github.com/prepyo/backend/internal/users"
 	"github.com/prepyo/backend/pkg/config"
 	"github.com/prepyo/backend/pkg/httpx"
@@ -54,6 +55,7 @@ type app struct {
 	leaderboardHandler  *leaderboards.Handler
 	notificationHandler *notifications.Handler
 	billingHandler      *billing.Handler
+	referralHandler     *referrals.Handler
 	adminHandler        *admin.Handler
 }
 
@@ -69,11 +71,13 @@ func newApp(cfg *config.Config, pool *pgxpool.Pool, log *slog.Logger) *app {
 	notificationRepo := notifications.NewRepository(pool)
 	leaderboardRepo := leaderboards.NewRepository(pool)
 	planRepo := billing.NewRepository(pool)
+	referralRepo := referrals.NewRepository(pool)
 
 	// Services.
-	authService := auth.NewService(pool, userRepo, cfg.SessionTTL, log)
 	xpService := gamification.NewService()
-	billingService := billing.NewService(planRepo)
+	referralService := referrals.NewService(pool, referralRepo, xpService, notificationRepo, cfg.WebAppURL, log)
+	authService := auth.NewService(pool, userRepo, referralService, cfg.SessionTTL, log)
+	billingService := billing.NewService(planRepo, notificationRepo)
 	progressService := progress.NewService(examRepo)
 	gateway := ai.NewGateway(cfg, log)
 	evaluationService := evaluations.NewService(pool, evaluationRepo, questionRepo, examRepo, billingService, gateway, xpService)
@@ -88,8 +92,8 @@ func newApp(cfg *config.Config, pool *pgxpool.Pool, log *slog.Logger) *app {
 		userHandler:         users.NewHandler(pool, userRepo, progressService, billingService, log),
 		examHandler:         exams.NewHandler(examRepo, log),
 		questionHandler:     questions.NewHandler(questionRepo, log),
-		practiceHandler:     practice.NewHandler(pool, practiceRepo, questionRepo, mistakeRepo, xpService, log),
-		mockHandler:         mocks.NewHandler(pool, mockRepo, questionRepo, examRepo, xpService, log),
+		practiceHandler:     practice.NewHandler(pool, practiceRepo, questionRepo, mistakeRepo, xpService, referralService, log),
+		mockHandler:         mocks.NewHandler(pool, mockRepo, questionRepo, examRepo, xpService, billingService, referralService, log),
 		mistakeHandler:      mistakes.NewHandler(pool, mistakeRepo, xpService, log),
 		evaluationHandler:   evaluations.NewHandler(evaluationService, evaluationRepo, log),
 		aiHandler:           ai.NewHandler(gateway, log),
@@ -98,6 +102,7 @@ func newApp(cfg *config.Config, pool *pgxpool.Pool, log *slog.Logger) *app {
 		leaderboardHandler:  leaderboards.NewHandler(leaderboardRepo, log),
 		notificationHandler: notifications.NewHandler(notificationRepo, log),
 		billingHandler:      billing.NewHandler(pool, planRepo, billingService, log),
+		referralHandler:     referrals.NewHandler(referralService, log),
 		adminHandler:        admin.NewHandler(pool, log),
 	}
 }
@@ -132,6 +137,7 @@ func (a *app) router() http.Handler {
 				Mount("/auth", a.authHandler.Routes())
 			public.Mount("/exams", a.examHandler.Routes())
 			public.Mount("/subscriptions", a.billingHandler.Routes(a.authService.RequireUser))
+			public.Mount("/referrals", a.referralHandler.Routes(a.authService.RequireUser))
 		})
 
 		// Signed in.

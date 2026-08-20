@@ -71,6 +71,22 @@
   border-color: hsl(var(--border));
 }
 
+html {
+  /* The landing page nav jumps to sections on the same page. */
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Anchored sections stop below the sticky nav instead of underneath it. */
+[id] {
+  scroll-margin-top: 6.5rem;
+}
+
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
@@ -100,6 +116,16 @@ h1, h2, h3, h4, h5, h6 {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Horizontal strips that scroll on small screens without showing a scrollbar */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Floating animation */

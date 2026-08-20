@@ -18,7 +18,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prepyo/backend/internal/database"
 	"github.com/prepyo/backend/internal/models"
+	"github.com/prepyo/backend/internal/referrals"
 	"github.com/prepyo/backend/internal/users"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -32,28 +34,37 @@ var (
 // offline cracking expensive, fast enough for a login request.
 const bcryptCost = 12
 
-type Service struct {
-	users    *users.Repository
-	sessions *sessionRepository
-	ttl      time.Duration
-	log      *slog.Logger
+type ReferralsService interface {
+	LinkReferralOnRegister(ctx context.Context, db database.DB, refereeID, code string) (*models.Referral, error)
 }
 
-func NewService(db *pgxpool.Pool, userRepo *users.Repository, ttl time.Duration, log *slog.Logger) *Service {
+type Service struct {
+	db        *pgxpool.Pool
+	users     *users.Repository
+	referrals ReferralsService
+	sessions  *sessionRepository
+	ttl       time.Duration
+	log       *slog.Logger
+}
+
+func NewService(db *pgxpool.Pool, userRepo *users.Repository, referrals ReferralsService, ttl time.Duration, log *slog.Logger) *Service {
 	return &Service{
-		users:    userRepo,
-		sessions: &sessionRepository{db: db},
-		ttl:      ttl,
-		log:      log,
+		db:        db,
+		users:     userRepo,
+		referrals: referrals,
+		sessions:  &sessionRepository{db: db},
+		ttl:       ttl,
+		log:       log,
 	}
 }
 
 type RegisterParams struct {
-	Email       string
-	Password    string
-	Name        string
-	NepalRegion string
-	Timezone    string
+	Email        string
+	Password     string
+	Name         string
+	NepalRegion  string
+	Timezone     string
+	ReferralCode string
 }
 
 // Register creates an account and returns it with a fresh session token.
@@ -72,15 +83,43 @@ func (s *Service) Register(ctx context.Context, p RegisterParams) (models.User, 
 		zone = "Asia/Kathmandu"
 	}
 
-	user, err := s.users.Create(ctx, users.CreateParams{
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return models.User{}, "", fmt.Errorf("begin register tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Generate a unique referral code for this new user
+	myReferralCode, err := referrals.GenerateCode()
+	if err != nil {
+		return models.User{}, "", fmt.Errorf("generate referral code: %w", err)
+	}
+
+	user, err := s.users.CreateTx(ctx, tx, users.CreateParams{
 		Email:        strings.ToLower(strings.TrimSpace(p.Email)),
 		PasswordHash: string(hash),
 		Name:         strings.TrimSpace(p.Name),
 		NepalRegion:  region,
 		Timezone:     zone,
+		ReferralCode: myReferralCode,
 	})
 	if err != nil {
 		return models.User{}, "", err
+	}
+
+	// If a referral code was provided, link the pending referral
+	if s.referrals != nil && strings.TrimSpace(p.ReferralCode) != "" {
+		if _, err := s.referrals.LinkReferralOnRegister(ctx, tx, user.ID, p.ReferralCode); err != nil {
+			// If self referral or invalid code, fail registration or log
+			s.log.Warn("referral linking notice during registration", "error", err, "code", p.ReferralCode)
+			if errors.Is(err, users.ErrNotFound) || errors.Is(err, errors.New("cannot refer yourself")) {
+				return models.User{}, "", err
+			}
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return models.User{}, "", fmt.Errorf("commit register tx: %w", err)
 	}
 
 	token, err := s.startSession(ctx, user.ID)

@@ -1,12 +1,14 @@
 package mocks
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prepyo/backend/internal/billing"
 	"github.com/prepyo/backend/internal/exams"
 	"github.com/prepyo/backend/internal/gamification"
 	"github.com/prepyo/backend/internal/models"
@@ -16,12 +18,18 @@ import (
 	"github.com/prepyo/backend/pkg/httpx"
 )
 
+type ReferralsService interface {
+	QualifyReferral(ctx context.Context, refereeID string) error
+}
+
 type Handler struct {
 	db        *pgxpool.Pool
 	repo      *Repository
 	questions *questions.Repository
 	exams     *exams.Repository
 	xp        *gamification.Service
+	billing   *billing.Service
+	referrals ReferralsService
 	log       *slog.Logger
 }
 
@@ -31,9 +39,20 @@ func NewHandler(
 	questionRepo *questions.Repository,
 	examRepo *exams.Repository,
 	xp *gamification.Service,
+	billing *billing.Service,
+	referrals ReferralsService,
 	log *slog.Logger,
 ) *Handler {
-	return &Handler{db: db, repo: repo, questions: questionRepo, exams: examRepo, xp: xp, log: log}
+	return &Handler{
+		db:        db,
+		repo:      repo,
+		questions: questionRepo,
+		exams:     examRepo,
+		xp:        xp,
+		billing:   billing,
+		referrals: referrals,
+		log:       log,
+	}
 }
 
 func (h *Handler) Routes() chi.Router {
@@ -150,6 +169,19 @@ func (h *Handler) submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Full mock exams consume entitlement; check plan quota and bonus mock tests
+	if !mock.IsDiagnostic && h.billing != nil {
+		if _, err := h.billing.CheckMockAllowance(ctx, h.db, user); err != nil {
+			if errors.Is(err, billing.ErrMockLimitReached) {
+				httpx.Error(w, http.StatusForbidden, httpx.CodeLimitReached,
+					"You have used all mock tests included in your plan. Upgrade or refer friends to unlock more.")
+				return
+			}
+			httpx.Internal(w, h.log, "mocks.submit.checkAllowance", err)
+			return
+		}
+	}
+
 	scale := scoring.Scale{Min: version.MinScore, Max: version.MaxScore, Step: version.ScoreStep}
 	overall := scale.EstimateFromAccuracy(graded.accuracy())
 
@@ -204,6 +236,13 @@ func (h *Handler) submit(w http.ResponseWriter, r *http.Request) {
 	if err := tx.Commit(ctx); err != nil {
 		httpx.Internal(w, h.log, "mocks.submit.commit", err)
 		return
+	}
+
+	// If this was a diagnostic test, qualify pending referral
+	if mock.IsDiagnostic && h.referrals != nil {
+		if err := h.referrals.QualifyReferral(ctx, user.ID); err != nil {
+			h.log.Error("referral qualification failed for diagnostic", "error", err, "userId", user.ID)
+		}
 	}
 
 	httpx.JSON(w, http.StatusCreated, map[string]any{
