@@ -271,10 +271,14 @@ export default function AppSidebar({
   const getSectionFromPathname = (path: string): PrimarySectionId => {
     if (path.startsWith('/practice')) return 'practice';
     if (path.startsWith('/mocks') || path.startsWith('/diagnostic')) return 'mock';
-    if (path.startsWith('/evaluations')) return 'history';
-    if (path === '/mistakes') return 'study';
-    if (path === '/leaderboard') return 'history';
-    if (path === '/profile' || path === '/subscription' || path === '/admin') return 'account';
+    if (path.startsWith('/evaluations')) return 'aicoach';
+    if (path === '/mistakes' || path === '/leaderboard') return 'study';
+    if (
+      path === '/profile' ||
+      path === '/subscription' ||
+      path === '/referrals' ||
+      path === '/admin'
+    ) return 'account';
     return 'dashboard';
   };
 
@@ -437,7 +441,7 @@ export default function AppSidebar({
           badge: '15 Min',
         },
         {
-          href: '/evaluations',
+          href: '/mocks?tab=reports',
           label: 'Mock Score Reports',
           icon: FileText,
           sublabel: 'Review previous exam scores',
@@ -492,7 +496,14 @@ export default function AppSidebar({
           label: 'Subscriptions (NPR)',
           icon: CreditCard,
           sublabel: 'eSewa, Khalti & ConnectIPS',
-          badge: user?.subscriptionTier === 'elite' ? 'ELITE' : user?.subscriptionTier === 'pro' ? 'PRO' : 'FREE',
+          badge: user?.subscriptionTier === 'elite' ? 'ELITE' : user?.subscriptionTier === 'pro' ? 'PRO' : user?.subscriptionTier === 'weekly' ? 'WEEKLY' : 'FREE',
+        },
+        {
+          href: '/referrals',
+          label: 'Refer & Earn Rewards',
+          icon: Award,
+          sublabel: 'Invite friends for XP & Free Mocks',
+          badge: '+200 XP',
         },
         {
           href: '/admin',
@@ -508,13 +519,23 @@ export default function AppSidebar({
 
   const isItemActive = (item: SecondaryNavItem) => {
     if (!item.href) return false;
-    const itemSkill = item.href.includes('skill=')
-      ? item.href.split('skill=')[1]?.split('&')[0]
-      : null;
 
-    if (itemSkill) {
+    if (item.href.includes('skill=')) {
+      const itemSkill = item.href.split('skill=')[1]?.split('&')[0];
       return pathname === '/practice' && currentSkill === itemSkill;
     }
+
+    if (item.href.includes('tab=')) {
+      const itemTab = item.href.split('tab=')[1]?.split('&')[0];
+      const currentTab = searchParams.get('tab') || 'catalog';
+      return pathname === item.href.split('?')[0] && currentTab === itemTab;
+    }
+
+    if (item.href === '/mocks') {
+      const currentTab = searchParams.get('tab') || 'catalog';
+      return pathname === '/mocks' && currentTab === 'catalog';
+    }
+
     return pathname === item.href;
   };
 

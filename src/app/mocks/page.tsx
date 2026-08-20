@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import {
   Clock,
@@ -10,7 +11,13 @@ import {
   Sparkles,
   RefreshCw,
   Flag,
-  RotateCcw
+  RotateCcw,
+  FileText,
+  TrendingUp,
+  BarChart3,
+  Calendar,
+  ChevronRight,
+  Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,8 +25,15 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { MockExamBlueprint, MockAttemptResult } from '@/lib/types';
 
-export default function MocksPage() {
+function MocksContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { activeExam, awardLocalXP } = useApp();
+  const isPTE = activeExam === 'PTE';
+
+  const tabParam = searchParams.get('tab');
+  const activeTab = tabParam === 'reports' ? 'reports' : 'catalog';
+
   const [mocks, setMocks] = useState<MockExamBlueprint[]>([]);
   const [pastAttempts, setPastAttempts] = useState<MockAttemptResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,8 +121,6 @@ export default function MocksPage() {
     const s = secs % 60;
     return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
-
-  const isPTE = activeExam === 'PTE';
 
   return (
     <div className="space-y-6">
@@ -242,7 +254,7 @@ export default function MocksPage() {
         </div>
       )}
 
-      {/* Score Report */}
+      {/* Score Report Full View */}
       {attemptReport && (
         <Card className="border-primary/40 p-6 sm:p-8 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
@@ -252,7 +264,7 @@ export default function MocksPage() {
                 <h2 className="font-display text-2xl font-bold text-foreground">Simulation Score Report</h2>
               </div>
               <p className="text-xs text-muted-foreground">
-                Completed on {new Date(attemptReport.completedAt).toLocaleDateString()}
+                Completed on {new Date(attemptReport.completedAt).toLocaleDateString()} • {attemptReport.exam} Full Test
               </p>
             </div>
             <Button
@@ -262,7 +274,7 @@ export default function MocksPage() {
               className="gap-1.5 font-bold"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Back to Catalog</span>
+              <span>Back to Mock Center</span>
             </Button>
           </div>
 
@@ -278,33 +290,149 @@ export default function MocksPage() {
             <Card className="bg-background p-5 text-center space-y-1">
               <span className="text-xs font-bold text-muted-foreground uppercase">Target Gap</span>
               <div className="font-display text-4xl font-black text-amber-400">
-                {attemptReport.targetGap} <span className="text-xs font-bold text-muted-foreground">{isPTE ? 'pts' : 'Band'}</span>
+                {attemptReport.targetGap || 0} <span className="text-xs font-bold text-muted-foreground">{isPTE ? 'pts' : 'Band'}</span>
               </div>
               <p className="text-[10px] text-muted-foreground">Points to official goal</p>
             </Card>
 
             <Card className="bg-background p-5 text-center space-y-1">
               <span className="text-xs font-bold text-muted-foreground uppercase">Readiness Boost</span>
-              <div className="font-display text-4xl font-black text-primary">+{attemptReport.readinessImpact}%</div>
+              <div className="font-display text-4xl font-black text-primary">+{attemptReport.readinessImpact || 5}%</div>
               <p className="text-[10px] text-muted-foreground">Profile updated</p>
             </Card>
           </div>
+
+          {/* Skill Breakdown */}
+          {attemptReport.skillScores && (
+            <div className="space-y-3 pt-2">
+              <h3 className="font-display text-sm font-bold text-foreground">Communicative Skills Breakdown</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {Object.entries(attemptReport.skillScores).map(([skill, score]) => (
+                  <div key={skill} className="p-3.5 rounded-xl bg-card border border-border text-center space-y-1">
+                    <span className="text-xs font-bold text-muted-foreground uppercase capitalize">{skill}</span>
+                    <div className="font-display text-xl font-black text-foreground">{score}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </Card>
       )}
 
-      {/* Catalog */}
+      {/* Main Hub: Dual Tab Navigation (Catalog vs Past Score Reports) */}
       {!activeMock && !attemptReport && (
         <div className="space-y-6">
-          <div>
-            <h1 className="font-display text-2xl font-bold text-foreground">{activeExam} Mock Exam Center</h1>
-            <p className="text-xs text-muted-foreground">Full-length simulations under real exam conditions</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="font-display text-2xl font-bold text-foreground">{activeExam} Mock Exam Center</h1>
+              <p className="text-xs text-muted-foreground">Full-length simulations under real exam conditions with instant rubric scorecards</p>
+            </div>
+
+            {/* Tab Buttons */}
+            <div className="flex items-center bg-card p-1 rounded-xl border border-border shrink-0">
+              <button
+                type="button"
+                onClick={() => router.push('/mocks?tab=catalog')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeTab === 'catalog'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Award className="w-3.5 h-3.5" />
+                <span>Exam Catalog</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => router.push('/mocks?tab=reports')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeTab === 'reports'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Score Reports</span>
+                {pastAttempts.length > 0 && (
+                  <span className="text-[10px] bg-primary-foreground/20 text-white px-1.5 py-0.2 rounded-full font-mono">
+                    {pastAttempts.length}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
           {loading ? (
             <div className="text-center py-16 bg-card rounded-2xl border border-border">
               <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
             </div>
+          ) : activeTab === 'reports' ? (
+            /* TAB 2: SCORE REPORTS VIEW */
+            <div className="space-y-4">
+              {pastAttempts.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {pastAttempts.map((attempt, idx) => (
+                    <Card key={attempt.id || idx} className="p-5 border-border hover:border-primary/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="indigo">{attempt.exam}</Badge>
+                          <span className="text-xs font-bold text-foreground">
+                            {attempt.title || `${attempt.exam} Realistic Mock Attempt #${pastAttempts.length - idx}`}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-3">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-muted-foreground" />
+                            {new Date(attempt.completedAt).toLocaleDateString()}
+                          </span>
+                          <span>•</span>
+                          <span>Duration: {Math.round(attempt.durationSeconds / 60)} mins</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <div className="text-[11px] font-bold text-muted-foreground uppercase">Score</div>
+                          <div className="font-display text-2xl font-black text-foreground">
+                            {attempt.userScore} <span className="text-xs font-bold text-muted-foreground">/ {isPTE ? '90' : '9.0'}</span>
+                          </div>
+                        </div>
+
+                        <Button
+                          size="sm"
+                          onClick={() => setAttemptReport(attempt)}
+                          className="font-bold text-xs gap-1.5 shadow-sm"
+                        >
+                          <span>Review Scorecard</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card className="text-center py-16 p-6 border-dashed border-border space-y-3">
+                  <FileText className="w-10 h-10 text-muted-foreground mx-auto opacity-50" />
+                  <div className="space-y-1">
+                    <h3 className="font-display text-base font-bold text-foreground">No score reports generated yet</h3>
+                    <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                      Complete your first full mock test simulation to receive your detailed section-by-section scorecard and predicted test band.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => router.push('/mocks?tab=catalog')}
+                    size="sm"
+                    className="font-bold text-xs gap-1.5 mt-2"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-white" />
+                    <span>Browse Exam Catalog</span>
+                  </Button>
+                </Card>
+              )}
+            </div>
           ) : (
+            /* TAB 1: MOCK EXAM CATALOG VIEW */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {mocks.map(mock => (
                 <Card key={mock.id} className="p-6 flex flex-col justify-between space-y-4 hover:border-primary/40 transition-all">
@@ -327,5 +455,13 @@ export default function MocksPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function MocksPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background text-foreground">Loading mock center...</div>}>
+      <MocksContent />
+    </Suspense>
   );
 }
