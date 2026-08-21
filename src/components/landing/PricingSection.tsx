@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { CheckCircle2, CreditCard, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SubscriptionPlan } from '@/lib/types';
+import { api } from '@/lib/api';
 import SectionHeading from './SectionHeading';
 
 /**
@@ -21,16 +22,14 @@ export default function PricingSection() {
   useEffect(() => {
     let active = true;
 
-    fetch('/api/v1/subscriptions')
-      .then(res => res.json())
+    // The public plans endpoint — /subscriptions on its own is the signed-in
+    // learner's own subscription state.
+    api
+      .get<{ plans: SubscriptionPlan[] }>('/subscriptions/plans')
       .then(data => {
         if (!active) return;
-        if (data.success && Array.isArray(data.plans)) {
-          setPlans(data.plans);
-          setStatus('ready');
-        } else {
-          setStatus('failed');
-        }
+        setPlans(data.plans);
+        setStatus('ready');
       })
       .catch(() => {
         if (active) setStatus('failed');
@@ -70,10 +69,10 @@ export default function PricingSection() {
               <div
                 key={plan.id}
                 className={`relative rounded-2xl border bg-card p-6 space-y-5 transition-all hover:-translate-y-1 duration-200 ${
-                  plan.popular ? 'border-primary/60 shadow-card lg:-mt-3 lg:pb-8' : 'border-border'
+                  plan.isPopular ? 'border-primary/60 shadow-card lg:-mt-3 lg:pb-8' : 'border-border'
                 }`}
               >
-                {plan.popular && (
+                {plan.isPopular && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-0.5 text-[9px] font-black uppercase tracking-wider text-white shadow-md">
                     Most popular
                   </span>
@@ -130,7 +129,7 @@ export default function PricingSection() {
 
                 <Button
                   asChild
-                  variant={plan.popular ? 'default' : 'outline'}
+                  variant={plan.isPopular ? 'default' : 'outline'}
                   className="w-full rounded-xl font-bold text-xs h-10"
                 >
                   {/* Free tier starts straight away; paid plans go to checkout. */}

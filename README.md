@@ -1,87 +1,122 @@
-# 🇳🇵 Prepyo — Local Host Setup & Running Guide
+# 🇳🇵 Prepyo — Local Setup & Running Guide
 
 Prepyo is an AI-powered exam preparation platform for **PTE Academic** and **IELTS**, tailored for Nepali and global study-abroad candidates.
 
 ---
 
-## 🚀 Quick Start (Running on Localhost)
+## Architecture in one paragraph
 
-### Option 1: Using npm (Standard)
+There are two processes. The **Go API** (`backend/`) owns everything: accounts, sessions, the question bank, grading, XP, referrals and billing, all persisted in **PostgreSQL**. The **Next.js app** (`src/`) is the interface — it holds no data of its own and every `/api/v1/*` request it makes is proxied straight to the Go API by a rewrite in `next.config.js`. Proxying rather than calling `:8080` from the browser keeps the session cookie same-origin, so it works without CORS credentials.
+
+Both processes must be running for the app to work. There is no offline or mock mode: if the API is down, the UI says so rather than showing placeholder data.
+
+---
+
+## 🚀 Quick Start
+
+You need **Node 18+**, **Go 1.22+** and a running **PostgreSQL**.
+
+### 1. Configure the database
+
+`backend/.env` holds the API's configuration. The important line is:
+
+```env
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/prepyo?sslmode=disable
+```
+
+Create the database once:
+
 ```bash
-# 1. Install dependencies (already installed)
-npm install
+createdb -U postgres prepyo
+```
 
-# 2. Run the Next.js local server
+Schema migrations and the seed content (exam versions, questions, mocks, plans, daily missions) run **automatically** the first time the API starts.
+
+### 2. Start the API
+
+```bash
+npm run dev:api
+```
+
+Serves on **http://localhost:8080**. Check it with `curl http://localhost:8080/health`.
+
+### 3. Start the web app
+
+```bash
 npm run dev
 ```
 
-Your app will be accessible at: **[http://localhost:3000](http://localhost:3000)**
-
-### Option 2: Using the Helper Script (Windows PowerShell)
-```powershell
-.\run_local.ps1
-```
-
-### Option 3: Using the Windows Batch Launcher
-Double-click `start.bat` or run:
-```cmd
-start.bat
-```
+Open **http://localhost:3000** and create an account.
 
 ---
 
 ## ⚙️ Environment Configuration
 
-Configuration files have been initialized for you:
+| File | Purpose |
+| :--- | :--- |
+| `backend/.env` | Go API: database URL, session settings, AI keys. **Required.** |
+| `.env.local` | Next.js: `BACKEND_URL` if the API is not on `localhost:8080`. |
 
-| File | Purpose | Location |
-| :--- | :--- | :--- |
-| `.env.local` | Next.js Frontend & In-App API routes | Root (`./.env.local`) |
-| `.env.example` | Template for Frontend configuration | Root (`./.env.example`) |
-| `backend/.env` | Go API Backend configuration (optional) | `backend/.env` |
+### AI features
 
-### Environment Variables (`.env.local`)
+Writing evaluation (`/evaluations`) and the AI coach need an OpenRouter key in `backend/.env`:
+
 ```env
-PORT=3000
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+OPENROUTER_API_KEY=sk-or-...
+```
 
-# Optional: Add live AI keys if you want to use OpenRouter/Gemini LLMs.
-# If left blank, Prepyo uses its built-in intelligent simulated evaluation engine.
-OPENROUTER_API_KEY=
-GEMINI_API_KEY=
+Without it those two endpoints return **503** and the UI says the evaluator is unavailable. They never fall back to a canned score — a made-up band would be worse than no band.
+
+---
+
+## Authentication
+
+Registration and login are real: passwords are hashed with **bcrypt** (cost 12) and sessions are **opaque random tokens** stored in the `sessions` table, sent as an `HttpOnly`, `SameSite=Lax` cookie. Because sessions are rows rather than JWTs, revoking one is a `DELETE`.
+
+- Passwords must be at least **10 characters** (enforced server-side).
+- `src/middleware.ts` bounces signed-out visitors off app routes before they render.
+- `RequireAuth` then catches the case middleware cannot see: a cookie whose session has expired or been revoked.
+- Google / Apple / Facebook buttons are present but **not connected to any provider**. They say so when clicked rather than signing you into a placeholder account.
+
+---
+
+## What is not built yet
+
+Stated plainly so nothing on screen is mistaken for a working feature:
+
+- **Speaking practice** has no audio capture or pronunciation model, so it is not scored. The practice page says this instead of showing a recorder that goes nowhere.
+- **Speaking and writing inside mock exams** are recorded with the attempt but excluded from the overall estimate. The score report reports how many questions it actually covers.
+- **Checkout** records a subscription against your account but takes no payment — no gateway is connected. The dialog labels it a test checkout.
+- **Question authoring** has no write API; the bank is managed through `backend/migrations`.
+
+---
+
+## 🧪 Verification
+
+```bash
+npm run typecheck          # TypeScript
+npm run build              # Production build
+cd backend && go test ./...  # Backend tests
 ```
 
 ---
 
-## 🧪 Verification & Testing
-
-To verify all 19 frontend pages and API endpoints:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\test_routes.ps1
-```
-
-**Tested Endpoints Include:**
-- 🏠 **Pages:** `/`, `/dashboard`, `/practice`, `/mocks`, `/evaluations`, `/mistakes`, `/leaderboard`, `/subscription`, `/profile`, `/admin`
-- 📡 **REST APIs:** `/api/v1/auth`, `/api/v1/exams`, `/api/v1/questions`, `/api/v1/mocks`, `/api/v1/leaderboards`, `/api/v1/subscriptions`, `/api/v1/notifications`, `/api/v1/practice`, `/api/v1/ai/tutor`
-
----
-
-## 📦 Project Architecture
+## 📦 Project Layout
 
 ```text
 prepyo/
 ├── src/
-│   ├── app/                 # Next.js App Router (Pages & /api/v1 endpoints)
-│   ├── components/          # Reusable UI components (AI Drawer, Audio, etc.)
-│   ├── context/             # Global App State (User, active exam, notifications)
-│   └── lib/                 # Core logic
-│       ├── ai-gateway/      # OpenRouter & simulated AI evaluation engine
-│       ├── db/              # In-memory database & question bank
-│       └── exam-engine/     # PTE/IELTS deterministic scoring rules
-├── backend/                 # Standalone Go backend service (optional)
-├── docker-compose.yml       # Containerized Postgres, Redis & Go backend
-├── run_local.ps1            # Local startup PowerShell script
-├── start.bat                # 1-click Windows starter
-└── test_routes.ps1          # Automated API test suite
+│   ├── app/                 # Next.js App Router pages (no API routes — see backend/)
+│   ├── components/          # UI components
+│   ├── context/             # AppContext: session, notifications, theme
+│   ├── lib/
+│   │   ├── api.ts           # The only place the frontend talks to the API
+│   │   └── types/           # Mirrors backend/internal/models
+│   └── middleware.ts        # Route protection
+├── backend/
+│   ├── cmd/api/             # Server entrypoint and wiring
+│   ├── internal/            # One package per domain (auth, practice, mocks, …)
+│   └── migrations/          # Schema + seed content, applied at startup
+├── docker-compose.yml       # Postgres, Redis and the Go backend
+└── next.config.js           # /api/v1/* → Go API proxy
 ```

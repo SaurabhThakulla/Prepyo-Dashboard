@@ -1,72 +1,119 @@
-// Prepyo Core TypeScript Domain Types
+// Prepyo domain types.
+//
+// These mirror backend/internal/models/models.go. The API is the only source of
+// this data, so anything optional here is optional there too: a null score or an
+// empty list means the learner has not generated that data yet, and the UI says
+// so rather than substituting a number.
 
 export type ExamType = 'PTE' | 'IELTS';
 export type SkillType = 'speaking' | 'writing' | 'reading' | 'listening';
-export type IELTSType = 'academic' | 'general';
 
 export type SubscriptionTier = 'free' | 'weekly' | 'pro' | 'elite';
 /** Tiers that can actually be bought — 'free' is the default, not a purchase. */
 export type PaidTier = Exclude<SubscriptionTier, 'free'>;
 
+export const ALL_SKILLS: SkillType[] = ['speaking', 'writing', 'reading', 'listening'];
+
+/** Width of one level in XP. Levels start at 1. Matches models.XPPerLevel. */
+export const XP_PER_LEVEL = 400;
+
+// ---------------------------------------------------------------------------
+// User
+// ---------------------------------------------------------------------------
+
+/**
+ * The learner's current standing. `value` is null when there is not enough
+ * evidence to estimate a score, which the UI must render as "not enough data".
+ */
+export interface ScoreEstimate {
+  value: number | null;
+  confidence: 'low' | 'medium' | 'high';
+  /** Number of attempts behind the estimate. */
+  basedOn: number;
+  targetScore: number | null;
+  targetGap: number | null;
+  /** Percent of target reached, or null when there is no estimate yet. */
+  readiness: number | null;
+  updatedAt: string;
+}
+
+export interface SubscriptionState {
+  planId: SubscriptionTier;
+  planName: string;
+  validUntil?: string;
+  isActive: boolean;
+  dailyEvaluationsUsed: number;
+  dailyEvaluationsLimit: number;
+  mockTestsIncluded: number;
+  bonusMockTests: number;
+  totalMockTestsAllowed: number;
+  mockTestsUsed: number;
+  bonusDays: number;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
   name: string;
+  role: string;
   targetExam: ExamType;
-  ieltsType?: IELTSType;
-  targetScore: number; // e.g. 79 for PTE, 7.5 for IELTS
-  estimatedScore: number; // e.g. 68 for PTE, 6.5 for IELTS
-  readinessPercentage: number;
+  targetScore: number | null;
   examDate?: string;
-  nepalRegion: string; // e.g. 'Kathmandu', 'Pokhara', 'Chitwan', 'Lalitpur', 'Butwal'
+  nepalRegion: string;
   xp: number;
-  level: number;
   streakDays: number;
-  streakFrozen: boolean;
-  streakLastActiveDate: string;
-  subscriptionTier: SubscriptionTier;
-  subscriptionValidUntil?: string;
-  dailyEvaluationsUsed: number;
-  dailyEvaluationsLimit: number;
-  referralCode?: string;
-  bonusMockTests?: number;
-  bonusProDays?: number;
+  timezone: string;
+  referralCode: string;
+  bonusMockTests: number;
+  bonusProDays: number;
   createdAt: string;
+
+  // Derived by the server from XP.
+  level: number;
+  xpToNextLevel: number;
+
+  // Only present on endpoints that ask for them.
+  estimate?: ScoreEstimate;
+  subscription?: SubscriptionState;
 }
 
-export interface SkillScore {
-  skill: SkillType;
-  currentEstimate: number;
-  targetScore: number;
-  accuracy: number;
-  questionsAttempted: number;
-  timeSpentSeconds: number;
-  status: 'strong' | 'moderate' | 'weak';
+export function isAdmin(user: UserProfile | null): boolean {
+  return user?.role === 'admin';
 }
 
-export interface DailyMission {
+// ---------------------------------------------------------------------------
+// Exam content
+// ---------------------------------------------------------------------------
+
+export interface ExamVersion {
   id: string;
-  title: string;
+  exam: ExamType;
+  label: string;
   description: string;
-  skill: SkillType;
-  taskType: string;
-  targetCount: number;
-  completedCount: number;
-  xpReward: number;
-  completed: boolean;
+  minScore: number;
+  maxScore: number;
+  scoreStep: number;
+  isCurrent: boolean;
 }
 
 export interface QuestionOption {
   id: string;
   text: string;
-  isCorrect?: boolean;
+}
+
+export interface Blank {
+  id: string;
+  options?: string[];
+  /** Only present on review responses, never while answering. */
+  correctAnswer?: string;
 }
 
 export interface Question {
   id: string;
+  examVersionId: string;
   exam: ExamType;
   skill: SkillType;
-  typeId: string; // e.g. 'read-aloud', 'summarize-written-text', 'ielts-writing-task2'
+  typeId: string;
   typeName: string;
   title: string;
   prompt: string;
@@ -77,67 +124,81 @@ export interface Question {
   prepTimeSeconds?: number;
   timeLimitSeconds: number;
   options?: QuestionOption[];
-  correctAnswers?: string | string[];
-  blanks?: { id: string; options: string[]; correctAnswer: string }[];
-  modelAnswer?: string;
-  explanation?: string;
+  blanks?: Blank[];
   difficulty: 'easy' | 'medium' | 'hard';
   tags: string[];
   points: number;
+
+  // Present only after submission, on review responses.
+  correctAnswers?: string[];
+  modelAnswer?: string;
+  explanation?: string;
 }
 
-export interface UserAnswerSubmission {
-  questionId: string;
-  exam: ExamType;
+export interface MockSection {
+  id: string;
+  name: string;
   skill: SkillType;
-  typeId: string;
+  durationMinutes: number;
+  questionIds: string[];
+}
+
+export interface Mock {
+  id: string;
+  examVersionId: string;
+  exam: ExamType;
+  title: string;
+  description: string;
+  totalDurationMinutes: number;
+  totalQuestions: number;
+  isDiagnostic: boolean;
+  sections: MockSection[];
+}
+
+// ---------------------------------------------------------------------------
+// Learner activity
+// ---------------------------------------------------------------------------
+
+/**
+ * One answer as sent to the server. Note what is absent: no score and no
+ * correctness flag — the server decides both.
+ */
+export interface AnswerSubmission {
+  questionId: string;
   textResponse?: string;
   selectedOptions?: string[];
   blankResponses?: Record<string, string>;
-  audioBlobUrl?: string;
-  audioDurationSeconds?: number;
-  timeSpentSeconds: number;
+  timeSpentSeconds?: number;
 }
 
-export interface EvaluationCriterion {
-  name: string; // e.g. 'Task Response', 'Fluency', 'Grammar'
-  score: number; // 0-10 or 0-9
-  maxScore: number;
-  feedback: string;
-  status: 'good' | 'average' | 'needs_work';
-}
-
-export interface SentenceFeedback {
-  original: string;
-  correction: string;
-  issueType: 'grammar' | 'vocabulary' | 'cohesion' | 'fluency';
-  explanation: string;
-}
-
-export interface AIEvaluationResult {
+export interface PracticeAttempt {
   id: string;
   questionId: string;
-  exam: ExamType;
-  skill: SkillType;
-  overallScore?: number;
-  estimatedScore: number;
-  overallBandOrPTE?: number;
-  maxScore?: number;
-  scoreConfidence: 'high' | 'medium' | 'low';
-  summary: string;
-  criteria: EvaluationCriterion[];
-  strengths: string[];
-  weaknesses: string[];
-  sentenceFeedback?: SentenceFeedback[] | any[];
-  modelRewrite?: string;
-  vocabularySuggestions?: { original: string; betterAlternative: string; reason: string }[];
-  evaluatedAt?: string;
-  providerModelUsed?: string;
-  tokenCostEstimateNPR?: number;
-  createdAt?: string;
+  examVersionId: string;
+  isCorrect: boolean;
+  score: number;
+  maxScore: number;
+  accuracyPercentage: number;
+  feedback: string;
+  userResponse?: string;
+  timeSpentSeconds: number;
+  createdAt: string;
 }
 
-export interface MistakeItem {
+export interface MockAttempt {
+  id: string;
+  mockId: string;
+  examVersionId: string;
+  exam: ExamType;
+  userScore: number;
+  skillScores: Partial<Record<SkillType, number>>;
+  totalCorrect: number;
+  totalQuestions: number;
+  durationSeconds: number;
+  completedAt: string;
+}
+
+export interface Mistake {
   id: string;
   questionId: string;
   questionTitle: string;
@@ -148,104 +209,130 @@ export interface MistakeItem {
   userResponse: string;
   correctResponse: string;
   explanation: string;
-  errorTag: 'Grammar' | 'Vocabulary' | 'Time Pressure' | 'Collocation' | 'Inference' | 'Spelling' | 'Pronunciation';
+  errorTag: string;
   failedCount: number;
   resolved: boolean;
   lastAttemptedAt: string;
 }
 
-export interface MockExamSection {
-  id: string;
+// ---------------------------------------------------------------------------
+// AI evaluation
+// ---------------------------------------------------------------------------
+
+export interface EvaluationCriterion {
   name: string;
-  skill: SkillType;
-  durationMinutes: number;
-  questionIds: string[];
+  score: number;
+  maxScore: number;
+  feedback: string;
 }
 
-export interface MockExamBlueprint {
+export interface SentenceFeedback {
+  original: string;
+  correction: string;
+  issueType: string;
+  explanation: string;
+}
+
+export interface Evaluation {
   id: string;
+  questionId?: string;
   exam: ExamType;
+  skill: SkillType;
+  evaluationVersion: string;
+  /** Null when the model could not produce a defensible score. */
+  estimatedScore: number | null;
+  scoreConfidence: 'low' | 'medium' | 'high';
+  summary: string;
+  criteria: EvaluationCriterion[];
+  strengths: string[];
+  weaknesses: string[];
+  sentenceFeedback: SentenceFeedback[];
+  modelRewrite?: string;
+  createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Progress, gamification and notifications
+// ---------------------------------------------------------------------------
+
+export interface SkillProgress {
+  skill: SkillType;
+  attempts: number;
+  accuracy: number;
+  estimate: number | null;
+  /** 'no_data' until the learner has attempted something in this skill. */
+  status: 'no_data' | 'weak' | 'moderate' | 'strong';
+}
+
+export interface ProgressSummary {
+  estimate: ScoreEstimate;
+  skills: SkillProgress[];
+}
+
+export interface DailyMission {
+  id: string;
   title: string;
   description: string;
-  totalDurationMinutes: number;
-  totalQuestions: number;
-  sections: MockExamSection[];
-  isDiagnostic?: boolean;
+  skill: SkillType;
+  taskType?: string;
+  targetCount: number;
+  completedCount: number;
+  xpReward: number;
+  completed: boolean;
 }
 
-export interface MockAttemptResult {
-  id: string;
-  mockId: string;
-  exam: ExamType;
-  title?: string;
-  userScore: number; // Estimated PTE overall or IELTS Overall Band
-  maxScore?: number;
-  skillScores: Record<SkillType, number>;
-  enablingSkills?: {
-    grammar: number;
-    vocabulary: number;
-    fluency: number;
-    pronunciation: number;
-    coherence: number;
-  };
-  totalCorrect: number;
-  totalQuestions: number;
-  durationSeconds: number;
-  targetGap?: number;
-  readinessImpact?: number;
-  completedAt: string;
-  sectionBreakdowns?: {
-    sectionName: string;
-    skill: SkillType;
-    score: number;
-    maxScore: number;
-  }[];
+export interface GamificationSummary {
+  xp: number;
+  level: number;
+  xpToNextLevel: number;
+  streakDays: number;
+  dailyMissions: DailyMission[];
 }
-
-export type MockAttempt = MockAttemptResult;
 
 export interface XPTransaction {
   id: string;
   amount: number;
-  reason: string; // e.g., 'Daily Mission Completed', 'PTE Read Aloud Practice', 'Mock Test Completed'
-  timestamp: string;
+  reason: string;
+  createdAt: string;
 }
 
-export interface LeaderboardUser {
+export interface LeaderboardEntry {
   rank: number;
   userId: string;
   name: string;
   nepalRegion: string;
-  avatarUrl?: string;
   exam: ExamType;
   xp: number;
   level: number;
   streakDays: number;
-  estimatedScore: number;
-  tier: 'Diamond' | 'Platinum' | 'Gold' | 'Silver' | 'Bronze';
-}
-
-export interface SubscriptionPlan {
-  id: SubscriptionTier;
-  name: string;
-  priceNPR: number;
-  durationMonths: number;
-  durationDays?: number;
-  bonusDays?: number;
-  features: string[];
-  aiEvaluationsPerDay: number;
-  mockTestsIncluded: number;
-  popular?: boolean;
+  isYou: boolean;
 }
 
 export interface NotificationItem {
   id: string;
   title: string;
   message: string;
-  type: 'streak' | 'mission' | 'evaluation' | 'system' | 'referral';
+  type: string;
   read: boolean;
-  createdAt: string;
   actionUrl?: string;
+  createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Billing and referrals
+// ---------------------------------------------------------------------------
+
+export interface SubscriptionPlan {
+  id: SubscriptionTier;
+  name: string;
+  priceNPR: number;
+  durationMonths: number;
+  durationDays: number;
+  bonusDays: number;
+  features: string[];
+  aiEvaluationsPerDay: number;
+  mockTestsIncluded: number;
+  isPopular: boolean;
 }
 
 export interface ReferralMilestone {
@@ -280,4 +367,11 @@ export interface ReferralOverview {
   stats: ReferralStats;
   milestones: ReferralMilestones;
   recentReferrals: RecentReferralItem[];
+}
+
+export interface Pagination {
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
 }

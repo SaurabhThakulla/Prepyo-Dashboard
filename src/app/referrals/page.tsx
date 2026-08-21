@@ -23,93 +23,35 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { ReferralOverview } from '@/lib/types';
+import { api, errorMessage } from '@/lib/api';
+import { useToast } from '@/components/ui/toast';
 
 export default function ReferralsPage() {
   const { user } = useApp();
+  const toast = useToast();
   const [data, setData] = useState<ReferralOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  const fallbackCode = user?.referralCode || 'PREP-7X9K2M';
-  const referralCode = data?.referralCode || fallbackCode;
-  const shareLink = data?.shareLink || (typeof window !== 'undefined' ? `${window.location.origin}/signup?ref=${referralCode}` : `https://prepyo.com/signup?ref=${referralCode}`);
+  // Every figure here comes from /referrals/me. The learner's own code is the
+  // only thing we can show before it loads, because it is already on the profile.
+  const referralCode = data?.referralCode ?? user?.referralCode ?? '';
+  const shareLink = data?.shareLink ?? '';
 
   useEffect(() => {
-    fetch('/api/v1/referrals/me')
-      .then((res) => res.json())
-      .then((res) => {
-        if (res.success && res.referralCode) {
-          setData(res);
-        } else {
-          // Default data for demo/mock mode
-          setData({
-            referralCode: fallbackCode,
-            shareLink: typeof window !== 'undefined' ? `${window.location.origin}/signup?ref=${fallbackCode}` : `https://prepyo.com/signup?ref=${fallbackCode}`,
-            stats: {
-              totalInvited: 4,
-              pending: 1,
-              completed: 3,
-              totalXpEarned: 600,
-            },
-            milestones: {
-              threeReferrals: {
-                required: 3,
-                current: 3,
-                completed: true,
-              },
-              fiveReferrals: {
-                required: 5,
-                current: 3,
-                completed: false,
-              },
-            },
-            recentReferrals: [
-              {
-                id: '1',
-                friendName: 'R*** S***',
-                status: 'completed',
-                createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-                completedAt: new Date(Date.now() - 86400000).toISOString(),
-              },
-              {
-                id: '2',
-                friendName: 'A*** B***',
-                status: 'completed',
-                createdAt: new Date(Date.now() - 86400000 * 4).toISOString(),
-                completedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-              },
-              {
-                id: '3',
-                friendName: 'P*** T***',
-                status: 'completed',
-                createdAt: new Date(Date.now() - 86400000 * 7).toISOString(),
-                completedAt: new Date(Date.now() - 86400000 * 6).toISOString(),
-              },
-              {
-                id: '4',
-                friendName: 'S*** K***',
-                status: 'pending',
-                createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-              },
-            ],
-          });
-        }
-      })
-      .catch(() => {
-        // Fallback demo state
-        setData({
-          referralCode: fallbackCode,
-          shareLink: `https://prepyo.com/signup?ref=${fallbackCode}`,
-          stats: { totalInvited: 0, pending: 0, completed: 0, totalXpEarned: 0 },
-          milestones: {
-            threeReferrals: { required: 3, current: 0, completed: false },
-            fiveReferrals: { required: 5, current: 0, completed: false },
-          },
-          recentReferrals: [],
-        });
-      })
-      .finally(() => setLoading(false));
-  }, [fallbackCode]);
+    let cancelled = false;
+
+    api
+      .get<ReferralOverview>('/referrals/me')
+      .then(res => !cancelled && setData(res))
+      .catch(err => !cancelled && toast.error('Could not load your referrals', errorMessage(err)))
+      .finally(() => !cancelled && setLoading(false));
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shareLink);

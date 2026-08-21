@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { Bot, Send, X, Sparkles, RefreshCw, Zap, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { api, ApiError, errorMessage } from '@/lib/api';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -58,29 +59,19 @@ export default function AITutorDrawer() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/v1/ai/tutor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: newMessages,
-          contextPrompt: tutorContextPrompt,
-          exam: activeExam,
-        }),
+      // The exam comes from the signed-in account server-side, so it is not
+      // sent here — the endpoint rejects unknown fields.
+      const data = await api.post<{ reply: string }>('/ai/tutor', {
+        messages: newMessages,
+        taskContext: tutorContextPrompt,
       });
-      const data = await res.json();
-      if (data.success && data.reply) {
-        setMessages([...newMessages, { role: 'assistant', content: data.reply }]);
-      } else {
-        setMessages([
-          ...newMessages,
-          { role: 'assistant', content: 'Prepyo AI Coach encountered a temporary glitch. Please try asking again!' },
-        ]);
-      }
+      setMessages([...newMessages, { role: 'assistant', content: data.reply }]);
     } catch (err) {
-      setMessages([
-        ...newMessages,
-        { role: 'assistant', content: 'Connection issue. Please check your internet connection.' },
-      ]);
+      const message =
+        err instanceof ApiError && err.isAIUnavailable
+          ? 'The AI coach is not configured yet, so there is nothing to answer with. Ask your teacher or try again once it is set up.'
+          : errorMessage(err, 'Could not reach the AI coach. Please try again.');
+      setMessages([...newMessages, { role: 'assistant', content: message }]);
     } finally {
       setLoading(false);
     }

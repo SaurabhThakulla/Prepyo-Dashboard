@@ -474,7 +474,6 @@ function AppSidebarContent({
           label: 'Mistake Bank',
           icon: RotateCcw,
           sublabel: 'Retry saved weak questions',
-          count: 3,
         },
         {
           href: '/leaderboard',
@@ -495,28 +494,33 @@ function AppSidebarContent({
           href: '/profile',
           label: 'Profile & Target Score',
           icon: User,
-          sublabel: `${user?.targetExam || 'PTE'} target: ${user?.targetScore || 79}`,
+          sublabel: user?.targetScore != null
+            ? `${user.targetExam} target: ${user.targetScore}`
+            : 'Set your target score',
         },
         {
           href: '/subscription',
           label: 'Subscriptions (NPR)',
           icon: CreditCard,
           sublabel: 'eSewa, Khalti & ConnectIPS',
-          badge: user?.subscriptionTier === 'elite' ? 'ELITE' : user?.subscriptionTier === 'pro' ? 'PRO' : user?.subscriptionTier === 'weekly' ? 'WEEKLY' : 'FREE',
+          badge: user?.subscription?.planId.toUpperCase() ?? 'FREE',
         },
         {
           href: '/referrals',
           label: 'Refer & Earn Rewards',
           icon: Award,
-          sublabel: 'Invite friends for XP & Free Mocks',
-          badge: '+200 XP',
+          sublabel: 'Invite friends for XP & free mocks',
         },
-        {
-          href: '/admin',
-          label: 'Admin CMS',
-          icon: ShieldCheck,
-          sublabel: 'Question bank & observability',
-        },
+        // Admin is only listed for admins; the API returns 403 to everyone else,
+        // so showing it to a learner would just be a dead end.
+        ...(user?.role === 'admin'
+          ? [{
+              href: '/admin',
+              label: 'Admin CMS',
+              icon: ShieldCheck,
+              sublabel: 'Question bank & observability',
+            }]
+          : []),
       ],
     },
   ];
@@ -848,9 +852,9 @@ function AppSidebarContent({
                     <div className="text-xs font-bold text-foreground truncate">{user?.name || 'Learner'}</div>
                     <div className="text-[10px] text-muted-foreground flex items-center gap-1">
                       <Flame className="w-3 h-3 text-amber-500 fill-amber-500" />
-                      <span>{user?.streakDays || 6}d</span>
+                      <span>{user?.streakDays ?? 0}d</span>
                       <span>•</span>
-                      <span>{user?.xp || 1450} XP</span>
+                      <span>{user?.xp ?? 0} XP</span>
                     </div>
                   </div>
                 </div>

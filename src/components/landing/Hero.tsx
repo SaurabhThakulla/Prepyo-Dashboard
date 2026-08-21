@@ -6,11 +6,13 @@ import Image from 'next/image';
 import { Sparkles, ArrowRight, Check, TrendingUp, Users, ShieldCheck, Zap, Bot, Star, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+// Statements about what the product does, not claims about how many people use
+// it. Usage numbers belong here only once they can be read from the database.
 const HIGHLIGHTS = [
-  { icon: Users, iconClass: 'text-primary', label: '10,000+ Nepali Students' },
-  { icon: TrendingUp, iconClass: 'text-amber-500', label: '98% Score Improvement' },
   { icon: Sparkles, iconClass: 'text-purple-400', label: 'Instant AI Evaluation' },
   { icon: ShieldCheck, iconClass: 'text-emerald-500', label: 'Real Exam Rubrics' },
+  { icon: TrendingUp, iconClass: 'text-amber-500', label: 'Score Estimates From Your Work' },
+  { icon: Users, iconClass: 'text-primary', label: 'PTE & IELTS Academic' },
 ];
 
 export default function Hero() {
@@ -103,16 +105,8 @@ export default function Hero() {
             </Button>
           </div>
 
-          {/* Trust rating badge */}
           <div className="pt-2 flex items-center justify-center lg:justify-start gap-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-0.5 text-amber-400">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-amber-400" />
-              ))}
-            </div>
-            <span className="font-semibold text-foreground">4.9/5 Rating</span>
-            <span className="text-border">|</span>
-            <span>Accepted for Australia, UK & Canada Visas</span>
+            <span>Practice for PTE Academic and IELTS Academic, priced in NPR.</span>
           </div>
         </div>
 

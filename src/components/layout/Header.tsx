@@ -47,6 +47,7 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
   };
 
   const title = getPageTitle(pathname || '');
+  const planId = user?.subscription?.planId;
 
   return (
     <>
@@ -106,13 +107,13 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
           {/* Streak Flame Badge */}
           <div className="flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1.5 rounded-xl text-xs font-bold text-amber-600 dark:text-amber-400" title="Daily Streak">
             <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-            <span>{user?.streakDays || 6}d</span>
+            <span>{user?.streakDays ?? 0}d</span>
           </div>
 
           {/* XP Badge */}
           <div className="hidden sm:flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1.5 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-400" title="XP Points">
             <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>{user?.xp || 1450} XP</span>
+            <span>{user?.xp ?? 0} XP</span>
           </div>
 
           {/* Notifications */}
@@ -134,13 +135,13 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
           {/* Pro / Subscription Button */}
           <Button
             asChild
-            variant={user?.subscriptionTier === 'elite' ? 'nepal' : user?.subscriptionTier === 'pro' ? 'default' : 'outline'}
+            variant={planId === 'elite' ? 'nepal' : planId === 'pro' ? 'default' : 'outline'}
             size="sm"
             className="hidden md:inline-flex text-xs font-bold"
           >
             <Link href="/subscription">
               <ShieldCheck className="w-3.5 h-3.5 mr-1" />
-              <span>{user?.subscriptionTier === 'elite' ? 'ELITE' : user?.subscriptionTier === 'pro' ? 'PRO' : 'UPGRADE'}</span>
+              <span>{planId && planId !== 'free' ? planId.toUpperCase() : 'UPGRADE'}</span>
             </Link>
           </Button>
         </div>

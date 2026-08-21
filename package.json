@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:api": "cd backend && go run ./cmd/api",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
