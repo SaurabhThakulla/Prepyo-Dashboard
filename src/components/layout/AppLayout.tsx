@@ -12,8 +12,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSecondaryOpen, setIsSecondaryOpen] = useState(true);
 
-  // "/" only ever redirects to /login, so it gets the bare shell rather than
-  // the app chrome it would otherwise flash before the redirect lands.
+  // The sign-in screen is its own full-page layout, so these routes get the
+  // bare shell rather than the sidebar and header. "/" is one of them: it
+  // renders the sign-in form, not a page of its own.
   const isAuthPage = pathname === '/' || pathname === '/login' || pathname === '/signup';
 
   if (isAuthPage) {

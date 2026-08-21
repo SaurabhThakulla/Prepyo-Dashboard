@@ -1,13 +1,14 @@
-import { redirect } from 'next/navigation';
+import AuthScreen from '@/components/auth/AuthScreen';
 
 /**
- * The app has no page of its own at "/".
+ * "/" is the sign-in screen.
  *
- * The marketing site that used to live here is a separate Astro project
- * (prepyo-landing) deployed at the root domain, so this app only serves the
- * signed-in product. Anyone landing here goes to sign-in; middleware sends
- * them straight on to /dashboard if they already have a session.
+ * This app only serves the signed-in product — the marketing site that used to
+ * live here is a separate Astro project (prepyo-landing). Rendering the form
+ * here rather than redirecting to /login means the front door costs one request
+ * instead of two; middleware sends anyone who already has a session on to
+ * /dashboard before this renders.
  */
 export default function RootPage() {
-  redirect('/login');
+  return <AuthScreen mode="login" />;
 }

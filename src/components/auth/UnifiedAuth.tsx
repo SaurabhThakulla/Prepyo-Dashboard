@@ -190,8 +190,10 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
         <div className="relative z-10 space-y-5">
           {/* Brand Header */}
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-indigo-600 to-violet-700 text-white font-black text-lg shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
+            {/* Not a link: this screen is "/", so there is nowhere for the
+                logo to go. The marketing site is a separate deployment. */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-indigo-600 to-violet-700 text-white font-black text-lg shadow-lg shadow-primary/30">
                 P
               </div>
               <div className="flex items-center gap-2">
@@ -202,7 +204,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
                   NP
                 </span>
               </div>
-            </Link>
+            </div>
 
             <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20 text-xs font-semibold text-slate-200">
               <span className="text-amber-400">★</span>
@@ -326,9 +328,6 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
               {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
             </Button>
 
-            <Button asChild variant="ghost" size="sm" className="rounded-xl text-xs font-semibold h-8 hover:bg-muted">
-              <Link href="/">Back to Home</Link>
-            </Button>
           </div>
         </div>
 

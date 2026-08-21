@@ -1,18 +1,10 @@
-'use client';
+import AuthScreen from '@/components/auth/AuthScreen';
 
-import React, { Suspense } from 'react';
-import UnifiedAuth from '@/components/auth/UnifiedAuth';
-
+/**
+ * Kept alongside "/" because things link here by name: the landing site's
+ * "Login" button, and the `?next=` redirect middleware issues when a signed-out
+ * visitor asks for an app page.
+ */
 export default function LoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen w-full flex items-center justify-center bg-background text-muted-foreground text-sm font-medium">
-          Loading Prepyo...
-        </div>
-      }
-    >
-      <UnifiedAuth initialMode="login" />
-    </Suspense>
-  );
+  return <AuthScreen mode="login" />;
 }
