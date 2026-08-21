@@ -1,33 +1,13 @@
-import React from 'react';
-import Hero from '@/components/landing/Hero';
-import ExamsSection from '@/components/landing/ExamsSection';
-import FeaturesSection from '@/components/landing/FeaturesSection';
-import HowItWorksSection from '@/components/landing/HowItWorksSection';
-import PricingSection from '@/components/landing/PricingSection';
-import TrustBadges from '@/components/landing/TrustBadges';
-import InstitutionsSection from '@/components/landing/InstitutionsSection';
-import FAQSection from '@/components/landing/FAQSection';
-import FinalCTA from '@/components/landing/FinalCTA';
+import { redirect } from 'next/navigation';
 
 /**
- * The public landing page for Prepyo.
+ * The app has no page of its own at "/".
  *
- * Top navigation links smoothly scroll directly to each respective section
- * on this page (#products, #features, #how-it-works, #pricing, #institutions, #faq).
+ * The marketing site that used to live here is a separate Astro project
+ * (prepyo-landing) deployed at the root domain, so this app only serves the
+ * signed-in product. Anyone landing here goes to sign-in; middleware sends
+ * them straight on to /dashboard if they already have a session.
  */
-export default function HomePage() {
-  return (
-    <div className="w-full space-y-4">
-      <Hero />
-      <ExamsSection />
-      <FeaturesSection />
-      <HowItWorksSection />
-      <PricingSection />
-      <TrustBadges />
-      <InstitutionsSection />
-      <FAQSection />
-      <FinalCTA />
-      <div className="pb-8" />
-    </div>
-  );
+export default function RootPage() {
+  redirect('/login');
 }

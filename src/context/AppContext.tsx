@@ -85,7 +85,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setNotifications(data.notifications ?? []);
     } catch (err) {
       // A signed-out visitor has no notifications; that is not an error worth
-      // logging on every landing page view.
+      // logging on every sign-in page view.
       if (!(err instanceof ApiError && err.isUnauthorized)) {
         console.error('Failed to load notifications:', err);
       }
