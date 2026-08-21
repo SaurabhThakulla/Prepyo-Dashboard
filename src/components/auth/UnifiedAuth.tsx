@@ -170,7 +170,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
     <div className="h-screen max-h-screen w-full flex flex-col lg:flex-row bg-background overflow-hidden">
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* LEFT HALF: Hero Panel (Beautiful, balanced, readable)         */}
+      {/* LEFT HALF: Hero Panel (Title at Top, Both Cards in Bottom Row) */}
       {/* ───────────────────────────────────────────────────────────── */}
       <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 h-screen max-h-screen relative flex-col justify-between p-8 xl:p-12 overflow-hidden bg-slate-950 text-white">
         {/* Background Image */}
@@ -186,31 +186,32 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
           <div className="absolute inset-0 bg-radial-gradient from-transparent via-transparent to-slate-950/70" />
         </div>
 
-        {/* Top Brand Header */}
-        <div className="relative z-10 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-indigo-600 to-violet-700 text-white font-black text-lg shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
-              P
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-display text-2xl font-black tracking-tight text-white">
-                prep<span className="text-primary">yo</span>
-              </span>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/25 text-emerald-300 px-2 py-0.5 rounded-md border border-emerald-500/40">
-                NP
-              </span>
-            </div>
-          </Link>
+        {/* TOP SECTION: Brand Header & Headline */}
+        <div className="relative z-10 space-y-5">
+          {/* Brand Header */}
+          <div className="flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-indigo-600 to-violet-700 text-white font-black text-lg shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
+                P
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-display text-2xl font-black tracking-tight text-white">
+                  prep<span className="text-primary">yo</span>
+                </span>
+                <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/25 text-emerald-300 px-2 py-0.5 rounded-md border border-emerald-500/40">
+                  NP
+                </span>
+              </div>
+            </Link>
 
-          <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20 text-xs font-semibold text-slate-200">
-            <span className="text-amber-400">★</span>
-            <span>4.9/5 • 12k+ Students</span>
+            <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20 text-xs font-semibold text-slate-200">
+              <span className="text-amber-400">★</span>
+              <span>4.9/5 • 12k+ Students</span>
+            </div>
           </div>
-        </div>
 
-        {/* Middle Hero Showcase Box */}
-        <div className="relative z-10 my-auto py-6 space-y-4 max-w-md">
-          <div className="space-y-2">
+          {/* Hero Headline at the Top */}
+          <div className="space-y-2 max-w-lg pt-2">
             <h2 className="font-display text-2xl xl:text-3xl font-black text-white leading-tight tracking-tight drop-shadow-md">
               Master PTE 79+ &amp; IELTS 8.0 with AI
             </h2>
@@ -218,53 +219,79 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
               Nepal’s premier realistic exam simulator tuned with authentic Pearson &amp; Cambridge scoring rubrics.
             </p>
           </div>
-
-          <div className="rounded-2xl bg-black/75 backdrop-blur-xl border border-white/20 p-5 shadow-2xl space-y-3.5">
-            <div className="flex items-center justify-between gap-4 pb-2 border-b border-white/15">
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400">
-                  <Gift className="w-4 h-4" />
-                </div>
-                <span className="text-sm font-bold text-white">
-                  {freePlan?.name || 'Instant Free Starter'}
-                </span>
-              </div>
-              <Badge variant="success" className="text-xs px-2.5 py-0.5 font-bold">
-                NPR {freePlan?.priceNPR ?? 0}
-              </Badge>
-            </div>
-
-            <ul className="space-y-2.5 text-sm text-slate-200">
-              <li className="flex items-center gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span><strong>1 Full AI Mock Exam</strong> (All 4 Sections)</span>
-              </li>
-              <li className="flex items-center gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span><strong>3 Daily AI Evaluations</strong> (Writing &amp; Speaking)</span>
-              </li>
-              <li className="flex items-center gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span><strong>Nepali Accent-Tuned</strong> Speech Engine</span>
-              </li>
-            </ul>
-          </div>
         </div>
 
-        {/* Bottom Trust & Security Banner */}
-        <div className="relative z-10 space-y-3">
-          <div className="p-3.5 rounded-2xl bg-slate-900/85 backdrop-blur-md border border-white/15 flex items-center gap-3.5">
-            <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary shrink-0">
-              <ShieldCheck className="w-5 h-5 text-primary" />
+        {/* BOTTOM SECTION: Both Cards Side-by-Side in a Row */}
+        <div className="relative z-10 space-y-3.5">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5">
+            
+            {/* Card 1: Instant Free Starter */}
+            <div className="rounded-2xl bg-black/75 backdrop-blur-xl border border-white/20 p-4 shadow-2xl space-y-2.5 flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-2 pb-2 border-b border-white/15">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                    <Gift className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-white truncate">
+                    {freePlan?.name || 'Instant Free Starter'}
+                  </span>
+                </div>
+                <Badge variant="success" className="text-[10px] py-0 font-bold shrink-0">
+                  NPR {freePlan?.priceNPR ?? 0}
+                </Badge>
+              </div>
+
+              <ul className="space-y-1.5 text-xs text-slate-200">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span><strong>1 Full AI Mock Exam</strong></span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span><strong>3 Daily AI Evaluations</strong></span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span><strong>Nepali Accent AI Engine</strong></span>
+                </li>
+              </ul>
             </div>
-            <div className="space-y-0.5 min-w-0">
-              <div className="text-xs font-bold text-white">Bank-Grade Privacy &amp; Encryption</div>
-              <p className="text-[11px] text-slate-300 leading-snug">
-                Bcrypt password hashing &amp; server-side revocable sessions for complete safety.
-              </p>
+
+            {/* Card 2: Bank-Grade Privacy & Security */}
+            <div className="rounded-2xl bg-black/75 backdrop-blur-xl border border-white/20 p-4 shadow-2xl space-y-2.5 flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-2 pb-2 border-b border-white/15">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-primary/20 flex items-center justify-center text-primary shrink-0">
+                    <ShieldCheck className="w-4 h-4 text-primary" />
+                  </div>
+                  <span className="text-xs font-bold text-white truncate">
+                    Privacy &amp; Security
+                  </span>
+                </div>
+                <Badge variant="indigo" className="text-[10px] py-0 font-bold uppercase shrink-0">
+                  256-Bit
+                </Badge>
+              </div>
+
+              <ul className="space-y-1.5 text-xs text-slate-200">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span><strong>Bcrypt Password Hashing</strong></span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span><strong>Revocable User Sessions</strong></span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span><strong>100% Student Data Safety</strong></span>
+                </li>
+              </ul>
             </div>
+
           </div>
 
+          {/* Location & Trust line */}
           <div className="flex items-center justify-between text-xs text-slate-300 px-1 font-medium">
             <span>🇳🇵 Kathmandu • Pokhara • Lalitpur • Chitwan</span>
             <span className="text-emerald-400 font-semibold">Nepal Official</span>
