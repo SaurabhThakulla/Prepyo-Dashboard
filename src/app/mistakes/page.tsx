@@ -14,53 +14,55 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { MistakeItem } from '@/lib/types';
+import { Mistake, Pagination } from '@/lib/types';
+import { api, errorMessage } from '@/lib/api';
+import { useToast } from '@/components/ui/toast';
 
 export default function MistakesPage() {
-  const { activeExam, awardLocalXP } = useApp();
-  const [mistakes, setMistakes] = useState<MistakeItem[]>([]);
+  const { activeExam, refreshUser } = useApp();
+  const toast = useToast();
+  const [mistakes, setMistakes] = useState<Mistake[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTag, setSelectedTag] = useState<string>('all');
+  const [selectedSkill, setSelectedSkill] = useState<string>('all');
   const [unresolvedOnly, setUnresolvedOnly] = useState(false);
-  const [activeReplayItem, setActiveReplayItem] = useState<MistakeItem | null>(null);
+  const [activeReplayItem, setActiveReplayItem] = useState<Mistake | null>(null);
   const [replayAnswer, setReplayAnswer] = useState('');
   const [replaySuccess, setReplaySuccess] = useState<boolean | null>(null);
 
-  const fetchMistakes = () => {
-    setLoading(true);
-    let url = `/api/v1/mistakes?exam=${activeExam}`;
-    if (selectedTag !== 'all') url += `&tag=${selectedTag}`;
-    if (unresolvedOnly) url += `&unresolved=true`;
-
-    fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setMistakes(data.mistakes || []);
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  };
-
   useEffect(() => {
-    fetchMistakes();
-  }, [activeExam, selectedTag, unresolvedOnly]);
+    let cancelled = false;
+    setLoading(true);
+
+    api
+      .get<{ mistakes: Mistake[]; pagination: Pagination }>('/mistakes', {
+        exam: activeExam,
+        skill: selectedSkill === 'all' ? undefined : selectedSkill,
+        unresolved: unresolvedOnly ? 'true' : undefined,
+      })
+      .then(data => !cancelled && setMistakes(data.mistakes ?? []))
+      .catch(err => {
+        if (cancelled) return;
+        setMistakes([]);
+        toast.error('Could not load your mistake bank', errorMessage(err));
+      })
+      .finally(() => !cancelled && setLoading(false));
+
+    return () => {
+      cancelled = true;
+    };
+    // toast is stable from context; excluding it keeps this from refetching on
+    // every toast render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeExam, selectedSkill, unresolvedOnly]);
 
   const handleResolve = async (id: string) => {
     try {
-      const res = await fetch('/api/v1/mistakes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'resolve', id }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setMistakes(prev => prev.map(m => m.id === id ? { ...m, resolved: true } : m));
-        awardLocalXP(30, 'Resolved Mistake in Mistake Bank');
-      }
+      await api.post(`/mistakes/${id}/resolve`);
+      setMistakes(prev => prev.map(m => (m.id === id ? { ...m, resolved: true } : m)));
+      // XP is awarded server-side; pull the new total rather than guessing it.
+      await refreshUser();
     } catch (err) {
-      console.error(err);
+      toast.error('Could not resolve that mistake', errorMessage(err));
     }
   };
 
@@ -73,7 +75,8 @@ export default function MistakesPage() {
     }
   };
 
-  const tags = ['all', 'Vocabulary', 'Spelling', 'Grammar', 'Inference', 'Collocation', 'Time Pressure'];
+  // The API filters by skill, so these are the filters that actually work.
+  const skillFilters = ['all', 'speaking', 'writing', 'reading', 'listening'];
 
   return (
     <div className="space-y-6">
@@ -94,12 +97,12 @@ export default function MistakesPage() {
       {/* Filter Tag Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-muted/40 p-3 rounded-2xl border border-border">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-          {tags.map(t => (
+          {skillFilters.map(t => (
             <Button
               key={t}
               size="sm"
-              variant={selectedTag === t ? 'default' : 'ghost'}
-              onClick={() => setSelectedTag(t)}
+              variant={selectedSkill === t ? 'default' : 'ghost'}
+              onClick={() => setSelectedSkill(t)}
               className="text-xs font-bold whitespace-nowrap h-8"
             >
               {t.toUpperCase()}
@@ -177,8 +180,10 @@ export default function MistakesPage() {
       ) : mistakes.length === 0 ? (
         <Card className="p-12 text-center space-y-3">
           <CheckCircle2 className="w-10 h-10 text-nepal-emerald mx-auto" />
-          <CardTitle className="text-base">Mistake Bank Clear!</CardTitle>
-          <CardDescription>Zero pending errors in this category. Keep it up!</CardDescription>
+          <CardTitle className="text-base">Nothing here</CardTitle>
+          <CardDescription>
+            Questions you get wrong in practice and mock exams are collected here automatically.
+          </CardDescription>
         </Card>
       ) : (
         <div className="space-y-3">

@@ -75,8 +75,8 @@ export default function PublicFooter() {
             <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Platform</h4>
             <ul className="space-y-1.5 text-xs text-muted-foreground">
               <li>
-                <a href="/#testimonials" onClick={(e) => handleScrollTo(e, 'testimonials')} className="hover:text-primary transition-colors">
-                  Student Success Stories
+                <a href="/#how-it-works" onClick={(e) => handleScrollTo(e, 'how-it-works')} className="hover:text-primary transition-colors">
+                  How It Works
                 </a>
               </li>
               <li>

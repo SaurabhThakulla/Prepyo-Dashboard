@@ -1,24 +1,44 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { UserProfile, NotificationItem, ExamType } from '@/lib/types';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { api, ApiError } from '@/lib/api';
+import { ExamType, NotificationItem, UserProfile } from '@/lib/types';
+
+export interface RegisterInput {
+  name: string;
+  email: string;
+  password: string;
+  nepalRegion?: string;
+  referralCode?: string;
+}
 
 interface AppContextType {
   user: UserProfile | null;
-  setUser: React.Dispatch<React.SetStateAction<UserProfile | null>>;
+  /** True until the first session check finishes. Guards render as "unknown", not "logged out". */
   loading: boolean;
+  /** Resolved session state: false means the session check ran and found nobody. */
+  isAuthenticated: boolean;
+
+  login: (email: string, password: string) => Promise<UserProfile>;
+  register: (input: RegisterInput) => Promise<UserProfile>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+
   notifications: NotificationItem[];
   unreadCount: number;
-  activeExam: ExamType;
-  setActiveExam: (exam: ExamType) => void;
-  updateUserGoal: (targetExam: ExamType, targetScore: number, examDate?: string) => Promise<void>;
-  refreshUserData: () => Promise<void>;
-  awardLocalXP: (amount: number, reason: string) => void;
+  refreshNotifications: () => Promise<void>;
   markNotificationAsRead: (id: string) => Promise<void>;
+  markAllNotificationsAsRead: () => Promise<void>;
+
+  activeExam: ExamType;
+  setActiveExam: (exam: ExamType) => Promise<void>;
+  updateProfile: (updates: Partial<Pick<UserProfile, 'name' | 'targetExam' | 'targetScore' | 'examDate' | 'nepalRegion'>>) => Promise<void>;
+
   isTutorOpen: boolean;
   setIsTutorOpen: (open: boolean) => void;
   tutorContextPrompt: string;
   setTutorContextPrompt: (prompt: string) => void;
+
   theme: 'light' | 'dark';
   setTheme: (theme: 'light' | 'dark') => void;
   toggleTheme: () => void;
@@ -28,117 +48,153 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [activeExam, setActiveExamState] = useState<ExamType>('PTE');
-  const [isTutorOpen, setIsTutorOpen] = useState<boolean>(false);
-  const [tutorContextPrompt, setTutorContextPrompt] = useState<string>('');
+  const [isTutorOpen, setIsTutorOpen] = useState(false);
+  const [tutorContextPrompt, setTutorContextPrompt] = useState('');
   const [theme, setThemeState] = useState<'light' | 'dark'>('light');
 
-  // Load and apply theme
+  // Theme is the one piece of state that legitimately lives in the browser: it
+  // is a display preference, not account data.
   useEffect(() => {
-    const savedTheme = localStorage.getItem('prepyo-theme') as 'light' | 'dark' | null;
-    const initialTheme = savedTheme || 'light';
-    setThemeState(initialTheme);
-    if (initialTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    const saved = localStorage.getItem('prepyo-theme') as 'light' | 'dark' | null;
+    const initial = saved ?? 'light';
+    setThemeState(initial);
+    document.documentElement.classList.toggle('dark', initial === 'dark');
+  }, []);
+
+  const setTheme = useCallback((next: 'light' | 'dark') => {
+    setThemeState(next);
+    localStorage.setItem('prepyo-theme', next);
+    document.documentElement.classList.toggle('dark', next === 'dark');
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(theme === 'light' ? 'dark' : 'light');
+  }, [theme, setTheme]);
+
+  const applyUser = useCallback((next: UserProfile) => {
+    setUser(next);
+    setActiveExamState(next.targetExam);
+  }, []);
+
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const data = await api.get<{ notifications: NotificationItem[] }>('/notifications');
+      setNotifications(data.notifications ?? []);
+    } catch (err) {
+      // A signed-out visitor has no notifications; that is not an error worth
+      // logging on every landing page view.
+      if (!(err instanceof ApiError && err.isUnauthorized)) {
+        console.error('Failed to load notifications:', err);
+      }
+      setNotifications([]);
     }
   }, []);
 
-  const setTheme = (newTheme: 'light' | 'dark') => {
-    setThemeState(newTheme);
-    localStorage.setItem('prepyo-theme', newTheme);
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
-
-  const toggleTheme = () => {
-    const nextTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(nextTheme);
-  };
-
-  const refreshUserData = async () => {
+  const refreshUser = useCallback(async () => {
     try {
-      const res = await fetch('/api/v1/auth');
-      const data = await res.json();
-      if (data.success && data.user) {
-        setUser(data.user);
-        setActiveExamState(data.user.targetExam || 'PTE');
-      }
-
-      const notifRes = await fetch('/api/v1/notifications');
-      const notifData = await notifRes.json();
-      if (notifData.success) {
-        setNotifications(notifData.notifications || []);
-      }
+      // /profile carries the score estimate and subscription state that
+      // /auth/session omits, so the whole app can rely on one shape.
+      const data = await api.get<{ user: UserProfile }>('/profile');
+      applyUser(data.user);
+      await refreshNotifications();
     } catch (err) {
-      console.error('Failed to fetch user state:', err);
+      if (err instanceof ApiError && err.isUnauthorized) {
+        setUser(null);
+        setNotifications([]);
+      } else {
+        console.error('Failed to load profile:', err);
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [applyUser, refreshNotifications]);
 
   useEffect(() => {
-    refreshUserData();
+    refreshUser();
+  }, [refreshUser]);
+
+  const login = useCallback(async (email: string, password: string) => {
+    const data = await api.post<{ user: UserProfile }>('/auth/login', { email, password });
+    applyUser(data.user);
+    setLoading(false);
+    // Pull the full profile in the background; the caller can navigate now.
+    refreshUser();
+    return data.user;
+  }, [applyUser, refreshUser]);
+
+  const register = useCallback(async (input: RegisterInput) => {
+    const data = await api.post<{ user: UserProfile }>('/auth/register', {
+      name: input.name,
+      email: input.email,
+      password: input.password,
+      nepalRegion: input.nepalRegion ?? '',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kathmandu',
+      referralCode: input.referralCode ?? '',
+    });
+    applyUser(data.user);
+    setLoading(false);
+    refreshUser();
+    return data.user;
+  }, [applyUser, refreshUser]);
+
+  const logout = useCallback(async () => {
+    try {
+      await api.post('/auth/logout');
+    } finally {
+      // Clear locally even if the call failed, so the UI cannot show a session
+      // the learner has asked to end.
+      setUser(null);
+      setNotifications([]);
+      setActiveExamState('PTE');
+    }
   }, []);
 
-  const setActiveExam = async (exam: ExamType) => {
-    setActiveExamState(exam);
-    if (user) {
-      setUser(prev => prev ? { ...prev, targetExam: exam } : null);
+  const updateProfile = useCallback(
+    async (updates: Partial<Pick<UserProfile, 'name' | 'targetExam' | 'targetScore' | 'examDate' | 'nepalRegion'>>) => {
+      const data = await api.patch<{ user: UserProfile }>('/profile', updates);
+      applyUser(data.user);
+    },
+    [applyUser],
+  );
+
+  const setActiveExam = useCallback(
+    async (exam: ExamType) => {
+      setActiveExamState(exam);
+      if (!user) return;
       try {
-        await fetch('/api/v1/profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ targetExam: exam }),
-        });
+        await updateProfile({ targetExam: exam });
       } catch (err) {
-        console.error('Failed to sync exam state:', err);
+        // Put the switch back where it was rather than showing a preference
+        // that was never saved.
+        setActiveExamState(user.targetExam);
+        console.error('Failed to change target exam:', err);
       }
-    }
-  };
+    },
+    [user, updateProfile],
+  );
 
-  const updateUserGoal = async (targetExam: ExamType, targetScore: number, examDate?: string) => {
+  const markNotificationAsRead = useCallback(async (id: string) => {
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
     try {
-      const res = await fetch('/api/v1/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetExam, targetScore, examDate }),
-      });
-      const data = await res.json();
-      if (data.success && data.user) {
-        setUser(data.user);
-      }
+      await api.post(`/notifications/${id}/read`);
     } catch (err) {
-      console.error('Failed to update user goal:', err);
+      console.error('Failed to mark notification read:', err);
+      await refreshNotifications();
     }
-  };
+  }, [refreshNotifications]);
 
-  const awardLocalXP = (amount: number, reason: string) => {
-    if (user) {
-      const newXP = user.xp + amount;
-      const newLevel = Math.floor(newXP / 400) + 1;
-      setUser({ ...user, xp: newXP, level: newLevel });
-    }
-  };
-
-  const markNotificationAsRead = async (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  const markAllNotificationsAsRead = useCallback(async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     try {
-      await fetch('/api/v1/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'mark-read', id }),
-      });
+      await api.post('/notifications/read-all');
     } catch (err) {
-      console.error(err);
+      console.error('Failed to mark notifications read:', err);
+      await refreshNotifications();
     }
-  };
+  }, [refreshNotifications]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -146,16 +202,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider
       value={{
         user,
-        setUser,
         loading,
+        isAuthenticated: user !== null,
+        login,
+        register,
+        logout,
+        refreshUser,
         notifications,
         unreadCount,
+        refreshNotifications,
+        markNotificationAsRead,
+        markAllNotificationsAsRead,
         activeExam,
         setActiveExam,
-        updateUserGoal,
-        refreshUserData,
-        awardLocalXP,
-        markNotificationAsRead,
+        updateProfile,
         isTutorOpen,
         setIsTutorOpen,
         tutorContextPrompt,

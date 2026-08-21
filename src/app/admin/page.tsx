@@ -1,212 +1,227 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
-  ShieldCheck,
   Zap,
   Activity,
-  Plus,
   RefreshCw,
   Sparkles,
-  Bot
+  Bot,
+  Users,
+  AlertCircle,
+  ShieldAlert,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Card, CardTitle, CardDescription } from '@/components/ui/card';
+import { api, ApiError, errorMessage } from '@/lib/api';
+
+interface AdminMetrics {
+  questions: number;
+  mocks: number;
+  learners: number;
+  activeLast7Days: number;
+  practiceAttempts: number;
+  mockAttempts: number;
+  evaluations: number;
+  evaluationsToday: number;
+  promptTokens: number;
+  completionTokens: number;
+  medianLatencyMs: number;
+}
+
+interface ModelUsage {
+  model: string;
+  requests: number;
+  promptTokens: number;
+  completionTokens: number;
+}
 
 export default function AdminPage() {
-  const [metrics, setMetrics] = useState<any>(null);
+  const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
+  const [usageByModel, setUsageByModel] = useState<ModelUsage[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // New Question State
-  const [exam, setExam] = useState<'PTE' | 'IELTS'>('PTE');
-  const [skill, setSkill] = useState<'speaking' | 'writing' | 'reading' | 'listening'>('writing');
-  const [typeId, setTypeId] = useState('write-essay');
-  const [typeName, setTypeName] = useState('Write Essay');
-  const [title, setTitle] = useState('');
-  const [prompt, setPrompt] = useState('');
-  const [modelAnswer, setModelAnswer] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [forbidden, setForbidden] = useState(false);
 
   useEffect(() => {
-    fetch('/api/v1/admin')
-      .then(res => res.json())
+    let cancelled = false;
+
+    api
+      .get<{ metrics: AdminMetrics; usageByModel: ModelUsage[] }>('/admin/metrics')
       .then(data => {
-        if (data.success) {
-          setMetrics(data.metrics);
-        }
+        if (cancelled) return;
+        setMetrics(data.metrics);
+        setUsageByModel(data.usageByModel ?? []);
+        setError(null);
       })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      .catch(err => {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.status === 403) setForbidden(true);
+        else setError(errorMessage(err));
+      })
+      .finally(() => !cancelled && setLoading(false));
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const handleCreateQuestion = async () => {
-    if (!title || !prompt || creating) return;
-    setCreating(true);
-    setSuccess(false);
+  if (loading) {
+    return (
+      <div className="py-20 text-center">
+        <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
+      </div>
+    );
+  }
 
-    try {
-      const payload = {
-        exam,
-        skill,
-        typeId,
-        typeName,
-        title,
-        prompt,
-        modelAnswer,
-        timeLimitSeconds: 1200,
-        difficulty: 'medium',
-        points: 20,
-        tags: [exam, typeName],
-      };
+  if (forbidden) {
+    return (
+      <Card className="p-12 text-center space-y-3 max-w-lg mx-auto">
+        <ShieldAlert className="w-10 h-10 text-amber-500 mx-auto" />
+        <CardTitle className="text-base">Admin access only</CardTitle>
+        <CardDescription>
+          This area is limited to accounts with the admin role.
+        </CardDescription>
+        <Button asChild variant="outline" size="sm" className="font-bold text-xs">
+          <Link href="/dashboard">Back to dashboard</Link>
+        </Button>
+      </Card>
+    );
+  }
 
-      const res = await fetch('/api/v1/questions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+  if (error || !metrics) {
+    return (
+      <Card className="p-12 text-center space-y-3 max-w-lg mx-auto">
+        <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
+        <CardTitle className="text-base">Could not load metrics</CardTitle>
+        <CardDescription>{error}</CardDescription>
+      </Card>
+    );
+  }
 
-      const data = await res.json();
-      if (data.success) {
-        setSuccess(true);
-        setTitle('');
-        setPrompt('');
-        setModelAnswer('');
-        setTimeout(() => setSuccess(false), 3000);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setCreating(false);
-    }
-  };
+  const totalTokens = metrics.promptTokens + metrics.completionTokens;
+
+  const cards = [
+    {
+      label: 'Published questions',
+      value: metrics.questions.toLocaleString(),
+      note: `${metrics.mocks} mock exam${metrics.mocks === 1 ? '' : 's'}`,
+      icon: Activity,
+      color: 'text-primary',
+    },
+    {
+      label: 'Learners',
+      value: metrics.learners.toLocaleString(),
+      note: `${metrics.activeLast7Days} active in last 7 days`,
+      icon: Users,
+      color: 'text-foreground',
+    },
+    {
+      label: 'AI tokens used',
+      value: totalTokens.toLocaleString(),
+      note: `${metrics.promptTokens.toLocaleString()} prompt / ${metrics.completionTokens.toLocaleString()} completion`,
+      icon: Sparkles,
+      color: 'text-amber-500',
+    },
+    {
+      label: 'Median AI latency',
+      value: `${metrics.medianLatencyMs} ms`,
+      note: `${metrics.evaluations} evaluation${metrics.evaluations === 1 ? '' : 's'} recorded`,
+      icon: Bot,
+      color: 'text-indigo-400',
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      
+
       <div className="border-b border-border pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="font-display text-2xl font-bold text-foreground">Admin CMS & AI Observability</h1>
-            <Badge variant="destructive">Internal Portal</Badge>
+            <h1 className="font-display text-2xl font-bold text-foreground">Admin Observability</h1>
+            <Badge variant="destructive">Internal</Badge>
           </div>
-          <p className="text-xs text-muted-foreground">Monitor AI token expenditure, evaluate gateway latencies, and inject curriculum items.</p>
+          <p className="text-xs text-muted-foreground">
+            Live counts straight from the database. Everything here is measured, nothing is estimated.
+          </p>
         </div>
       </div>
 
-      {/* Observability KPI Cards */}
+      {/* KPI cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-5 space-y-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold">
-            <span>Total Questions</span>
-            <Activity className="w-4 h-4 text-primary" />
-          </div>
-          <div className="font-display text-3xl font-black text-foreground">{metrics?.totalQuestions || 24}</div>
-          <p className="text-[10px] text-muted-foreground">PTE & IELTS Curated Items</p>
-        </Card>
-
-        <Card className="p-5 space-y-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold">
-            <span>AI Token Invocations</span>
-            <Sparkles className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="font-display text-3xl font-black text-amber-500">
-            {metrics?.totalTokensUsed?.toLocaleString() || '5,400'}
-          </div>
-          <p className="text-[10px] text-muted-foreground">Across LLM Evaluators</p>
-        </Card>
-
-        <Card className="p-5 space-y-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold">
-            <span>Estimated Token Cost</span>
-            <Zap className="w-4 h-4 text-nepal-emerald" />
-          </div>
-          <div className="font-display text-3xl font-black text-nepal-emerald">
-            NPR {metrics?.totalAICostNPR || '34.50'}
-          </div>
-          <p className="text-[10px] text-muted-foreground">Unit Cost: ~NPR 1.85 / Essay</p>
-        </Card>
-
-        <Card className="p-5 space-y-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold">
-            <span>AI Gateway Latency</span>
-            <Bot className="w-4 h-4 text-indigo-400" />
-          </div>
-          <div className="font-display text-3xl font-black text-foreground">
-            {metrics?.averageLatencyMs || 450} <span className="text-xs text-muted-foreground font-bold">ms</span>
-          </div>
-          <p className="text-[10px] text-muted-foreground">Healthy P95 Latency</p>
-        </Card>
+        {cards.map(({ label, value, note, icon: Icon, color }) => (
+          <Card key={label} className="p-5 space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold">
+              <span>{label}</span>
+              <Icon className={`w-4 h-4 ${color}`} />
+            </div>
+            <div className={`font-display text-3xl font-black ${color}`}>{value}</div>
+            <p className="text-[10px] text-muted-foreground">{note}</p>
+          </Card>
+        ))}
       </div>
 
-      {/* Curriculum Injection Form */}
+      {/* Activity */}
       <Card className="p-6 space-y-4">
-        <div className="flex items-center gap-2 border-b border-border pb-3">
-          <Plus className="w-5 h-5 text-primary" />
-          <CardTitle className="text-base">Inject Curriculum Question to Live Bank</CardTitle>
+        <CardTitle className="text-base">Learner activity</CardTitle>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: 'Practice attempts', value: metrics.practiceAttempts },
+            { label: 'Mock attempts', value: metrics.mockAttempts },
+            { label: 'Evaluations (all time)', value: metrics.evaluations },
+            { label: 'Evaluations today', value: metrics.evaluationsToday },
+          ].map(item => (
+            <div key={item.label} className="p-3.5 rounded-xl bg-background border border-border text-center space-y-1">
+              <div className="font-display text-xl font-black text-foreground">{item.value.toLocaleString()}</div>
+              <span className="text-[10px] text-muted-foreground font-semibold">{item.label}</span>
+            </div>
+          ))}
         </div>
+      </Card>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground">Exam</label>
-            <select
-              value={exam}
-              onChange={(e) => setExam(e.target.value as any)}
-              className="w-full h-9 rounded-xl border border-input bg-card px-3 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value="PTE">PTE Academic</option>
-              <option value="IELTS">IELTS Academic</option>
-            </select>
+      {/* Usage by model */}
+      <Card className="p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <Zap className="w-4 h-4 text-nepal-emerald" />
+          <CardTitle className="text-base">Usage by model</CardTitle>
+        </div>
+        {usageByModel.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            No AI evaluations have run yet, so there is nothing to report.
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {usageByModel.map(row => (
+              <div key={row.model} className="flex items-center justify-between py-2.5 text-xs">
+                <span className="font-mono font-bold text-foreground">{row.model}</span>
+                <div className="flex gap-6 text-right">
+                  <div>
+                    <span className="text-[10px] text-muted-foreground block">Requests</span>
+                    <span className="font-bold text-foreground">{row.requests}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground block">Tokens</span>
+                    <span className="font-bold text-primary">
+                      {(row.promptTokens + row.completionTokens).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
+        )}
+      </Card>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground">Skill</label>
-            <select
-              value={skill}
-              onChange={(e) => setSkill(e.target.value as any)}
-              className="w-full h-9 rounded-xl border border-input bg-card px-3 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value="writing">Writing</option>
-              <option value="speaking">Speaking</option>
-              <option value="reading">Reading</option>
-              <option value="listening">Listening</option>
-            </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground">Task Type</label>
-            <Input value={typeName} onChange={(e) => { setTypeName(e.target.value); setTypeId(e.target.value.toLowerCase().replace(/\s+/g, '-')); }} />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-foreground">Question Title</label>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Urban Green Spaces and Mental Health" />
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-foreground">Prompt Instructions</label>
-          <Textarea rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Full test taker prompt..." />
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-foreground">Model Answer / Benchmark</label>
-          <Textarea rows={3} value={modelAnswer} onChange={(e) => setModelAnswer(e.target.value)} placeholder="Exemplary 90/90 or Band 9 answer..." />
-        </div>
-
-        <div className="flex items-center justify-between pt-3 border-t border-border">
-          {success ? (
-            <span className="text-xs text-emerald-400 font-bold">Question published directly to repository!</span>
-          ) : <span />}
-
-          <Button onClick={handleCreateQuestion} disabled={creating || !title || !prompt} size="sm" className="font-bold text-xs gap-1.5">
-            <Plus className="w-3.5 h-3.5" />
-            <span>{creating ? 'Publishing...' : 'Publish Question'}</span>
-          </Button>
-        </div>
+      {/* The question bank is seeded through migrations; there is no write API. */}
+      <Card className="p-6 space-y-2">
+        <CardTitle className="text-base">Question bank</CardTitle>
+        <CardDescription className="text-xs leading-relaxed">
+          Questions are managed through database migrations in{' '}
+          <code className="font-mono">backend/migrations</code>, not through this page. The API exposes no
+          endpoint for creating questions, so there is no authoring form here yet.
+        </CardDescription>
       </Card>
     </div>
   );

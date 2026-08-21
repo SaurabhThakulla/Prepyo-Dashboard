@@ -9,6 +9,7 @@ import NotificationDrawer from './NotificationDrawer';
 
 export default function Navbar() {
   const { user, activeExam, setActiveExam, unreadCount, setIsTutorOpen } = useApp();
+  const planId = user?.subscription?.planId;
   const pathname = usePathname();
   const [showNotifications, setShowNotifications] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -164,15 +165,15 @@ export default function Navbar() {
             <Link
               href="/subscription"
               className={`hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                user?.subscriptionTier === 'elite'
+                planId === 'elite'
                   ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : user?.subscriptionTier === 'pro'
+                  : planId === 'pro'
                   ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
                   : 'bg-muted hover:bg-accent text-foreground border border-border'
               }`}
             >
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>{user?.subscriptionTier === 'elite' ? 'ELITE' : user?.subscriptionTier === 'pro' ? 'PRO' : 'UPGRADE'}</span>
+              <span>{planId && planId !== 'free' ? planId.toUpperCase() : 'UPGRADE'}</span>
             </Link>
 
             {/* Profile Avatar */}
@@ -184,7 +185,7 @@ export default function Navbar() {
                 {user?.name?.split(' ')[0] || 'Learner'}
               </span>
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-emerald-600 text-white text-xs font-bold">
-                {user?.name?.charAt(0) || 'B'}
+                {user?.name?.charAt(0).toUpperCase() || '?'}
               </div>
             </Link>
 

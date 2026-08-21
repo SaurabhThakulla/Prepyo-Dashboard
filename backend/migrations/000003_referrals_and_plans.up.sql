@@ -40,29 +40,55 @@ ALTER TABLE plans
     ADD COLUMN IF NOT EXISTS duration_days INT NOT NULL DEFAULT 30,
     ADD COLUMN IF NOT EXISTS bonus_days INT NOT NULL DEFAULT 0;
 
--- Update existing plans with exact duration and purchase bonus days
-UPDATE plans SET duration_days = 0, bonus_days = 0, sort_order = 1 WHERE id = 'free';
-UPDATE plans SET duration_days = 30, bonus_days = 3, sort_order = 3 WHERE id = 'pro';
-UPDATE plans SET duration_days = 90, bonus_days = 7, sort_order = 4 WHERE id = 'elite';
+-- Update existing plans with exact duration, purchase bonus days, and calibrated allowances for 70%+ margin
+UPDATE plans SET
+    duration_days = 0,
+    bonus_days = 0,
+    price_npr = 0,
+    ai_evaluations_per_day = 3,
+    mock_tests_included = 1,
+    sort_order = 1
+WHERE id = 'free';
 
--- Add Weekly Plan tier
+UPDATE plans SET
+    duration_days = 30,
+    bonus_days = 3,
+    price_npr = 299,
+    ai_evaluations_per_day = 15,
+    mock_tests_included = 3,
+    sort_order = 3
+WHERE id = 'pro';
+
+UPDATE plans SET
+    duration_days = 90,
+    bonus_days = 7,
+    price_npr = 999,
+    ai_evaluations_per_day = 25,
+    mock_tests_included = 10,
+    sort_order = 4
+WHERE id = 'elite';
+
+-- Add Weekly Plan tier (NPR 99)
 INSERT INTO plans (id, name, price_npr, duration_months, duration_days, bonus_days, features, ai_evaluations_per_day, mock_tests_included, is_popular, sort_order)
 VALUES (
     'weekly',
     'Weekly Sprint',
-    499,
+    99,
     0,
     7,
     0,
-    ARRAY['7 days intensive sprint', '20 AI evaluations per day', '2 full mock exams', 'All practice question types'],
-    20,
-    2,
+    ARRAY['7 days intensive sprint', '10 AI evaluations per day', '1 full mock exam', 'All practice question types'],
+    10,
+    1,
     FALSE,
     2
 )
 ON CONFLICT (id) DO UPDATE SET
+    price_npr = EXCLUDED.price_npr,
     duration_days = EXCLUDED.duration_days,
     bonus_days = EXCLUDED.bonus_days,
+    ai_evaluations_per_day = EXCLUDED.ai_evaluations_per_day,
+    mock_tests_included = EXCLUDED.mock_tests_included,
     sort_order = EXCLUDED.sort_order;
 
 -- 4. Create subscription_payments table for idempotent purchase/webhook confirmation

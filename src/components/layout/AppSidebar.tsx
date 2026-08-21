@@ -33,6 +33,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@/components/ui/tooltip';
 
 export type PrimarySectionId =
   | 'dashboard'
@@ -111,7 +117,7 @@ const formatRelativeTime = (ts: number, now: number): string => {
   return `${diffDay}d ago`;
 };
 
-export default function AppSidebar({
+function AppSidebarContent({
   isOpen,
   setIsOpen,
   isSecondaryOpen,
@@ -271,10 +277,14 @@ export default function AppSidebar({
   const getSectionFromPathname = (path: string): PrimarySectionId => {
     if (path.startsWith('/practice')) return 'practice';
     if (path.startsWith('/mocks') || path.startsWith('/diagnostic')) return 'mock';
-    if (path.startsWith('/evaluations')) return 'history';
-    if (path === '/mistakes') return 'study';
-    if (path === '/leaderboard') return 'history';
-    if (path === '/profile' || path === '/subscription' || path === '/admin') return 'account';
+    if (path.startsWith('/evaluations')) return 'aicoach';
+    if (path === '/mistakes' || path === '/leaderboard') return 'study';
+    if (
+      path === '/profile' ||
+      path === '/subscription' ||
+      path === '/referrals' ||
+      path === '/admin'
+    ) return 'account';
     return 'dashboard';
   };
 
@@ -437,7 +447,7 @@ export default function AppSidebar({
           badge: '15 Min',
         },
         {
-          href: '/evaluations',
+          href: '/mocks?tab=reports',
           label: 'Mock Score Reports',
           icon: FileText,
           sublabel: 'Review previous exam scores',
@@ -464,7 +474,6 @@ export default function AppSidebar({
           label: 'Mistake Bank',
           icon: RotateCcw,
           sublabel: 'Retry saved weak questions',
-          count: 3,
         },
         {
           href: '/leaderboard',
@@ -485,21 +494,33 @@ export default function AppSidebar({
           href: '/profile',
           label: 'Profile & Target Score',
           icon: User,
-          sublabel: `${user?.targetExam || 'PTE'} target: ${user?.targetScore || 79}`,
+          sublabel: user?.targetScore != null
+            ? `${user.targetExam} target: ${user.targetScore}`
+            : 'Set your target score',
         },
         {
           href: '/subscription',
           label: 'Subscriptions (NPR)',
           icon: CreditCard,
           sublabel: 'eSewa, Khalti & ConnectIPS',
-          badge: user?.subscriptionTier === 'elite' ? 'ELITE' : user?.subscriptionTier === 'pro' ? 'PRO' : 'FREE',
+          badge: user?.subscription?.planId.toUpperCase() ?? 'FREE',
         },
         {
-          href: '/admin',
-          label: 'Admin CMS',
-          icon: ShieldCheck,
-          sublabel: 'Question bank & observability',
+          href: '/referrals',
+          label: 'Refer & Earn Rewards',
+          icon: Award,
+          sublabel: 'Invite friends for XP & free mocks',
         },
+        // Admin is only listed for admins; the API returns 403 to everyone else,
+        // so showing it to a learner would just be a dead end.
+        ...(user?.role === 'admin'
+          ? [{
+              href: '/admin',
+              label: 'Admin CMS',
+              icon: ShieldCheck,
+              sublabel: 'Question bank & observability',
+            }]
+          : []),
       ],
     },
   ];
@@ -508,13 +529,23 @@ export default function AppSidebar({
 
   const isItemActive = (item: SecondaryNavItem) => {
     if (!item.href) return false;
-    const itemSkill = item.href.includes('skill=')
-      ? item.href.split('skill=')[1]?.split('&')[0]
-      : null;
 
-    if (itemSkill) {
+    if (item.href.includes('skill=')) {
+      const itemSkill = item.href.split('skill=')[1]?.split('&')[0];
       return pathname === '/practice' && currentSkill === itemSkill;
     }
+
+    if (item.href.includes('tab=')) {
+      const itemTab = item.href.split('tab=')[1]?.split('&')[0];
+      const currentTab = searchParams.get('tab') || 'catalog';
+      return pathname === item.href.split('?')[0] && currentTab === itemTab;
+    }
+
+    if (item.href === '/mocks') {
+      const currentTab = searchParams.get('tab') || 'catalog';
+      return pathname === '/mocks' && currentTab === 'catalog';
+    }
+
     return pathname === item.href;
   };
 
@@ -564,38 +595,41 @@ export default function AppSidebar({
           </div>
 
           {/* Primary Navigation Icons (Clean top alignment without big gap) */}
-          <nav className="flex flex-col items-center gap-2 mt-2 mb-auto w-full">
-            {sections.map(section => {
-              const Icon = section.icon;
-              const isSelected = activeSection === section.id;
-              const isIndicatorActive = isSelected && isSecondaryOpen;
-              return (
-                <button
-                  key={section.id}
-                  onClick={() => handlePrimaryClick(section.id)}
-                  title={section.label}
-                  className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${isIndicatorActive
-                      ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25 scale-105'
-                      : isSelected
-                        ? 'bg-muted text-foreground'
-                        : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground hover:scale-105'
-                    }`}
-                >
-                  <Icon className="w-5 h-5" />
+          <TooltipProvider delayDuration={100}>
+            <nav className="flex flex-col items-center gap-2 mt-2 mb-auto w-full">
+              {sections.map(section => {
+                const Icon = section.icon;
+                const isSelected = activeSection === section.id;
+                const isIndicatorActive = isSelected && isSecondaryOpen;
+                return (
+                  <Tooltip key={section.id}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => handlePrimaryClick(section.id)}
+                        className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${isIndicatorActive
+                            ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25 scale-105'
+                            : isSelected
+                              ? 'bg-muted text-foreground'
+                              : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground hover:scale-105'
+                          }`}
+                      >
+                        <Icon className="w-5 h-5" />
 
-                  {/* Active Indicator Bar */}
-                  {isIndicatorActive && (
-                    <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
-                  )}
-
-                  {/* Tooltip on Hover */}
-                  <span className="absolute left-14 z-50 hidden rounded-lg bg-popover px-2.5 py-1 text-xs font-semibold text-popover-foreground shadow-lg border border-border group-hover:block whitespace-nowrap">
-                    {section.label}
-                  </span>
-                </button>
-              );
-            })}
-          </nav>
+                        {/* Active Indicator Bar */}
+                        {isIndicatorActive && (
+                          <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
+                        )}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={10} className="px-3 py-1.5 font-bold">
+                      <div className="text-xs font-bold text-foreground">{section.label}</div>
+                      <div className="text-[10px] text-muted-foreground font-normal">{section.description}</div>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </nav>
+          </TooltipProvider>
 
           {/* Bottom Actions: Theme & Profile Trigger */}
           <div className="flex flex-col items-center gap-2 mt-auto pt-3 border-t border-border/60 w-full">
@@ -700,47 +734,39 @@ export default function AppSidebar({
                 {currentSectionConfig.label} Options
               </h4>
 
-              <div className="space-y-1 pt-1">
-                {currentSectionConfig.items.map((item, idx) => {
-                  const Icon = item.icon;
-                  const active = isItemActive(item);
+              <TooltipProvider delayDuration={120}>
+                <div className="space-y-1 pt-1">
+                  {currentSectionConfig.items.map((item, idx) => {
+                    const Icon = item.icon;
+                    const active = isItemActive(item);
 
-                  const itemContent = (
-                    <>
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Icon className={`w-4 h-4 shrink-0 transition-colors ${active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
-                        <div className="truncate">
-                          <span className="block truncate">{item.label}</span>
-                          {item.sublabel && (
-                            <span className="block text-[10px] text-muted-foreground font-normal truncate">
-                              {item.sublabel}
-                            </span>
-                          )}
+                    const itemContent = (
+                      <>
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1">
+                          <Icon className={`w-4 h-4 shrink-0 transition-colors ${active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
+                          <span className="truncate font-medium text-xs text-foreground/90">{item.label}</span>
                         </div>
-                      </div>
 
-                      {item.badge && (
-                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-border text-muted-foreground">
-                          {item.badge}
-                        </Badge>
-                      )}
-                      {item.count !== undefined && (
-                        <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-300 font-bold px-1.5 py-0.2 rounded-full border border-amber-500/30">
-                          {item.count}
-                        </span>
-                      )}
-                    </>
-                  );
+                        {item.badge && (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-border text-muted-foreground shrink-0 ml-1.5 font-semibold">
+                            {item.badge}
+                          </Badge>
+                        )}
+                        {item.count !== undefined && (
+                          <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-300 font-bold px-1.5 py-0.2 rounded-full border border-amber-500/30 shrink-0 ml-1.5">
+                            {item.count}
+                          </span>
+                        )}
+                      </>
+                    );
 
-                  const className = `group flex items-center justify-between w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all ${active
-                      ? 'bg-accent text-accent-foreground font-semibold shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                    }`;
+                    const className = `group flex items-center justify-between w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all ${active
+                        ? 'bg-accent text-accent-foreground font-semibold shadow-xs ring-1 ring-primary/20'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                      }`;
 
-                  if (item.href) {
-                    return (
+                    const itemElement = item.href ? (
                       <Link
-                        key={idx}
                         href={item.href}
                         onClick={() => {
                           setIsOpen(false);
@@ -749,24 +775,49 @@ export default function AppSidebar({
                       >
                         {itemContent}
                       </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (item.onClick) item.onClick();
+                          setIsOpen(false);
+                        }}
+                        className={className}
+                      >
+                        {itemContent}
+                      </button>
                     );
-                  }
 
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        if (item.onClick) item.onClick();
-                        setIsOpen(false);
-                      }}
-                      className={className}
-                    >
-                      {itemContent}
-                    </button>
-                  );
-                })}
-              </div>
+                    return (
+                      <Tooltip key={idx}>
+                        <TooltipTrigger asChild>
+                          {itemElement}
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="right"
+                          align="center"
+                          sideOffset={8}
+                          className="p-2.5 space-y-0.5 rounded-xl border border-border/90 bg-popover/95 backdrop-blur-xl shadow-2xl"
+                        >
+                          <div className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                            <span>{item.label}</span>
+                            {item.badge && (
+                              <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0 rounded font-semibold uppercase">
+                                {item.badge}
+                              </span>
+                            )}
+                          </div>
+                          {item.sublabel && (
+                            <p className="text-[11px] text-muted-foreground font-normal leading-tight max-w-[220px]">
+                              {item.sublabel}
+                            </p>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </TooltipProvider>
             </div>
 
             <Separator className="bg-border" />
@@ -801,9 +852,9 @@ export default function AppSidebar({
                     <div className="text-xs font-bold text-foreground truncate">{user?.name || 'Learner'}</div>
                     <div className="text-[10px] text-muted-foreground flex items-center gap-1">
                       <Flame className="w-3 h-3 text-amber-500 fill-amber-500" />
-                      <span>{user?.streakDays || 6}d</span>
+                      <span>{user?.streakDays ?? 0}d</span>
                       <span>•</span>
-                      <span>{user?.xp || 1450} XP</span>
+                      <span>{user?.xp ?? 0} XP</span>
                     </div>
                   </div>
                 </div>
@@ -814,6 +865,14 @@ export default function AppSidebar({
         </aside>
       </div>
     </>
+  );
+}
+
+export default function AppSidebar(props: AppSidebarProps) {
+  return (
+    <React.Suspense fallback={<aside className="w-16 shrink-0 border-r border-border bg-card" />}>
+      <AppSidebarContent {...props} />
+    </React.Suspense>
   );
 }
 

@@ -51,6 +51,8 @@ func (c Config) IsProduction() bool { return c.Env == "production" }
 func (c Config) AIEnabled() bool { return c.OpenRouterAPIKey != "" }
 
 func Load() (*Config, error) {
+	loadDotEnv()
+
 	var problems []string
 
 	env := stringOr("APP_ENV", "development")
@@ -174,3 +176,36 @@ func durationOr(key string, fallback time.Duration) (time.Duration, error) {
 	}
 	return d, nil
 }
+
+func loadDotEnv() {
+	if len(os.Args) > 0 && (strings.HasSuffix(os.Args[0], ".test") || strings.HasSuffix(os.Args[0], ".test.exe") || strings.Contains(os.Args[0], "go_build") || strings.Contains(os.Args[0], "__debug_bin")) {
+		return
+	}
+	paths := []string{".env", "../.env", "../../.env"}
+	for _, p := range paths {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		lines := strings.Split(string(data), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			k := strings.TrimSpace(parts[0])
+			v := strings.TrimSpace(parts[1])
+			v = strings.Trim(v, `"'`)
+			if os.Getenv(k) == "" {
+				_ = os.Setenv(k, v)
+			}
+		}
+		break
+	}
+}
+
+

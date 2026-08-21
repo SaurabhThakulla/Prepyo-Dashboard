@@ -7,6 +7,7 @@ import Header from './Header';
 import PublicNav from './PublicNav';
 import PublicFooter from './PublicFooter';
 import AITutorDrawer from '@/components/ai/AITutorDrawer';
+import RequireAuth from '@/components/auth/RequireAuth';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -69,7 +70,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* 80vw is a comfortable reading width on a laptop but wastes a third
             of a phone screen, so it only kicks in from lg up. */}
         <main className="flex-1 w-full lg:max-w-[80vw] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {children}
+          <RequireAuth>{children}</RequireAuth>
         </main>
       </div>
 

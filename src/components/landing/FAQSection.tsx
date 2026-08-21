@@ -45,45 +45,56 @@ export default function FAQSection() {
   };
 
   return (
-    <section id="faq" className="py-20 border-t border-border">
-      <SectionHeading
-        eyebrow="Got Questions?"
-        eyebrowIcon={HelpCircle}
-        eyebrowIconClass="text-primary"
-        title="Frequently asked questions"
-        description="Everything you need to know about the Prepyo AI platform, scoring, and payment options in Nepal."
-      />
+    <section id="faq" className="py-24 sm:py-32 border-t border-border">
+      <div className="text-center space-y-4 mb-16 max-w-3xl mx-auto px-4">
+        <span className="inline-flex items-center gap-2.5 rounded-full border border-border bg-card px-5 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider text-foreground shadow-xs">
+          <HelpCircle className="w-4 h-4 text-primary" />
+          Got Questions?
+        </span>
 
-      <div className="max-w-3xl mx-auto space-y-3">
+        <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black text-foreground tracking-tight">
+          Frequently asked questions
+        </h2>
+
+        <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          Everything you need to know about the Prepyo AI platform, scoring accuracy, and local Nepal payment options.
+        </p>
+      </div>
+
+      <div className="max-w-4xl lg:max-w-5xl mx-auto space-y-4 px-4 sm:px-6">
         {FAQS.map((faq, idx) => {
           const isOpen = openIndex === idx;
           return (
             <div
               key={idx}
-              className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
-                isOpen ? 'border-primary/40 bg-card shadow-md' : 'border-border bg-card/60 hover:border-border/80'
+              className={`rounded-2xl sm:rounded-3xl border transition-all duration-300 overflow-hidden ${
+                isOpen
+                  ? 'border-primary/50 bg-card shadow-xl shadow-primary/5 ring-1 ring-primary/20'
+                  : 'border-border bg-card/70 hover:bg-card hover:border-border/80 hover:shadow-md'
               }`}
             >
               <button
                 type="button"
                 onClick={() => toggle(idx)}
-                className="w-full p-5 text-left flex items-center justify-between gap-4"
+                className="w-full p-6 sm:p-7 text-left flex items-center justify-between gap-6 cursor-pointer"
                 aria-expanded={isOpen}
               >
-                <span className="font-display text-sm sm:text-base font-bold text-foreground">
+                <span className="font-display text-base sm:text-lg lg:text-xl font-bold text-foreground leading-snug">
                   {faq.question}
                 </span>
                 <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 border transition-all ${
-                    isOpen ? 'bg-primary text-white border-primary rotate-180' : 'bg-muted text-muted-foreground border-border'
+                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 border transition-all duration-300 ${
+                    isOpen
+                      ? 'bg-primary text-white border-primary rotate-180 shadow-md shadow-primary/30'
+                      : 'bg-muted text-muted-foreground border-border hover:text-foreground'
                   }`}
                 >
-                  <ChevronDown className="w-4 h-4" />
+                  <ChevronDown className="w-5 h-5" />
                 </div>
               </button>
 
               {isOpen && (
-                <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed border-t border-border/40 animate-in fade-in duration-200">
+                <div className="px-6 sm:px-7 pb-7 pt-2 text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed border-t border-border/40 animate-in fade-in slide-in-from-top-1 duration-200">
                   {faq.answer}
                 </div>
               )}

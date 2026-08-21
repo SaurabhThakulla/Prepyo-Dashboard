@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import {
@@ -8,29 +9,65 @@ import {
   PenTool,
   BookOpen,
   Headphones,
-  Play,
-  Square,
   RefreshCw,
   Clock,
-  Sparkles,
   Bot,
   AlertCircle,
   Volume2,
   Award,
-  Send
+  Send,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Question, SkillType } from '@/lib/types';
+import { Evaluation, PracticeAttempt, Question, SkillType } from '@/lib/types';
+import { api, ApiError, errorMessage } from '@/lib/api';
+import { useToast } from '@/components/ui/toast';
+
+/**
+ * How each skill is graded, which decides what this page can offer.
+ *
+ * - reading / listening are graded deterministically by POST /practice/attempts
+ * - writing goes to the AI evaluator at POST /evaluations/writing
+ * - speaking has no scoring path in the API yet, so it is not offered
+ */
+const GRADING: Record<SkillType, 'deterministic' | 'ai' | 'unavailable'> = {
+  reading: 'deterministic',
+  listening: 'deterministic',
+  writing: 'ai',
+  speaking: 'unavailable',
+};
+
+interface SubmitResult {
+  attempt?: PracticeAttempt;
+  review?: Question;
+  evaluation?: Evaluation;
+  xpAwarded: number;
+}
 
 function PracticeContent() {
-  const { activeExam, awardLocalXP, setIsTutorOpen, setTutorContextPrompt } = useApp();
+  const { activeExam, refreshUser, setIsTutorOpen, setTutorContextPrompt } = useApp();
+  const toast = useToast();
   const searchParams = useSearchParams();
-  const initialSkill = (searchParams.get('skill') as SkillType) || 'speaking';
 
-  const [selectedSkill, setSelectedSkill] = useState<SkillType>(initialSkill);
+  const [selectedSkill, setSelectedSkill] = useState<SkillType>(
+    (searchParams.get('skill') as SkillType) || 'reading',
+  );
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const [textAnswer, setTextAnswer] = useState('');
+  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+  const [blankResponses, setBlankResponses] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<SubmitResult | null>(null);
+  const [startedAt, setStartedAt] = useState<number>(() => Date.now());
+
+  const grading = GRADING[selectedSkill];
 
   useEffect(() => {
     const skillParam = searchParams.get('skill') as SkillType;
@@ -38,66 +75,41 @@ function PracticeContent() {
       setSelectedSkill(skillParam);
     }
   }, [searchParams]);
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  // Interaction State
-  const [textAnswer, setTextAnswer] = useState('');
-  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
-  const [blankResponses, setBlankResponses] = useState<Record<string, string>>({});
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioTimer, setAudioTimer] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
-  const [evaluationResult, setEvaluationResult] = useState<any>(null);
-  const [prepTimeRemaining, setPrepTimeRemaining] = useState<number | null>(null);
-
-  useEffect(() => {
-    setLoading(true);
-    setEvaluationResult(null);
+  const resetAnswer = useCallback(() => {
+    setResult(null);
     setTextAnswer('');
     setBlankResponses({});
     setSelectedOptions([]);
-    setIsRecording(false);
+    setStartedAt(Date.now());
+  }, []);
 
-    fetch(`/api/v1/questions?exam=${activeExam}&skill=${selectedSkill}`)
-      .then(res => res.json())
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    resetAnswer();
+
+    api
+      .get<{ questions: Question[] }>('/questions', { exam: activeExam, skill: selectedSkill })
       .then(data => {
-        if (data.success && data.questions?.length > 0) {
-          setQuestions(data.questions);
-          setCurrentQuestion(data.questions[0]);
-          if (data.questions[0].prepTimeSeconds) {
-            setPrepTimeRemaining(data.questions[0].prepTimeSeconds);
-          }
-        } else {
-          setQuestions([]);
-          setCurrentQuestion(null);
-        }
+        if (cancelled) return;
+        const list = data.questions ?? [];
+        setQuestions(list);
+        setCurrentQuestion(list[0] ?? null);
       })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      .catch(err => {
+        if (cancelled) return;
+        setQuestions([]);
+        setCurrentQuestion(null);
+        toast.error('Could not load questions', errorMessage(err));
+      })
+      .finally(() => !cancelled && setLoading(false));
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeExam, selectedSkill]);
-
-  useEffect(() => {
-    if (prepTimeRemaining !== null && prepTimeRemaining > 0) {
-      const timer = setInterval(() => {
-        setPrepTimeRemaining(prev => (prev && prev > 1 ? prev - 1 : null));
-      }, 1000);
-      return () => clearInterval(timer);
-    }
-  }, [prepTimeRemaining]);
-
-  useEffect(() => {
-    let interval: any = null;
-    if (isRecording) {
-      interval = setInterval(() => {
-        setAudioTimer(prev => prev + 1);
-      }, 1000);
-    } else {
-      clearInterval(interval);
-    }
-    return () => clearInterval(interval);
-  }, [isRecording]);
 
   const wordCount = textAnswer.trim().split(/\s+/).filter(Boolean).length;
 
@@ -105,34 +117,38 @@ function PracticeContent() {
     if (!currentQuestion || submitting) return;
     setSubmitting(true);
 
+    const timeSpentSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+
     try {
-      const payload = {
-        questionId: currentQuestion.id,
-        exam: currentQuestion.exam,
-        skill: currentQuestion.skill,
-        typeId: currentQuestion.typeId,
-        textResponse: textAnswer || (isRecording ? currentQuestion.prompt : undefined),
-        selectedOptions,
-        blankResponses,
-        audioDurationSeconds: audioTimer || 30,
-        timeSpentSeconds: 45,
-      };
-
-      const res = await fetch('/api/v1/practice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setEvaluationResult(data);
-        if (data.xpAwarded) {
-          awardLocalXP(data.xpAwarded, `Completed ${currentQuestion.typeName}`);
-        }
+      if (grading === 'ai') {
+        const data = await api.post<{ evaluation: Evaluation; xpAwarded: number }>('/evaluations/writing', {
+          questionId: currentQuestion.id,
+          text: textAnswer,
+        });
+        setResult({ evaluation: data.evaluation, xpAwarded: data.xpAwarded });
+      } else {
+        const data = await api.post<{ attempt: PracticeAttempt; review: Question; xpAwarded: number }>(
+          '/practice/attempts',
+          {
+            questionId: currentQuestion.id,
+            textResponse: textAnswer || undefined,
+            selectedOptions: selectedOptions.length ? selectedOptions : undefined,
+            blankResponses: Object.keys(blankResponses).length ? blankResponses : undefined,
+            timeSpentSeconds,
+          },
+        );
+        setResult({ attempt: data.attempt, review: data.review, xpAwarded: data.xpAwarded });
       }
+      // XP, streak and mission progress all changed server-side.
+      await refreshUser();
     } catch (err) {
-      console.error('Submission error:', err);
+      if (err instanceof ApiError && err.isAIUnavailable) {
+        toast.error('Evaluation unavailable', 'The AI evaluator is not configured. Your response was not lost.');
+      } else if (err instanceof ApiError && err.isLimitReached) {
+        toast.warning('Daily limit reached', err.message);
+      } else {
+        toast.error('Could not submit your answer', errorMessage(err));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -140,13 +156,21 @@ function PracticeContent() {
 
   const handleAskAITutor = () => {
     if (!currentQuestion) return;
-    setTutorContextPrompt(`Question Title: ${currentQuestion.title}\nTask: ${currentQuestion.typeName}\nPrompt: ${currentQuestion.prompt}\nModel Answer: ${currentQuestion.modelAnswer || 'N/A'}`);
+    setTutorContextPrompt(
+      `Question: ${currentQuestion.title}\nTask type: ${currentQuestion.typeName}\nPrompt: ${currentQuestion.prompt}`,
+    );
     setIsTutorOpen(true);
   };
 
+  const canSubmit =
+    grading !== 'unavailable' &&
+    (textAnswer.trim().length > 0 ||
+      selectedOptions.length > 0 ||
+      Object.values(blankResponses).some(Boolean));
+
   return (
     <div className="space-y-6">
-      
+
       {/* Skill Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div>
@@ -154,16 +178,16 @@ function PracticeContent() {
             {activeExam} Practice Studio
           </h1>
           <p className="text-xs text-muted-foreground">
-            Official timing constraints, draft counter, and real-time AI scoring
+            Answers are graded on the server — nothing is scored in your browser.
           </p>
         </div>
 
         <div className="flex bg-muted/60 p-1 rounded-xl border border-border overflow-x-auto no-scrollbar">
           {[
-            { id: 'speaking', label: 'Speaking', icon: Mic },
-            { id: 'writing', label: 'Writing', icon: PenTool },
             { id: 'reading', label: 'Reading', icon: BookOpen },
             { id: 'listening', label: 'Listening', icon: Headphones },
+            { id: 'writing', label: 'Writing', icon: PenTool },
+            { id: 'speaking', label: 'Speaking', icon: Mic },
           ].map(tab => {
             const Icon = tab.icon;
             const active = selectedSkill === tab.id;
@@ -189,18 +213,30 @@ function PracticeContent() {
       {loading ? (
         <div className="text-center py-20 bg-card rounded-2xl border border-border space-y-3">
           <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
-          <p className="text-xs text-muted-foreground">Loading question bank...</p>
+          <p className="text-xs text-muted-foreground">Loading questions…</p>
+        </div>
+      ) : grading === 'unavailable' ? (
+        <div className="text-center py-20 bg-card rounded-2xl border border-border space-y-3 max-w-lg mx-auto">
+          <Mic className="w-8 h-8 text-muted-foreground mx-auto" />
+          <h3 className="text-sm font-bold text-foreground">Speaking practice isn&apos;t scored yet</h3>
+          <p className="text-xs text-muted-foreground px-6 leading-relaxed">
+            Speaking responses need audio capture and a pronunciation model, neither of which is wired up.
+            Rather than show you a made-up score, this section stays closed until it can grade properly.
+          </p>
+          <Button asChild variant="outline" size="sm" className="font-bold text-xs">
+            <Link href="/practice?skill=reading">Practise reading instead</Link>
+          </Button>
         </div>
       ) : !currentQuestion ? (
         <div className="text-center py-20 bg-card rounded-2xl border border-border space-y-3">
           <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
-          <h3 className="text-sm font-bold text-foreground">No questions available</h3>
-          <p className="text-xs text-muted-foreground">Please switch skills or check back shortly.</p>
+          <h3 className="text-sm font-bold text-foreground">No {selectedSkill} questions for {activeExam} yet</h3>
+          <p className="text-xs text-muted-foreground">Try another skill or switch exam.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* Main Question & Response Card */}
+
+          {/* Question & response */}
           <div className="lg:col-span-8 space-y-6">
             <Card className="p-6 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
@@ -211,16 +247,10 @@ function PracticeContent() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {prepTimeRemaining !== null && (
-                    <Badge variant="warning" className="animate-pulse gap-1">
-                      <Clock className="w-3 h-3" /> Prep: {prepTimeRemaining}s
-                    </Badge>
-                  )}
-                  <Badge variant="outline" className="gap-1">
-                    <Clock className="w-3 h-3 text-primary" /> Limit: {Math.round(currentQuestion.timeLimitSeconds / 60)} min
-                  </Badge>
-                </div>
+                <Badge variant="outline" className="gap-1">
+                  <Clock className="w-3 h-3 text-primary" />
+                  {Math.round(currentQuestion.timeLimitSeconds / 60)} min
+                </Badge>
               </div>
 
               <div className="space-y-2">
@@ -232,89 +262,118 @@ function PracticeContent() {
 
               {currentQuestion.imageUrl && (
                 <div className="p-3 bg-background rounded-xl border border-border flex justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={currentQuestion.imageUrl} alt={currentQuestion.title} className="rounded-lg max-h-60 object-cover w-full" />
                 </div>
               )}
 
-              {currentQuestion.audioTranscript && (
-                <div className="p-4 rounded-xl bg-indigo-950/20 border border-indigo-500/20 space-y-2">
-                  <div className="flex items-center justify-between text-xs text-indigo-300 font-bold">
-                    <span className="flex items-center gap-1.5">
-                      <Volume2 className="w-4 h-4 text-primary animate-pulse" /> Audio Track Simulation
-                    </span>
-                    <Badge variant="outline" className="text-[9px]">0:15s</Badge>
-                  </div>
-                  <div className="flex items-center gap-1 h-7 bg-background p-2 rounded-lg border border-border">
-                    {[40, 60, 90, 30, 80, 100, 70, 45, 85, 95, 30, 60, 80, 50, 75].map((h, i) => (
-                      <div key={i} className="flex-1 bg-primary/60 rounded-full" style={{ height: `${h}%` }} />
-                    ))}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground italic">
-                    Transcript: &quot;{currentQuestion.audioTranscript}&quot;
+              {/* Real audio when the question has a file; otherwise the
+                  transcript, labelled as a stand-in rather than dressed up as a
+                  player. */}
+              {currentQuestion.audioUrl ? (
+                <div className="p-4 rounded-xl bg-background border border-border space-y-2">
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                    <Volume2 className="w-4 h-4 text-primary" /> Audio
+                  </span>
+                  <audio controls src={currentQuestion.audioUrl} className="w-full">
+                    Your browser does not support audio playback.
+                  </audio>
+                </div>
+              ) : currentQuestion.audioTranscript ? (
+                <div className="p-4 rounded-xl bg-background border border-border space-y-1.5">
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                    <Volume2 className="w-4 h-4 text-muted-foreground" /> Transcript
+                  </span>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    No audio file for this question yet, so the script is shown instead.
+                  </p>
+                  <p className="text-xs text-foreground italic leading-relaxed">
+                    &ldquo;{currentQuestion.audioTranscript}&rdquo;
                   </p>
                 </div>
-              )}
+              ) : null}
 
-              {currentQuestion.contextPassage && !currentQuestion.blanks && (
+              {currentQuestion.contextPassage && (
                 <div className="p-4 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed max-h-56 overflow-y-auto">
                   {currentQuestion.contextPassage}
                 </div>
               )}
             </Card>
 
-            {/* Response Form */}
+            {/* Answer form */}
             <Card className="p-6 space-y-4">
-              {currentQuestion.skill === 'speaking' && (
-                <div className="space-y-4 text-center py-4">
-                  <button
-                    onClick={isRecording ? () => setIsRecording(false) : () => { setIsRecording(true); setAudioTimer(0); }}
-                    className={`relative flex h-20 w-20 items-center justify-center rounded-full transition-all mx-auto shadow-2xl ${
-                      isRecording
-                        ? 'bg-destructive text-white scale-105 animate-pulse shadow-destructive/50'
-                        : 'bg-primary text-primary-foreground hover:scale-105 shadow-primary/30'
-                    }`}
-                  >
-                    {isRecording ? <Square className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
-                  </button>
-                  <div className="font-display font-bold text-lg text-foreground">
-                    {isRecording ? `Recording: ${audioTimer}s` : audioTimer > 0 ? `Recorded: ${audioTimer}s` : 'Tap to Record Voice'}
-                  </div>
-                </div>
-              )}
-
-              {currentQuestion.skill === 'writing' && (
+              {grading === 'ai' && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-foreground">Your Draft</span>
-                    <Badge variant={wordCount >= 200 ? 'success' : 'warning'}>
-                      {wordCount} Words
-                    </Badge>
+                    <span className="font-bold text-foreground">Your response</span>
+                    <Badge variant={wordCount >= 20 ? 'success' : 'warning'}>{wordCount} words</Badge>
                   </div>
                   <Textarea
                     rows={8}
                     value={textAnswer}
-                    onChange={(e) => setTextAnswer(e.target.value)}
-                    placeholder="Type your essay or summary response here..."
+                    onChange={e => setTextAnswer(e.target.value)}
+                    placeholder="Write your response here…"
                   />
+                  <p className="text-[11px] text-muted-foreground">
+                    At least 20 words so the evaluator has something to work with.
+                  </p>
                 </div>
               )}
 
-              {currentQuestion.blanks && (
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-foreground">Select words for each blank:</h4>
-                  {currentQuestion.blanks.map((b, idx) => (
-                    <div key={b.id} className="flex items-center justify-between p-3 bg-background rounded-xl border border-border text-xs">
-                      <span className="font-bold text-primary">Blank [{idx + 1}]:</span>
-                      <select
-                        value={blankResponses[b.id] || ''}
-                        onChange={(e) => setBlankResponses({ ...blankResponses, [b.id]: e.target.value })}
-                        className="bg-card border border-border text-xs font-medium text-foreground px-3 py-1.5 rounded-lg focus:outline-none focus:border-primary"
+              {currentQuestion.options && currentQuestion.options.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-foreground">Choose your answer:</h4>
+                  {currentQuestion.options.map(opt => {
+                    const checked = selectedOptions.includes(opt.id);
+                    return (
+                      <label
+                        key={opt.id}
+                        className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer text-xs transition-colors ${
+                          checked ? 'border-primary bg-primary/5' : 'border-border bg-background hover:border-primary/40'
+                        }`}
                       >
-                        <option value="">-- Choose Option --</option>
-                        {b.options.map(opt => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={e =>
+                            setSelectedOptions(prev =>
+                              e.target.checked ? [...prev, opt.id] : prev.filter(id => id !== opt.id),
+                            )
+                          }
+                          className="mt-0.5 rounded border-input text-primary focus:ring-primary h-3.5 w-3.5"
+                        />
+                        <span className="text-foreground font-medium leading-relaxed">{opt.text}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+
+              {currentQuestion.blanks && currentQuestion.blanks.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-foreground">Fill each blank:</h4>
+                  {currentQuestion.blanks.map((b, idx) => (
+                    <div key={b.id} className="flex items-center justify-between gap-3 p-3 bg-background rounded-xl border border-border text-xs">
+                      <span className="font-bold text-primary shrink-0">Blank {idx + 1}:</span>
+                      {b.options && b.options.length > 0 ? (
+                        <select
+                          value={blankResponses[b.id] || ''}
+                          onChange={e => setBlankResponses({ ...blankResponses, [b.id]: e.target.value })}
+                          className="bg-card border border-border text-xs font-medium text-foreground px-3 py-1.5 rounded-lg focus:outline-none focus:border-primary"
+                        >
+                          <option value="">— Choose —</option>
+                          {b.options.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          value={blankResponses[b.id] || ''}
+                          onChange={e => setBlankResponses({ ...blankResponses, [b.id]: e.target.value })}
+                          className="bg-card border border-border text-xs font-medium text-foreground px-3 py-1.5 rounded-lg focus:outline-none focus:border-primary"
+                          placeholder="Type your answer"
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -326,88 +385,133 @@ function PracticeContent() {
                   <span>Ask AI Coach</span>
                 </Button>
 
-                <Button onClick={handleSubmitAnswer} disabled={submitting} size="default" className="font-bold gap-1.5 shadow-md">
-                  {submitting ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Evaluating with AI...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Submit Answer</span>
-                    </>
-                  )}
-                </Button>
+                {result ? (
+                  <Button
+                    onClick={() => {
+                      resetAnswer();
+                      const next = questions[questions.findIndex(q => q.id === currentQuestion.id) + 1];
+                      if (next) setCurrentQuestion(next);
+                    }}
+                    size="default"
+                    className="font-bold gap-1.5 shadow-md"
+                  >
+                    <span>Next question</span>
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSubmitAnswer}
+                    disabled={submitting || !canSubmit}
+                    size="default"
+                    className="font-bold gap-1.5 shadow-md"
+                  >
+                    {submitting ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>{grading === 'ai' ? 'Evaluating…' : 'Checking…'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Submit Answer</span>
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             </Card>
           </div>
 
-          {/* Right Column: Question Navigator & Evaluation */}
+          {/* Navigator & result */}
           <div className="lg:col-span-4 space-y-6">
             <Card className="p-5 space-y-3">
-              <CardTitle className="text-sm">{selectedSkill.toUpperCase()} Questions ({questions.length})</CardTitle>
+              <CardTitle className="text-sm">{selectedSkill.toUpperCase()} ({questions.length})</CardTitle>
               <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
-                {questions.map((q, idx) => {
-                  const isCurrent = currentQuestion.id === q.id;
-                  return (
-                    <button
-                      key={q.id}
-                      onClick={() => {
-                        setCurrentQuestion(q);
-                        setEvaluationResult(null);
-                        setTextAnswer('');
-                        setBlankResponses({});
-                        setSelectedOptions([]);
-                        if (q.prepTimeSeconds) setPrepTimeRemaining(q.prepTimeSeconds);
-                      }}
-                      className={`p-2.5 rounded-xl border text-left text-xs transition-all ${
-                        isCurrent
-                          ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                          : 'bg-background border-border text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <div className="font-bold truncate">{idx + 1}. {q.typeName}</div>
-                      <div className="text-[10px] opacity-75 truncate">{q.difficulty}</div>
-                    </button>
-                  );
-                })}
+                {questions.map((q, idx) => (
+                  <button
+                    key={q.id}
+                    onClick={() => {
+                      setCurrentQuestion(q);
+                      resetAnswer();
+                    }}
+                    className={`p-2.5 rounded-xl border text-left text-xs transition-all ${
+                      currentQuestion.id === q.id
+                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                        : 'bg-background border-border text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <div className="font-bold truncate">{idx + 1}. {q.typeName}</div>
+                    <div className="text-[10px] opacity-75 truncate">{q.difficulty}</div>
+                  </button>
+                ))}
               </div>
             </Card>
 
-            {evaluationResult && (
+            {/* Deterministic result */}
+            {result?.attempt && (
+              <Card className="border-primary/40 p-6 space-y-4 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {result.attempt.isCorrect ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-rose-500" />
+                    )}
+                    <CardTitle className="text-base">
+                      {result.attempt.isCorrect ? 'Correct' : 'Not quite'}
+                    </CardTitle>
+                  </div>
+                  {result.xpAwarded > 0 && <Badge variant="warning">+{result.xpAwarded} XP</Badge>}
+                </div>
+
+                <div className="bg-background p-4 rounded-xl border border-border text-center space-y-1">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">Score</span>
+                  <div className="font-display text-4xl font-black text-foreground">
+                    {result.attempt.score}
+                    <span className="text-xs text-muted-foreground font-bold"> / {result.attempt.maxScore}</span>
+                  </div>
+                  <p className="text-xs text-foreground pt-1">{result.attempt.feedback}</p>
+                </div>
+
+                {result.review?.explanation && (
+                  <div className="p-3 rounded-xl bg-background border border-border space-y-1">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Explanation</span>
+                    <p className="text-[11px] text-foreground leading-relaxed">{result.review.explanation}</p>
+                  </div>
+                )}
+              </Card>
+            )}
+
+            {/* AI evaluation result */}
+            {result?.evaluation && (
               <Card className="border-primary/40 p-6 space-y-4 animate-in fade-in duration-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Award className="w-5 h-5 text-amber-400" />
-                    <CardTitle className="text-base">Score Report</CardTitle>
+                    <CardTitle className="text-base">Evaluation</CardTitle>
                   </div>
-                  <Badge variant="warning">+{evaluationResult.xpAwarded} XP</Badge>
+                  {result.xpAwarded > 0 && <Badge variant="warning">+{result.xpAwarded} XP</Badge>}
                 </div>
 
                 <div className="bg-background p-4 rounded-xl border border-border text-center space-y-1">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase">Practice Estimate</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">Practice estimate</span>
                   <div className="font-display text-4xl font-black text-foreground">
-                    {evaluationResult.evaluation.score}
-                    <span className="text-xs text-muted-foreground font-bold"> / {evaluationResult.evaluation.maxScore}</span>
+                    {result.evaluation.estimatedScore ?? '—'}
                   </div>
-                  <p className="text-xs text-foreground pt-1">{evaluationResult.evaluation.feedback}</p>
+                  <p className="text-xs text-foreground pt-1">{result.evaluation.summary}</p>
                 </div>
 
-                {evaluationResult.aiEvaluation?.criteria && (
+                {result.evaluation.criteria.length > 0 && (
                   <div className="space-y-2">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Rubric Breakdown</span>
-                    <div className="space-y-2">
-                      {evaluationResult.aiEvaluation.criteria.map((c: any, i: number) => (
-                        <div key={i} className="p-2.5 rounded-lg bg-background border border-border text-xs space-y-1">
-                          <div className="flex justify-between font-bold text-foreground">
-                            <span>{c.name}</span>
-                            <span className="text-primary">{c.score}/{c.maxScore}</span>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground">{c.feedback}</p>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Rubric</span>
+                    {result.evaluation.criteria.map(c => (
+                      <div key={c.name} className="p-2.5 rounded-lg bg-background border border-border text-xs space-y-1">
+                        <div className="flex justify-between font-bold text-foreground">
+                          <span>{c.name}</span>
+                          <span className="text-primary">{c.score}/{c.maxScore}</span>
                         </div>
-                      ))}
-                    </div>
+                        <p className="text-[11px] text-muted-foreground">{c.feedback}</p>
+                      </div>
+                    ))}
                   </div>
                 )}
               </Card>

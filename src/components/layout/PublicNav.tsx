@@ -17,7 +17,6 @@ const NAV_LINKS = [
   { href: '/#features', id: 'features', label: 'Features' },
   { href: '/#how-it-works', id: 'how-it-works', label: 'How it Works' },
   { href: '/#pricing', id: 'pricing', label: 'Pricing (NPR)' },
-  { href: '/#testimonials', id: 'testimonials', label: 'Success Stories' },
   { href: '/#institutions', id: 'institutions', label: 'For Institutes' },
   { href: '/#faq', id: 'faq', label: 'FAQ' },
 ];
