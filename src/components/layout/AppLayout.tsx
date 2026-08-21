@@ -4,8 +4,6 @@ import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import AppSidebar from './AppSidebar';
 import Header from './Header';
-import PublicNav from './PublicNav';
-import PublicFooter from './PublicFooter';
 import AITutorDrawer from '@/components/ai/AITutorDrawer';
 import RequireAuth from '@/components/auth/RequireAuth';
 
@@ -14,22 +12,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSecondaryOpen, setIsSecondaryOpen] = useState(true);
 
-  const isPublicLanding = pathname === '/';
-  const isAuthPage = pathname === '/login' || pathname === '/signup';
-
-  if (isPublicLanding) {
-    return (
-      <div className="min-h-screen bg-background text-foreground flex flex-col transition-colors duration-200">
-        <PublicNav />
-        {/* 80vw is a comfortable reading width on a laptop but wastes a third
-            of a phone screen, so it only kicks in from lg up. */}
-        <main className="flex-1 w-full lg:max-w-[80vw] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {children}
-        </main>
-        <PublicFooter />
-      </div>
-    );
-  }
+  // The sign-in screen is its own full-page layout, so these routes get the
+  // bare shell rather than the sidebar and header. "/" is one of them: it
+  // renders the sign-in form, not a page of its own.
+  const isAuthPage = pathname === '/' || pathname === '/login' || pathname === '/signup';
 
   if (isAuthPage) {
     return (

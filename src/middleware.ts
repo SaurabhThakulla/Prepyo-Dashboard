@@ -46,8 +46,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Someone with a session has no reason to see the sign-in form.
-  if (hasSession && (pathname === '/login' || pathname === '/signup')) {
+  // Someone with a session has no reason to see the sign-in form, and "/" is
+  // that form now that the marketing page has moved to its own project.
+  if (hasSession && (pathname === '/' || pathname === '/login' || pathname === '/signup')) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     url.search = '';
