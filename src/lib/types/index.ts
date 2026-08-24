@@ -23,7 +23,7 @@ export const XP_PER_LEVEL = 400;
 
 /**
  * The learner's current standing. `value` is null when there is not enough
- * evidence to estimate a score, which the UI must render as "not enough data".
+ * evidence to estimate a score, which the UI must render as "----".
  */
 export interface ScoreEstimate {
   value: number | null;
