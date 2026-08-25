@@ -2,11 +2,11 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { api, ApiError } from '@/lib/api';
 import { ExamType, NotificationItem, UserProfile } from '@/lib/types';
 
-export interface RegisterInput {
-  name: string;
-  email: string;
-  password: string;
-  nepalRegion?: string;
+export interface VerifyOtpInput {
+  phone: string;
+  code: string;
+  name?: string;
+  email?: string;
   referralCode?: string;
 }
 
@@ -17,8 +17,8 @@ interface AppContextType {
   /** Resolved session state: false means the session check ran and found nobody. */
   isAuthenticated: boolean;
 
-  login: (email: string, password: string) => Promise<UserProfile>;
-  register: (input: RegisterInput) => Promise<UserProfile>;
+  requestOtp: (phone: string) => Promise<{ registered: boolean }>;
+  verifyOtp: (input: VerifyOtpInput) => Promise<UserProfile>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 
@@ -114,26 +114,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     refreshUser();
   }, [refreshUser]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const data = await api.post<{ user: UserProfile }>('/auth/login', { email, password });
-    applyUser(data.user);
-    setLoading(false);
-    // Pull the full profile in the background; the caller can navigate now.
-    refreshUser();
-    return data.user;
-  }, [applyUser, refreshUser]);
+  const requestOtp = useCallback(async (phone: string) => {
+    return api.post<{ registered: boolean }>('/auth/otp/request', { phone });
+  }, []);
 
-  const register = useCallback(async (input: RegisterInput) => {
-    const data = await api.post<{ user: UserProfile }>('/auth/register', {
-      name: input.name,
-      email: input.email,
-      password: input.password,
-      nepalRegion: input.nepalRegion ?? '',
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kathmandu',
+  const verifyOtp = useCallback(async (input: VerifyOtpInput) => {
+    const data = await api.post<{ user: UserProfile }>('/auth/otp/verify', {
+      phone: input.phone,
+      code: input.code,
+      name: input.name ?? '',
+      email: input.email ?? '',
       referralCode: input.referralCode ?? '',
     });
     applyUser(data.user);
     setLoading(false);
+    // Pull the full profile in the background; the caller can navigate now.
     refreshUser();
     return data.user;
   }, [applyUser, refreshUser]);
@@ -202,8 +197,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         user,
         loading,
         isAuthenticated: user !== null,
-        login,
-        register,
+        requestOtp,
+        verifyOtp,
         logout,
         refreshUser,
         notifications,

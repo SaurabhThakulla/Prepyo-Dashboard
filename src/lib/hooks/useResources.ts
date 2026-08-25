@@ -12,13 +12,6 @@ import {
   SkillType,
   SubscriptionPlan,
 } from '@/lib/types';
-import {
-  fixtureEvaluations,
-  fixtureMistakes,
-  fixtureMocks,
-  fixtureWritingQuestions,
-  USE_FIXTURES,
-} from '@/lib/fixtures';
 
 /**
  * One hook per API resource.
@@ -27,16 +20,15 @@ import {
  * resource share a request and a cache entry. Add a resource here rather than
  * calling `api.get` from a component.
  *
- * `placeholderData` supplies fixture data for the first render when
- * NEXT_PUBLIC_USE_FIXTURES is on. It is a placeholder, not cached data, so the
- * real request still runs and still reports its errors.
+ * Nothing here seeds a first render with invented content. A hook that has not
+ * loaded reports pending, and one that failed reports its error — which is what
+ * lets a page say so instead of showing numbers nobody earned.
  */
 
 export function useMocks(exam: ExamType) {
   return useQuery({
     queryKey: queryKeys.mocks(exam),
     queryFn: () => api.get<{ mocks: Mock[] }>('/mocks', { exam }),
-    placeholderData: USE_FIXTURES ? { mocks: fixtureMocks(exam) } : undefined,
   });
 }
 
@@ -56,18 +48,16 @@ export function useMistakes(exam: ExamType, skill: string, unresolvedOnly: boole
         skill: skill === 'all' ? undefined : skill,
         unresolved: unresolvedOnly ? 'true' : undefined,
       }),
-    placeholderData: USE_FIXTURES
-      ? { mistakes: fixtureMistakes(), pagination: { total: 4, limit: 20, offset: 0, hasMore: false } }
-      : undefined,
   });
 }
+
+const QUESTION_PAGE_SIZE = 200;
 
 export function useQuestions(exam: ExamType, skill: SkillType) {
   return useQuery({
     queryKey: queryKeys.questions(exam, skill),
-    queryFn: () => api.get<{ questions: Question[] }>('/questions', { exam, skill }),
-    placeholderData:
-      USE_FIXTURES && skill === 'writing' ? { questions: fixtureWritingQuestions(exam) } : undefined,
+    queryFn: () =>
+      api.get<{ questions: Question[] }>('/questions', { exam, skill, limit: QUESTION_PAGE_SIZE }),
   });
 }
 
@@ -75,13 +65,12 @@ export function useEvaluationHistory(limit = 5) {
   return useQuery({
     queryKey: queryKeys.evaluations(limit),
     queryFn: () => api.get<{ evaluations: Evaluation[] }>('/evaluations', { limit }),
-    placeholderData: USE_FIXTURES ? { evaluations: fixtureEvaluations() } : undefined,
   });
 }
 
 /**
- * Plans have no fixture on purpose: whatever this shows must match what
- * checkout charges. See src/app/subscription/page.tsx.
+ * Prices must match what checkout charges, so this one never had a fixture even
+ * when the others did. See src/pages/SubscriptionPage.tsx.
  */
 export function useSubscriptionPlans() {
   return useQuery({
