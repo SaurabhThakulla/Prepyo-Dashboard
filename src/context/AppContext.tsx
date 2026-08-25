@@ -21,7 +21,7 @@ interface AppContextType {
 
   login: (email: string, password: string) => Promise<UserProfile>;
   register: (input: RegisterInput) => Promise<UserProfile>;
-  logout: () => Promise<void>;
+  logout: (allSessions?: boolean) => Promise<void>;
   refreshUser: () => Promise<void>;
 
   notifications: NotificationItem[];
@@ -140,15 +140,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return data.user;
   }, [applyUser, refreshUser]);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (allSessions = true) => {
     try {
-      await api.post('/auth/logout');
+      if (allSessions) {
+        try {
+          await api.post('/auth/logout-everywhere');
+        } catch {
+          await api.post('/auth/logout');
+        }
+      } else {
+        await api.post('/auth/logout');
+      }
+    } catch (e) {
+      console.error('Logout error:', e);
     } finally {
       // Clear locally even if the call failed, so the UI cannot show a session
       // the learner has asked to end.
       setUser(null);
       setNotifications([]);
       setActiveExamState('PTE');
+      try {
+        localStorage.removeItem('prepyo_realtime_history');
+        localStorage.removeItem('prepyo_session');
+        sessionStorage.clear();
+      } catch (e) {}
     }
   }, []);
 

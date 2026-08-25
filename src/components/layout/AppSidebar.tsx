@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import {
   LayoutDashboard,
@@ -27,7 +27,9 @@ import {
   History,
   GraduationCap,
   HelpCircle,
-  FileText
+  FileText,
+  LogOut,
+  Loader2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -125,13 +127,32 @@ function AppSidebarContent({
 }: AppSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { user, activeExam, setActiveExam, setIsTutorOpen, theme, toggleTheme } = useApp();
+  const router = useRouter();
+  const { user, activeExam, setActiveExam, setIsTutorOpen, theme, toggleTheme, logout } = useApp();
 
   const isPTE = activeExam === 'PTE';
   const currentSkill = searchParams.get('skill') || (pathname === '/practice' ? 'speaking' : null);
 
   const [userHistory, setUserHistory] = React.useState<HistoryItem[]>([]);
   const [nowTime, setNowTime] = React.useState<number>(Date.now());
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+
+  const handleLogout = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setIsLoggingOut(true);
+    try {
+      await logout(true);
+      router.push('/login');
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setIsLoggingOut(false);
+      setIsOpen(false);
+    }
+  };
 
   // Real-time ticking interval for relative time strings
   useEffect(() => {
@@ -643,20 +664,43 @@ function AppSidebarContent({
               {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
             </Button>
 
-            <button
-              onClick={() => handlePrimaryClick('account')}
-              title="Account & Profile"
-              className={`flex h-9 w-9 items-center justify-center rounded-xl transition-all ${activeSection === 'account' && isSecondaryOpen
-                  ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-                  : 'hover:opacity-80'
-                }`}
-            >
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                  {user?.name?.charAt(0) || 'P'}
-                </AvatarFallback>
-              </Avatar>
-            </button>
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handlePrimaryClick('account')}
+                    title="Account & Profile"
+                    className={`flex h-9 w-9 items-center justify-center rounded-xl transition-all ${activeSection === 'account' && isSecondaryOpen
+                        ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                        : 'hover:opacity-80'
+                      }`}
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                        {user?.name?.charAt(0) || 'P'}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={10} className="p-2 space-y-1.5 font-sans min-w-[130px]">
+                  <div className="text-xs font-bold text-foreground truncate max-w-[140px]">{user?.name || 'Learner'}</div>
+                  <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <Flame className="w-3 h-3 text-amber-500 fill-amber-500" />
+                    <span>{user?.streakDays ?? 0}d streak</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
+                    className="w-full flex items-center justify-center gap-1.5 px-2 py-1 mt-1 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground text-[11px] font-bold transition-colors cursor-pointer"
+                    title="Log out and clear all sessions"
+                  >
+                    {isLoggingOut ? <Loader2 className="w-3 h-3 animate-spin" /> : <LogOut className="w-3 h-3" />}
+                    <span>{isLoggingOut ? 'Logging out...' : 'Log out'}</span>
+                  </button>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </aside>
 
@@ -837,29 +881,54 @@ function AppSidebarContent({
                 <span>Ask AI Coach</span>
               </Button>
 
-              <Link
-                href="/profile"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center justify-between p-2 rounded-xl bg-card border border-border hover:border-primary/40 transition-colors"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Avatar className="h-8 w-8">
+              <div className="group relative flex items-center justify-between p-2 rounded-xl bg-card border border-border hover:border-primary/40 transition-all">
+                <Link
+                  href="/profile"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-2.5 min-w-0 flex-1 pr-1"
+                >
+                  <Avatar className="h-8 w-8 shrink-0">
                     <AvatarFallback className="bg-muted text-foreground text-xs font-bold">
                       {user?.name?.charAt(0) || 'L'}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="text-xs font-bold text-foreground truncate">{user?.name || 'Learner'}</div>
                     <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      <Flame className="w-3 h-3 text-amber-500 fill-amber-500" />
+                      <Flame className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
                       <span>{user?.streakDays ?? 0}d</span>
                       <span>•</span>
                       <span>{user?.xp ?? 0} XP</span>
                     </div>
                   </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-              </Link>
+                </Link>
+
+                {/* Normal state: arrow to profile */}
+                <Link
+                  href="/profile"
+                  onClick={() => setIsOpen(false)}
+                  className="p-1 text-muted-foreground hover:text-foreground transition-opacity group-hover:hidden"
+                  title="View profile"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Link>
+
+                {/* Hover state: Logout button that clears all sessions */}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  className="hidden group-hover:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-destructive/15 text-destructive hover:bg-destructive hover:text-destructive-foreground text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer animate-in fade-in zoom-in-95 duration-150"
+                  title="Log out and clear all sessions"
+                >
+                  {isLoggingOut ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <LogOut className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isLoggingOut ? 'Logging out...' : 'Log out'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </aside>

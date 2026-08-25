@@ -2,17 +2,36 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { Flame, Sparkles, Bell, Trophy, BookOpen, Layers, ShieldCheck, User, Menu, X, Bot } from 'lucide-react';
+import { Flame, Sparkles, Bell, Trophy, BookOpen, Layers, ShieldCheck, User, Menu, X, Bot, LogOut, Loader2 } from 'lucide-react';
 import NotificationDrawer from './NotificationDrawer';
 
 export default function Navbar() {
-  const { user, activeExam, setActiveExam, unreadCount, setIsTutorOpen } = useApp();
+  const { user, activeExam, setActiveExam, unreadCount, setIsTutorOpen, logout } = useApp();
   const planId = user?.subscription?.planId;
   const pathname = usePathname();
+  const router = useRouter();
   const [showNotifications, setShowNotifications] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setIsLoggingOut(true);
+    try {
+      await logout(true);
+      router.push('/login');
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setIsLoggingOut(false);
+      setMobileMenuOpen(false);
+    }
+  };
 
   return (
     <>
@@ -176,18 +195,50 @@ export default function Navbar() {
               <span>{planId && planId !== 'free' ? planId.toUpperCase() : 'UPGRADE'}</span>
             </Link>
 
-            {/* Profile Avatar */}
-            <Link
-              href="/profile"
-              className="flex items-center gap-2 p-1 pl-2 bg-card border border-border rounded-xl hover:border-primary/40 transition-colors"
-            >
-              <span className="hidden md:inline text-xs font-semibold text-foreground truncate max-w-[90px]">
-                {user?.name?.split(' ')[0] || 'Learner'}
-              </span>
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-emerald-600 text-white text-xs font-bold">
-                {user?.name?.charAt(0).toUpperCase() || '?'}
+            {/* Profile Avatar Pill with Hover Menu */}
+            <div className="relative group">
+              <Link
+                href="/profile"
+                className="flex items-center gap-2 p-1 pl-2 bg-card border border-border rounded-xl hover:border-primary/40 transition-colors"
+              >
+                <span className="hidden md:inline text-xs font-semibold text-foreground truncate max-w-[90px]">
+                  {user?.name?.split(' ')[0] || 'Learner'}
+                </span>
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-emerald-600 text-white text-xs font-bold">
+                  {user?.name?.charAt(0).toUpperCase() || '?'}
+                </div>
+              </Link>
+
+              {/* Dropdown Menu on Hover */}
+              <div className="absolute right-0 top-full mt-1.5 w-48 rounded-xl border border-border bg-popover/95 p-1.5 shadow-xl backdrop-blur-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50">
+                <div className="px-2.5 py-1.5 border-b border-border/50">
+                  <div className="text-xs font-bold text-foreground truncate">{user?.name || 'Learner'}</div>
+                  <div className="text-[10px] text-muted-foreground truncate">{user?.email || 'learner@prepyo.com'}</div>
+                  <div className="text-[10px] text-amber-500 font-semibold flex items-center gap-1 mt-0.5">
+                    <Flame className="w-3 h-3 fill-amber-500" />
+                    <span>{user?.streakDays ?? 0}d streak</span>
+                    <span>•</span>
+                    <span>{user?.xp ?? 0} XP</span>
+                  </div>
+                </div>
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-2 px-2.5 py-1.5 mt-1 rounded-lg text-xs text-foreground/80 hover:text-foreground hover:bg-muted font-medium transition-colors"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>Profile & Goals</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-destructive hover:bg-destructive/10 font-bold transition-colors text-left cursor-pointer"
+                >
+                  {isLoggingOut ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
+                  <span>{isLoggingOut ? 'Logging out...' : 'Log out'}</span>
+                </button>
               </div>
-            </Link>
+            </div>
 
             {/* Mobile Menu Toggle */}
             <button
@@ -244,6 +295,17 @@ export default function Navbar() {
               <Link onClick={() => setMobileMenuOpen(false)} href="/admin" className="p-2.5 rounded-lg bg-muted/60 text-xs font-medium text-muted-foreground">
                 Admin Panel
               </Link>
+            </div>
+            <div className="pt-2 border-t border-border">
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg bg-destructive/10 text-destructive text-xs font-bold hover:bg-destructive hover:text-destructive-foreground transition-colors"
+              >
+                {isLoggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+                <span>{isLoggingOut ? 'Logging out...' : 'Log out (Clear sessions)'}</span>
+              </button>
             </div>
           </div>
         )}
