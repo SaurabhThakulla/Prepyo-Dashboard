@@ -12,7 +12,6 @@ const PROTECTED_PREFIXES = [
   '/mocks',
   '/mistakes',
   '/evaluations',
-  '/progress',
   '/leaderboard',
   '/profile',
   '/referrals',

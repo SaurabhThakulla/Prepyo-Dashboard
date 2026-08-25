@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/prepyo/backend/internal/models"
@@ -54,6 +55,12 @@ type evaluationPayload struct {
 	} `json:"sentenceFeedback"`
 }
 
+// maxValidationAttempts covers one correction round. A reply can be perfectly
+// well-formed JSON and still be unusable — most often a score on the wrong
+// exam's scale — and telling the model exactly what was wrong fixes it far
+// more cheaply than failing the learner's submission.
+const maxValidationAttempts = 2
+
 // EvaluateWriting returns qualitative feedback and an estimated score.
 //
 // The estimate is a practice estimate. Neither this package nor its callers
@@ -64,23 +71,64 @@ func (g *Gateway) EvaluateWriting(ctx context.Context, req WritingRequest) (mode
 		{Role: "user", Content: writingUserPrompt(req)},
 	}
 
-	raw, usage, err := g.complete(ctx, g.models.Writing, WritingPromptVersion, messages, true)
-	if err != nil {
-		return models.Evaluation{}, Usage{}, err
+	// Usage accumulates across attempts: a correction round costs real tokens,
+	// and cost reporting that hid them would understate what evaluations spend.
+	var usage Usage
+
+	for attempt := 1; attempt <= maxValidationAttempts; attempt++ {
+		raw, attemptUsage, err := g.complete(ctx, g.models.Writing, WritingPromptVersion, messages, true)
+		usage.add(attemptUsage)
+		if err != nil {
+			return models.Evaluation{}, Usage{}, err
+		}
+
+		evaluation, problem := parseWriting(raw, req)
+		if problem == nil {
+			return evaluation, usage, nil
+		}
+
+		g.log.Error("ai output failed validation",
+			"model", g.models.Writing, "attempt", attempt, "error", problem)
+
+		if attempt == maxValidationAttempts || ctx.Err() != nil {
+			break
+		}
+
+		// Hand back the exact reply and the exact complaint, so the retry
+		// corrects the one field that was wrong instead of starting over and
+		// risking a different mistake.
+		messages = append(messages,
+			chatMessage{Role: "assistant", Content: raw},
+			chatMessage{Role: "user", Content: fmt.Sprintf(
+				"That reply was rejected: %s. Send the complete JSON again with that fixed and everything else unchanged.",
+				problem)},
+		)
 	}
 
+	return models.Evaluation{}, usage, ErrBadOutput
+}
+
+// parseWriting decodes and validates one reply. It returns the underlying
+// problem rather than ErrBadOutput so the caller can quote it back to the model.
+func parseWriting(raw string, req WritingRequest) (models.Evaluation, error) {
 	var payload evaluationPayload
 	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
-		g.log.Error("ai returned unparseable json", "model", g.models.Writing, "error", err)
-		return models.Evaluation{}, usage, ErrBadOutput
+		return models.Evaluation{}, fmt.Errorf("the reply was not valid JSON (%w)", err)
 	}
+	return validateWriting(payload, req)
+}
 
-	evaluation, err := validateWriting(payload, req)
-	if err != nil {
-		g.log.Error("ai output failed validation", "model", g.models.Writing, "error", err)
-		return models.Evaluation{}, usage, ErrBadOutput
+// add folds one attempt's usage into a running total. Provider, model and
+// prompt version are the same for every attempt, so the last one wins.
+func (u *Usage) add(other Usage) {
+	if other.Provider != "" {
+		u.Provider = other.Provider
+		u.Model = other.Model
+		u.PromptVersion = other.PromptVersion
 	}
-	return evaluation, usage, nil
+	u.PromptTokens += other.PromptTokens
+	u.CompletionTokens += other.CompletionTokens
+	u.LatencyMS += other.LatencyMS
 }
 
 // validateWriting checks the model's reply before any of it is stored.
@@ -103,8 +151,14 @@ func validateWriting(p evaluationPayload, req WritingRequest) (models.Evaluation
 
 	score := p.EstimatedScore.Value
 	if score != nil {
+		// If evaluating PTE (10-90 scale) and the model mistakenly output an IELTS band score (e.g. 1.0 to 9.0),
+		// scale it to the PTE 10-90 score range.
+		if req.Exam == models.ExamPTE && *score <= 9.0 && *score >= 1.0 {
+			converted := math.Round(10.0 + ((*score - 1.0) / 8.0) * 80.0)
+			score = &converted
+		}
 		if *score < req.MinScore || *score > req.MaxScore {
-			return models.Evaluation{}, fmt.Errorf("score %.2f outside %.1f-%.1f", *score, req.MinScore, req.MaxScore)
+			return models.Evaluation{}, fmt.Errorf("score %.2f outside %.1f-%.1f for %s", *score, req.MinScore, req.MaxScore, req.Exam)
 		}
 	}
 
@@ -165,20 +219,42 @@ func writingSystemPrompt(req WritingRequest) string {
 	b.WriteString("- Judge only the text the learner wrote. Never quote or invent a sentence they did not write.\n")
 	b.WriteString("- Every entry in sentenceFeedback must copy an exact sentence from the learner's text into `original`.\n")
 	b.WriteString("- If the response is too short or off-topic to judge, set estimatedScore.value to null and say so in the summary.\n")
-	b.WriteString(fmt.Sprintf("- estimatedScore.value must be on the %s scale, between %.1f and %.1f.\n",
-		req.Exam, req.MinScore, req.MaxScore))
+	if req.Exam == models.ExamPTE {
+		b.WriteString("- CRITICAL FOR PTE: estimatedScore.value MUST be on the 10-90 PTE points scale (e.g. 65, 79, 85). DO NOT output 0-9 IELTS band numbers.\n")
+	} else {
+		b.WriteString("- CRITICAL FOR IELTS: estimatedScore.value MUST be on the 0.0-9.0 IELTS band scale in 0.5 steps (e.g. 6.5, 7.0, 7.5).\n")
+	}
 	b.WriteString("- Set estimatedScore.confidence to low, medium or high based on how much evidence the response gives you.\n")
-	b.WriteString("- Use the published assessment criteria for this exam. Do not invent weightings.\n\n")
-	b.WriteString(`Reply with JSON only, in this shape:
+	b.WriteString("- Use the published assessment criteria for this exam. Do not invent weightings.\n")
+	b.WriteString("- criteria[].maxScore is the maximum the published rubric gives that one criterion. It is not the exam's overall scale.\n")
+	b.WriteString("- The example below already uses this exam's scale. Copy its shape, never its numbers.\n\n")
+	b.WriteString(fmt.Sprintf(`Reply with JSON only, in this shape:
 {
   "summary": "two or three sentences",
-  "estimatedScore": {"value": 7.0, "confidence": "medium"},
-  "criteria": [{"name": "...", "score": 7.0, "maxScore": 9.0, "feedback": "..."}],
+  "estimatedScore": {"value": %.1f, "confidence": "medium"},
+  "criteria": [{"name": "...", "score": <this criterion's score>, "maxScore": <this criterion's maximum>, "feedback": "..."}],
   "strengths": ["..."],
   "weaknesses": ["..."],
   "sentenceFeedback": [{"original": "...", "correction": "...", "issueType": "grammar", "explanation": "..."}]
-}`)
+}`, exampleScore(req.MinScore, req.MaxScore)))
 	return b.String()
+}
+
+// exampleScore picks a plausible value on this exam's own scale for the worked
+// example in the system prompt.
+//
+// A fixed number cannot work here. 7.0 reads as a sensible IELTS band and as a
+// nonsense PTE score, and an example on the wrong scale drags the model's real
+// answer onto that scale with it — which is exactly how PTE evaluations started
+// coming back as 8.5 and getting thrown out by validateWriting.
+func exampleScore(min, max float64) float64 {
+	v := min + 0.75*(max-min)
+	// Wide point scales like PTE's 10-90 do not use fractions; narrow band
+	// scales like IELTS's 0-9 move in half points.
+	if max-min > 20 {
+		return math.Round(v)
+	}
+	return math.Round(v*2) / 2
 }
 
 func writingUserPrompt(req WritingRequest) string {
