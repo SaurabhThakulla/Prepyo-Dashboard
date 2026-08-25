@@ -69,9 +69,9 @@ func Load() (*Config, error) {
 		RedisURL:         os.Getenv("REDIS_URL"),
 		OpenRouterAPIKey: os.Getenv("OPENROUTER_API_KEY"),
 		AIModels: AIModels{
-			Writing:  stringOr("AI_MODEL_WRITING", "anthropic/claude-sonnet-4.5"),
-			Speaking: stringOr("AI_MODEL_SPEAKING", "anthropic/claude-sonnet-4.5"),
-			Tutoring: stringOr("AI_MODEL_TUTORING", "anthropic/claude-haiku-4.5"),
+			Writing:  stringOr("AI_MODEL_WRITING", "deepseek/deepseek-chat"),
+			Speaking: stringOr("AI_MODEL_SPEAKING", "deepseek/deepseek-chat"),
+			Tutoring: stringOr("AI_MODEL_TUTORING", "deepseek/deepseek-chat"),
 		},
 		SecureCookies: boolOr("SECURE_COOKIES", isProd),
 	}
