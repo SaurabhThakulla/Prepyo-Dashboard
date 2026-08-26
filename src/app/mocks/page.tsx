@@ -94,7 +94,7 @@ function MocksContent() {
       await refreshUser();
     } catch (err) {
       if (err instanceof ApiError && err.isLimitReached) {
-        toast.warning('Mock limit reached', err.message);
+        toast.warning('Mock limit reached', errorMessage(err));
       } else {
         toast.error('Could not submit your mock', errorMessage(err));
       }

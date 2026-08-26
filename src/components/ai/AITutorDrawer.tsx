@@ -69,8 +69,8 @@ export default function AITutorDrawer() {
     } catch (err) {
       const message =
         err instanceof ApiError && err.isAIUnavailable
-          ? 'The AI coach is not configured yet, so there is nothing to answer with. Ask your teacher or try again once it is set up.'
-          : errorMessage(err, 'Could not reach the AI coach. Please try again.');
+          ? 'The AI coach is unavailable right now, so I cannot answer this one. Please try again in a few minutes.'
+          : errorMessage(err, 'I could not reach the AI coach. Please try again.');
       setMessages([...newMessages, { role: 'assistant', content: message }]);
     } finally {
       setLoading(false);

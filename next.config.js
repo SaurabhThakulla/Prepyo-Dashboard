@@ -8,6 +8,15 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
 const nextConfig = {
   reactStrictMode: true,
+  async redirects() {
+    return [
+      {
+        source: '/progress',
+        destination: '/dashboard',
+        permanent: false,
+      },
+    ];
+  },
   async rewrites() {
     return {
       // beforeFiles so the proxy always wins, even if a route file is added

@@ -77,11 +77,11 @@ export default function EvaluationsPage() {
     } catch (err) {
       if (err instanceof ApiError && err.isAIUnavailable) {
         setUnavailable(true);
-        toast.error('Evaluator unavailable', err.message);
+        toast.error('Scoring is unavailable right now', errorMessage(err));
       } else if (err instanceof ApiError && err.isLimitReached) {
-        toast.warning('Daily limit reached', err.message);
+        toast.warning('Daily limit reached', errorMessage(err));
       } else {
-        toast.error('Evaluation failed', errorMessage(err));
+        toast.error('Could not score your response', errorMessage(err));
       }
     } finally {
       setLoading(false);
