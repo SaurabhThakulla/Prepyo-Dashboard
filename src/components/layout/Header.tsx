@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import {
   Menu,
-  Flame,
   Sparkles,
   Bell,
   Bot,
@@ -40,7 +39,7 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
     if (path?.startsWith('/evaluations')) return 'AI Evaluator';
     if (path === '/mistakes') return 'Mistake Bank';
     if (path === '/leaderboard') return 'Nepal Leaderboard';
-    if (path === '/subscription') return 'Subscriptions (NPR)';
+    if (path === '/subscription' || path === '/account') return 'Subscriptions (NPR)';
     if (path === '/profile') return 'Profile & Goals';
     if (path === '/admin') return 'Admin Observability';
     return 'Prepyo';
@@ -103,12 +102,6 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
           >
             {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
           </Button>
-
-          {/* Streak Flame Badge */}
-          <div className="flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1.5 rounded-xl text-xs font-bold text-amber-600 dark:text-amber-400" title="Daily Streak">
-            <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-            <span>{user?.streakDays ?? 0}d</span>
-          </div>
 
           {/* XP Badge */}
           <div className="hidden sm:flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1.5 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-400" title="XP Points">

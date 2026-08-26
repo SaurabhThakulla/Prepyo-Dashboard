@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import {
   LayoutDashboard,
@@ -21,18 +21,24 @@ import {
   Bot,
   Flame,
   ChevronRight,
-  ChevronLeft,
-  Sun,
-  Moon,
   History,
   GraduationCap,
   HelpCircle,
-  FileText
+  FileText,
+  LogOut,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import {
   TooltipProvider,
   Tooltip,
@@ -46,8 +52,7 @@ export type PrimarySectionId =
   | 'aicoach'
   | 'mock'
   | 'history'
-  | 'study'
-  | 'account';
+  | 'study';
 
 interface SecondaryNavItem {
   href?: string;
@@ -125,7 +130,23 @@ function AppSidebarContent({
 }: AppSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { user, activeExam, setActiveExam, setIsTutorOpen, theme, toggleTheme } = useApp();
+  const router = useRouter();
+  const { user, activeExam, setActiveExam, setIsTutorOpen, logout } = useApp();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true);
+      await logout();
+    } catch (e) {
+      console.error('Logout error:', e);
+    } finally {
+      setIsOpen(false);
+      setIsSecondaryOpen(false);
+      router.push('/login');
+      setIsSigningOut(false);
+    }
+  };
 
   const isPTE = activeExam === 'PTE';
   const currentSkill = searchParams.get('skill') || (pathname === '/practice' ? 'speaking' : null);
@@ -279,12 +300,6 @@ function AppSidebarContent({
     if (path.startsWith('/mocks') || path.startsWith('/diagnostic')) return 'mock';
     if (path.startsWith('/evaluations')) return 'aicoach';
     if (path === '/mistakes' || path === '/leaderboard') return 'study';
-    if (
-      path === '/profile' ||
-      path === '/subscription' ||
-      path === '/referrals' ||
-      path === '/admin'
-    ) return 'account';
     return 'dashboard';
   };
 
@@ -483,46 +498,6 @@ function AppSidebarContent({
         },
       ],
     },
-    {
-      id: 'account',
-      label: 'Account',
-      icon: User,
-      title: 'Account & Plan',
-      description: 'Profile goals, billing & CMS',
-      items: [
-        {
-          href: '/profile',
-          label: 'Profile & Target Score',
-          icon: User,
-          sublabel: user?.targetScore != null
-            ? `${user.targetExam} target: ${user.targetScore}`
-            : 'Set your target score',
-        },
-        {
-          href: '/subscription',
-          label: 'Subscriptions (NPR)',
-          icon: CreditCard,
-          sublabel: 'eSewa, Khalti & ConnectIPS',
-          badge: user?.subscription?.planId.toUpperCase() ?? 'FREE',
-        },
-        {
-          href: '/referrals',
-          label: 'Refer & Earn Rewards',
-          icon: Award,
-          sublabel: 'Invite friends for XP & free mocks',
-        },
-        // Admin is only listed for admins; the API returns 403 to everyone else,
-        // so showing it to a learner would just be a dead end.
-        ...(user?.role === 'admin'
-          ? [{
-              href: '/admin',
-              label: 'Admin CMS',
-              icon: ShieldCheck,
-              sublabel: 'Question bank & observability',
-            }]
-          : []),
-      ],
-    },
   ];
 
   const currentSectionConfig = sections.find(s => s.id === activeSection) || sections[0];
@@ -544,6 +519,14 @@ function AppSidebarContent({
     if (item.href === '/mocks') {
       const currentTab = searchParams.get('tab') || 'catalog';
       return pathname === '/mocks' && currentTab === 'catalog';
+    }
+
+    if (item.href === '/subscription' || item.href === '/account') {
+      return pathname === '/subscription' || pathname === '/account';
+    }
+
+    if (item.href === '/profile') {
+      return pathname === '/profile';
     }
 
     return pathname === item.href;
@@ -569,8 +552,8 @@ function AppSidebarContent({
       >
         {/* ── LEVEL 1: Primary Icon Sidebar (w-16 / 64px) ── */}
         <aside className="w-16 shrink-0 border-r border-border bg-card flex flex-col justify-between items-center py-3 px-2 z-20 select-none">
-          {/* Top Logo & Toggle */}
-          <div className="flex flex-col items-center gap-1.5 w-full">
+          {/* Top Logo */}
+          <div className="flex flex-col items-center w-full">
             <Link
               href="/dashboard"
               onClick={() => {
@@ -582,16 +565,6 @@ function AppSidebarContent({
             >
               P
             </Link>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSecondaryOpen(prev => !prev)}
-              className="h-6 w-6 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70"
-              title={isSecondaryOpen ? "Collapse sidebar" : "Expand sidebar"}
-            >
-              {isSecondaryOpen ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            </Button>
           </div>
 
           {/* Primary Navigation Icons (Clean top alignment without big gap) */}
@@ -631,32 +604,70 @@ function AppSidebarContent({
             </nav>
           </TooltipProvider>
 
-          {/* Bottom Actions: Theme & Profile Trigger */}
-          <div className="flex flex-col items-center gap-2 mt-auto pt-3 border-t border-border/60 w-full">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/70"
-              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
-            </Button>
-
-            <button
-              onClick={() => handlePrimaryClick('account')}
-              title="Account & Profile"
-              className={`flex h-9 w-9 items-center justify-center rounded-xl transition-all ${activeSection === 'account' && isSecondaryOpen
-                  ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-                  : 'hover:opacity-80'
-                }`}
-            >
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                  {user?.name?.charAt(0) || 'P'}
-                </AvatarFallback>
-              </Avatar>
-            </button>
+          {/* Bottom Actions: Profile Trigger & Dropdown Menu */}
+          <div className="flex flex-col items-center mt-auto pt-3 border-t border-border/60 w-full">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  title="Account & Profile"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl transition-all outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                      {user?.name?.charAt(0) || 'P'}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="right"
+                align="end"
+                sideOffset={12}
+                className="w-56 p-1.5 shadow-2xl rounded-2xl border border-border bg-card/95 backdrop-blur-xl"
+              >
+                <DropdownMenuLabel className="font-normal p-2 pb-1.5">
+                  <div className="flex flex-col space-y-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold leading-none text-foreground truncate">{user?.name || 'Learner'}</p>
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 uppercase shrink-0 font-semibold">
+                        {user?.subscription?.planId || 'Free'}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] leading-none text-muted-foreground truncate">{user?.email || 'learner@prepyo.com'}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/profile"
+                    onClick={() => setIsOpen(false)}
+                    className="cursor-pointer flex items-center gap-2.5 py-2 px-2.5 rounded-xl text-xs font-medium hover:bg-muted/70 transition-colors"
+                  >
+                    <User className="w-4 h-4 text-primary shrink-0" />
+                    <span className="flex-1">Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/subscription"
+                    onClick={() => setIsOpen(false)}
+                    className="cursor-pointer flex items-center gap-2.5 py-2 px-2.5 rounded-xl text-xs font-medium hover:bg-muted/70 transition-colors"
+                  >
+                    <CreditCard className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span className="flex-1">Subscription</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
+                  className="cursor-pointer flex items-center gap-2.5 py-2 px-2.5 rounded-xl text-xs font-medium text-destructive hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive transition-colors"
+                >
+                  <LogOut className="w-4 h-4 text-destructive shrink-0" />
+                  <span>{isSigningOut ? 'Signing out…' : 'Sign out'}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </aside>
 
@@ -689,13 +700,6 @@ function AppSidebarContent({
                     <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-1 py-0.2 rounded border border-emerald-500/20">
                       NP
                     </span>
-                    <button
-                      onClick={() => setIsSecondaryOpen(false)}
-                      className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-md transition-colors"
-                      title="Collapse secondary sidebar"
-                    >
-                      <ChevronLeft className="w-3.5 h-3.5" />
-                    </button>
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
@@ -740,11 +744,21 @@ function AppSidebarContent({
                     const Icon = item.icon;
                     const active = isItemActive(item);
 
+                    const isSignOut = item.label.toLowerCase().includes('sign out') || item.label.toLowerCase().includes('signing out');
+
                     const itemContent = (
                       <>
                         <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1">
-                          <Icon className={`w-4 h-4 shrink-0 transition-colors ${active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
-                          <span className="truncate font-medium text-xs text-foreground/90">{item.label}</span>
+                          <Icon className={`w-4 h-4 shrink-0 transition-colors ${
+                            isSignOut
+                              ? 'text-muted-foreground group-hover:text-destructive'
+                              : active
+                                ? 'text-primary'
+                                : 'text-muted-foreground group-hover:text-foreground'
+                          }`} />
+                          <span className={`truncate font-medium text-xs ${isSignOut ? 'text-foreground/90 group-hover:text-destructive' : 'text-foreground/90'}`}>
+                            {item.label}
+                          </span>
                         </div>
 
                         {item.badge && (
@@ -760,10 +774,13 @@ function AppSidebarContent({
                       </>
                     );
 
-                    const className = `group flex items-center justify-between w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all ${active
-                        ? 'bg-accent text-accent-foreground font-semibold shadow-xs ring-1 ring-primary/20'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                      }`;
+                    const className = `group flex items-center justify-between w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                      isSignOut
+                        ? 'text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-[0.99] cursor-pointer'
+                        : active
+                          ? 'bg-accent text-accent-foreground font-semibold shadow-xs ring-1 ring-primary/20'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 active:scale-[0.99]'
+                    }`;
 
                     const itemElement = item.href ? (
                       <Link
