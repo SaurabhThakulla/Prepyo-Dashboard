@@ -155,30 +155,26 @@ export default function SecondaryNavList({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+    <div className="flex-1 overflow-y-auto py-2 space-y-1">
       {!items[0]?.group && (
-        <div className="px-2.5 py-1.5 rounded-xl bg-blue-50/90 dark:bg-[#112046] text-[#132d6c] dark:text-white border border-blue-200/70 dark:border-blue-900/60 shadow-2xs flex items-center justify-between">
+        <div className="px-4 py-1.5 bg-slate-200/80 dark:bg-slate-800/70 text-slate-900 dark:text-slate-100 border-y border-slate-300/80 dark:border-slate-700/60 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-blue-100/90 dark:bg-white/10 flex items-center justify-center border border-blue-200/60 dark:border-white/10">
-              <Folder className="w-3.5 h-3.5 text-blue-700 dark:text-blue-100" />
+            <div className="w-5 h-5 rounded bg-slate-300/90 dark:bg-slate-700/90 flex items-center justify-center border border-slate-400/40 dark:border-slate-600/60 text-slate-900 dark:text-slate-100">
+              <Folder className="w-3 h-3 text-slate-800 dark:text-slate-200" />
             </div>
-            <h4 className="font-display text-[11px] font-bold uppercase tracking-wider text-[#132d6c] dark:text-white">
+            <h4 className="font-display text-[11px] font-extrabold uppercase tracking-wider text-slate-900 dark:text-slate-100">
               {fallbackHeading}
             </h4>
           </div>
-          <span className="text-[10px] font-semibold text-blue-800/80 dark:text-white/80 bg-white/80 dark:bg-white/10 px-1.5 py-0.2 rounded-full border border-blue-200/80 dark:border-white/20 font-mono">
-            {items.length}
-          </span>
         </div>
       )}
 
       <TooltipProvider delayDuration={120}>
-        <div className="space-y-3">
+        <div className="space-y-1">
           {groups.map((group, groupIndex) => {
             if (!group.name) {
-              // Ungrouped items (like top-level links)
               return (
-                <div key={`ungrouped-${groupIndex}`} className="space-y-1">
+                <div key={`ungrouped-${groupIndex}`} className="space-y-0.5">
                   {group.items.map((item, idx) => (
                     <TooltipItem
                       key={`${item.href ?? item.label}-${idx}`}
@@ -192,15 +188,13 @@ export default function SecondaryNavList({
             }
 
             const isGroupActive = group.items.some(item => isItemActive(item));
-            // Keep group open if it contains the currently active topic
             const isCollapsed = Boolean(collapsedGroups[group.name]) && !isGroupActive;
 
             return (
-              <div key={`group-${group.name}-${groupIndex}`} className="space-y-1">
+              <div key={`group-${group.name}-${groupIndex}`} className="space-y-0.5">
                 <GroupHeading
                   groupName={group.name}
                   groupHref={group.groupHref}
-                  itemCount={group.items.length}
                   isGroupActive={isGroupActive}
                   isCollapsed={isCollapsed}
                   onToggleCollapse={() => toggleGroup(group.name!)}
@@ -208,7 +202,7 @@ export default function SecondaryNavList({
                 />
 
                 {!isCollapsed && (
-                  <div className="ml-3.5 pl-2.5 border-l border-blue-200/60 dark:border-blue-800/30 space-y-1 pt-1 pb-0.5">
+                  <div className="space-y-0.5 pt-0.5 pb-0.5">
                     {group.items.map((item, idx) => (
                       <TooltipItem
                         key={`${item.href ?? item.label}-${idx}`}
@@ -231,7 +225,6 @@ export default function SecondaryNavList({
 interface GroupHeadingProps {
   groupName: string;
   groupHref?: string;
-  itemCount: number;
   isGroupActive: boolean;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
@@ -241,7 +234,6 @@ interface GroupHeadingProps {
 function GroupHeading({
   groupName,
   groupHref,
-  itemCount,
   isGroupActive,
   isCollapsed,
   onToggleCollapse,
@@ -251,59 +243,59 @@ function GroupHeading({
 
   return (
     <div
-      className={`group/header flex items-center justify-between px-2.5 py-1.5 rounded-xl transition-all duration-200 border ${
+      className={`group/header flex items-center justify-between w-full px-4 py-1.5 rounded-none transition-all duration-150 border-y ${
         isGroupActive
-          ? 'bg-blue-100/95 dark:bg-[#142654] border-blue-300 dark:border-blue-400/60 ring-2 ring-blue-400/40 dark:ring-blue-400/50 text-[#0f255c] dark:text-white shadow-xs'
-          : 'bg-blue-50/90 hover:bg-blue-100/75 dark:bg-[#112046] dark:hover:bg-[#152757] border-blue-200/70 dark:border-blue-900/60 text-[#132d6c] dark:text-white shadow-2xs'
+          ? 'bg-blue-100 dark:bg-blue-950/60 border-blue-300/90 dark:border-blue-800/70 text-blue-950 dark:text-blue-100'
+          : 'bg-slate-200/80 hover:bg-slate-200 dark:bg-slate-800/70 dark:hover:bg-slate-800/90 border-slate-300/80 dark:border-slate-700/60 text-slate-900 dark:text-slate-100'
       }`}
     >
       <div className="flex items-center gap-2 min-w-0 flex-1">
-        {/* Micro-badge icon container: light blue in light mode, frosted in dark mode */}
-        <div className="w-6 h-6 rounded-lg bg-blue-100/90 dark:bg-white/10 flex items-center justify-center shrink-0 shadow-2xs transition-transform duration-200 group-hover/header:scale-105 border border-blue-200/60 dark:border-white/10">
-          <GroupIcon className="w-3.5 h-3.5 text-blue-700 dark:text-blue-200" />
+        <div
+          className={`w-5 h-5 rounded flex items-center justify-center shrink-0 transition-transform duration-200 group-hover/header:scale-105 border ${
+            isGroupActive
+              ? 'bg-blue-200/90 dark:bg-blue-900/80 border-blue-400/50 text-blue-700 dark:text-blue-300'
+              : 'bg-slate-300/90 dark:bg-slate-700/90 border-slate-400/40 dark:border-slate-600/60 text-slate-900 dark:text-slate-100'
+          }`}
+        >
+          <GroupIcon className="w-3 h-3" />
         </div>
 
-        {/* Group Title */}
         <div className="flex items-center gap-1.5 min-w-0">
           {groupHref ? (
             <Link
               to={groupHref}
               onClick={onNavigate}
-              className="font-display text-[11px] font-bold uppercase tracking-wider text-[#132d6c] hover:text-blue-600 dark:text-white dark:hover:text-blue-200 transition-colors truncate"
+              className={`font-display text-[11px] font-extrabold uppercase tracking-wider transition-colors truncate ${
+                isGroupActive
+                  ? 'text-blue-950 dark:text-blue-200 hover:text-blue-700'
+                  : 'text-slate-900 dark:text-slate-100 hover:text-primary'
+              }`}
             >
               {groupName}
             </Link>
           ) : (
-            <span className="font-display text-[11px] font-bold uppercase tracking-wider text-[#132d6c] dark:text-white truncate">
+            <span
+              className={`font-display text-[11px] font-extrabold uppercase tracking-wider truncate ${
+                isGroupActive ? 'text-blue-950 dark:text-blue-200' : 'text-slate-900 dark:text-slate-100'
+              }`}
+            >
               {groupName}
-            </span>
-          )}
-
-          {/* Active indicator dot */}
-          {isGroupActive && (
-            <span className="relative flex h-1.5 w-1.5 shrink-0" title="Active module">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-blue-500 dark:bg-cyan-300" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-600 dark:bg-cyan-300" />
             </span>
           )}
         </div>
       </div>
 
-      {/* Right Controls: Count Pill + Collapse Chevron */}
       <div className="flex items-center gap-1 shrink-0 ml-1.5">
-        <span className="text-[10px] font-semibold text-blue-800/80 dark:text-white/80 bg-white/80 dark:bg-white/10 px-1.5 py-0.2 rounded-full border border-blue-200/80 dark:border-white/20 font-mono">
-          {itemCount}
-        </span>
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="p-1 rounded-md text-blue-700/70 hover:text-blue-950 dark:text-white/70 dark:hover:text-white hover:bg-blue-100/80 dark:hover:bg-white/15 transition-colors"
+          className="p-1 rounded text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-300/60 dark:hover:bg-slate-700/60 transition-colors"
           title={isCollapsed ? `Expand ${groupName}` : `Collapse ${groupName}`}
           aria-label={isCollapsed ? `Expand ${groupName}` : `Collapse ${groupName}`}
         >
           <ChevronDown
             className={`w-3.5 h-3.5 transition-transform duration-200 ${
-              isCollapsed ? '-rotate-90 text-blue-600/60 dark:text-white/60' : 'rotate-0 text-blue-800/80 dark:text-white/90'
+              isCollapsed ? '-rotate-90 text-slate-600 dark:text-slate-400' : 'rotate-0 text-slate-800 dark:text-slate-200'
             }`}
           />
         </button>
@@ -356,20 +348,16 @@ interface NavItemProps {
   onNavigate: () => void;
 }
 
-/**
- * One row. Renders as a Link when it has an href and a button otherwise.
- * Clean, unified blue active styling with no excessive colors.
- */
 const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
   { item, isActive, onNavigate },
   ref,
 ) {
   const Icon = getSubtopicIcon(item.label, item.icon);
 
-  const className = `group flex items-center justify-between w-full text-left px-2.5 py-2 rounded-xl text-xs font-medium transition-all duration-150 ${
+  const className = `group flex items-center justify-between w-full text-left pl-[22px] pr-3.5 py-2 rounded-none text-xs transition-colors duration-150 border ${
     isActive
-      ? 'bg-blue-100/70 dark:bg-blue-950/50 text-[#132d6c] dark:text-blue-300 font-semibold shadow-xs ring-1 ring-blue-300 dark:ring-blue-700/60'
-      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 active:scale-[0.99]'
+      ? 'border-blue-500 dark:border-blue-400 bg-slate-100 dark:bg-white/10 text-foreground dark:text-white font-semibold shadow-xs'
+      : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-slate-100/60 dark:hover:bg-white/5 font-medium'
   }`;
 
   const content = (
@@ -377,22 +365,38 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
       <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1">
         <Icon
           className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-            isActive ? 'text-[#132d6c] dark:text-blue-400' : 'text-muted-foreground/80 group-hover:text-foreground'
+            isActive ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground/80 group-hover:text-foreground'
           }`}
         />
-        <span className="truncate font-medium text-xs text-foreground/90">{item.label}</span>
+        <span
+          className={`truncate text-xs ${
+            isActive ? 'font-semibold text-foreground dark:text-white' : 'font-medium text-foreground/85 group-hover:text-foreground'
+          }`}
+        >
+          {item.label}
+        </span>
       </div>
 
       {item.badge && (
         <Badge
-          variant="outline"
-          className="text-[9px] px-1.5 py-0 border-border text-muted-foreground shrink-0 ml-1.5 font-semibold"
+          variant={isActive ? 'default' : 'outline'}
+          className={`text-[9px] px-1.5 py-0 shrink-0 ml-1.5 font-bold uppercase rounded-sm ${
+            isActive
+              ? 'bg-blue-600 text-white dark:bg-blue-500 dark:text-white border-transparent'
+              : 'border-border text-muted-foreground'
+          }`}
         >
           {item.badge}
         </Badge>
       )}
       {item.count !== undefined && (
-        <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-300 font-bold px-1.5 py-0.2 rounded-full border border-amber-500/30 shrink-0 ml-1.5">
+        <span
+          className={`text-[10px] font-bold px-1.5 py-0.2 rounded-sm shrink-0 ml-1.5 font-mono ${
+            isActive
+              ? 'bg-blue-500/25 text-blue-800 dark:text-blue-200 border border-blue-400/40'
+              : 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30'
+          }`}
+        >
           {item.count}
         </span>
       )}
