@@ -22,11 +22,12 @@ import {
   Flame,
   ChevronRight,
   History,
-  GraduationCap,
   HelpCircle,
   FileText,
   LogOut,
+  Bug,
 } from 'lucide-react';
+import ReportIssueDialog from '@/components/support/ReportIssueDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -50,9 +51,7 @@ export type PrimarySectionId =
   | 'dashboard'
   | 'practice'
   | 'aicoach'
-  | 'mock'
-  | 'history'
-  | 'study';
+  | 'mock';
 
 interface SecondaryNavItem {
   href?: string;
@@ -62,6 +61,9 @@ interface SecondaryNavItem {
   sublabel?: string;
   badge?: string;
   count?: number;
+  /** Starts a labelled run of items in the panel. Consecutive items sharing a
+   *  group sit under one heading; ungrouped items lead the list. */
+  group?: string;
 }
 
 interface PrimarySectionConfig {
@@ -133,6 +135,7 @@ function AppSidebarContent({
   const router = useRouter();
   const { user, activeExam, setActiveExam, setIsTutorOpen, logout } = useApp();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -299,7 +302,6 @@ function AppSidebarContent({
     if (path.startsWith('/practice')) return 'practice';
     if (path.startsWith('/mocks') || path.startsWith('/diagnostic')) return 'mock';
     if (path.startsWith('/evaluations')) return 'aicoach';
-    if (path === '/mistakes' || path === '/leaderboard') return 'study';
     return 'dashboard';
   };
 
@@ -333,35 +335,35 @@ function AppSidebarContent({
   const historySecondaryItems: SecondaryNavItem[] =
     userHistory.length > 0
       ? userHistory.map(h => ({
-          href: h.href,
-          label: h.label,
-          icon: getHistoryIcon(h.iconName),
-          sublabel: `Last used • ${formatRelativeTime(h.timestamp, nowTime)}`,
-          badge: h.badge,
-        }))
+        href: h.href,
+        label: h.label,
+        icon: getHistoryIcon(h.iconName),
+        sublabel: `Last used • ${formatRelativeTime(h.timestamp, nowTime)}`,
+        badge: h.badge,
+      }))
       : [
-          {
-            href: '/practice?skill=speaking',
-            label: 'Start Speaking Practice',
-            icon: Mic,
-            sublabel: 'Practice to track real-time history',
-            badge: 'PTE',
-          },
-          {
-            href: '/mocks',
-            label: 'Start Mock Simulator',
-            icon: Award,
-            sublabel: 'Timed full assessment',
-            badge: 'MOCK',
-          },
-          {
-            href: '/evaluations',
-            label: 'AI Evaluator Lab',
-            icon: Sparkles,
-            sublabel: 'Instant rubric scoring',
-            badge: 'AI',
-          },
-        ];
+        {
+          href: '/practice?skill=speaking',
+          label: 'Start Speaking Practice',
+          icon: Mic,
+          sublabel: 'Practice to track real-time history',
+          badge: 'PTE',
+        },
+        {
+          href: '/mocks',
+          label: 'Start Mock Simulator',
+          icon: Award,
+          sublabel: 'Timed full assessment',
+          badge: 'MOCK',
+        },
+        {
+          href: '/evaluations',
+          label: 'AI Evaluator Lab',
+          icon: Sparkles,
+          sublabel: 'Instant rubric scoring',
+          badge: 'AI',
+        },
+      ];
 
   const sections: PrimarySectionConfig[] = [
     {
@@ -369,7 +371,7 @@ function AppSidebarContent({
       label: 'Dashboard',
       icon: LayoutDashboard,
       title: 'Learner Hub',
-      description: 'Progress & performance metrics',
+      description: 'Progress, study resources & recent activity',
       items: [
         {
           href: '/dashboard',
@@ -377,6 +379,21 @@ function AppSidebarContent({
           icon: LayoutDashboard,
           sublabel: 'Target gaps & score breakdown',
         },
+        {
+          href: '/mistakes',
+          label: 'Mistake Bank',
+          icon: RotateCcw,
+          sublabel: 'Retry saved weak questions',
+          group: 'Study Resources',
+        },
+        {
+          href: '/leaderboard',
+          label: 'Nepal Study Challenge',
+          icon: Trophy,
+          sublabel: 'Compete with peers in Nepal',
+          group: 'Study Resources',
+        },
+        ...historySecondaryItems.map(item => ({ ...item, group: 'Recent Activity' })),
       ],
     },
     {
@@ -469,35 +486,6 @@ function AppSidebarContent({
         },
       ],
     },
-    {
-      id: 'history',
-      label: 'History',
-      icon: History,
-      title: 'Recent Activity',
-      description: userHistory.length > 0 ? 'Real-time last used sections' : 'No recent activities yet',
-      items: historySecondaryItems,
-    },
-    {
-      id: 'study',
-      label: 'Study',
-      icon: GraduationCap,
-      title: 'Study Resources',
-      description: 'Targeted revision & mistake tracking',
-      items: [
-        {
-          href: '/mistakes',
-          label: 'Mistake Bank',
-          icon: RotateCcw,
-          sublabel: 'Retry saved weak questions',
-        },
-        {
-          href: '/leaderboard',
-          label: 'Nepal Study Challenge',
-          icon: Trophy,
-          sublabel: 'Compete with peers in Nepal',
-        },
-      ],
-    },
   ];
 
   const currentSectionConfig = sections.find(s => s.id === activeSection) || sections[0];
@@ -580,10 +568,10 @@ function AppSidebarContent({
                       <button
                         onClick={() => handlePrimaryClick(section.id)}
                         className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${isIndicatorActive
-                            ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25 scale-105'
-                            : isSelected
-                              ? 'bg-muted text-foreground'
-                              : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground hover:scale-105'
+                          ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25 scale-105'
+                          : isSelected
+                            ? 'bg-muted text-foreground'
+                            : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground hover:scale-105'
                           }`}
                       >
                         <Icon className="w-5 h-5" />
@@ -604,8 +592,31 @@ function AppSidebarContent({
             </nav>
           </TooltipProvider>
 
-          {/* Bottom Actions: Profile Trigger & Dropdown Menu */}
-          <div className="flex flex-col items-center mt-auto pt-3 border-t border-border/60 w-full">
+          {/* Bottom Actions: Report Issue, Profile Trigger & Dropdown Menu */}
+          <div className="flex flex-col items-center gap-2 mt-auto pt-3 border-t border-border/60 w-full">
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsReportOpen(true);
+                      setIsOpen(false);
+                    }}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-all hover:bg-muted/70 hover:text-amber-600 dark:hover:text-amber-400 hover:scale-105 focus-visible:ring-2 focus-visible:ring-primary outline-none"
+                  >
+                    <Bug className="w-5 h-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={10} className="px-3 py-1.5 font-bold">
+                  <div className="text-xs font-bold text-foreground">Report an issue</div>
+                  <div className="text-[10px] text-muted-foreground font-normal">
+                    Send a bug or problem to the team
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -674,8 +685,8 @@ function AppSidebarContent({
         {/* ── LEVEL 2: Secondary Navigation Panel (Collapsible / w-80 / 320px) ── */}
         <aside
           className={`shrink-0 border-r border-border bg-sidebar text-sidebar-foreground flex flex-col justify-between transition-all duration-300 ease-in-out overflow-hidden ${isSecondaryOpen
-              ? 'w-80 opacity-100 pointer-events-auto shadow-xl lg:shadow-none'
-              : 'w-0 opacity-0 pointer-events-none border-none'
+            ? 'w-80 opacity-100 pointer-events-auto shadow-xl lg:shadow-none'
+            : 'w-0 opacity-0 pointer-events-none border-none'
             }`}
         >
           <div className="w-80 flex flex-col justify-between h-full">
@@ -687,7 +698,7 @@ function AppSidebarContent({
                     {currentSectionConfig.title}
                   </h3>
                   <div className="flex items-center gap-1.5">
-                    {activeSection === 'history' && userHistory.length > 0 && (
+                    {activeSection === 'dashboard' && userHistory.length > 0 && (
                       <button
                         type="button"
                         onClick={clearRealtimeHistory}
@@ -712,8 +723,8 @@ function AppSidebarContent({
                 <button
                   onClick={() => setActiveExam('PTE')}
                   className={`flex-1 flex items-center justify-center gap-1 py-1 rounded-lg text-xs font-bold transition-all ${activeExam === 'PTE'
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                     }`}
                 >
                   <span>PTE</span>
@@ -722,8 +733,8 @@ function AppSidebarContent({
                 <button
                   onClick={() => setActiveExam('IELTS')}
                   className={`flex-1 flex items-center justify-center gap-1 py-1 rounded-lg text-xs font-bold transition-all ${activeExam === 'IELTS'
-                      ? 'bg-amber-500 text-white shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-amber-500 text-white shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                     }`}
                 >
                   <span>IELTS</span>
@@ -744,18 +755,22 @@ function AppSidebarContent({
                     const Icon = item.icon;
                     const active = isItemActive(item);
 
+                    // One heading per run, so "Study Resources" and "Recent
+                    // Activity" stay legible now that they share this panel.
+                    const previousGroup = idx > 0 ? currentSectionConfig.items[idx - 1].group : undefined;
+                    const startsGroup = Boolean(item.group) && item.group !== previousGroup;
+
                     const isSignOut = item.label.toLowerCase().includes('sign out') || item.label.toLowerCase().includes('signing out');
 
                     const itemContent = (
                       <>
                         <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1">
-                          <Icon className={`w-4 h-4 shrink-0 transition-colors ${
-                            isSignOut
+                          <Icon className={`w-4 h-4 shrink-0 transition-colors ${isSignOut
                               ? 'text-muted-foreground group-hover:text-destructive'
                               : active
                                 ? 'text-primary'
                                 : 'text-muted-foreground group-hover:text-foreground'
-                          }`} />
+                            }`} />
                           <span className={`truncate font-medium text-xs ${isSignOut ? 'text-foreground/90 group-hover:text-destructive' : 'text-foreground/90'}`}>
                             {item.label}
                           </span>
@@ -774,13 +789,12 @@ function AppSidebarContent({
                       </>
                     );
 
-                    const className = `group flex items-center justify-between w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                      isSignOut
+                    const className = `group flex items-center justify-between w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${isSignOut
                         ? 'text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-[0.99] cursor-pointer'
                         : active
                           ? 'bg-accent text-accent-foreground font-semibold shadow-xs ring-1 ring-primary/20'
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 active:scale-[0.99]'
-                    }`;
+                      }`;
 
                     const itemElement = item.href ? (
                       <Link
@@ -806,31 +820,38 @@ function AppSidebarContent({
                     );
 
                     return (
-                      <Tooltip key={idx}>
-                        <TooltipTrigger asChild>
-                          {itemElement}
-                        </TooltipTrigger>
-                        <TooltipContent
-                          side="right"
-                          align="center"
-                          sideOffset={8}
-                          className="p-2.5 space-y-0.5 rounded-xl border border-border/90 bg-popover/95 backdrop-blur-xl shadow-2xl"
-                        >
-                          <div className="font-bold text-xs text-foreground flex items-center gap-1.5">
-                            <span>{item.label}</span>
-                            {item.badge && (
-                              <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0 rounded font-semibold uppercase">
-                                {item.badge}
-                              </span>
+                      <React.Fragment key={idx}>
+                        {startsGroup && (
+                          <h5 className="px-2 pt-3 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                            {item.group}
+                          </h5>
+                        )}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            {itemElement}
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="right"
+                            align="center"
+                            sideOffset={8}
+                            className="p-2.5 space-y-0.5 rounded-xl border border-border/90 bg-popover/95 backdrop-blur-xl shadow-2xl"
+                          >
+                            <div className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                              <span>{item.label}</span>
+                              {item.badge && (
+                                <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0 rounded font-semibold uppercase">
+                                  {item.badge}
+                                </span>
+                              )}
+                            </div>
+                            {item.sublabel && (
+                              <p className="text-[11px] text-muted-foreground font-normal leading-tight max-w-[220px]">
+                                {item.sublabel}
+                              </p>
                             )}
-                          </div>
-                          {item.sublabel && (
-                            <p className="text-[11px] text-muted-foreground font-normal leading-tight max-w-[220px]">
-                              {item.sublabel}
-                            </p>
-                          )}
-                        </TooltipContent>
-                      </Tooltip>
+                          </TooltipContent>
+                        </Tooltip>
+                      </React.Fragment>
                     );
                   })}
                 </div>
@@ -881,6 +902,8 @@ function AppSidebarContent({
           </div>
         </aside>
       </div>
+
+      <ReportIssueDialog open={isReportOpen} onOpenChange={setIsReportOpen} />
     </>
   );
 }

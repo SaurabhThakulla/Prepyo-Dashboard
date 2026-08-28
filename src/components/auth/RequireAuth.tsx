@@ -2,8 +2,8 @@
 
 import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
 
 /**
  * Blocks app pages until the session check has resolved.
@@ -18,21 +18,17 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
-    }
+    if (loading || user) return;
+    // expired=1 tells middleware the backend has already rejected this cookie.
+    // Without it middleware sees the cookie still sitting there, assumes a live
+    // session and bounces us straight back here — the two redirects then loop
+    // forever behind a loading state that never ends.
+    router.replace(`/login?next=${encodeURIComponent(pathname)}&expired=1`);
   }, [loading, user, router, pathname]);
 
-  if (loading || !user) {
-    return (
-      <div className="flex min-h-[60vh] w-full items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <p className="text-xs font-medium">Checking your session…</p>
-        </div>
-      </div>
-    );
-  }
+  // Both branches are genuinely transient: either the session check is still
+  // running, or it has failed and the redirect above is already on its way.
+  if (loading || !user) return <AppPageSkeleton />;
 
   return <>{children}</>;
 }
