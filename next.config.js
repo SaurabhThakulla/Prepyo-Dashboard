@@ -4,7 +4,10 @@
 // Next instead of calling :8080 from the browser keeps the session cookie
 // same-origin, so it survives without CORS credentials or a SameSite=None
 // cookie. In production this points at the deployed API.
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
+const BACKEND_URL =
+  process.env.BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:8080';
 
 const nextConfig = {
   reactStrictMode: true,
