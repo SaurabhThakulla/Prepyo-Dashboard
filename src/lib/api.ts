@@ -69,10 +69,7 @@ async function request<T>(method: string, path: string, options: { body?: unknow
     });
   } catch {
     // fetch only rejects when the request never completed.
-    throw new ApiError(0, {
-      code: 'network_error',
-      message: 'Could not reach the server. Check your connection and try again.',
-    });
+    throw new ApiError(0, { code: 'network_error', message: '' });
   }
 
   if (res.status === 204) return undefined as T;
@@ -81,9 +78,12 @@ async function request<T>(method: string, path: string, options: { body?: unknow
   try {
     payload = await res.json();
   } catch {
+    // Something answered that was not our API: a proxy error page, a gateway
+    // timeout, a middlebox. There is nothing here worth showing a learner, so
+    // errorMessage supplies the wording.
     throw new ApiError(res.status, {
       code: 'bad_response',
-      message: 'The server returned an unreadable response.',
+      message: '',
     });
   }
 
@@ -105,8 +105,67 @@ export const api = {
   delete: <T>(path: string, body?: unknown) => request<T>('DELETE', path, { body }),
 };
 
-/** Turns any thrown value into something safe to show a learner. */
-export function errorMessage(err: unknown, fallback = 'Something went wrong. Please try again.'): string {
-  if (err instanceof ApiError) return err.message;
-  return fallback;
+/**
+ * Wording this app owns, keyed by the stable error code.
+ *
+ * Anything a learner reads comes from here unless the server is the only one
+ * that knows the specifics (see SERVER_WORDED). That keeps messages written for
+ * a developer — a rejected field name, a JSON offset, a proxy's error page —
+ * from ever reaching a screen.
+ */
+const MESSAGES: Record<string, string> = {
+  network_error: 'We could not reach Prepyo. Check your internet connection and try again.',
+  bad_response: 'We could not reach Prepyo just now. Please try again in a moment.',
+  bad_request: 'We could not process that. Please refresh the page and try again.',
+  validation_failed: 'Please check the highlighted fields and try again.',
+  not_found: 'We could not find what you were looking for.',
+  too_many_requests: 'That was a lot of tries in a short time. Please wait a minute and try again.',
+  internal_error: 'Something went wrong on our side. Please try again in a moment.',
+};
+
+/**
+ * Codes where the server writes the copy, because only it knows the detail:
+ * which plan allowance ran out, that an email is already taken, why evaluation
+ * is unavailable. These messages are hand-written for learners in the handlers.
+ */
+const SERVER_WORDED: ReadonlySet<string> = new Set([
+  'unauthorized',
+  'forbidden',
+  'conflict',
+  'limit_reached',
+  'ai_unavailable',
+]);
+
+const GENERIC = 'Something went wrong. Please try again.';
+
+/** Longer than any real message; a guard against painting a wall of text. */
+const MAX_MESSAGE_LENGTH = 200;
+
+function usable(message: string | undefined): message is string {
+  if (!message) return false;
+  const trimmed = message.trim();
+  return trimmed.length > 0 && trimmed.length <= MAX_MESSAGE_LENGTH;
+}
+
+/**
+ * Turns any thrown value into something safe to show a learner.
+ *
+ * Every path through this function returns copy we control or copy the server
+ * wrote for a learner. A raw error, a stack, or an unrecognised code all come
+ * out as the generic line rather than leaking whatever they contained.
+ */
+export function errorMessage(err: unknown, fallback = GENERIC): string {
+  if (!(err instanceof ApiError)) return fallback;
+
+  // A rejected field is the most actionable thing we can say, so it wins.
+  if (err.fields) {
+    const first = Object.values(err.fields).find(usable);
+    if (first) return first.trim();
+  }
+
+  if (SERVER_WORDED.has(err.code) && usable(err.message)) {
+    return err.message.trim();
+  }
+
+  return MESSAGES[err.code] ?? fallback;
 }

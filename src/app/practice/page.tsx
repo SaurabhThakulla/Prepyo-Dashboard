@@ -143,9 +143,9 @@ function PracticeContent() {
       await refreshUser();
     } catch (err) {
       if (err instanceof ApiError && err.isAIUnavailable) {
-        toast.error('Evaluation unavailable', 'The AI evaluator is not configured. Your response was not lost.');
+        toast.error('Scoring is unavailable right now', 'Your answer was saved. Please try again in a few minutes.');
       } else if (err instanceof ApiError && err.isLimitReached) {
-        toast.warning('Daily limit reached', err.message);
+        toast.warning('Daily limit reached', errorMessage(err));
       } else {
         toast.error('Could not submit your answer', errorMessage(err));
       }

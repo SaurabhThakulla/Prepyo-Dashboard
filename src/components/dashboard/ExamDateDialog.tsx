@@ -27,41 +27,36 @@ interface ExamDateDialogProps {
 export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogProps) {
   const { user, activeExam, updateProfile } = useApp();
 
-  const [date, setDate] = useState<string>(user?.examDate || '2026-10-15');
+  const [date, setDate] = useState<string>(user?.examDate ? String(user.examDate).split('T')[0] : '2026-10-15');
   const [time, setTime] = useState<string>('09:00');
   const [targetScore, setTargetScore] = useState<number>(user?.targetScore || (activeExam === 'PTE' ? 79 : 7.5));
   const [saving, setSaving] = useState<boolean>(false);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
 
   useEffect(() => {
-    if (user?.examDate) setDate(user.examDate.split('T')[0]);
-    if (user?.targetScore) setTargetScore(user.targetScore);
+    if (user?.examDate) {
+      const d = String(user.examDate);
+      setDate(d.split('T')[0]);
+      const t = d.split('T')[1];
+      if (t) {
+        // extract HH:MM from possible HH:MM:SSZ
+        const parts = t.split(':');
+        if (parts.length >= 2) setTime(`${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`);
+      }
+    }
+    if (user?.targetScore) setTargetScore(user.targetScore as number);
   }, [user, activeExam, open]);
 
   // Calculate live days left preview
   const calculateDays = (dateStr: string, timeStr: string) => {
     try {
-      const parts = dateStr.split('T')[0].split('-');
-      if (parts.length === 3) {
-        const year = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1;
-        const day = parseInt(parts[2], 10);
-        
-        let hours = 9;
-        let minutes = 0;
-        if (timeStr && timeStr.includes(':')) {
-          const tParts = timeStr.split(':');
-          hours = parseInt(tParts[0], 10) || 9;
-          minutes = parseInt(tParts[1], 10) || 0;
-        }
-
-        const target = new Date(year, month, day, hours, minutes, 0);
-        const now = new Date();
-        const diffMs = target.getTime() - now.getTime();
-        const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-        return Math.max(0, days);
-      }
-      return 0;
+      if (!dateStr) return 0;
+      const [yyyy, mm, dd] = dateStr.split('-').map(p => parseInt(p, 10));
+      const [hh = '09', min = '00'] = (timeStr || '09:00').split(':');
+      const target = new Date(yyyy, (mm || 1) - 1, dd, parseInt(hh as string, 10) || 9, parseInt(min as string, 10) || 0, 0);
+      const now = new Date();
+      const diffMs = target.getTime() - now.getTime();
+      return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
     } catch {
       return 0;
     }
@@ -79,15 +74,31 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
     setDate(`${yyyy}-${mm}-${dd}`);
   };
 
+  // Combine local date + time into an ISO string (keeps local timezone, then toISOString for storage)
+  const buildExamIso = (dateStr: string, timeStr: string) => {
+    if (!dateStr) return null;
+    try {
+      const [yyyy, mm, dd] = dateStr.split('-').map(p => parseInt(p, 10));
+      const [hh = '09', min = '00'] = (timeStr || '09:00').split(':');
+      const local = new Date(yyyy, (mm || 1) - 1, dd, parseInt(hh as string, 10) || 9, parseInt(min as string, 10) || 0, 0);
+      return local.toISOString();
+    } catch {
+      return null;
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setSavedSuccess(false);
     try {
-      await updateProfile({
+      const examIso = buildExamIso(date, time);
+      const payload: any = {
         targetExam: activeExam,
         targetScore,
-        examDate: date,
-      });
+      };
+      if (examIso) payload.examDate = examIso;
+
+      await updateProfile(payload);
       setSavedSuccess(true);
       setTimeout(() => {
         setSavedSuccess(false);
@@ -136,12 +147,7 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
           <div className="space-y-1.5">
             <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Quick Presets</label>
             <div className="grid grid-cols-4 gap-1.5">
-              {[
-                { label: '30 Days', days: 30 },
-                { label: '45 Days', days: 45 },
-                { label: '55 Days', days: 55 },
-                { label: '90 Days', days: 90 },
-              ].map(preset => (
+              {[{ label: '30 Days', days: 30 }, { label: '45 Days', days: 45 }, { label: '55 Days', days: 55 }, { label: '90 Days', days: 90 }].map(preset => (
                 <button
                   key={preset.label}
                   type="button"
@@ -175,11 +181,7 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
               <span>Exam Time / Session Slot</span>
             </label>
             <div className="grid grid-cols-3 gap-2 mb-2">
-              {[
-                { label: 'Morning', value: '09:00', desc: '09:00 AM' },
-                { label: 'Afternoon', value: '13:30', desc: '01:30 PM' },
-                { label: 'Evening', value: '17:00', desc: '05:00 PM' },
-              ].map(slot => (
+              {[{ label: 'Morning', value: '09:00', desc: '09:00 AM' }, { label: 'Afternoon', value: '13:30', desc: '01:30 PM' }, { label: 'Evening', value: '17:00', desc: '05:00 PM' }].map(slot => (
                 <button
                   key={slot.value}
                   type="button"
@@ -212,7 +214,7 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
             <Input
               type="number"
               step={activeExam === 'PTE' ? '1' : '0.5'}
-              value={targetScore}
+              value={String(targetScore)}
               onChange={(e) => setTargetScore(parseFloat(e.target.value) || 0)}
               className="bg-card dark:bg-[#181c24] border-border dark:border-white/10 text-foreground dark:text-white focus-visible:ring-emerald-500 dark:focus-visible:ring-[#00e599] text-xs h-10 rounded-xl"
             />

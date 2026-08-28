@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { api, ApiError } from '@/lib/api';
+import { api, ApiError, errorMessage } from '@/lib/api';
 import { SubscriptionPlan } from '@/lib/types';
 import {
   Mail,
@@ -115,7 +115,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
       if (!agreeTerms) {
         const msg = 'Please accept the Terms of Service to create your account.';
         setError(msg);
-        toast.warning('Terms Required', msg);
+        toast.warning('One more thing', msg);
         return;
       }
       if (password.length < MIN_PASSWORD_LENGTH) {
@@ -129,8 +129,10 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
     setLoading(true);
     try {
       if (mode === 'login') {
+        // The name, not the email: on a shared machine at a prep centre there
+        // is no reason to paint someone's address across the screen.
         const account = await login(email.trim(), password);
-        toast.success('Welcome back!', `Signed in as ${account.email}.`);
+        toast.success('Welcome back!', `Good to see you again, ${account.name}.`);
       } else {
         const account = await register({
           name: name.trim(),
@@ -143,15 +145,13 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
       const next = searchParams.get('next');
       router.push(next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard');
     } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.fields) setFieldErrors(err.fields);
-        setError(err.message);
-        toast.error(mode === 'login' ? 'Sign in failed' : 'Registration failed', err.message);
-      } else {
-        const msg = 'Something went wrong. Please try again.';
-        setError(msg);
-        toast.error('Unexpected error', msg);
-      }
+      const msg = errorMessage(err);
+      if (err instanceof ApiError && err.fields) setFieldErrors(err.fields);
+      setError(msg);
+      toast.error(
+        mode === 'login' ? 'Could not sign you in' : 'Could not create your account',
+        msg,
+      );
     } finally {
       setLoading(false);
     }

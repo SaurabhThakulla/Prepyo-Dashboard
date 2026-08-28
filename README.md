@@ -1,102 +1,66 @@
-# 🇳🇵 Prepyo — Local Setup & Running Guide
+# 🇳🇵 Prepyo Frontend (Next.js)
 
 Prepyo is an AI-powered exam preparation platform for **PTE Academic** and **IELTS**, tailored for Nepali and global study-abroad candidates.
 
+This repository hosts the **Next.js web application**. The Go API backend is maintained separately at [Prepyo-Backend](https://github.com/SaurabhThakulla/Prepyo-Backend).
+
 ---
 
-## Architecture in one paragraph
+## 🏗️ Architecture
 
-There are two processes. The **Go API** (`backend/`) owns everything: accounts, sessions, the question bank, grading, XP, referrals and billing, all persisted in **PostgreSQL**. The **Next.js app** (`src/`) is the interface — it holds no data of its own and every `/api/v1/*` request it makes is proxied straight to the Go API by a rewrite in `next.config.js`. Proxying rather than calling `:8080` from the browser keeps the session cookie same-origin, so it works without CORS credentials.
+The Next.js app (`src/`) is the frontend interface — it holds no database of its own. Every `/api/v1/*` request it makes is proxied straight to the Go API by a rewrite in `next.config.js`.
 
-Both processes must be running for the app to work. There is no offline or mock mode: if the API is down, the UI says so rather than showing placeholder data.
+Proxying rather than calling the API directly from the browser keeps session cookies same-origin (`HttpOnly`, `SameSite=Lax`), preventing CORS issues.
+
+- **Frontend Repository**: [Prepyo](https://github.com/SaurabhThakulla/prepyo) (Deployable to **Vercel**)
+- **Backend Repository**: [Prepyo-Backend](https://github.com/SaurabhThakulla/Prepyo-Backend) (Deployable to **Railway / Render / Fly.io**)
 
 ---
 
 ## 🚀 Quick Start
 
-You need **Node 18+**, **Go 1.22+** and a running **PostgreSQL**.
+### 1. Install dependencies
 
-### 1. Configure the database
+```bash
+npm install
+```
 
-`backend/.env` holds the API's configuration. The important line is:
+### 2. Configure Environment
+
+Create `.env.local` based on `.env.example`:
 
 ```env
-DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/prepyo?sslmode=disable
+# URL of your Go backend API (defaults to http://localhost:8080)
+BACKEND_URL=http://localhost:8080
 ```
 
-Create the database once:
-
-```bash
-createdb -U postgres prepyo
-```
-
-Schema migrations and the seed content (exam versions, questions, mocks, plans, daily missions) run **automatically** the first time the API starts.
-
-### 2. Start the API
-
-```bash
-npm run dev:api
-```
-
-Serves on **http://localhost:8080**. Check it with `curl http://localhost:8080/health`.
-
-### 3. Start the web app
+### 3. Start development server
 
 ```bash
 npm run dev
 ```
 
-Open **http://localhost:3000** and create an account.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+> Note: Ensure your [Go API backend](https://github.com/SaurabhThakulla/Prepyo-Backend) is running on `http://localhost:8080` for login, evaluations, and practice questions.
 
 ---
 
-## ⚙️ Environment Configuration
+## ☁️ Deployment on Vercel
 
-| File | Purpose |
-| :--- | :--- |
-| `backend/.env` | Go API: database URL, session settings, AI keys. **Required.** |
-| `.env.local` | Next.js: `BACKEND_URL` if the API is not on `localhost:8080`. |
-
-### AI features
-
-Writing evaluation (`/evaluations`) and the AI coach need an OpenRouter key in `backend/.env`:
-
-```env
-OPENROUTER_API_KEY=sk-or-...
-```
-
-Without it those two endpoints return **503** and the UI says the evaluator is unavailable. They never fall back to a canned score — a made-up band would be worse than no band.
-
----
-
-## Authentication
-
-Registration and login are real: passwords are hashed with **bcrypt** (cost 12) and sessions are **opaque random tokens** stored in the `sessions` table, sent as an `HttpOnly`, `SameSite=Lax` cookie. Because sessions are rows rather than JWTs, revoking one is a `DELETE`.
-
-- Passwords must be at least **10 characters** (enforced server-side).
-- `src/middleware.ts` bounces signed-out visitors off app routes before they render.
-- `RequireAuth` then catches the case middleware cannot see: a cookie whose session has expired or been revoked.
-- Google / Apple / Facebook buttons are present but **not connected to any provider**. They say so when clicked rather than signing you into a placeholder account.
-
----
-
-## What is not built yet
-
-Stated plainly so nothing on screen is mistaken for a working feature:
-
-- **Speaking practice** has no audio capture or pronunciation model, so it is not scored. The practice page says this instead of showing a recorder that goes nowhere.
-- **Speaking and writing inside mock exams** are recorded with the attempt but excluded from the overall estimate. The score report reports how many questions it actually covers.
-- **Checkout** records a subscription against your account but takes no payment — no gateway is connected. The dialog labels it a test checkout.
-- **Question authoring** has no write API; the bank is managed through `backend/migrations`.
+1. Import this repository into **Vercel**.
+2. Under **Project Settings → Environment Variables**, add:
+   * `BACKEND_URL`: `https://your-deployed-backend-api.up.railway.app`
+3. Click **Deploy**.
 
 ---
 
 ## 🧪 Verification
 
 ```bash
-npm run typecheck          # TypeScript
-npm run build              # Production build
-cd backend && go test ./...  # Backend tests
+npm run typecheck    # TypeScript verification
+npm run build        # Production Next.js build
+npm run lint         # ESLint checks
 ```
 
 ---
@@ -106,17 +70,13 @@ cd backend && go test ./...  # Backend tests
 ```text
 prepyo/
 ├── src/
-│   ├── app/                 # Next.js App Router pages (no API routes — see backend/)
-│   ├── components/          # UI components
+│   ├── app/                 # Next.js App Router pages
+│   ├── components/          # UI components & Design system
 │   ├── context/             # AppContext: session, notifications, theme
 │   ├── lib/
-│   │   ├── api.ts           # The only place the frontend talks to the API
-│   │   └── types/           # Mirrors backend/internal/models
-│   └── middleware.ts        # Route protection
-├── backend/
-│   ├── cmd/api/             # Server entrypoint and wiring
-│   ├── internal/            # One package per domain (auth, practice, mocks, …)
-│   └── migrations/          # Schema + seed content, applied at startup
-├── docker-compose.yml       # Postgres, Redis and the Go backend
+│   │   ├── api.ts           # API client for /api/v1 proxy
+│   │   └── types/           # Data models & TypeScript interfaces
+│   └── middleware.ts        # Route authentication guard
+├── public/                  # Static assets
 └── next.config.js           # /api/v1/* → Go API proxy
 ```
