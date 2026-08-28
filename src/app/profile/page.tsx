@@ -1,28 +1,25 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { api, errorMessage } from '@/lib/api';
 import { ExamType } from '@/lib/types';
 import {
   Save,
   CheckCircle2,
-  LogOut,
   Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/components/ui/toast';
 
 const REGIONS = ['Kathmandu', 'Lalitpur', 'Bhaktapur', 'Pokhara', 'Chitwan', 'Butwal', 'Dharan', 'Biratnagar'];
 
 export default function ProfilePage() {
-  const { user, updateProfile, logout } = useApp();
+  const { user, updateProfile } = useApp();
   const toast = useToast();
-  const router = useRouter();
 
   const [name, setName] = useState('');
   const [targetExam, setTargetExam] = useState<ExamType>('PTE');
@@ -32,7 +29,6 @@ export default function ProfilePage() {
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Seed the form from the account once it has loaded, and re-seed if the
@@ -72,13 +68,19 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSignOut = async () => {
-    setSigningOut(true);
-    await logout();
-    router.push('/login');
-  };
-
   const subscription = user?.subscription;
+  const isPaid = subscription?.planId && subscription.planId !== 'free';
+  const planDisplayName = subscription?.planId
+    ? subscription.planId.charAt(0).toUpperCase() + subscription.planId.slice(1).toLowerCase()
+    : 'Free';
+
+  const evalsUsed = subscription?.dailyEvaluationsUsed ?? 0;
+  const evalsLimit = subscription?.dailyEvaluationsLimit ?? 3;
+  const evalsPercent = Math.min(100, Math.max(0, (evalsUsed / Math.max(1, evalsLimit)) * 100));
+
+  const mocksUsed = subscription?.mockTestsUsed ?? 0;
+  const mocksLimit = subscription?.totalMockTestsAllowed ?? 1;
+  const mocksPercent = Math.min(100, Math.max(0, (mocksUsed / Math.max(1, mocksLimit)) * 100));
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto py-4">
@@ -88,74 +90,100 @@ export default function ProfilePage() {
         <p className="text-xs text-muted-foreground">Manage your study targets and exam timeline.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
 
-        {/* Account card */}
-        <Card className="p-6 text-center space-y-4">
-          <Avatar className="h-20 w-20 mx-auto">
-            <AvatarFallback className="text-2xl">
-              {user?.name?.charAt(0).toUpperCase() ?? '?'}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <CardTitle className="text-lg">{user?.name}</CardTitle>
-            <CardDescription>{user?.email}</CardDescription>
-          </div>
+        {/* Left Column: Profile Card & Allowance Card */}
+        <div className="space-y-5">
+          {/* Card 1: User Profile & Stats */}
+          <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-5 shadow-sm">
+            {/* Top row: Squircle Avatar + Name & Email */}
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-14 w-14 sm:h-16 sm:w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 via-indigo-600 to-purple-600 text-white font-black text-2xl shadow-lg shadow-violet-500/25 select-none">
+                {user?.name?.charAt(0).toUpperCase() ?? 'S'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-bold text-lg sm:text-xl text-foreground truncate leading-tight">
+                  {user?.name || 'Learner'}
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate mt-0.5">
+                  {user?.email || 'learner@prepyo.com'}
+                </p>
+              </div>
+            </div>
 
-          <div className="p-3 bg-background rounded-xl border border-border flex justify-around text-xs font-bold">
-            <div>
-              <span className="text-[10px] text-muted-foreground block">Streak</span>
-              <span className="text-amber-500">{user?.streakDays ?? 0}d</span>
-            </div>
-            <div>
-              <span className="text-[10px] text-muted-foreground block">Level</span>
-              <span className="text-primary">{user?.level ?? 1}</span>
-            </div>
-            <div>
-              <span className="text-[10px] text-muted-foreground block">Plan</span>
-              <span className="text-foreground uppercase">{subscription?.planId ?? '—'}</span>
-            </div>
-          </div>
-
-          {subscription && (
-            <div className="p-3 bg-background rounded-xl border border-border text-left space-y-1.5 text-[11px]">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">AI evaluations today</span>
-                <span className="font-bold text-foreground">
-                  {subscription.dailyEvaluationsUsed} / {subscription.dailyEvaluationsLimit}
+            {/* Stat Tiles: LEVEL, PLAN */}
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+              {/* Level */}
+              <div className="bg-muted/40 dark:bg-background/80 border border-border/70 rounded-2xl py-3.5 px-3 text-center flex flex-col items-center justify-center">
+                <span className="text-emerald-500 dark:text-emerald-400 font-extrabold text-xl sm:text-2xl leading-none">
+                  {user?.level ?? 1}
+                </span>
+                <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground tracking-wider uppercase mt-1.5">
+                  LEVEL
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Mock exams used</span>
-                <span className="font-bold text-foreground">
-                  {subscription.mockTestsUsed} / {subscription.totalMockTestsAllowed}
+
+              {/* Plan */}
+              <div className="bg-muted/40 dark:bg-background/80 border border-border/70 rounded-2xl py-3.5 px-3 text-center flex flex-col items-center justify-center">
+                <span className="text-foreground dark:text-white font-bold text-xl sm:text-2xl leading-none capitalize">
+                  {planDisplayName}
+                </span>
+                <span className="text-[9px] sm:text-[10px] font-bold text-muted-foreground tracking-wider uppercase mt-1.5">
+                  PLAN
                 </span>
               </div>
-              {subscription.validUntil && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Valid until</span>
-                  <span className="font-bold text-foreground">{subscription.validUntil}</span>
-                </div>
-              )}
             </div>
-          )}
-
-          <div className="pt-1 space-y-2 text-left">
-            <div className="text-[10px] text-muted-foreground">
-              Member since {user ? new Date(user.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-            </div>
-            <Button
-              onClick={handleSignOut}
-              disabled={signingOut}
-              variant="outline"
-              size="sm"
-              className="w-full font-bold text-xs gap-1.5"
-            >
-              {signingOut ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
-              <span>{signingOut ? 'Signing out…' : 'Sign out'}</span>
-            </Button>
           </div>
-        </Card>
+
+          {/* Card 2: Allowance & Upgrade */}
+          <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-4 shadow-sm">
+            <h4 className="font-bold text-sm text-foreground">
+              {isPaid ? "Today's plan allowance" : "Today's free allowance"}
+            </h4>
+
+            {/* AI evaluations */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-foreground/90 font-medium">AI evaluations</span>
+                <span className="font-bold text-foreground font-mono">
+                  {evalsUsed} / {evalsLimit}
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-muted/60 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.max(evalsPercent, evalsUsed > 0 ? 8 : 4)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Mock exams */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-foreground/90 font-medium">Mock exams</span>
+                <span className="font-bold text-foreground font-mono">
+                  {mocksUsed} / {mocksLimit}
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-muted/60 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.max(mocksPercent, mocksUsed > 0 ? 8 : 4)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Upgrade button */}
+            <div className="pt-2">
+              <Link
+                href="/subscription"
+                className="w-full py-2.5 px-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 dark:hover:bg-emerald-950/50 hover:border-emerald-500/60 font-bold text-xs sm:text-sm flex items-center justify-center transition-all shadow-sm"
+              >
+                {isPaid ? 'Manage subscription' : 'Upgrade for unlimited'}
+              </Link>
+            </div>
+          </div>
+        </div>
 
         {/* Settings form */}
         <Card className="md:col-span-2 p-6 space-y-5">

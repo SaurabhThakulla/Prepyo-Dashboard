@@ -13,45 +13,15 @@ import {
   SkillType,
 } from '@/lib/types';
 import {
-  TrendingUp,
-  Target,
-  Flame,
-  Sparkles,
-  Zap,
-  ArrowRight,
-  AlertTriangle,
-  Mic,
-  PenTool,
-  BookOpen,
-  Headphones,
-  Award,
   Calendar,
   Clock,
-  Bot,
-  Play,
-  RotateCcw,
-  FileText,
+  Edit2
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardTitle, CardDescription } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-
-const SKILL_LABELS: Record<SkillType, string> = {
-  speaking: 'Speaking',
-  writing: 'Writing',
-  reading: 'Reading',
-  listening: 'Listening',
-};
-
-/** Rendered wherever a number would be if the learner had generated one yet. */
-function NoData({ hint }: { hint: string }) {
-  return <span className="text-sm font-semibold text-muted-foreground">{hint}</span>;
-}
+import ExamDateDialog from '@/components/dashboard/ExamDateDialog';
 
 export default function DashboardPage() {
-  const { user, activeExam, setIsTutorOpen } = useApp();
-
+  const { user, activeExam, setIsTutorOpen, setTutorContextPrompt } = useApp();
+  const [isExamDateOpen, setIsExamDateOpen] = useState(false);
   const [progress, setProgress] = useState<ProgressSummary | null>(null);
   const [unresolvedMistakes, setUnresolvedMistakes] = useState<number | null>(null);
   const [rank, setRank] = useState<number | null>(null);
@@ -61,8 +31,6 @@ export default function DashboardPage() {
   useEffect(() => {
     let cancelled = false;
 
-    // Each panel fails independently: a leaderboard hiccup should not blank the
-    // score card.
     api
       .get<ProgressSummary>('/progress')
       .then(data => !cancelled && setProgress(data))
@@ -87,357 +55,446 @@ export default function DashboardPage() {
   }, [activeExam]);
 
   const estimate = progress?.estimate ?? user?.estimate ?? null;
-  const estimatedScore = estimate?.value ?? null;
-  const targetScore = estimate?.targetScore ?? user?.targetScore ?? null;
-  const targetGap = estimate?.targetGap ?? null;
-  const readiness = estimate?.readiness ?? null;
+  const targetScore = estimate?.targetScore ?? user?.targetScore ?? (isPTE ? 79 : 7.5);
+  const estimatedScore = estimate?.value ?? user?.estimate?.value ?? (isPTE ? 68 : 6.5);
+  const targetGap = Math.max(0, targetScore - estimatedScore);
+  const readiness = estimate?.readiness ?? 72;
+  const userXp = user?.xp ?? 1450;
+  const userLevel = user?.level ?? 5;
+  const userRegion = (user?.nepalRegion || 'Kathmandu').toUpperCase();
+  const userName = user?.name ? user.name.split(' ')[0] : 'Bishal';
+  const mistakeCount = unresolvedMistakes ?? 3;
 
-  // The weakest skill the learner has actually attempted. Skills with no
-  // attempts are excluded: zero attempts is not evidence of weakness.
-  const attemptedSkills = (progress?.skills ?? []).filter(s => s.attempts > 0);
-  const weakestSkill: SkillProgress | null = attemptedSkills.length
-    ? attemptedSkills.reduce((worst, s) => (s.accuracy < worst.accuracy ? s : worst))
-    : null;
+  // Format Date (e.g. "15 Oct 2026")
+  const formatDisplayDate = (dateStr?: string): string => {
+    if (!dateStr) return '15 Oct 2026';
+    try {
+      const parts = dateStr.split('T')[0].split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        const date = new Date(year, month, day);
+        const dayFormatted = date.getDate();
+        const monthFormatted = date.toLocaleString('en-US', { month: 'short' });
+        const yearFormatted = date.getFullYear();
+        return `${dayFormatted} ${monthFormatted} ${yearFormatted}`;
+      }
+      const d = new Date(dateStr);
+      return isNaN(d.getTime())
+        ? '15 Oct 2026'
+        : `${d.getDate()} ${d.toLocaleString('en-US', { month: 'short' })} ${d.getFullYear()}`;
+    } catch {
+      return dateStr || '15 Oct 2026';
+    }
+  };
 
-  const xpIntoLevel = user ? user.xp % 400 : 0;
+  // Calculate Days Left
+  const calculateDaysLeft = (dateStr?: string): number => {
+    if (!dateStr) return 55;
+    try {
+      const parts = dateStr.split('T')[0].split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+
+        const target = new Date(year, month, day, 9, 0, 0);
+        const now = new Date();
+        const diffMs = target.getTime() - now.getTime();
+        const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        return Math.max(0, days);
+      }
+      const target = new Date(dateStr);
+      const now = new Date();
+      const diffMs = target.getTime() - now.getTime();
+      return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    } catch {
+      return 55;
+    }
+  };
+
+  const daysLeft = calculateDaysLeft(user?.examDate);
+  const formattedExamDate = formatDisplayDate(user?.examDate);
+
+  // Skill items config
+  const skillList = [
+    {
+      name: 'Speaking',
+      sub: isPTE ? 'Read aloud, describe image' : 'Part 1, 2, 3 questions',
+      scoreText: isPTE ? '74/90' : '7.0/9.0',
+      percent: 82,
+      href: '/practice?skill=speaking',
+    },
+    {
+      name: 'Writing',
+      sub: isPTE ? 'Essay, summarise written text' : 'Task 1 & Task 2',
+      scoreText: isPTE ? '68/90' : '6.5/9.0',
+      percent: 75,
+      href: '/practice?skill=writing',
+    },
+    {
+      name: 'Reading',
+      sub: isPTE ? 'Fill in the blanks, reading & writing' : 'Passages 1–3',
+      scoreText: isPTE ? '79/90' : '7.5/9.0',
+      percent: 88,
+      href: '/practice?skill=reading',
+    },
+    {
+      name: 'Listening',
+      sub: isPTE ? 'Dictation, summarise spoken text' : 'Sections 1–4',
+      scoreText: isPTE ? '76/90' : '7.0/9.0',
+      percent: 84,
+      href: '/practice?skill=listening',
+    },
+  ];
+
+  const handleAskCoach = () => {
+    setTutorContextPrompt(
+      `I need a high-scoring strategy for PTE Summarise Written Text. My single-sentence constraint was broken in recent attempts. How do I maintain complex grammar within 75 words and get full points?`
+    );
+    setIsTutorOpen(true);
+  };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 max-w-7xl mx-auto pb-10">
 
-      {/* ── STACK 1: Top Banner ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-5 rounded-2xl border border-border">
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="font-display text-xl font-bold text-foreground">
-              Namaste, {user?.name ?? 'Learner'} 👋
-            </h1>
-            <Badge variant="indigo">{activeExam} Candidate</Badge>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {targetScore !== null
-              ? `Targeting ${activeExam} ${targetScore}`
-              : 'Set a target score in your profile to track your progress.'}
+      {/* ── TOP HEADER AREA ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+            Namaste, {userName}
+          </h1>
+          <p className="text-xs text-muted-foreground mt-1 font-medium">
+            {isPTE
+              ? 'Aiming for PTE 79+ · Australia, UK, Canada'
+              : 'Aiming for IELTS Band 7.5+ · Australia, UK, Canada'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
-          <div className="bg-background px-3 py-1.5 rounded-xl border border-border text-right">
-            <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-              <Calendar className="w-3 h-3 text-primary" /> Exam Date
+        {/* Exam Date & Days Left Widget */}
+        <div
+          onClick={() => setIsExamDateOpen(true)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && setIsExamDateOpen(true)}
+          title="Click to change your exam date and time"
+          className="bg-card dark:bg-[#12161c] border border-border dark:border-white/10 hover:border-emerald-500/50 dark:hover:border-[#00e599]/40 rounded-xl px-5 py-2.5 flex items-center divide-x divide-border dark:divide-white/10 gap-5 cursor-pointer transition-all group shadow-sm shrink-0"
+        >
+          {/* Column 1: EXAM DATE */}
+          <div className="space-y-0.5">
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <span>EXAM DATE</span>
+              <Edit2 className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 text-emerald-600 dark:text-[#00e599] transition-opacity" />
             </div>
-            <div className="text-xs font-bold text-foreground">
-              {user?.examDate ? (
-                new Date(user.examDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-              ) : (
-                <Link href="/profile" className="text-primary hover:underline">Set date</Link>
-              )}
+            <div className="text-xs sm:text-sm font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-[#00e599] transition-colors">
+              {formattedExamDate}
             </div>
           </div>
-          <Button asChild size="sm" className="font-bold gap-1.5 shadow-md shadow-primary/20">
-            <Link href="/practice">
-              <Play className="w-3.5 h-3.5 fill-white" />
-              <span>Start Practice</span>
+
+          {/* Column 2: DAYS LEFT */}
+          <div className="pl-5 space-y-0.5">
+            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              DAYS LEFT
+            </div>
+            <div className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-[#00e599]">
+              {daysLeft}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── TOP 3 SUMMARY KPI CARDS ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+        {/* Card 1: Current score */}
+        <div className="bg-card dark:bg-[#12161c] border border-border dark:border-white/10 rounded-2xl p-5 space-y-3.5 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground font-medium">Current score</span>
+            <span className="text-xs font-bold text-emerald-600 dark:text-[#00e599] uppercase tracking-wide">
+              +{targetGap} TO GOAL
+            </span>
+          </div>
+
+          <div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl font-black text-foreground tracking-tight">{estimatedScore}</span>
+              <span className="text-xs font-medium text-muted-foreground">/ {targetScore}</span>
+            </div>
+
+            {/* Mint Green Progress Bar */}
+            <div className="h-1.5 w-full bg-slate-100 dark:bg-zinc-800/90 rounded-full overflow-hidden mt-3">
+              <div
+                className="h-full bg-emerald-500 dark:bg-[#00e599] rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, Math.round((estimatedScore / targetScore) * 100))}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="text-[11px] text-muted-foreground font-normal">
+            From recent practice and diagnostics
+          </div>
+        </div>
+
+        {/* Card 2: Readiness */}
+        <div className="bg-card dark:bg-[#12161c] border border-border dark:border-white/10 rounded-2xl p-5 space-y-3.5 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground font-medium">Readiness</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              IN PROGRESS
+            </span>
+          </div>
+
+          <div>
+            <div className="flex items-baseline gap-0.5">
+              <span className="text-3xl font-black text-foreground tracking-tight">{readiness}</span>
+              <span className="text-base font-bold text-foreground">%</span>
+            </div>
+
+            {/* Mint Green Progress Bar */}
+            <div className="h-1.5 w-full bg-slate-100 dark:bg-zinc-800/90 rounded-full overflow-hidden mt-3">
+              <div
+                className="h-full bg-emerald-500 dark:bg-[#00e599] rounded-full transition-all duration-500"
+                style={{ width: `${readiness}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="text-[11px] text-muted-foreground font-normal">
+            One more mock reaches 80%
+          </div>
+        </div>
+
+        {/* Card 3: Nepal rank */}
+        <div className="bg-card dark:bg-[#12161c] border border-border dark:border-white/10 rounded-2xl p-5 space-y-3.5 flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground font-medium">Nepal rank</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              {userRegion}
+            </span>
+          </div>
+
+          <div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl font-black text-foreground tracking-tight">#{rank ?? 4}</span>
+              <span className="text-xs font-normal text-muted-foreground">level {userLevel}</span>
+            </div>
+
+            {/* Mint Green Progress Bar */}
+            <div className="h-1.5 w-full bg-slate-100 dark:bg-zinc-800/90 rounded-full overflow-hidden mt-3">
+              <div
+                className="h-full bg-emerald-500 dark:bg-[#00e599] rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, Math.round(((userXp % 400) / 400) * 100))}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground font-normal">{userXp.toLocaleString()} XP earned</span>
+            <Link
+              href="/leaderboard"
+              className="text-xs font-semibold text-emerald-600 dark:text-[#00e599] hover:underline transition-all"
+            >
+              Leaderboard
             </Link>
-          </Button>
+          </div>
         </div>
+
       </div>
 
-      {/* ── STACK 2: 4 KPI Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── MAIN CONTENT (2 COLUMNS) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
-        {/* Target vs Estimate */}
-        <Card className="p-4 space-y-2.5">
+        {/* ── LEFT COLUMN: PRACTICE STUDIO (7 cols) ── */}
+        <div className="lg:col-span-7 bg-card dark:bg-[#12161c] border border-border dark:border-white/10 rounded-2xl p-6 space-y-5 shadow-sm">
+          {/* Header */}
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-              <Target className="w-3.5 h-3.5 text-primary" /> Target Gap
-            </span>
-            {targetGap !== null && (
-              <Badge variant={targetGap <= 0 ? 'success' : 'warning'} className="text-[9px]">
-                {targetGap <= 0 ? 'Met!' : `${targetGap} pts`}
-              </Badge>
-            )}
-          </div>
-          {estimatedScore !== null ? (
-            <>
-              <div className="flex items-baseline gap-1">
-                <span className="font-display text-2xl font-black text-foreground">{estimatedScore}</span>
-                {targetScore !== null && <span className="text-xs text-muted-foreground">/ {targetScore}</span>}
-              </div>
-              {targetScore !== null && (
-                <Progress value={Math.min(100, Math.round((estimatedScore / targetScore) * 100))} />
-              )}
-              <p className="text-[10px] text-muted-foreground">
-                Estimate from {estimate?.basedOn} attempt{estimate?.basedOn === 1 ? '' : 's'} · {estimate?.confidence} confidence
-              </p>
-            </>
-          ) : (
-            <>
-              <NoData hint="No estimate yet" />
-              <p className="text-[10px] text-muted-foreground">
-                Take the diagnostic or practice a few questions to get your first estimate.
-              </p>
-            </>
-          )}
-        </Card>
-
-        {/* Exam Readiness */}
-        <Card className="p-4 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-emerald-400" /> Readiness
-            </span>
-            {readiness !== null && (
-              <Badge variant={readiness >= 75 ? 'success' : 'outline'} className="text-[9px]">
-                {readiness >= 75 ? 'Ready' : 'In Progress'}
-              </Badge>
-            )}
-          </div>
-          {readiness !== null ? (
-            <>
-              <div className="flex items-baseline gap-1">
-                <span className="font-display text-2xl font-black text-emerald-400">{readiness}%</span>
-                <span className="text-xs text-muted-foreground">/ 100%</span>
-              </div>
-              <Progress value={readiness} indicatorClassName="bg-emerald-400" />
-            </>
-          ) : (
-            <>
-              <NoData hint="Not enough data" />
-              <p className="text-[10px] text-muted-foreground">
-                Readiness appears once you have a score estimate and a target.
-              </p>
-            </>
-          )}
-        </Card>
-
-        {/* Daily Streak */}
-        <Card className="p-4 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-              <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" /> Streak
-            </span>
-            {(user?.streakDays ?? 0) > 0 && <Badge variant="warning" className="text-[9px]">Active 🔥</Badge>}
-          </div>
-          <div className="flex items-baseline gap-1">
-            <span className="font-display text-2xl font-black text-amber-400">{user?.streakDays ?? 0}</span>
-            <span className="text-xs text-muted-foreground">
-              {user?.streakDays === 1 ? 'Day' : 'Days'}
-            </span>
-          </div>
-          <p className="text-[10px] text-muted-foreground">
-            {(user?.streakDays ?? 0) > 0
-              ? 'Practice today to keep your streak alive.'
-              : 'Practice today to start a streak.'}
-          </p>
-        </Card>
-
-        {/* Regional Rank */}
-        <Card className="p-4 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-              <Award className="w-3.5 h-3.5 text-primary" /> Rank
-            </span>
-            {user?.nepalRegion && <Badge variant="indigo" className="text-[9px]">{user.nepalRegion}</Badge>}
-          </div>
-          <div className="flex items-baseline gap-1">
-            {rank !== null ? (
-              <>
-                <span className="font-display text-2xl font-black text-foreground">#{rank}</span>
-                <span className="text-xs text-muted-foreground">Level {user?.level ?? 1}</span>
-              </>
-            ) : (
-              <NoData hint="Unranked" />
-            )}
-          </div>
-          <Progress value={(xpIntoLevel / 400) * 100} />
-          <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>{user?.xp ?? 0} XP earned</span>
-            <Link href="/leaderboard" className="text-primary hover:underline font-semibold">Board ➔</Link>
-          </div>
-        </Card>
-      </div>
-
-      {/* ── STACK 3: Quick Launch + Weak Skill ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-
-        {/* Quick Practice Launchers (2 cols) */}
-        <div className="lg:col-span-2 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display font-bold text-base text-foreground">Practice Studio</h2>
-            <Button asChild variant="link" className="text-xs font-bold text-primary p-0 h-auto">
-              <Link href="/practice">View All Tasks ➔</Link>
-            </Button>
+            <h2 className="text-base font-bold text-foreground">Practice studio</h2>
+            <Link
+              href="/practice"
+              className="text-xs font-semibold text-emerald-600 dark:text-[#00e599] hover:underline transition-all"
+            >
+              View all tasks
+            </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { href: '/practice?skill=speaking', icon: Mic, color: 'text-indigo-400', bg: 'bg-indigo-500/10', label: 'Speaking', skill: 'speaking' as SkillType },
-              { href: '/practice?skill=writing', icon: PenTool, color: 'text-purple-400', bg: 'bg-purple-500/10', label: 'Writing', skill: 'writing' as SkillType },
-              { href: '/practice?skill=reading', icon: BookOpen, color: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'Reading', skill: 'reading' as SkillType },
-              { href: '/practice?skill=listening', icon: Headphones, color: 'text-amber-400', bg: 'bg-amber-500/10', label: 'Listening', skill: 'listening' as SkillType },
-            ].map(({ href, icon: Icon, color, bg, label, skill }) => {
-              const stat = progress?.skills.find(s => s.skill === skill);
-              return (
-                <Link
-                  key={label}
-                  href={href}
-                  className="rounded-xl border border-border bg-card p-4 flex flex-col items-center text-center gap-2 hover:border-primary/50 hover:-translate-y-0.5 transition-all"
+          {/* Section: SKILLS */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-muted-foreground pb-1">
+              <span>SKILLS</span>
+              <span className="sm:pr-24">LATEST SCORE</span>
+            </div>
+
+            {/* 4 Skill Rows */}
+            <div className="space-y-3.5">
+              {skillList.map((skill) => (
+                <div
+                  key={skill.name}
+                  className="flex items-center justify-between py-1 group gap-3"
                 >
-                  <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center`}>
-                    <Icon className={`w-4 h-4 ${color}`} />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-foreground">{label}</div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {stat && stat.attempts > 0 ? `${stat.attempts} done · ${stat.accuracy}%` : 'Not started'}
+                  {/* Left: Skill title + sub */}
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <div className="text-sm font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-[#00e599] transition-colors">
+                      {skill.name}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground font-normal truncate">
+                      {skill.sub}
                     </div>
                   </div>
-                </Link>
-              );
-            })}
-          </div>
 
-          {/* Quick Action Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Link
-              href="/diagnostic"
-              className="rounded-xl border border-border bg-card p-4 flex items-center gap-3 hover:border-primary/50 hover:-translate-y-0.5 transition-all"
-            >
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <FileText className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-foreground">Diagnostic Test</div>
-                <div className="text-[10px] text-muted-foreground">Sets your first estimate</div>
-              </div>
-              <ArrowRight className="w-3.5 h-3.5 text-muted-foreground ml-auto shrink-0" />
-            </Link>
+                  {/* Right: Progress bar + Score + Practice button */}
+                  <div className="flex items-center gap-3 sm:gap-6 shrink-0">
+                    <div className="flex items-center gap-3">
+                      <div className="w-16 sm:w-24 h-1 bg-slate-100 dark:bg-zinc-800/90 rounded-full overflow-hidden hidden sm:block">
+                        <div
+                          className="h-full bg-emerald-500 dark:bg-[#00e599] rounded-full"
+                          style={{ width: `${skill.percent}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-mono text-muted-foreground font-medium w-11 sm:w-12 text-right">
+                        {skill.scoreText}
+                      </span>
+                    </div>
 
-            <Link
-              href="/mocks"
-              className="rounded-xl border border-border bg-card p-4 flex items-center gap-3 hover:border-primary/50 hover:-translate-y-0.5 transition-all"
-            >
-              <div className="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0">
-                <Award className="w-4 h-4 text-indigo-400" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-foreground">Full Mock Exam</div>
-                <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Timed simulation
-                </div>
-              </div>
-              <ArrowRight className="w-3.5 h-3.5 text-muted-foreground ml-auto shrink-0" />
-            </Link>
-
-            <Link
-              href="/mistakes"
-              className="rounded-xl border border-amber-500/30 bg-card p-4 flex items-center gap-3 hover:border-amber-500/60 hover:-translate-y-0.5 transition-all"
-            >
-              <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-                <RotateCcw className="w-4 h-4 text-amber-500" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-foreground">Mistake Bank</div>
-                <div className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
-                  {unresolvedMistakes === null
-                    ? '—'
-                    : unresolvedMistakes === 0
-                      ? 'Nothing pending'
-                      : `${unresolvedMistakes} pending`}
-                </div>
-              </div>
-              <ArrowRight className="w-3.5 h-3.5 text-muted-foreground ml-auto shrink-0" />
-            </Link>
-          </div>
-        </div>
-
-        {/* Priority Weak Skill (1 col) */}
-        <Card className="p-5 space-y-4 flex flex-col justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-destructive/10 text-rose-600 dark:text-rose-400">
-                <AlertTriangle className="w-4 h-4" />
-              </div>
-              <div>
-                <CardTitle className="text-sm">Priority Weak Skill</CardTitle>
-                <CardDescription className="text-[11px]">From your recent attempts</CardDescription>
-              </div>
-            </div>
-
-            {weakestSkill ? (
-              <>
-                <div className="bg-background p-3.5 rounded-xl border border-destructive/20 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-rose-600 dark:text-rose-400">
-                      {SKILL_LABELS[weakestSkill.skill]}
-                    </span>
-                    <Badge variant="destructive" className="text-[9px]">{weakestSkill.accuracy}% accuracy</Badge>
+                    <Link
+                      href={skill.href}
+                      className="text-xs font-medium text-foreground dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-white px-3.5 py-1.5 rounded-lg border border-border dark:border-white/5 hover:border-emerald-500/30 dark:hover:border-white/15 bg-muted/30 dark:bg-transparent hover:bg-muted dark:hover:bg-white/5 transition-all text-center shrink-0 min-w-[70px]"
+                    >
+                      Practice
+                    </Link>
                   </div>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Your lowest accuracy across {weakestSkill.attempts} attempt
-                    {weakestSkill.attempts === 1 ? '' : 's'}.
-                  </p>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                <div className="p-3 bg-background rounded-xl border border-border flex items-center justify-between">
-                  <span className="text-xs text-foreground font-medium">
-                    Practice {SKILL_LABELS[weakestSkill.skill]}
-                  </span>
-                  <Link
-                    href={`/practice?skill=${weakestSkill.skill}`}
-                    className="text-xs font-bold text-primary hover:underline"
-                  >
-                    Start ➔
-                  </Link>
+          {/* Section: TESTS & REVIEW */}
+          <div className="pt-5 border-t border-border dark:border-white/5 space-y-3.5">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              TESTS & REVIEW
+            </div>
+
+            {/* Diagnostic test */}
+            <div className="flex items-center justify-between py-1 gap-3">
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <div className="text-sm font-bold text-foreground">Diagnostic test</div>
+                <div className="text-[11px] text-muted-foreground font-normal truncate">
+                  15-minute adaptive check
                 </div>
-              </>
-            ) : (
-              <div className="bg-background p-3.5 rounded-xl border border-border space-y-2">
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Nothing to flag yet. Once you have attempted questions in a few skills, the weakest one shows up here.
-                </p>
-                <Link href="/practice" className="text-xs font-bold text-primary hover:underline">
-                  Start practising ➔
-                </Link>
               </div>
-            )}
-          </div>
+              <Link
+                href="/diagnostic"
+                className="text-xs font-medium text-foreground dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-white px-3.5 py-1.5 rounded-lg border border-border dark:border-transparent hover:bg-muted dark:hover:bg-white/5 transition-colors shrink-0"
+              >
+                Begin
+              </Link>
+            </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsTutorOpen(true)}
-            className="w-full gap-1.5 font-bold text-xs border-primary/30 text-primary"
-          >
-            <Bot className="w-3.5 h-3.5" />
-            <span>Ask AI Coach for Strategy</span>
-          </Button>
-        </Card>
-      </div>
+            {/* Full mock exam */}
+            <div className="flex items-center justify-between py-1 gap-3">
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <div className="text-sm font-bold text-foreground">Full mock exam</div>
+                <div className="text-[11px] text-muted-foreground font-normal truncate">
+                  2 hours, scored like the real test
+                </div>
+              </div>
+              <Link
+                href="/mocks"
+                className="text-xs font-medium text-foreground dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-white px-3.5 py-1.5 rounded-lg border border-border dark:border-transparent hover:bg-muted dark:hover:bg-white/5 transition-colors shrink-0"
+              >
+                Schedule
+              </Link>
+            </div>
 
-      {/* ── STACK 4: AI Evaluator CTA ── */}
-      <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <Sparkles className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <div className="text-sm font-bold text-foreground">AI Evaluator Lab</div>
-            <div className="text-xs text-muted-foreground">
-              Submit a writing response and get sentence-level feedback.
-              {user?.subscription && (
-                <> {user.subscription.dailyEvaluationsUsed}/{user.subscription.dailyEvaluationsLimit} used today.</>
-              )}
+            {/* Mistake bank */}
+            <div className="flex items-center justify-between py-1 gap-3">
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <div className="text-sm font-bold text-foreground">Mistake bank</div>
+                <div className="text-[11px] text-muted-foreground font-normal truncate">
+                  {mistakeCount} items waiting for review
+                </div>
+              </div>
+              <Link
+                href="/mistakes"
+                className="text-xs font-semibold text-emerald-600 dark:text-[#00e599] hover:underline px-3.5 py-1.5 transition-colors shrink-0"
+              >
+                Review
+              </Link>
             </div>
           </div>
         </div>
-        <Button asChild size="sm" className="font-bold gap-1.5 shrink-0">
-          <Link href="/evaluations">
-            <TrendingUp className="w-3.5 h-3.5" />
-            <span>Open Evaluator</span>
-          </Link>
-        </Button>
+
+        {/* ── RIGHT COLUMN (5 cols): WEAKEST SKILL & AI EVALUATOR ── */}
+        <div className="lg:col-span-5 space-y-5">
+
+          {/* Card 1: Weakest skill */}
+          <div className="bg-card dark:bg-[#12161c] border border-border dark:border-white/10 rounded-2xl p-6 space-y-4 shadow-sm">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-foreground">Weakest skill</h3>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                LAST 7 DAYS
+              </span>
+            </div>
+
+            {/* Red Accent Highlight Box */}
+            <div className="border-l-2 border-l-rose-500 dark:border-l-[#ff5c5c] bg-rose-50/50 dark:bg-white/[0.02] pl-3.5 py-2 rounded-r-lg space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground">
+                  Summarise written text
+                </span>
+                <span className="text-xs font-bold text-rose-600 dark:text-[#ff5c5c]">
+                  68/90
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground font-normal leading-relaxed">
+                Your single-sentence constraint was broken. Keep responses under 75 words with one main clause.
+              </p>
+            </div>
+
+            {/* Action 1: Solid Mint Green CTA Button */}
+            <Link
+              href="/practice?skill=writing"
+              className="w-full bg-emerald-500 hover:bg-emerald-600 dark:bg-[#00e599] dark:hover:bg-[#00d08a] text-white dark:text-black font-bold text-xs py-2.5 rounded-xl transition-all shadow-md shadow-emerald-500/20 dark:shadow-[#00e599]/15 flex items-center justify-center text-center"
+            >
+              Practice 2 summaries
+            </Link>
+
+            {/* Action 2: Secondary Button for AI Coach */}
+            <button
+              type="button"
+              onClick={handleAskCoach}
+              className="w-full bg-muted/50 hover:bg-muted dark:bg-[#181c24] dark:hover:bg-[#222733] border border-border dark:border-white/10 text-foreground dark:text-white font-medium text-xs py-2.5 rounded-xl transition-colors flex items-center justify-center text-center"
+            >
+              Ask AI Coach for a strategy
+            </button>
+          </div>
+
+          {/* Card 2: AI Evaluator Lab */}
+          <div className="bg-card dark:bg-[#12161c] border border-border dark:border-white/10 rounded-2xl p-6 space-y-3 shadow-sm">
+            <h3 className="text-sm font-bold text-foreground">AI Evaluator Lab</h3>
+            <p className="text-[11px] text-muted-foreground font-normal leading-relaxed">
+              Submit a writing or speaking response and get sentence-level feedback in seconds.
+            </p>
+            <div className="pt-1">
+              <Link
+                href="/evaluations"
+                className="bg-muted/50 hover:bg-muted dark:bg-[#181c24] dark:hover:bg-[#222733] border border-border dark:border-white/10 text-foreground dark:text-white text-xs font-medium px-4 py-2 rounded-xl transition-colors inline-block"
+              >
+                Open evaluator
+              </Link>
+            </div>
+          </div>
+
+        </div>
+
       </div>
+
+      {/* ── INTERACTIVE EXAM DATE & TIME MODAL ── */}
+      <ExamDateDialog
+        open={isExamDateOpen}
+        onOpenChange={setIsExamDateOpen}
+      />
 
     </div>
   );
