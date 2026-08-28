@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import {
-  LayoutDashboard,
+  Home,
   Zap,
   Mic,
   PenTool,
@@ -17,11 +17,9 @@ import {
   Trophy,
   CreditCard,
   User,
-  ShieldCheck,
   Bot,
   Flame,
   ChevronRight,
-  History,
   HelpCircle,
   FileText,
   LogOut,
@@ -48,7 +46,7 @@ import {
 } from '@/components/ui/tooltip';
 
 export type PrimarySectionId =
-  | 'dashboard'
+  | 'home'
   | 'practice'
   | 'aicoach'
   | 'mock';
@@ -82,48 +80,6 @@ interface AppSidebarProps {
   setIsSecondaryOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
 }
 
-interface HistoryItem {
-  id: string;
-  label: string;
-  href: string;
-  iconName: string;
-  sublabel?: string;
-  badge?: string;
-  timestamp: number;
-}
-
-const getHistoryIcon = (name: string) => {
-  switch (name) {
-    case 'Mic': return Mic;
-    case 'PenTool': return PenTool;
-    case 'BookOpen': return BookOpen;
-    case 'Headphones': return Headphones;
-    case 'Sparkles': return Sparkles;
-    case 'Award': return Award;
-    case 'Zap': return Zap;
-    case 'RotateCcw': return RotateCcw;
-    case 'Trophy': return Trophy;
-    case 'FileText': return FileText;
-    case 'LayoutDashboard': return LayoutDashboard;
-    case 'CreditCard': return CreditCard;
-    case 'User': return User;
-    case 'ShieldCheck': return ShieldCheck;
-    default: return History;
-  }
-};
-
-const formatRelativeTime = (ts: number, now: number): string => {
-  const diffSec = Math.max(0, Math.floor((now - ts) / 1000));
-  if (diffSec < 30) return 'Just now';
-  if (diffSec < 60) return `${diffSec}s ago`;
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  return `${diffDay}d ago`;
-};
-
 function AppSidebarContent({
   isOpen,
   setIsOpen,
@@ -154,16 +110,13 @@ function AppSidebarContent({
   const isPTE = activeExam === 'PTE';
   const currentSkill = searchParams.get('skill') || (pathname === '/practice' ? 'speaking' : null);
 
-  const [userHistory, setUserHistory] = React.useState<HistoryItem[]>([]);
-  const [nowTime, setNowTime] = React.useState<number>(Date.now());
-
 
   // Helper to determine active section from current route
   const getSectionFromPathname = (path: string): PrimarySectionId => {
     if (path.startsWith('/practice')) return 'practice';
     if (path.startsWith('/mocks') || path.startsWith('/diagnostic')) return 'mock';
     if (path.startsWith('/evaluations')) return 'aicoach';
-    return 'dashboard';
+    return 'home';
   };
 
   const [activeSection, setActiveSection] = React.useState<PrimarySectionId>(() =>
@@ -191,14 +144,14 @@ function AppSidebarContent({
     {
       id: 'home',
       label: 'Home',
-      icon: LayoutDashboard,
+      icon: Home,
       title: 'Learner Hub',
       description: 'Progress, study resources & recent activity',
       items: [
         {
-          href: '/home',
+          href: '/dashboard',
           label: 'Home Overview',
-          icon: LayoutDashboard,
+          icon: Home,
           sublabel: 'Target gaps & score breakdown',
         },
         {
@@ -330,6 +283,10 @@ function AppSidebarContent({
       return pathname === '/mocks' && currentTab === 'catalog';
     }
 
+    if (item.href === '/home' || item.href === '/dashboard') {
+      return pathname === '/home' || pathname === '/dashboard';
+    }
+
     if (item.href === '/subscription' || item.href === '/account') {
       return pathname === '/subscription' || pathname === '/account';
     }
@@ -360,13 +317,13 @@ function AppSidebarContent({
           }`}
       >
         {/* ── LEVEL 1: Primary Icon Sidebar (w-16 / 64px) ── */}
-        <aside className="w-16 shrink-0 border-r border-border bg-card flex flex-col justify-between items-center py-3 px-2 z-20 select-none">
+        <aside className="w-16 shrink-0 border-r border-border bg-card flex flex-col justify-between items-center py-4 px-2.5 z-20 select-none">
           {/* Top Logo */}
-          <div className="flex flex-col items-center w-full">
+          <div className="flex flex-col items-center w-full pb-3 mb-2 border-b border-border/50">
             <Link
               href="/dashboard"
               onClick={() => {
-                setActiveSection('dashboard');
+                setActiveSection('home');
                 setIsSecondaryOpen(true);
               }}
               className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-indigo-600 to-violet-700 text-white shadow-md shadow-primary/25 font-black text-base hover:scale-105 transition-transform"
@@ -376,9 +333,9 @@ function AppSidebarContent({
             </Link>
           </div>
 
-          {/* Primary Navigation Icons (Clean top alignment without big gap) */}
+          {/* Primary Navigation Icons */}
           <TooltipProvider delayDuration={100}>
-            <nav className="flex flex-col items-center gap-2 mt-2 mb-auto w-full">
+            <nav className="flex flex-col items-center gap-3.5 mt-2 mb-auto w-full">
               {sections.map(section => {
                 const Icon = section.icon;
                 const isSelected = activeSection === section.id;
@@ -399,11 +356,11 @@ function AppSidebarContent({
 
                         {/* Active Indicator Bar */}
                         {isIndicatorActive && (
-                          <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
+                          <span className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-1 h-5.5 bg-primary rounded-r-full shadow-sm" />
                         )}
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="right" sideOffset={10} className="px-3 py-1.5 font-bold">
+                    <TooltipContent side="right" sideOffset={12} className="px-3 py-1.5 font-bold">
                       <div className="text-xs font-bold text-foreground">{section.label}</div>
                       <div className="text-[10px] text-muted-foreground font-normal">{section.description}</div>
                     </TooltipContent>
@@ -414,7 +371,7 @@ function AppSidebarContent({
           </TooltipProvider>
 
           {/* Bottom Actions: Report Issue, Profile Trigger & Dropdown Menu */}
-          <div className="flex flex-col items-center gap-2 mt-auto pt-3 border-t border-border/60 w-full">
+          <div className="flex flex-col items-center gap-3 mt-auto pt-3 border-t border-border/60 w-full">
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -518,21 +475,6 @@ function AppSidebarContent({
                   <h3 className="font-display text-sm font-bold text-foreground truncate">
                     {currentSectionConfig.title}
                   </h3>
-                  <div className="flex items-center gap-1.5">
-                    {activeSection === 'dashboard' && userHistory.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={clearRealtimeHistory}
-                        className="text-[10px] text-muted-foreground hover:text-destructive font-semibold px-1.5 py-0.5 rounded hover:bg-destructive/10 transition-colors"
-                        title="Clear history"
-                      >
-                        Clear
-                      </button>
-                    )}
-                    <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-1 py-0.2 rounded border border-emerald-500/20">
-                      NP
-                    </span>
-                  </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
                   {currentSectionConfig.description}

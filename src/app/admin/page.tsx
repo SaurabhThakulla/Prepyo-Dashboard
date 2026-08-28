@@ -85,7 +85,7 @@ export default function AdminPage() {
           This area is limited to accounts with the admin role.
         </CardDescription>
         <Button asChild variant="outline" size="sm" className="font-bold text-xs">
-          <Link href="/dashboard">Back to dashboard</Link>
+          <Link href="/dashboard">Back to home</Link>
         </Button>
       </Card>
     );

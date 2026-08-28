@@ -2,22 +2,41 @@
 
 import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { useApp } from '@/context/AppContext';
 import AppSidebar from './AppSidebar';
 import Header from './Header';
 import AITutorDrawer from '@/components/ai/AITutorDrawer';
 import RequireAuth from '@/components/auth/RequireAuth';
 
+const PROTECTED_PREFIXES = [
+  '/dashboard',
+  '/practice',
+  '/mocks',
+  '/mistakes',
+  '/evaluations',
+  '/leaderboard',
+  '/profile',
+  '/referrals',
+  '/subscription',
+  '/diagnostic',
+  '/admin',
+];
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { user } = useApp();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSecondaryOpen, setIsSecondaryOpen] = useState(true);
 
   // The sign-in screen is its own full-page layout, so these routes get the
-  // bare shell rather than the sidebar and header. "/" is one of them: it
-  // renders the sign-in form, not a page of its own.
+  // bare shell rather than the sidebar and header.
   const isAuthPage = pathname === '/' || pathname === '/login' || pathname === '/signup';
+  const isProtected = PROTECTED_PREFIXES.some(
+    prefix => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
 
-  if (isAuthPage) {
+  // If on auth page, or signed out on an unprotected/404 route, render bare shell
+  if (isAuthPage || (!user && !isProtected)) {
     return (
       <div className="min-h-screen bg-background text-foreground flex flex-col transition-colors duration-200">
         {children}
@@ -56,7 +75,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* 80vw is a comfortable reading width on a laptop but wastes a third
             of a phone screen, so it only kicks in from lg up. */}
         <main className="flex-1 w-full lg:max-w-[80vw] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <RequireAuth>{children}</RequireAuth>
+          {isProtected ? <RequireAuth>{children}</RequireAuth> : children}
         </main>
       </div>
 

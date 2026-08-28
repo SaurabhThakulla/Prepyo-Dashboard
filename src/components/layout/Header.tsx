@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import {
-  Menu,
   Sparkles,
   Bell,
   Bot,
@@ -31,8 +30,7 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
   const [showNotifications, setShowNotifications] = useState(false);
 
   const getPageTitle = (path: string) => {
-    if (path === '/') return 'Home';
-    if (path === '/dashboard') return 'Learner Hub';
+    if (path === '/' || path === '/home' || path === '/dashboard') return 'Home';
     if (path === '/diagnostic') return '15-Min Diagnostic';
     if (path?.startsWith('/practice')) return 'Practice Studio';
     if (path?.startsWith('/mocks')) return 'Mock Exams';
