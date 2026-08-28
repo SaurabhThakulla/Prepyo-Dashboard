@@ -17,7 +17,6 @@ interface PracticeStudioPanelProps {
 const ACTION_LINK_CLASS =
   'text-xs font-medium text-foreground dark:text-zinc-300 hover:text-primary dark:hover:text-white px-3.5 py-1.5 rounded-lg border border-border dark:border-transparent hover:bg-muted dark:hover:bg-white/5 transition-colors shrink-0';
 
-/** Left column: the four skills, plus the tests and review shortcuts. */
 export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeStudioPanelProps) {
   return (
     <div className="lg:col-span-7 bg-card dark:bg-[#12161c] border border-border dark:border-white/10 rounded-2xl p-6 space-y-5 shadow-sm">
@@ -49,15 +48,17 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
 
               <div className="flex items-center gap-3 sm:gap-6 shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-16 sm:w-24 h-1 bg-slate-100 dark:bg-zinc-800/90 rounded-full overflow-hidden hidden sm:block">
+                  <div className="w-28 sm:w-48 md:w-60 lg:w-72 h-1.5 bg-slate-100 dark:bg-zinc-800/90 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-primary rounded-full"
+                      className="h-full bg-primary rounded-full transition-all duration-300"
                       style={{ width: `${skill.percent}%` }}
                     />
                   </div>
-                  <span className="text-xs font-mono text-muted-foreground font-medium w-11 sm:w-12 text-right">
-                    {skill.scoreText}
-                  </span>
+                  {skill.scoreText ? (
+                    <span className="text-xs font-mono text-muted-foreground font-medium w-11 sm:w-12 text-right shrink-0">
+                      {skill.scoreText}
+                    </span>
+                  ) : null}
                 </div>
 
                 <Link

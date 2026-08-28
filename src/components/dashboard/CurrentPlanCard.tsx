@@ -10,17 +10,6 @@ interface CurrentPlanCardProps {
   user?: UserProfile | null;
 }
 
-/**
- * Learner's "Your Current Plan" widget on the Home screen.
- *
- * Shows real-time plan status, today's sub-test quota, mock tests remaining, and
- * a way through to the subscription page.
- *
- * Nothing here is invented. An earlier version filled in a plan name and quota
- * numbers while the subscription was still loading, which meant the card could
- * state a limit no plan actually has. Quotas are money: the page that sells them
- * refuses to guess (see SubscriptionPage and lib/fixtures.ts) and so does this.
- */
 export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
   const sub = user?.subscription;
   if (!sub) return <CurrentPlanCardSkeleton />;
@@ -30,7 +19,6 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
   const isFree = sub.planId === 'free';
   const validUntil = sub.validUntil;
 
-  // The server serves both names during the rename; prefer the current one.
   const subTestsUsed = sub.dailySubTestsUsed ?? sub.dailyEvaluationsUsed ?? 0;
   const subTestsLimit = sub.dailySubTestsLimit ?? sub.dailyEvaluationsLimit ?? 0;
   const subTestsRemaining = Math.max(0, subTestsLimit - subTestsUsed);
@@ -163,10 +151,6 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
   );
 }
 
-/**
- * What the card shows before the subscription has arrived: the same shape, no
- * numbers. Better an empty meter for a moment than a wrong limit.
- */
 function CurrentPlanCardSkeleton() {
   return (
     <div className="relative overflow-hidden bg-card dark:bg-[#12161c] border border-border/80 dark:border-white/10 rounded-2xl p-5 shadow-sm">

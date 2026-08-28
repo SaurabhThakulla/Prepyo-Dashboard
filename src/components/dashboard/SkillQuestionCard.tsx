@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mic, SquarePen, BookOpen, Headphones, TrendingUp } from 'lucide-react';
+import { Mic, SquarePen, BookOpen, Headphones } from 'lucide-react';
 import { SkillType } from '@/lib/types';
 
 export interface SkillQuestionCardProps {
@@ -8,8 +8,6 @@ export interface SkillQuestionCardProps {
   label: string;
   completed: number;
   total: number;
-  /** Recent accuracy as a percentage, or null when nothing has been attempted. */
-  accuracy?: number | null;
   href?: string;
 }
 
@@ -25,7 +23,6 @@ export default function SkillQuestionCard({
   label,
   completed,
   total,
-  accuracy = null,
   href = `/practice?skill=${skill}`,
 }: SkillQuestionCardProps) {
   const Icon = SKILL_ICONS[skill] || BookOpen;
@@ -35,19 +32,10 @@ export default function SkillQuestionCard({
       to={href}
       className="group block bg-card dark:bg-[#12161c] border border-border/80 dark:border-white/10 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-indigo-500/30 dark:hover:border-indigo-500/30 transition-all duration-200"
     >
-      <div className="flex items-center justify-between">
-        {/* Icon Circle */}
+      <div className="flex items-center">
         <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100/60 dark:border-indigo-800/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-105 transition-transform duration-200">
           <Icon className="w-5 h-5" />
         </div>
-
-        {/* Accuracy, when there is any history to report */}
-        {accuracy != null && (
-          <div className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/30">
-            <TrendingUp className="w-3 h-3" />
-            <span>{accuracy}% correct</span>
-          </div>
-        )}
       </div>
 
       {/* Label and Count */}
@@ -56,7 +44,7 @@ export default function SkillQuestionCard({
           {label}
         </div>
         <div className="text-xl sm:text-2xl font-black text-indigo-950 dark:text-white tracking-tight">
-          {total > 0 ? `${completed}/${total.toLocaleString()}` : 'None yet'}
+          {total > 0 ? `${completed}/${total.toLocaleString()}` : '--'}
         </div>
       </div>
     </Link>
