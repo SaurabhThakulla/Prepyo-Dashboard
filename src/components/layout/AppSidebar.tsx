@@ -157,145 +157,6 @@ function AppSidebarContent({
   const [userHistory, setUserHistory] = React.useState<HistoryItem[]>([]);
   const [nowTime, setNowTime] = React.useState<number>(Date.now());
 
-  // Real-time ticking interval for relative time strings
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNowTime(Date.now());
-    }, 15000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Load real user history from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('prepyo_realtime_history');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setUserHistory(parsed);
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
-
-  // Real-time tracker: immediately records every active section/module visited
-  useEffect(() => {
-    let newItem: HistoryItem | null = null;
-    const now = Date.now();
-
-    if (pathname.startsWith('/practice')) {
-      const skill = searchParams.get('skill') || 'speaking';
-      const skillMeta: Record<string, { label: string; icon: string; badge: string }> = {
-        speaking: { label: `${activeExam} Speaking Practice`, icon: 'Mic', badge: 'SPEAKING' },
-        writing: { label: `${activeExam} Writing Lab`, icon: 'PenTool', badge: 'WRITING' },
-        reading: { label: `${activeExam} Reading Precision`, icon: 'BookOpen', badge: 'READING' },
-        listening: { label: `${activeExam} Listening Engine`, icon: 'Headphones', badge: 'LISTENING' },
-      };
-      const meta = skillMeta[skill] || skillMeta.speaking;
-      newItem = {
-        id: `practice-${skill}`,
-        label: meta.label,
-        href: `/practice?skill=${skill}`,
-        iconName: meta.icon,
-        badge: meta.badge,
-        timestamp: now,
-      };
-    } else if (pathname === '/evaluations') {
-      newItem = {
-        id: 'evaluations',
-        label: 'AI Evaluator Lab',
-        href: '/evaluations',
-        iconName: 'Sparkles',
-        badge: 'AI LAB',
-        timestamp: now,
-      };
-    } else if (pathname === '/mocks') {
-      newItem = {
-        id: 'mocks',
-        label: `${activeExam} Mock Exam Simulator`,
-        href: '/mocks',
-        iconName: 'Award',
-        badge: '2h FULL',
-        timestamp: now,
-      };
-    } else if (pathname === '/diagnostic') {
-      newItem = {
-        id: 'diagnostic',
-        label: 'Diagnostic Test',
-        href: '/diagnostic',
-        iconName: 'Zap',
-        badge: '15 MIN',
-        timestamp: now,
-      };
-    } else if (pathname === '/mistakes') {
-      newItem = {
-        id: 'mistakes',
-        label: 'Mistake Bank Review',
-        href: '/mistakes',
-        iconName: 'RotateCcw',
-        badge: 'STUDY',
-        timestamp: now,
-      };
-    } else if (pathname === '/leaderboard') {
-      newItem = {
-        id: 'leaderboard',
-        label: 'Nepal Leaderboard',
-        href: '/leaderboard',
-        iconName: 'Trophy',
-        badge: 'RANKING',
-        timestamp: now,
-      };
-    } else if (pathname === '/dashboard') {
-      newItem = {
-        id: 'dashboard',
-        label: 'Learner Hub Dashboard',
-        href: '/dashboard',
-        iconName: 'LayoutDashboard',
-        badge: 'OVERVIEW',
-        timestamp: now,
-      };
-    } else if (pathname === '/subscription') {
-      newItem = {
-        id: 'subscription',
-        label: 'Subscriptions (NPR)',
-        href: '/subscription',
-        iconName: 'CreditCard',
-        badge: 'PRICING',
-        timestamp: now,
-      };
-    } else if (pathname === '/profile') {
-      newItem = {
-        id: 'profile',
-        label: 'Profile & Targets',
-        href: '/profile',
-        iconName: 'User',
-        badge: 'PROFILE',
-        timestamp: now,
-      };
-    } else if (pathname === '/admin') {
-      newItem = {
-        id: 'admin',
-        label: 'Admin CMS',
-        href: '/admin',
-        iconName: 'ShieldCheck',
-        badge: 'ADMIN',
-        timestamp: now,
-      };
-    }
-
-    if (newItem) {
-      setUserHistory(prev => {
-        const filtered = prev.filter(item => item.href !== newItem!.href);
-        const updated = [newItem!, ...filtered].slice(0, 8);
-        try {
-          localStorage.setItem('prepyo_realtime_history', JSON.stringify(updated));
-        } catch (e) { }
-        return updated;
-      });
-    }
-  }, [pathname, searchParams, activeExam]);
 
   // Helper to determine active section from current route
   const getSectionFromPathname = (path: string): PrimarySectionId => {
@@ -325,57 +186,18 @@ function AppSidebarContent({
     }
   };
 
-  const clearRealtimeHistory = () => {
-    setUserHistory([]);
-    try {
-      localStorage.removeItem('prepyo_realtime_history');
-    } catch (e) { }
-  };
-
-  const historySecondaryItems: SecondaryNavItem[] =
-    userHistory.length > 0
-      ? userHistory.map(h => ({
-        href: h.href,
-        label: h.label,
-        icon: getHistoryIcon(h.iconName),
-        sublabel: `Last used • ${formatRelativeTime(h.timestamp, nowTime)}`,
-        badge: h.badge,
-      }))
-      : [
-        {
-          href: '/practice?skill=speaking',
-          label: 'Start Speaking Practice',
-          icon: Mic,
-          sublabel: 'Practice to track real-time history',
-          badge: 'PTE',
-        },
-        {
-          href: '/mocks',
-          label: 'Start Mock Simulator',
-          icon: Award,
-          sublabel: 'Timed full assessment',
-          badge: 'MOCK',
-        },
-        {
-          href: '/evaluations',
-          label: 'AI Evaluator Lab',
-          icon: Sparkles,
-          sublabel: 'Instant rubric scoring',
-          badge: 'AI',
-        },
-      ];
 
   const sections: PrimarySectionConfig[] = [
     {
-      id: 'dashboard',
-      label: 'Dashboard',
+      id: 'home',
+      label: 'Home',
       icon: LayoutDashboard,
       title: 'Learner Hub',
       description: 'Progress, study resources & recent activity',
       items: [
         {
-          href: '/dashboard',
-          label: 'Dashboard Overview',
+          href: '/home',
+          label: 'Home Overview',
           icon: LayoutDashboard,
           sublabel: 'Target gaps & score breakdown',
         },
@@ -393,7 +215,6 @@ function AppSidebarContent({
           sublabel: 'Compete with peers in Nepal',
           group: 'Study Resources',
         },
-        ...historySecondaryItems.map(item => ({ ...item, group: 'Recent Activity' })),
       ],
     },
     {
@@ -766,10 +587,10 @@ function AppSidebarContent({
                       <>
                         <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1">
                           <Icon className={`w-4 h-4 shrink-0 transition-colors ${isSignOut
-                              ? 'text-muted-foreground group-hover:text-destructive'
-                              : active
-                                ? 'text-primary'
-                                : 'text-muted-foreground group-hover:text-foreground'
+                            ? 'text-muted-foreground group-hover:text-destructive'
+                            : active
+                              ? 'text-primary'
+                              : 'text-muted-foreground group-hover:text-foreground'
                             }`} />
                           <span className={`truncate font-medium text-xs ${isSignOut ? 'text-foreground/90 group-hover:text-destructive' : 'text-foreground/90'}`}>
                             {item.label}
@@ -790,10 +611,10 @@ function AppSidebarContent({
                     );
 
                     const className = `group flex items-center justify-between w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${isSignOut
-                        ? 'text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-[0.99] cursor-pointer'
-                        : active
-                          ? 'bg-accent text-accent-foreground font-semibold shadow-xs ring-1 ring-primary/20'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 active:scale-[0.99]'
+                      ? 'text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-[0.99] cursor-pointer'
+                      : active
+                        ? 'bg-accent text-accent-foreground font-semibold shadow-xs ring-1 ring-primary/20'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 active:scale-[0.99]'
                       }`;
 
                     const itemElement = item.href ? (
