@@ -49,7 +49,7 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
   return (
     <>
       <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border bg-card/80 px-4 sm:px-6 backdrop-blur-xl transition-colors">
-        
+
         {/* Left: Sidebar Toggle & Breadcrumb */}
         <div className="flex items-center gap-2 sm:gap-3">
           <Button
@@ -78,16 +78,23 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
 
         {/* Right Action Icons & Badges */}
         <div className="flex items-center gap-2 sm:gap-3">
-          
-          {/* AI Tutor Button */}
+          {/* XP Badge */}
+          <div className="hidden sm:flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1.5 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-400" title="XP Points">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>{user?.xp ?? 0} XP</span>
+          </div>
+
+          {      /* Pro / Subscription Button */}
           <Button
-            variant="outline"
+            asChild
+            variant={planId === 'elite' ? 'nepal' : planId === 'pro' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setIsTutorOpen(true)}
-            className="hidden sm:flex items-center gap-1.5 border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 font-bold text-xs"
+            className="hidden md:inline-flex text-xs font-bold"
           >
-            <Bot className="w-3.5 h-3.5 text-primary" />
-            <span>AI Coach</span>
+            <Link href="/subscription">
+              <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+              <span>{planId && planId !== 'free' ? planId.toUpperCase() : 'UPGRADE'}</span>
+            </Link>
           </Button>
 
           {/* Theme Toggle Button */}
@@ -100,12 +107,6 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
           >
             {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
           </Button>
-
-          {/* XP Badge */}
-          <div className="hidden sm:flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1.5 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-400" title="XP Points">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>{user?.xp ?? 0} XP</span>
-          </div>
 
           {/* Notifications */}
           <Button
@@ -121,19 +122,6 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-nepal-crimson"></span>
               </span>
             )}
-          </Button>
-
-          {/* Pro / Subscription Button */}
-          <Button
-            asChild
-            variant={planId === 'elite' ? 'nepal' : planId === 'pro' ? 'default' : 'outline'}
-            size="sm"
-            className="hidden md:inline-flex text-xs font-bold"
-          >
-            <Link href="/subscription">
-              <ShieldCheck className="w-3.5 h-3.5 mr-1" />
-              <span>{planId && planId !== 'free' ? planId.toUpperCase() : 'UPGRADE'}</span>
-            </Link>
           </Button>
         </div>
       </header>

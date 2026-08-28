@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, Suspense, useCallback } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import {
@@ -13,18 +12,21 @@ import {
   Clock,
   Bot,
   AlertCircle,
-  Volume2,
   Award,
   Send,
   CheckCircle2,
   XCircle,
+  Quote,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import AudioRecorder from '@/components/practice/AudioRecorder';
+import PromptAudio from '@/components/practice/PromptAudio';
 import { Evaluation, PracticeAttempt, Question, SkillType } from '@/lib/types';
 import { api, ApiError, errorMessage } from '@/lib/api';
+import { encodeForUpload, UPLOAD_FORMAT } from '@/lib/audio';
 import { useToast } from '@/components/ui/toast';
 
 /**
@@ -32,13 +34,14 @@ import { useToast } from '@/components/ui/toast';
  *
  * - reading / listening are graded deterministically by POST /practice/attempts
  * - writing goes to the AI evaluator at POST /evaluations/writing
- * - speaking has no scoring path in the API yet, so it is not offered
+ * - speaking records audio and goes to POST /evaluations/speaking, which
+ *   transcribes it and scores the transcript against what it heard
  */
-const GRADING: Record<SkillType, 'deterministic' | 'ai' | 'unavailable'> = {
+const GRADING: Record<SkillType, 'deterministic' | 'ai' | 'speech'> = {
   reading: 'deterministic',
   listening: 'deterministic',
   writing: 'ai',
-  speaking: 'unavailable',
+  speaking: 'speech',
 };
 
 interface SubmitResult {
@@ -63,6 +66,7 @@ function PracticeContent() {
   const [textAnswer, setTextAnswer] = useState('');
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [blankResponses, setBlankResponses] = useState<Record<string, string>>({});
+  const [recording, setRecording] = useState<Blob | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [startedAt, setStartedAt] = useState<number>(() => Date.now());
@@ -81,6 +85,7 @@ function PracticeContent() {
     setTextAnswer('');
     setBlankResponses({});
     setSelectedOptions([]);
+    setRecording(null);
     setStartedAt(Date.now());
   }, []);
 
@@ -120,7 +125,30 @@ function PracticeContent() {
     const timeSpentSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
 
     try {
-      if (grading === 'ai') {
+      if (grading === 'speech') {
+        if (!recording) return;
+
+        // Converted here rather than in the recorder: the learner may re-record
+        // several times, and only the take they submit is worth the work.
+        let encoded;
+        try {
+          encoded = await encodeForUpload(recording);
+        } catch {
+          toast.error(
+            'That recording could not be read',
+            'Nothing was captured from your microphone. Please record your answer again.',
+          );
+          return;
+        }
+
+        const data = await api.post<{ evaluation: Evaluation; xpAwarded: number }>('/evaluations/speaking', {
+          questionId: currentQuestion.id,
+          audio: encoded.base64,
+          format: UPLOAD_FORMAT,
+          durationSeconds: encoded.durationSeconds,
+        });
+        setResult({ evaluation: data.evaluation, xpAwarded: data.xpAwarded });
+      } else if (grading === 'ai') {
         const data = await api.post<{ evaluation: Evaluation; xpAwarded: number }>('/evaluations/writing', {
           questionId: currentQuestion.id,
           text: textAnswer,
@@ -163,10 +191,11 @@ function PracticeContent() {
   };
 
   const canSubmit =
-    grading !== 'unavailable' &&
-    (textAnswer.trim().length > 0 ||
-      selectedOptions.length > 0 ||
-      Object.values(blankResponses).some(Boolean));
+    grading === 'speech'
+      ? recording !== null
+      : textAnswer.trim().length > 0 ||
+        selectedOptions.length > 0 ||
+        Object.values(blankResponses).some(Boolean);
 
   return (
     <div className="space-y-6">
@@ -215,18 +244,6 @@ function PracticeContent() {
           <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
           <p className="text-xs text-muted-foreground">Loading questions…</p>
         </div>
-      ) : grading === 'unavailable' ? (
-        <div className="text-center py-20 bg-card rounded-2xl border border-border space-y-3 max-w-lg mx-auto">
-          <Mic className="w-8 h-8 text-muted-foreground mx-auto" />
-          <h3 className="text-sm font-bold text-foreground">Speaking practice isn&apos;t scored yet</h3>
-          <p className="text-xs text-muted-foreground px-6 leading-relaxed">
-            Speaking responses need audio capture and a pronunciation model, neither of which is wired up.
-            Rather than show you a made-up score, this section stays closed until it can grade properly.
-          </p>
-          <Button asChild variant="outline" size="sm" className="font-bold text-xs">
-            <Link href="/practice?skill=reading">Practise reading instead</Link>
-          </Button>
-        </div>
       ) : !currentQuestion ? (
         <div className="text-center py-20 bg-card rounded-2xl border border-border space-y-3">
           <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
@@ -267,32 +284,16 @@ function PracticeContent() {
                 </div>
               )}
 
-              {/* Real audio when the question has a file; otherwise the
-                  transcript, labelled as a stand-in rather than dressed up as a
-                  player. */}
-              {currentQuestion.audioUrl ? (
-                <div className="p-4 rounded-xl bg-background border border-border space-y-2">
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                    <Volume2 className="w-4 h-4 text-primary" /> Audio
-                  </span>
-                  <audio controls src={currentQuestion.audioUrl} className="w-full">
-                    Your browser does not support audio playback.
-                  </audio>
-                </div>
-              ) : currentQuestion.audioTranscript ? (
-                <div className="p-4 rounded-xl bg-background border border-border space-y-1.5">
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                    <Volume2 className="w-4 h-4 text-muted-foreground" /> Transcript
-                  </span>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    No audio file for this question yet, so the script is shown instead.
-                  </p>
-                  <p className="text-xs text-foreground italic leading-relaxed">
-                    &ldquo;{currentQuestion.audioTranscript}&rdquo;
-                  </p>
-                </div>
-              ) : null}
+              {/* Real audio when the question has a file, otherwise the script
+                  read aloud by the browser and labelled as synthesised. */}
+              <PromptAudio
+                audioUrl={currentQuestion.audioUrl}
+                audioTranscript={currentQuestion.audioTranscript}
+                title={currentQuestion.title}
+              />
 
+              {/* Read Aloud puts the words to say in here, so the passage stays
+                  on screen while the recorder runs below it. */}
               {currentQuestion.contextPassage && (
                 <div className="p-4 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed max-h-56 overflow-y-auto">
                   {currentQuestion.contextPassage}
@@ -302,6 +303,18 @@ function PracticeContent() {
 
             {/* Answer form */}
             <Card className="p-6 space-y-4">
+              {grading === 'speech' && (
+                <AudioRecorder
+                  // Remounting per question drops any half-finished take and
+                  // releases the microphone when the learner moves on.
+                  key={currentQuestion.id}
+                  prepSeconds={currentQuestion.prepTimeSeconds ?? 0}
+                  maxSeconds={currentQuestion.timeLimitSeconds}
+                  disabled={submitting || result !== null}
+                  onRecorded={setRecording}
+                />
+              )}
+
               {grading === 'ai' && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-xs">
@@ -407,12 +420,18 @@ function PracticeContent() {
                     {submitting ? (
                       <>
                         <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        <span>{grading === 'ai' ? 'Evaluating…' : 'Checking…'}</span>
+                        <span>
+                          {grading === 'speech'
+                            ? 'Listening to your answer…'
+                            : grading === 'ai'
+                              ? 'Evaluating…'
+                              : 'Checking…'}
+                        </span>
                       </>
                     ) : (
                       <>
                         <Send className="w-3.5 h-3.5" />
-                        <span>Submit Answer</span>
+                        <span>{grading === 'speech' ? 'Submit recording' : 'Submit Answer'}</span>
                       </>
                     )}
                   </Button>
@@ -499,6 +518,27 @@ function PracticeContent() {
                   </div>
                   <p className="text-xs text-foreground pt-1">{result.evaluation.summary}</p>
                 </div>
+
+                {/* What was actually heard. Every judgement below is about
+                    these words, so a learner can see whether the evaluator
+                    heard them correctly before taking the score to heart. */}
+                {result.evaluation.skill === 'speaking' && (
+                  <div className="p-3 rounded-xl bg-background border border-border space-y-1.5">
+                    <span className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase">
+                      <Quote className="w-3 h-3" /> What we heard
+                    </span>
+                    {result.evaluation.transcript ? (
+                      <p className="text-[11px] text-foreground italic leading-relaxed">
+                        &ldquo;{result.evaluation.transcript}&rdquo;
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        No speech could be made out in that recording, so there is no score for it.
+                        Check your microphone and record the answer again.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {result.evaluation.criteria.length > 0 && (
                   <div className="space-y-2">

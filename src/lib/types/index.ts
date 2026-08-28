@@ -248,6 +248,7 @@ export interface Evaluation {
   weaknesses: string[];
   sentenceFeedback: SentenceFeedback[];
   modelRewrite?: string;
+  transcript?: string;
   createdAt: string;
 }
 
