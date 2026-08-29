@@ -198,6 +198,19 @@ export interface MockAttempt {
   completedAt: string;
 }
 
+/**
+ * What POST /mocks/:id/submit returns. Richer than the stored attempt because
+ * it also reports what the score did *not* cover — speaking and writing are
+ * not auto-graded, so they are excluded rather than guessed at.
+ */
+export interface MockSubmitOutcome {
+  attempt: MockAttempt;
+  xpAwarded: number;
+  scoredQuestions: number;
+  ungradedQuestions: number;
+  scoreConfidence: string;
+}
+
 export interface Mistake {
   id: string;
   questionId: string;
