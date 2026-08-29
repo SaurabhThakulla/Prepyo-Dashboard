@@ -26,6 +26,8 @@ import {
   Bug,
 } from 'lucide-react';
 import ReportIssueDialog from '@/components/support/ReportIssueDialog';
+import { SYLLABUS, typeKey } from '@/lib/syllabus';
+import { SkillType } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -62,7 +64,18 @@ interface SecondaryNavItem {
   /** Starts a labelled run of items in the panel. Consecutive items sharing a
    *  group sit under one heading; ungrouped items lead the list. */
   group?: string;
+  /** Makes the group heading itself a link — used by the skill headings, so
+   *  "Reading" still opens reading practice without picking a task type. */
+  groupHref?: string;
 }
+
+/** The practice skills, in the order they head the secondary panel. */
+const PRACTICE_SKILLS: { skill: SkillType; label: string; icon: any; sublabel: string }[] = [
+  { skill: 'speaking', label: 'Speaking', icon: Mic, sublabel: 'Recorded answer, scored from the transcript' },
+  { skill: 'writing', label: 'Writing', icon: PenTool, sublabel: 'Written answer with rubric feedback' },
+  { skill: 'reading', label: 'Reading', icon: BookOpen, sublabel: 'Passage questions, graded on the server' },
+  { skill: 'listening', label: 'Listening', icon: Headphones, sublabel: 'Audio questions, graded on the server' },
+];
 
 interface PrimarySectionConfig {
   id: PrimarySectionId;
@@ -176,32 +189,19 @@ function AppSidebarContent({
       icon: PenTool,
       title: `${activeExam} Practice Studio`,
       description: 'Official test modules & AI rubric',
-      items: [
-        {
-          href: '/practice?skill=speaking',
-          label: 'Speaking',
-          icon: Mic,
-          sublabel: isPTE ? 'Read Aloud / DI / Retell' : 'Speaking Part 1–3',
-        },
-        {
-          href: '/practice?skill=writing',
-          label: 'Writing Lab',
-          icon: PenTool,
-          sublabel: isPTE ? 'Essay / Summary' : 'Task 1 & Task 2',
-        },
-        {
-          href: '/practice?skill=reading',
-          label: 'Reading Precision',
-          icon: BookOpen,
-          sublabel: isPTE ? 'FIB R&W / Reorder' : 'Passages & TFNG',
-        },
-        {
-          href: '/practice?skill=listening',
-          label: 'Listening Engine',
-          icon: Headphones,
-          sublabel: isPTE ? 'Dictation / SST / FIB' : 'Sections 1–4',
-        },
-      ],
+      // One heading per skill, one item per task type underneath — the exam's
+      // own shape, straight from the syllabus, so PTE and IELTS each list their
+      // own tasks and a change there needs no edit here.
+      items: PRACTICE_SKILLS.flatMap(({ skill, label, icon, sublabel }) =>
+        (SYLLABUS[activeExam][skill] ?? []).map(name => ({
+          href: `/practice?skill=${skill}&type=${typeKey(name)}`,
+          label: name,
+          icon,
+          sublabel,
+          group: label,
+          groupHref: `/practice?skill=${skill}`,
+        })),
+      ),
     },
     {
       id: 'aicoach',
@@ -269,7 +269,10 @@ function AppSidebarContent({
 
     if (item.href.includes('skill=')) {
       const itemSkill = item.href.split('skill=')[1]?.split('&')[0];
-      return pathname === '/practice' && currentSkill === itemSkill;
+      // Every task type under a skill shares that skill, so the task type has
+      // to match too — otherwise the whole group lights up at once.
+      const itemType = item.href.split('type=')[1]?.split('&')[0] ?? null;
+      return pathname === '/practice' && currentSkill === itemSkill && itemType === searchParams.get('type');
     }
 
     if (item.href.includes('tab=')) {
@@ -508,9 +511,13 @@ function AppSidebarContent({
 
             {/* Secondary Submenu Items */}
             <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5">
-              <h4 className="px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                {currentSectionConfig.label} Options
-              </h4>
+              {!currentSectionConfig.items[0]?.group && (
+                <div className="px-2.5 py-1.5 rounded-lg bg-muted/80 dark:bg-muted/50 border border-border/50">
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+                    {currentSectionConfig.label} Options
+                  </h4>
+                </div>
+              )}
 
               <TooltipProvider delayDuration={120}>
                 <div className="space-y-1 pt-1">
@@ -585,9 +592,21 @@ function AppSidebarContent({
                     return (
                       <React.Fragment key={idx}>
                         {startsGroup && (
-                          <h5 className="px-2 pt-3 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
-                            {item.group}
-                          </h5>
+                          <div className="mt-3.5 mb-1.5 first:mt-0 px-2.5 py-1.5 rounded-lg bg-muted/80 dark:bg-muted/50 border border-border/50">
+                            <h5 className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+                              {item.groupHref ? (
+                                <Link
+                                  href={item.groupHref}
+                                  onClick={() => setIsOpen(false)}
+                                  className="hover:text-primary transition-colors block"
+                                >
+                                  {item.group}
+                                </Link>
+                              ) : (
+                                <span>{item.group}</span>
+                              )}
+                            </h5>
+                          </div>
                         )}
                         <Tooltip>
                           <TooltipTrigger asChild>
