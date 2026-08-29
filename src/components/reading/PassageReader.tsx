@@ -8,6 +8,7 @@ interface PassageReaderProps {
   passage: ReadingPassage;
   /** Caps the height and scrolls, so the questions stay beside it on a mock. */
   scroll?: boolean;
+  showSources?: boolean;
 }
 
 type TextSize = 'sm' | 'base' | 'lg';
@@ -22,7 +23,7 @@ const FONT_CLASSES: Record<TextSize, { body: string; label: string; line: string
  * Enhanced passage reader with optimized readability, custom text sizing,
  * clear paragraph anchors, and high-contrast typography.
  */
-export default function PassageReader({ passage, scroll = true }: PassageReaderProps) {
+export default function PassageReader({ passage, scroll = true, showSources = false }: PassageReaderProps) {
   const [textSize, setTextSize] = useState<TextSize>('base');
 
   const estimatedMinutes = Math.max(1, Math.ceil((passage.wordCount || 500) / 200));
@@ -149,8 +150,7 @@ export default function PassageReader({ passage, scroll = true }: PassageReaderP
           </div>
         ))}
 
-        {/* Sources / Commentaries (e.g. Find the Writer) */}
-        {passage.sources && passage.sources.length > 0 && (
+        {showSources && passage.sources && passage.sources.length > 0 && (
           <div className="pt-4 mt-6 border-t border-border/80 space-y-3.5">
             <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">
               <Users className="w-4 h-4 text-primary" />

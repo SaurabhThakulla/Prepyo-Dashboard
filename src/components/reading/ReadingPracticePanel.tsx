@@ -9,7 +9,7 @@ import { useToast } from '@/components/ui/toast';
 import { useReadingPractice, useReadingTypes } from '@/lib/hooks/useReading';
 import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
-import { TYPE_BY_SYLLABUS_KEY } from '@/lib/readingTypes';
+import { READING_TYPES, TYPE_BY_SYLLABUS_KEY } from '@/lib/readingTypes';
 
 interface ReadingPracticePanelProps {
   /** The `?type=` key the sidebar linked with, if any. */
@@ -67,98 +67,112 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
 
   if (typesQuery.isPending) {
     return (
-      <Card className="text-center py-20 space-y-3">
+      <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center py-20 text-center space-y-3 bg-card/20">
         <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
         <p className="text-xs text-muted-foreground">Loading reading tasks…</p>
-      </Card>
+      </div>
     );
   }
 
   if (types.length === 0) {
     return (
-      <Card className="text-center py-20 space-y-3">
+      <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-8 text-center space-y-3 bg-card/20">
         <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
         <h3 className="text-sm font-bold text-foreground">No {activeExam} reading passages yet</h3>
         <p className="text-xs text-muted-foreground">Switch exam, or try another skill.</p>
-      </Card>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-5">
+    <div className="w-full min-h-[calc(100vh-4rem)] p-0 m-0 flex flex-col bg-background">
       {practice.dealing ? (
-        <Card className="text-center py-20 space-y-3">
+        <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center py-20 text-center space-y-3 bg-card/20">
           <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
           <p className="text-xs text-muted-foreground">Finding you a passage…</p>
-        </Card>
+        </div>
       ) : !set ? (
-        <Card className="text-center py-20 space-y-3">
+        <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center py-20 text-center space-y-3 bg-card/20">
           <BookOpen className="w-8 h-8 text-muted-foreground mx-auto opacity-50" />
           <h3 className="text-sm font-bold text-foreground">Pick a task type to begin</h3>
-        </Card>
+        </div>
       ) : (
-        <div className="space-y-6">
-          {/*
-            A gap-fill works on its own rewritten text and Re-order has no
-            passage at all. Rendering the clean original beside either would show
-            the learner the answer, so the group decides whether it appears.
-          */}
-          {set.passage && set.groups[0]?.passageDisplay !== 'hidden' && (
-            <div className="w-full">
-              <PassageReader passage={set.passage} scroll={false} />
+        <div className="w-full flex flex-col flex-1">
+          {/* Flush Edge-to-Edge Reading Top Bar */}
+          <div className="w-full border-b border-border/80 bg-background px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-16 z-10">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider px-3.5 py-1 rounded-full shadow-xs">
+                {set.groups[0]?.typeName || 'Reading Task'}
+              </span>
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/80 px-3 py-1 rounded-full border border-border">
+                {activeExam} • READING
+              </span>
             </div>
-          )}
 
-          <div className="w-full space-y-4">
-            {set.groups.map(group => (
-              <ReadingGroupCard
-                key={group.id}
-                group={group}
-                startNumber={1}
-                answers={practice.answers}
-                results={practice.results}
-                disabled={practice.checking}
-                onAnswer={practice.answer}
-              />
-            ))}
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-mono font-bold text-muted-foreground uppercase tracking-wider">
+                {practice.answeredCount}/{practice.totalQuestions} ANSWERED
+              </span>
+            </div>
+          </div>
 
-            {practice.checked && (
-              <Card className="border-primary/40 p-5 space-y-2">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  <CardTitle className="text-base">
-                    {practice.correctCount} of {Object.keys(practice.results).length} correct
-                  </CardTitle>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Anything you got wrong is in your Mistakes bank with the explanation.
-                </p>
-              </Card>
+          <div className="w-full max-w-[1380px] mx-auto px-4 sm:px-8 py-6 space-y-5 flex-1 flex flex-col justify-between">
+            {set.passage && set.groups[0]?.passageDisplay !== 'hidden' && (
+              <div className="w-full">
+                <PassageReader
+                  passage={set.passage}
+                  scroll={false}
+                  showSources={set.groups.some(group => group.typeId === READING_TYPES.findTheWriter)}
+                />
+              </div>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-              <Button variant="outline" size="sm" onClick={askTutor} className="gap-1.5 font-bold">
-                <Bot className="w-3.5 h-3.5 text-primary" />
-                <span>Ask AI Coach</span>
-              </Button>
+            <div className="w-full space-y-5">
+              {set.groups.map(group => (
+                <ReadingGroupCard
+                  key={group.id}
+                  group={group}
+                  startNumber={1}
+                  answers={practice.answers}
+                  results={practice.results}
+                  disabled={practice.checking}
+                  onAnswer={practice.answer}
+                />
+              ))}
 
-              {practice.checked ? (
-                <Button
-                  onClick={() => currentTypeId && void deal(currentTypeId)}
-                  className="font-bold gap-1.5 shadow-md"
-                >
-                  <Shuffle className="w-3.5 h-3.5" />
-                  <span>Another passage</span>
+              {practice.checked && (
+                <Card className="border-primary/40 p-5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                    <CardTitle className="text-base">
+                      {practice.correctCount} of {Object.keys(practice.results).length} correct
+                    </CardTitle>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Anything you got wrong is in your Mistakes bank with the explanation.
+                  </p>
+                </Card>
+              )}
+
+              <div className="w-full flex flex-wrap items-center justify-between gap-3 pt-2">
+                <Button variant="outline" size="sm" onClick={askTutor} className="gap-2 font-bold text-xs rounded-xl h-10 px-4">
+                  <Bot className="w-4 h-4 text-primary" />
+                  <span>Ask AI Coach</span>
                 </Button>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Badge variant={practice.answeredCount > 0 ? 'success' : 'outline'}>
-                    {practice.answeredCount}/{practice.totalQuestions} answered
-                  </Badge>
+
+                {practice.checked ? (
+                  <Button
+                    onClick={() => currentTypeId && void deal(currentTypeId)}
+                    className="font-bold gap-2 text-xs rounded-xl h-10 px-5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                  >
+                    <Shuffle className="w-3.5 h-3.5" />
+                    <span>Another passage</span>
+                  </Button>
+                ) : (
                   <Button
                     onClick={() => void practice.check()}
                     disabled={practice.checking || practice.answeredCount === 0}
-                    className="font-bold gap-1.5 shadow-md"
+                    className="font-bold gap-2 text-xs rounded-xl h-10 px-5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                   >
                     {practice.checking ? (
                       <>
@@ -172,8 +186,8 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
                       </>
                     )}
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>

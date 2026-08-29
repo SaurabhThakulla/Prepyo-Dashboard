@@ -7,6 +7,7 @@ import { ReadingMockSession } from '@/lib/types';
 import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
 import { useReadingMock } from '@/lib/hooks/useReading';
+import { READING_TYPES } from '@/lib/readingTypes';
 
 interface ReadingMockRunnerProps {
   session: ReadingMockSession;
@@ -62,7 +63,7 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
   const lowOnTime = secondsLeft <= 300;
 
   return (
-    <div className="space-y-5">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-5 pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">
@@ -122,7 +123,12 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {activeSet.passage && (
             <div className="lg:col-span-6">
-              <PassageReader passage={activeSet.passage} />
+              <PassageReader
+                passage={activeSet.passage}
+                showSources={activeSet.groups.some(
+                  group => group.typeId === READING_TYPES.findTheWriter,
+                )}
+              />
             </div>
           )}
 
