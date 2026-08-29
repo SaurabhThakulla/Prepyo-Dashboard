@@ -1,0 +1,69 @@
+{
+  "pageName": "Subscription & Pricing Plans Page",
+  "pageRoute": "/subscription",
+  "pageDescription": "Prepyo membership plans in Nepali Rupees (NPR) with feature comparison",
+  "currency": "NPR (Nepali Rupees)",
+  "plans": [
+    {
+      "planId": "free",
+      "planName": "Free Starter",
+      "priceNpr": 0,
+      "billingCycle": "Forever Free",
+      "popularBadge": false,
+      "features": [
+        "Access to basic syllabus task catalog",
+        "2 AI Speaking evaluations per week",
+        "2 AI Writing evaluations per week",
+        "1 Diagnostic baseline test",
+        "Standard community leaderboard access"
+      ],
+      "buttonText": "Current Plan"
+    },
+    {
+      "planId": "weekly",
+      "planName": "Weekly Sprint Pass",
+      "priceNpr": 499,
+      "billingCycle": "7 Days Access",
+      "popularBadge": false,
+      "features": [
+        "10 AI Speaking evaluations per day",
+        "10 AI Writing evaluations per day",
+        "2 Full 2-hour scored Mock exams",
+        "Live AI Coach chat assistant",
+        "Mistake bank error retry"
+      ],
+      "buttonText": "Upgrade for 7 Days"
+    },
+    {
+      "planId": "pro",
+      "planName": "Pro Monthly Pass",
+      "priceNpr": 1499,
+      "billingCycle": "30 Days Access",
+      "popularBadge": true,
+      "features": [
+        "Unlimited AI Speaking evaluations",
+        "Unlimited AI Writing evaluations",
+        "Unlimited scored Full Mock simulations",
+        "24/7 AI Tutor with audio explanations",
+        "Personalized target score gap roadmap",
+        "Score report downloads & certificates"
+      ],
+      "buttonText": "Get Pro Access"
+    },
+    {
+      "planId": "elite",
+      "planName": "Elite 3-Month Pass",
+      "priceNpr": 3499,
+      "billingCycle": "90 Days Access",
+      "popularBadge": false,
+      "features": [
+        "Everything in Pro Monthly Pass",
+        "1-on-1 human expert rubric review session",
+        "Priority AI model response speed",
+        "Nepal study challenge VIP badge",
+        "Guaranteed target score improvement"
+      ],
+      "buttonText": "Get Elite Pass"
+    }
+  ]
+}

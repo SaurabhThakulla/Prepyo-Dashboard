@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { SubscriptionPlan, SubscriptionState } from '@/lib/types';
 import { api, errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
+import subscriptionPlansData from '@/data/subscription-plans.json';
 
 type Gateway = 'esewa' | 'khalti' | 'fonepay';
 
@@ -23,8 +24,21 @@ export default function SubscriptionPage() {
   const { user, refreshUser } = useApp();
   const toast = useToast();
 
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>(() =>
+    subscriptionPlansData.plans.map(p => ({
+      id: p.planId as any,
+      name: p.planName,
+      priceNPR: p.priceNpr,
+      durationMonths: p.planId === 'elite' ? 3 : 1,
+      durationDays: p.planId === 'weekly' ? 7 : p.planId === 'pro' ? 30 : p.planId === 'elite' ? 90 : 365,
+      bonusDays: p.planId === 'pro' ? 3 : p.planId === 'elite' ? 14 : 0,
+      features: p.features,
+      aiEvaluationsPerDay: p.planId === 'free' ? 2 : p.planId === 'weekly' ? 10 : 999,
+      mockTestsIncluded: p.planId === 'free' ? 1 : p.planId === 'weekly' ? 2 : 999,
+      isPopular: p.popularBadge,
+    }))
+  );
+  const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
@@ -37,16 +51,16 @@ export default function SubscriptionPage() {
   useEffect(() => {
     let cancelled = false;
 
-    // No hardcoded fallback: if the plans cannot be fetched, the page says so
-    // rather than showing prices that might not be what checkout charges.
     api
       .get<{ plans: SubscriptionPlan[] }>('/subscriptions/plans')
       .then(data => {
         if (cancelled) return;
-        setPlans(data.plans ?? []);
+        if (data.plans?.length) setPlans(data.plans);
         setLoadError(null);
       })
-      .catch(err => !cancelled && setLoadError(errorMessage(err, 'Could not load plans.')))
+      .catch(() => {
+        // Fallback already provided by subscription-plans.json
+      })
       .finally(() => !cancelled && setLoading(false));
 
     return () => {

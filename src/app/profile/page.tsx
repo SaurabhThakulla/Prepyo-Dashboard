@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
+import userProfileData from '@/data/user-profile.json';
 
 const REGIONS = ['Kathmandu', 'Lalitpur', 'Bhaktapur', 'Pokhara', 'Chitwan', 'Butwal', 'Dharan', 'Biratnagar'];
 
@@ -21,11 +22,11 @@ export default function ProfilePage() {
   const { user, updateProfile } = useApp();
   const toast = useToast();
 
-  const [name, setName] = useState('');
-  const [targetExam, setTargetExam] = useState<ExamType>('PTE');
-  const [targetScore, setTargetScore] = useState('');
-  const [examDate, setExamDate] = useState('');
-  const [region, setRegion] = useState(REGIONS[0]);
+  const [name, setName] = useState(() => user?.name || userProfileData.profile.name);
+  const [targetExam, setTargetExam] = useState<ExamType>(() => user?.targetExam || (userProfileData.profile.activeExam as ExamType));
+  const [targetScore, setTargetScore] = useState(() => user?.targetScore != null ? String(user.targetScore) : String(userProfileData.profile.targetBandScore));
+  const [examDate, setExamDate] = useState(() => user?.examDate ?? '');
+  const [region, setRegion] = useState(() => user?.nepalRegion || userProfileData.profile.city || REGIONS[0]);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);

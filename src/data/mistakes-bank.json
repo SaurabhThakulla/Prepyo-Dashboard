@@ -1,0 +1,45 @@
+{
+  "pageName": "Mistake Bank Page",
+  "pageRoute": "/mistakes",
+  "pageDescription": "Saved weak questions to retry, showing student mistakes and simple explanations",
+  "totalSavedMistakes": 4,
+  "unresolvedMistakes": 3,
+  "mistakes": [
+    {
+      "id": "mstk-001",
+      "skill": "Reading",
+      "exam": "IELTS",
+      "taskType": "True / False / Not Given",
+      "questionTitle": "Honeybee Communication in the Hive - Question 3",
+      "savedAt": "2026-08-28",
+      "yourAnswer": "NOT GIVEN",
+      "correctAnswer": "FALSE",
+      "whyItWasWrong": "You thought the distance wasn't stated, but the passage clearly said 'bees travel up to five kilometers'. Since 5 km is more than 1 km, the statement is FALSE, not missing.",
+      "isResolved": false
+    },
+    {
+      "id": "mstk-002",
+      "skill": "Listening",
+      "exam": "IELTS",
+      "taskType": "Fill in the blanks",
+      "questionTitle": "Library Registration - Membership Duration",
+      "savedAt": "2026-08-27",
+      "yourAnswer": "twelve months",
+      "correctAnswer": "1 year",
+      "whyItWasWrong": "The question instructed 'NO MORE THAN ONE WORD AND/OR A NUMBER'. Writing two words exceeded the allowed word count.",
+      "isResolved": false
+    },
+    {
+      "id": "mstk-003",
+      "skill": "Writing",
+      "exam": "IELTS",
+      "taskType": "Opinion Essay",
+      "questionTitle": "Children and Daily Homework",
+      "savedAt": "2026-08-25",
+      "yourAnswer": "Forgot to write a clear conclusion paragraph",
+      "correctAnswer": "Complete 4-paragraph structure with an explicit conclusion",
+      "whyItWasWrong": "Missing a final conclusion paragraph reduced your Task Response score from Band 7.5 to Band 6.0.",
+      "isResolved": true
+    }
+  ]
+}

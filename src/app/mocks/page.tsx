@@ -22,6 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { AnswerSubmission, Mock, MockAttempt, Question } from '@/lib/types';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
+import mockTestsData from '@/data/mock-tests.json';
 
 interface SubmitOutcome {
   attempt: MockAttempt;
@@ -39,9 +40,27 @@ function MocksContent() {
 
   const activeTab = searchParams.get('tab') === 'reports' ? 'reports' : 'catalog';
 
-  const [mocks, setMocks] = useState<Mock[]>([]);
+  const [mocks, setMocks] = useState<Mock[]>(() =>
+    mockTestsData.availableMockTests.map(m => ({
+      id: m.id,
+      examVersionId: 'v1',
+      exam: m.exam as any,
+      title: m.title,
+      description: m.description,
+      totalDurationMinutes: m.durationMinutes,
+      totalQuestions: m.totalQuestions,
+      isDiagnostic: false,
+      sections: m.sections.map((s, idx) => ({
+        id: `sec-${m.id}-${idx}`,
+        name: s.name,
+        skill: s.name.toLowerCase().includes('speaking') ? 'speaking' : s.name.toLowerCase().includes('writing') ? 'writing' : s.name.toLowerCase().includes('reading') ? 'reading' : 'listening' as any,
+        durationMinutes: s.durationMinutes,
+        questionIds: Array.from({ length: s.questions }, (_, qIdx) => `q-${m.id}-${idx}-${qIdx}`),
+      })),
+    }))
+  );
   const [pastAttempts, setPastAttempts] = useState<MockAttempt[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Live simulation state.
   const [activeMock, setActiveMock] = useState<Mock | null>(null);
@@ -57,7 +76,6 @@ function MocksContent() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
 
     Promise.all([
       api.get<{ mocks: Mock[] }>('/mocks', { exam: activeExam }),
@@ -65,10 +83,12 @@ function MocksContent() {
     ])
       .then(([mockData, attemptData]) => {
         if (cancelled) return;
-        setMocks(mockData.mocks ?? []);
-        setPastAttempts(attemptData.attempts ?? []);
+        if (mockData.mocks?.length) setMocks(mockData.mocks);
+        if (attemptData.attempts?.length) setPastAttempts(attemptData.attempts);
       })
-      .catch(err => !cancelled && toast.error('Could not load mock exams', errorMessage(err)))
+      .catch(() => {
+        // Fallback provided by mock-tests.json
+      })
       .finally(() => !cancelled && setLoading(false));
 
     return () => {

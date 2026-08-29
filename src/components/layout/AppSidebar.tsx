@@ -20,6 +20,8 @@ import {
   Bot,
   Flame,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   HelpCircle,
   FileText,
   LogOut,
@@ -28,6 +30,7 @@ import {
 import ReportIssueDialog from '@/components/support/ReportIssueDialog';
 import { SYLLABUS, typeKey } from '@/lib/syllabus';
 import { SkillType } from '@/lib/types';
+import sidebarNavData from '@/data/sidebar-navigation.json';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -263,7 +266,7 @@ function AppSidebarContent({
   ];
 
   const currentSectionConfig = sections.find(s => s.id === activeSection) || sections[0];
-
+  const [open, isopen] = useState(true);
   const isItemActive = (item: SecondaryNavItem) => {
     if (!item.href) return false;
 
@@ -516,6 +519,7 @@ function AppSidebarContent({
                   <h4 className="text-[11px] font-bold uppercase tracking-wider text-foreground">
                     {currentSectionConfig.label} Options
                   </h4>
+                  <ChevronUp />
                 </div>
               )}
 
@@ -556,6 +560,7 @@ function AppSidebarContent({
                             {item.count}
                           </span>
                         )}
+
                       </>
                     );
 

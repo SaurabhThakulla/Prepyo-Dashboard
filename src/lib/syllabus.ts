@@ -1,35 +1,18 @@
+import syllabusData from '@/data/syllabus-topics.json';
 import { ExamType, SkillType } from '@/lib/types';
+
 export const SYLLABUS: Record<ExamType, Partial<Record<SkillType, string[]>>> = {
   IELTS: {
-    reading: [
-      'Answer according to paragraph',
-      'Find out the writer',
-      'Topic of the paragraph',
-      'True / False / Not Given',
-      'Fill in the blanks',
-    ],
-    writing: ['Describe the figure', 'Opinion / Agree or Disagree'],
-    listening: ['Fill in the blanks', 'Choose the correct answer', 'Navigating according to audio'],
-    speaking: ['Introduction', 'Speaking Part 2 (Cue Card)'],
+    reading: syllabusData.exams.IELTS.skills.reading.topics.map(t => t.name),
+    writing: syllabusData.exams.IELTS.skills.writing.topics.map(t => t.name),
+    listening: syllabusData.exams.IELTS.skills.listening.topics.map(t => t.name),
+    speaking: syllabusData.exams.IELTS.skills.speaking.topics.map(t => t.name),
   },
   PTE: {
-    reading: [
-      'Reading & Writing: Fill in the Blanks',
-      'Multiple Choice, Single Answer',
-      'Multiple Choice, Multiple Answers',
-      'Re-order Paragraphs',
-      'Reading: Fill in the Blanks',
-    ],
-    writing: ['Summarize Written Text', 'Write Essay'],
-    listening: [
-      'Summarize Spoken Text',
-      'Multiple Choice, Multiple Answers',
-      'Fill in the Blanks',
-      'Highlight Correct Summary',
-      'Select Missing Word',
-      'Write from Dictation',
-    ],
-    speaking: ['Read Aloud', 'Repeat Sentence', 'Describe Image', 'Re-tell Lecture', 'Answer Short Question'],
+    reading: syllabusData.exams.PTE.skills.reading.topics.map(t => t.name),
+    writing: syllabusData.exams.PTE.skills.writing.topics.map(t => t.name),
+    listening: syllabusData.exams.PTE.skills.listening.topics.map(t => t.name),
+    speaking: syllabusData.exams.PTE.skills.speaking.topics.map(t => t.name),
   },
 };
 

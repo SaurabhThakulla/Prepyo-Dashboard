@@ -18,13 +18,14 @@ import {
   Edit2
 } from 'lucide-react';
 import ExamDateDialog from '@/components/dashboard/ExamDateDialog';
+import homeDashboardData from '@/data/home-dashboard.json';
 
 export default function DashboardPage() {
   const { user, activeExam, setIsTutorOpen, setTutorContextPrompt } = useApp();
   const [isExamDateOpen, setIsExamDateOpen] = useState(false);
   const [progress, setProgress] = useState<ProgressSummary | null>(null);
   const [unresolvedMistakes, setUnresolvedMistakes] = useState<number | null>(null);
-  const [rank, setRank] = useState<number | null>(null);
+  const [rank, setRank] = useState<number | null>(5);
 
   const isPTE = activeExam === 'PTE';
 

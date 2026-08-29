@@ -1,0 +1,187 @@
+{
+  "pageName": "Exam Syllabus & Topics",
+  "pageRoute": "/practice",
+  "pageDescription": "Complete breakdown of all skills and question task types for IELTS and PTE exams",
+  "exams": {
+    "IELTS": {
+      "name": "International English Language Testing System",
+      "scoringScale": "Band 0 to 9",
+      "skills": {
+        "speaking": {
+          "title": "Speaking",
+          "description": "Talk in English with an interviewer using your voice",
+          "topics": [
+            {
+              "name": "Introduction",
+              "simpleDescription": "Answer basic personal questions about yourself, your hobbies, and hometown"
+            },
+            {
+              "name": "Speaking Part 2 (Cue Card)",
+              "simpleDescription": "Speak for 2 minutes on a given topic after 1 minute of preparation"
+            }
+          ]
+        },
+        "writing": {
+          "title": "Writing",
+          "description": "Write clear essays and describe charts in English",
+          "topics": [
+            {
+              "name": "Describe the figure",
+              "simpleDescription": "Explain a chart, graph, map, or diagram in at least 150 words"
+            },
+            {
+              "name": "Opinion / Agree or Disagree",
+              "simpleDescription": "Write a 250-word essay stating your point of view on a topic"
+            }
+          ]
+        },
+        "reading": {
+          "title": "Reading",
+          "description": "Read long stories/articles and answer questions about them",
+          "topics": [
+            {
+              "name": "Answer according to paragraph",
+              "simpleDescription": "Find specific facts inside the reading text to answer questions"
+            },
+            {
+              "name": "Find out the writer",
+              "simpleDescription": "Match opinions and statements with the people who said them"
+            },
+            {
+              "name": "Topic of the paragraph",
+              "simpleDescription": "Choose the best title or main idea for each paragraph"
+            },
+            {
+              "name": "True / False / Not Given",
+              "simpleDescription": "Decide if statements match the facts, disagree, or are missing from the text"
+            },
+            {
+              "name": "Fill in the blanks",
+              "simpleDescription": "Put missing words into a summary using words from the story"
+            }
+          ]
+        },
+        "listening": {
+          "title": "Listening",
+          "description": "Listen to audio recordings and answer questions",
+          "topics": [
+            {
+              "name": "Fill in the blanks",
+              "simpleDescription": "Type the missing words you hear in the voice recording"
+            },
+            {
+              "name": "Choose the correct answer",
+              "simpleDescription": "Pick the right multiple choice option from what you hear"
+            },
+            {
+              "name": "Navigating according to audio",
+              "simpleDescription": "Follow directions on a map or plan as the speaker guides you"
+            }
+          ]
+        }
+      }
+    },
+    "PTE": {
+      "name": "Pearson Test of English",
+      "scoringScale": "Score 10 to 90",
+      "skills": {
+        "speaking": {
+          "title": "Speaking",
+          "description": "Speak into the computer microphone to test pronunciation and fluency",
+          "topics": [
+            {
+              "name": "Read Aloud",
+              "simpleDescription": "Read a short paragraph shown on screen out loud clearly"
+            },
+            {
+              "name": "Repeat Sentence",
+              "simpleDescription": "Listen to a sentence and repeat it word for word"
+            },
+            {
+              "name": "Describe Image",
+              "simpleDescription": "Look at a picture or chart and talk about it for 40 seconds"
+            },
+            {
+              "name": "Re-tell Lecture",
+              "simpleDescription": "Listen to a talk and summarize it in your own words"
+            },
+            {
+              "name": "Answer Short Question",
+              "simpleDescription": "Listen to a simple question and give a one-word answer"
+            }
+          ]
+        },
+        "writing": {
+          "title": "Writing",
+          "description": "Write summaries and essays on the computer",
+          "topics": [
+            {
+              "name": "Summarize Written Text",
+              "simpleDescription": "Read a passage and write a one-sentence summary"
+            },
+            {
+              "name": "Write Essay",
+              "simpleDescription": "Write a 200-300 word essay about a given question"
+            }
+          ]
+        },
+        "reading": {
+          "title": "Reading",
+          "description": "Read paragraphs and solve word puzzles and questions",
+          "topics": [
+            {
+              "name": "Reading & Writing: Fill in the Blanks",
+              "simpleDescription": "Pick the best word from drop-down menus to complete sentences"
+            },
+            {
+              "name": "Multiple Choice, Single Answer",
+              "simpleDescription": "Read a text and choose the single best answer"
+            },
+            {
+              "name": "Multiple Choice, Multiple Answers",
+              "simpleDescription": "Read a text and check all correct answers"
+            },
+            {
+              "name": "Re-order Paragraphs",
+              "simpleDescription": "Drag and drop shuffled sentences into the right story order"
+            },
+            {
+              "name": "Reading: Fill in the Blanks",
+              "simpleDescription": "Drag words into empty slots inside a paragraph"
+            }
+          ]
+        },
+        "listening": {
+          "title": "Listening",
+          "description": "Listen to audio clips and complete various listening tasks",
+          "topics": [
+            {
+              "name": "Summarize Spoken Text",
+              "simpleDescription": "Listen to a talk and write a 50-70 word summary"
+            },
+            {
+              "name": "Multiple Choice, Multiple Answers",
+              "simpleDescription": "Listen to a talk and select all correct choices"
+            },
+            {
+              "name": "Fill in the Blanks",
+              "simpleDescription": "Type the missing words into sentences while listening"
+            },
+            {
+              "name": "Highlight Correct Summary",
+              "simpleDescription": "Choose the summary paragraph that best matches the audio"
+            },
+            {
+              "name": "Select Missing Word",
+              "simpleDescription": "Guess the beeped-out final word of a spoken sentence"
+            },
+            {
+              "name": "Write from Dictation",
+              "simpleDescription": "Listen to a sentence and type every word you heard accurately"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
