@@ -16,51 +16,37 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
-import { Mock, SkillType } from '@/lib/types';
+import { Mock } from '@/lib/types';
 import { api, errorMessage } from '@/lib/api';
-import diagnosticTestData from '@/data/diagnostic-test.json';
+import { fixtureDiagnostic, seed, USE_FIXTURES } from '@/lib/fixtures';
 
 /**
- * The diagnostic introduces the baseline exam test and hands off to the mock runner.
+ * The diagnostic is not a separate quiz — it is the mock flagged as diagnostic
+ * for the learner's exam. This page introduces it and hands off to the mock
+ * runner, so there is exactly one place where an exam is sat and graded.
  */
 export default function DiagnosticPage() {
   const { activeExam } = useApp();
   const router = useRouter();
 
-  const [diagnostic, setDiagnostic] = useState<Mock | null>(() => ({
-    id: 'diagnostic-01',
-    examVersionId: 'v1',
-    exam: activeExam,
-    title: `${activeExam} 15-Minute Baseline Diagnostic Test`,
-    description: diagnosticTestData.description,
-    totalDurationMinutes: diagnosticTestData.totalDurationMinutes,
-    totalQuestions: diagnosticTestData.questionCount,
-    isDiagnostic: true,
-    sections: diagnosticTestData.sections.map((s, idx) => ({
-      id: `diag-sec-${idx}`,
-      name: s.sectionName,
-      skill: 'reading' as SkillType,
-      durationMinutes: s.timeLimitMinutes,
-      questionIds: [`q-${idx}-1`, `q-${idx}-2`],
-    })),
-  }));
-  const [loading, setLoading] = useState(false);
+  const [diagnostic, setDiagnostic] = useState<Mock | null>(() =>
+    seed(() => fixtureDiagnostic(activeExam), null),
+  );
+  const [loading, setLoading] = useState(!USE_FIXTURES);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
 
     api
       .get<{ mocks: Mock[] }>('/mocks', { exam: activeExam })
       .then(data => {
         if (cancelled) return;
-        const found = data.mocks?.find(m => m.isDiagnostic);
-        if (found) setDiagnostic(found);
+        setDiagnostic(data.mocks?.find(m => m.isDiagnostic) ?? null);
         setError(null);
       })
-      .catch(() => {
-        // Fallback provided by diagnostic-test.json
-      })
+      .catch(err => !cancelled && setError(errorMessage(err)))
       .finally(() => !cancelled && setLoading(false));
 
     return () => {

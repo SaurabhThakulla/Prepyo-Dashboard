@@ -17,30 +17,13 @@ import { Input } from '@/components/ui/input';
 import { Mistake, Pagination } from '@/lib/types';
 import { api, errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
-import mistakesBankData from '@/data/mistakes-bank.json';
+import { fixtureMistakes, seed, USE_FIXTURES } from '@/lib/fixtures';
 
 export default function MistakesPage() {
   const { activeExam, refreshUser } = useApp();
   const toast = useToast();
-  const [mistakes, setMistakes] = useState<Mistake[]>(() =>
-    mistakesBankData.mistakes.map(m => ({
-      id: m.id,
-      questionId: m.id,
-      questionTitle: m.questionTitle,
-      skill: m.skill.toLowerCase() as any,
-      exam: m.exam as any,
-      typeName: m.taskType,
-      prompt: m.questionTitle,
-      userResponse: m.yourAnswer,
-      correctResponse: m.correctAnswer,
-      explanation: m.whyItWasWrong,
-      errorTag: 'Concept',
-      failedCount: 1,
-      resolved: m.isResolved,
-      lastAttemptedAt: m.savedAt,
-    }))
-  );
-  const [loading, setLoading] = useState(false);
+  const [mistakes, setMistakes] = useState<Mistake[]>(() => seed(fixtureMistakes, []));
+  const [loading, setLoading] = useState(!USE_FIXTURES);
   const [selectedSkill, setSelectedSkill] = useState<string>('all');
   const [unresolvedOnly, setUnresolvedOnly] = useState(false);
   const [activeReplayItem, setActiveReplayItem] = useState<Mistake | null>(null);
@@ -49,6 +32,7 @@ export default function MistakesPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
 
     api
       .get<{ mistakes: Mistake[]; pagination: Pagination }>('/mistakes', {
@@ -56,12 +40,11 @@ export default function MistakesPage() {
         skill: selectedSkill === 'all' ? undefined : selectedSkill,
         unresolved: unresolvedOnly ? 'true' : undefined,
       })
-      .then(data => {
+      .then(data => !cancelled && setMistakes(data.mistakes ?? []))
+      .catch(err => {
         if (cancelled) return;
-        if (data.mistakes?.length) setMistakes(data.mistakes);
-      })
-      .catch(() => {
-        // Fallback provided by mistakes-bank.json
+        setMistakes([]);
+        toast.error('Could not load your mistake bank', errorMessage(err));
       })
       .finally(() => !cancelled && setLoading(false));
 

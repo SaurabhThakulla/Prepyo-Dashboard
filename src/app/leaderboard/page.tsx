@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LeaderboardEntry } from '@/lib/types';
 import { api, errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
-import leaderboardRankingsData from '@/data/leaderboard-rankings.json';
+import { fixtureLeaderboard, fixtureLeaderboardRegions, seed, USE_FIXTURES } from '@/lib/fixtures';
 
 type Period = 'weekly' | 'monthly' | 'all-time';
 
@@ -27,25 +27,16 @@ export default function LeaderboardPage() {
   const { activeExam } = useApp();
   const toast = useToast();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(() =>
-    leaderboardRankingsData.topStudents.map(s => ({
-      userId: `user-${s.rank}`,
-      name: s.name,
-      exam: activeExam,
-      level: Math.floor(s.weeklyXp / 400) + 1,
-      xp: s.weeklyXp,
-      streakDays: s.streakDays,
-      rank: s.rank,
-      isYou: s.isCurrentUser,
-      nepalRegion: s.district,
-    }))
+    seed(() => fixtureLeaderboard(activeExam), []),
   );
-  const [regions, setRegions] = useState<string[]>(['all', 'Kathmandu', 'Kaski', 'Lalitpur', 'Morang', 'Chitwan']);
+  const [regions, setRegions] = useState<string[]>(() => seed(fixtureLeaderboardRegions, ['all']));
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [period, setPeriod] = useState<Period>('all-time');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(!USE_FIXTURES);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
 
     api
       .get<{ leaderboard: LeaderboardEntry[]; regions: string[] }>('/leaderboards', {
@@ -55,11 +46,15 @@ export default function LeaderboardPage() {
       })
       .then(data => {
         if (cancelled) return;
-        if (data.leaderboard?.length) setLeaderboard(data.leaderboard);
+        setLeaderboard(data.leaderboard ?? []);
+        // The list of districts comes from the API so it cannot drift from the
+        // ones the query actually filters on.
         if (data.regions?.length) setRegions(data.regions);
       })
-      .catch(() => {
-        // Fallback provided by leaderboard-rankings.json
+      .catch(err => {
+        if (cancelled) return;
+        setLeaderboard([]);
+        toast.error('Could not load the leaderboard', errorMessage(err));
       })
       .finally(() => !cancelled && setLoading(false));
 
