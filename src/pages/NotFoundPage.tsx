@@ -1,8 +1,5 @@
-'use client';
-
 import React from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import {
   Home,
@@ -20,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 export default function NotFound() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { user, loading } = useApp();
 
   const isAuthenticated = Boolean(user);
@@ -95,7 +92,7 @@ export default function NotFound() {
                 size="lg"
                 className="w-full sm:w-auto font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all rounded-xl"
               >
-                <Link href="/dashboard" className="flex items-center gap-2">
+                <Link to="/dashboard" className="flex items-center gap-2">
                   <Home className="w-4 h-4" />
                   <span>Go back to Home</span>
                 </Link>
@@ -107,7 +104,7 @@ export default function NotFound() {
                 size="lg"
                 className="w-full sm:w-auto font-semibold border-border hover:bg-muted/70 hover:scale-[1.02] active:scale-[0.98] transition-all rounded-xl"
               >
-                <Link href="/practice" className="flex items-center gap-2">
+                <Link to="/practice" className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-primary" />
                   <span>Practice Studio</span>
                 </Link>
@@ -121,7 +118,7 @@ export default function NotFound() {
                 size="lg"
                 className="w-full sm:w-auto font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all rounded-xl"
               >
-                <Link href="/signup" className="flex items-center gap-2">
+                <Link to="/signup" className="flex items-center gap-2">
                   <UserPlus className="w-4 h-4" />
                   <span>Go back to Sign Up</span>
                 </Link>
@@ -133,7 +130,7 @@ export default function NotFound() {
                 size="lg"
                 className="w-full sm:w-auto font-semibold border-border hover:bg-muted/70 hover:scale-[1.02] active:scale-[0.98] transition-all rounded-xl"
               >
-                <Link href="/login" className="flex items-center gap-2">
+                <Link to="/login" className="flex items-center gap-2">
                   <LogIn className="w-4 h-4 text-primary" />
                   <span>Log In</span>
                 </Link>
@@ -146,7 +143,7 @@ export default function NotFound() {
             type="button"
             variant="ghost"
             size="lg"
-            onClick={() => router.back()}
+            onClick={() => navigate(-1)}
             className="w-full sm:w-auto text-muted-foreground hover:text-foreground font-semibold rounded-xl"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -161,7 +158,7 @@ export default function NotFound() {
           </p>
           <div className="grid grid-cols-2 gap-2 text-left">
             <Link
-              href={isAuthenticated ? '/practice' : '/login'}
+              to={isAuthenticated ? '/practice' : '/login'}
               className="flex items-center gap-2.5 p-2.5 rounded-xl border border-border/70 bg-card/50 hover:bg-muted/60 transition-all text-xs font-medium text-foreground hover:border-primary/40 group"
             >
               <div className="p-1.5 rounded-lg bg-primary/10 text-primary group-hover:scale-110 transition-transform">
@@ -174,7 +171,7 @@ export default function NotFound() {
             </Link>
 
             <Link
-              href={isAuthenticated ? '/mocks' : '/login'}
+              to={isAuthenticated ? '/mocks' : '/login'}
               className="flex items-center gap-2.5 p-2.5 rounded-xl border border-border/70 bg-card/50 hover:bg-muted/60 transition-all text-xs font-medium text-foreground hover:border-primary/40 group"
             >
               <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">

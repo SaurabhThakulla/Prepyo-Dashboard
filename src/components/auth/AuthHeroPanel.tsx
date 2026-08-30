@@ -1,7 +1,4 @@
-'use client';
-
 import React from 'react';
-import Image from 'next/image';
 import { CheckCircle2, ShieldCheck, Gift } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { SubscriptionPlan } from '@/lib/types';
@@ -14,12 +11,15 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
   return (
     <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 h-screen max-h-screen relative flex-col justify-between p-8 xl:p-12 overflow-hidden bg-slate-950 text-white">
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <Image
+        {/* `absolute inset-0` and the eager fetch are what next/image's `fill`
+            and `priority` used to add. This is the first thing a signed-out
+            visitor sees, so it should not wait its turn. */}
+        <img
           src="/images/auth-hero.jpg"
           alt="Student preparing for PTE and IELTS in Kathmandu"
-          fill
-          priority
-          className="object-cover object-center w-full h-full brightness-[0.85]"
+          loading="eager"
+          fetchPriority="high"
+          className="absolute inset-0 object-cover object-center w-full h-full brightness-[0.85]"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/35 backdrop-brightness-95" />
         <div className="absolute inset-0 bg-radial-gradient from-transparent via-transparent to-slate-950/70" />

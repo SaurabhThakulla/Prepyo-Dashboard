@@ -1,7 +1,5 @@
-'use client';
-
 import React, { useId, useState } from 'react';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SocialSignInButtons from './SocialSignInButtons';
@@ -96,7 +94,7 @@ export default function AuthForm({ form, onSocialSelect }: AuthFormProps) {
           <div className="flex items-center justify-between">
             <label htmlFor={passwordId} className="text-xs font-bold text-foreground">Password</label>
             {!isSignup && (
-              <Link href="#" className="text-xs font-medium text-primary hover:underline">
+              <Link to="#" className="text-xs font-medium text-primary hover:underline">
                 Forgot password?
               </Link>
             )}

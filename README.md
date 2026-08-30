@@ -1,18 +1,23 @@
-# 🇳🇵 Prepyo Frontend (Next.js)
+# 🇳🇵 Prepyo Frontend (React + Vite)
 
 Prepyo is an AI-powered exam preparation platform for **PTE Academic** and **IELTS**, tailored for Nepali and global study-abroad candidates.
 
-This repository hosts the **Next.js web application**. The Go API backend is maintained separately at [Prepyo-Backend](https://github.com/SaurabhThakulla/Prepyo-Backend).
+This repository hosts the **React single-page application**. The Go API backend is maintained separately at [Prepyo-Backend](https://github.com/SaurabhThakulla/Prepyo-Backend).
 
 ---
 
 ## 🏗️ Architecture
 
-The Next.js app (`src/`) is the frontend interface — it holds no database of its own. Every `/api/v1/*` request it makes is proxied straight to the Go API by a rewrite in `next.config.js`.
+The app (`src/`) is a static build. It holds no database and, since the move off Next.js, no server of its own — every `/api/v1/*` request goes to the Go API, which is also the only thing that grades an answer.
 
-Proxying rather than calling the API directly from the browser keeps session cookies same-origin (`HttpOnly`, `SameSite=Lax`), preventing CORS issues.
+Keeping the app and the API on **one origin** is what makes the `HttpOnly`, `SameSite=Lax` session cookie work without CORS credentials. That happens two different ways:
 
-- **Frontend Repository**: [Prepyo](https://github.com/SaurabhThakulla/prepyo) (Deployable to **Vercel**)
+| | How one origin happens |
+|---|---|
+| **Development** | `vite dev` serves the app on `:3000` and proxies `/api/v1/*` to the backend (`vite.config.ts`). |
+| **Production** | The Go binary serves this build *and* the API. Set `WEB_DIST_DIR` on the backend to the `dist/` folder. Nothing proxies anything. |
+
+- **Frontend Repository**: [Prepyo](https://github.com/SaurabhThakulla/prepyo)
 - **Backend Repository**: [Prepyo-Backend](https://github.com/SaurabhThakulla/Prepyo-Backend) (Deployable to **Railway / Render / Fly.io**)
 
 ---
@@ -30,7 +35,7 @@ npm install
 Create `.env.local` based on `.env.example`:
 
 ```env
-# URL of your Go backend API (defaults to http://localhost:8080)
+# Where the dev proxy sends /api/v1/* (defaults to http://localhost:8080)
 BACKEND_URL=http://localhost:8080
 ```
 
@@ -43,15 +48,20 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 > Note: Ensure your [Go API backend](https://github.com/SaurabhThakulla/Prepyo-Backend) is running on `http://localhost:8080` for login, evaluations, and practice questions.
+>
+> To build UI without a backend or a login at all, set `VITE_USE_FIXTURES=true` and see `src/lib/fixtures.ts`.
 
 ---
 
-## ☁️ Deployment on Vercel
+## ☁️ Deployment
 
-1. Import this repository into **Vercel**.
-2. Under **Project Settings → Environment Variables**, add:
-   * `BACKEND_URL`: `https://your-deployed-backend-api.up.railway.app`
-3. Click **Deploy**.
+The app and the API deploy together as one service on Railway:
+
+1. Build the frontend: `npm run build` → `dist/`.
+2. Point the backend at it with `WEB_DIST_DIR=/path/to/dist`.
+3. The Go binary serves the pages and `/api/v1` from the same origin.
+
+Because it is one origin, there is no `BACKEND_URL` to set in production and no CORS to configure — that variable only steers the dev proxy.
 
 ---
 
@@ -59,8 +69,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ```bash
 npm run typecheck    # TypeScript verification
-npm run build        # Production Next.js build
-npm run lint         # ESLint checks
+npm run build        # Type-checks, then produces dist/
+npm run preview      # Serve the production build locally
 ```
 
 ---
@@ -69,14 +79,17 @@ npm run lint         # ESLint checks
 
 ```text
 prepyo/
+├── index.html               # The shell: title, fonts, #root
 ├── src/
-│   ├── app/                 # Next.js App Router pages
-│   ├── components/          # UI components & Design system
+│   ├── main.tsx             # Entry point: router + providers
+│   ├── App.tsx              # Every URL the app answers to
+│   ├── pages/               # One component per route
+│   ├── components/          # UI components & design system
 │   ├── context/             # AppContext: session, notifications, theme
 │   ├── lib/
-│   │   ├── api.ts           # API client for /api/v1 proxy
+│   │   ├── api.ts           # The only place that talks to the backend
 │   │   └── types/           # Data models & TypeScript interfaces
-│   └── middleware.ts        # Route authentication guard
+│   └── globals.css          # Tailwind layers + design tokens
 ├── public/                  # Static assets
-└── next.config.js           # /api/v1/* → Go API proxy
+└── vite.config.ts           # Dev proxy: /api/v1/* → Go API
 ```

@@ -1,0 +1,130 @@
+{
+  "user": {
+    "id": "user-01",
+    "name": "Bishal Shrestha",
+    "email": "bishal@example.com",
+    "targetExam": "PTE",
+    "targetScore": 79,
+    "estimatedScore": 68,
+    "examDate": "2026-10-15T09:00:00Z",
+    "nepalRegion": "Kathmandu",
+    "xp": 1450,
+    "level": 5,
+    "streakDays": 12,
+    "rank": 4,
+    "readinessPercentage": 72
+  },
+  "skillStats": {
+    "speaking": {
+      "skill": "speaking",
+      "label": "Speaking Questions",
+      "completedQuestions": 0,
+      "totalQuestions": 5833,
+      "accuracyPercentage": 0.0,
+      "trend": "+0.0%",
+      "latestScore": "74/90",
+      "targetScore": 79,
+      "readinessPercent": 82,
+      "sub": "Read aloud, describe image",
+      "actionHref": "/practice?skill=speaking"
+    },
+    "writing": {
+      "skill": "writing",
+      "label": "Writing Questions",
+      "completedQuestions": 0,
+      "totalQuestions": 2096,
+      "accuracyPercentage": 0.0,
+      "trend": "+0.0%",
+      "latestScore": "68/90",
+      "targetScore": 79,
+      "readinessPercent": 75,
+      "sub": "Essay, summarise written text",
+      "actionHref": "/practice?skill=writing"
+    },
+    "reading": {
+      "skill": "reading",
+      "label": "Reading Questions",
+      "completedQuestions": 0,
+      "totalQuestions": 4929,
+      "accuracyPercentage": 0.0,
+      "trend": "+0.0%",
+      "latestScore": "79/90",
+      "targetScore": 79,
+      "readinessPercent": 88,
+      "sub": "Fill in the blanks, reading & writing",
+      "actionHref": "/practice?skill=reading"
+    },
+    "listening": {
+      "skill": "listening",
+      "label": "Listening Questions",
+      "completedQuestions": 0,
+      "totalQuestions": 8175,
+      "accuracyPercentage": 0.0,
+      "trend": "+0.0%",
+      "latestScore": "76/90",
+      "targetScore": 79,
+      "readinessPercent": 84,
+      "sub": "Dictation, summarise spoken text",
+      "actionHref": "/practice?skill=listening"
+    }
+  },
+  "studyPlan": {
+    "currentMonth": "August 2026",
+    "selectedDate": "2026-08-30",
+    "activeDays": [
+      "2026-08-01",
+      "2026-08-03",
+      "2026-08-07",
+      "2026-08-11",
+      "2026-08-15",
+      "2026-08-18",
+      "2026-08-22",
+      "2026-08-25",
+      "2026-08-28",
+      "2026-08-30"
+    ],
+    "dailyTargetMinutes": 60,
+    "completedMinutesToday": 25,
+    "scheduledEvents": [
+      {
+        "id": "event-1",
+        "date": "2026-08-15",
+        "title": "Baseline Diagnostic Test",
+        "type": "diagnostic",
+        "completed": true
+      },
+      {
+        "id": "event-2",
+        "date": "2026-08-22",
+        "title": "Speaking & Writing Practice",
+        "type": "practice",
+        "completed": true
+      },
+      {
+        "id": "event-3",
+        "date": "2026-08-30",
+        "title": "Full Timed Mock Exam",
+        "type": "mock",
+        "completed": false
+      },
+      {
+        "id": "event-4",
+        "date": "2026-09-05",
+        "title": "Mistake Bank Deep Review",
+        "type": "review",
+        "completed": false
+      }
+    ]
+  },
+  "weakestSkill": {
+    "skill": "writing",
+    "taskTypeName": "Summarise written text",
+    "latestScore": "68/90",
+    "maxScore": 90,
+    "analysis": "Your single-sentence constraint was broken. Keep responses under 75 words with one main clause.",
+    "actionText": "Practice 2 summaries",
+    "actionHref": "/practice?skill=writing",
+    "period": "LAST 7 DAYS"
+  },
+  "unresolvedMistakesCount": 3
+}

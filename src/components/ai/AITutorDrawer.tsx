@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Bot, Send, X, Sparkles, RefreshCw, Zap, MessageSquare } from 'lucide-react';

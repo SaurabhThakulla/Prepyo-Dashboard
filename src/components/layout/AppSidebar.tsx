@@ -1,7 +1,5 @@
-'use client';
-
 import React, { useEffect, useState } from 'react';
-import { usePathname, useSearchParams, useRouter } from 'next/navigation';
+import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import ReportIssueDialog from '@/components/support/ReportIssueDialog';
 import PrimaryIconRail from './sidebar/PrimaryIconRail';
@@ -32,15 +30,15 @@ interface AppSidebarProps {
  * What goes in the menu lives in `sidebar/navigation.ts`. This file only tracks
  * which section is selected and passes things down.
  */
-function AppSidebarContent({
+export default function AppSidebar({
   isOpen,
   setIsOpen,
   isSecondaryOpen,
   setIsSecondaryOpen,
 }: AppSidebarProps) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const router = useRouter();
+  const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user, activeExam, setActiveExam, setIsTutorOpen, logout } = useApp();
 
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -78,7 +76,7 @@ function AppSidebarContent({
     } finally {
       setIsOpen(false);
       setIsSecondaryOpen(false);
-      router.push('/login');
+      navigate('/login');
       setIsSigningOut(false);
     }
   };
@@ -141,10 +139,3 @@ function AppSidebarContent({
   );
 }
 
-export default function AppSidebar(props: AppSidebarProps) {
-  return (
-    <React.Suspense fallback={<aside className="w-16 shrink-0 border-r border-border bg-card" />}>
-      <AppSidebarContent {...props} />
-    </React.Suspense>
-  );
-}

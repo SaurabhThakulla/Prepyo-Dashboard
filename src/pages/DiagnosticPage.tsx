@@ -1,8 +1,5 @@
-'use client';
-
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import {
   Zap,
@@ -26,7 +23,7 @@ import { useMocks } from '@/lib/hooks/useResources';
  */
 export default function DiagnosticPage() {
   const { activeExam } = useApp();
-  const router = useRouter();
+  const navigate = useNavigate();
 
   // Same query as the mocks page, so arriving here from /mocks costs nothing.
   const { data, isPending, error: queryError } = useMocks(activeExam);
@@ -55,7 +52,7 @@ export default function DiagnosticPage() {
             {error ?? 'There is no diagnostic exam for this exam type yet. You can still take a full mock.'}
           </CardDescription>
           <Button asChild variant="outline" size="sm" className="font-bold text-xs">
-            <Link href="/mocks">Browse mock exams</Link>
+            <Link to="/mocks">Browse mock exams</Link>
           </Button>
         </Card>
       </div>
@@ -111,7 +108,7 @@ export default function DiagnosticPage() {
 
         <Button
           size="lg"
-          onClick={() => router.push(`/mocks?start=${diagnostic.id}`)}
+          onClick={() => navigate(`/mocks?start=${diagnostic.id}`)}
           className="font-extrabold text-sm gap-2 shadow-lg shadow-primary/20 px-8 rounded-2xl h-12"
         >
           <Play className="w-4 h-4 fill-white" />

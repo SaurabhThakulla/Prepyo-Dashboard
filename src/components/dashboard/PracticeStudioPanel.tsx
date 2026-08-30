@@ -1,7 +1,5 @@
-'use client';
-
 import React from 'react';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 
 export interface SkillRow {
   name: string;
@@ -26,7 +24,7 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
       <div className="flex items-center justify-between">
         <h2 className="text-base font-bold text-foreground">Practice studio</h2>
         <Link
-          href="/practice"
+          to="/practice"
           className="text-xs font-semibold text-emerald-600 dark:text-[#00e599] hover:underline transition-all"
         >
           View all tasks
@@ -63,7 +61,7 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
                 </div>
 
                 <Link
-                  href={skill.href}
+                  to={skill.href}
                   className="text-xs font-medium text-foreground dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-white px-3.5 py-1.5 rounded-lg border border-border dark:border-white/5 hover:border-emerald-500/30 dark:hover:border-white/15 bg-muted/30 dark:bg-transparent hover:bg-muted dark:hover:bg-white/5 transition-all text-center shrink-0 min-w-[70px]"
                 >
                   Practice
@@ -119,7 +117,7 @@ function TestRow({ title, sub, href, action, highlight }: TestRowProps) {
         <div className="text-[11px] text-muted-foreground font-normal truncate">{sub}</div>
       </div>
       <Link
-        href={href}
+        to={href}
         className={
           highlight
             ? 'text-xs font-semibold text-emerald-600 dark:text-[#00e599] hover:underline px-3.5 py-1.5 transition-colors shrink-0'

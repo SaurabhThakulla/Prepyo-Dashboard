@@ -1,5 +1,3 @@
-'use client';
-
 import React from 'react';
 import { useApp } from '@/context/AppContext';
 import { Mic, PenTool, BookOpen, Headphones, RefreshCw, AlertCircle, LucideIcon } from 'lucide-react';

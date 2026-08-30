@@ -12,7 +12,7 @@
  * -------------
  * Add this to `.env.local` and restart the dev server:
  *
- *     NEXT_PUBLIC_USE_FIXTURES=true
+ *     VITE_USE_FIXTURES=true
  *
  * With the flag off (the default, and always in production), pages fetch real
  * data and show real errors.
@@ -25,10 +25,11 @@
  *
  * Money is deliberately excluded: subscription prices and quotas have no
  * fixture, because showing a price we might not charge is worse than showing
- * an error. See src/app/subscription/page.tsx.
+ * an error. See src/pages/SubscriptionPage.tsx.
  */
 
 import {
+  DashboardData,
   Evaluation,
   ExamType,
   LeaderboardEntry,
@@ -39,13 +40,14 @@ import {
 } from '@/lib/types';
 
 import aiEvaluationsData from '@/data/ai-evaluations.json';
+import dashboardData from '@/data/dashboard.json';
 import diagnosticTestData from '@/data/diagnostic-test.json';
 import leaderboardRankingsData from '@/data/leaderboard-rankings.json';
 import mistakesBankData from '@/data/mistakes-bank.json';
 import mockTestsData from '@/data/mock-tests.json';
 
 /** True only when you have explicitly opted in via .env.local. */
-export const USE_FIXTURES = process.env.NEXT_PUBLIC_USE_FIXTURES === 'true';
+export const USE_FIXTURES = import.meta.env.VITE_USE_FIXTURES === 'true';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -209,3 +211,19 @@ export function fixtureWritingQuestions(exam: ExamType): Question[] {
     },
   ];
 }
+
+export function fixtureDashboard(exam: ExamType): DashboardData {
+  const isPTE = exam === 'PTE';
+  const raw = dashboardData as unknown as DashboardData;
+
+  return {
+    ...raw,
+    user: {
+      ...raw.user,
+      targetExam: exam,
+      targetScore: isPTE ? 79 : 7.5,
+      estimatedScore: isPTE ? 68 : 6.5,
+    },
+  };
+}
+

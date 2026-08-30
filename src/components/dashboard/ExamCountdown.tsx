@@ -1,5 +1,3 @@
-'use client';
-
 import React from 'react';
 import { Edit2 } from 'lucide-react';
 

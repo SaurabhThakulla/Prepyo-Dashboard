@@ -1,7 +1,5 @@
-'use client';
-
 import React, { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { useLocation } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import AppSidebar from './AppSidebar';
 import Header from './Header';
@@ -23,7 +21,7 @@ const PROTECTED_PREFIXES = [
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   const { user } = useApp();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSecondaryOpen, setIsSecondaryOpen] = useState(true);

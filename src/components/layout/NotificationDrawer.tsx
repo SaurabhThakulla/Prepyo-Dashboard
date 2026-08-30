@@ -1,9 +1,7 @@
-'use client';
-
 import React from 'react';
 import { useApp } from '@/context/AppContext';
 import { Bell, Check, Flame, Award, AlertCircle, X, ExternalLink } from 'lucide-react';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 
 interface Props {
   open: boolean;
@@ -73,7 +71,7 @@ export default function NotificationDrawer({ open, onClose }: Props) {
                 <p className="text-xs text-foreground/90 mt-1.5 leading-relaxed">{notif.message}</p>
                 {notif.actionUrl && (
                   <Link
-                    href={notif.actionUrl}
+                    to={notif.actionUrl}
                     onClick={onClose}
                     className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline font-semibold mt-2.5"
                   >

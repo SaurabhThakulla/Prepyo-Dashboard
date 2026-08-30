@@ -1,5 +1,3 @@
-'use client';
-
 import React from 'react';
 import { Bot, RefreshCw, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';

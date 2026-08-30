@@ -1,5 +1,3 @@
-'use client';
-
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 import { ExamType, NotificationItem, UserProfile } from '@/lib/types';

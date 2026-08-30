@@ -1,7 +1,5 @@
-'use client';
-
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '@/context/AppContext';
 import { queryKeys } from '@/lib/queryKeys';
@@ -28,9 +26,9 @@ import ScoreReportList from '@/components/mocks/ScoreReportList';
  * Everything that happens *during* an exam lives in `useMockExam`. This file
  * only loads the mock list and decides which screen to render.
  */
-function MocksContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+export default function MocksPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { activeExam } = useApp();
   const toast = useToast();
 
@@ -76,9 +74,9 @@ function MocksContent() {
     const target = mocks.find(mock => mock.id === startParam);
     if (target) {
       exam.start(target);
-      router.replace('/mocks');
+      navigate('/mocks', { replace: true });
     }
-  }, [startParam, exam, loading, mocks, router]);
+  }, [startParam, exam, loading, mocks, navigate]);
 
   const leaveReport = () => {
     exam.exit();
@@ -128,13 +126,13 @@ function MocksContent() {
         <div className="flex items-center bg-card p-1 rounded-xl border border-border shrink-0">
           <TabButton
             isActive={activeTab === 'catalog'}
-            onClick={() => router.push('/mocks?tab=catalog')}
+            onClick={() => navigate('/mocks?tab=catalog')}
             icon={<Award className="w-3.5 h-3.5" />}
             label="Exam Catalog"
           />
           <TabButton
             isActive={activeTab === 'reports'}
-            onClick={() => router.push('/mocks?tab=reports')}
+            onClick={() => navigate('/mocks?tab=reports')}
             icon={<FileText className="w-3.5 h-3.5" />}
             label="Score Reports"
             count={pastAttempts.length}
@@ -151,7 +149,7 @@ function MocksContent() {
           attempts={pastAttempts}
           mocks={mocks}
           onReview={setReviewAttempt}
-          onBrowseCatalog={() => router.push('/mocks?tab=catalog')}
+          onBrowseCatalog={() => navigate('/mocks?tab=catalog')}
         />
       ) : (
         <MockCatalog
@@ -191,16 +189,3 @@ function TabButton({ isActive, onClick, icon, label, count }: TabButtonProps) {
   );
 }
 
-export default function MocksPage() {
-  return (
-    <Suspense
-      fallback={
-        <Card className="text-center py-20">
-          <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
-        </Card>
-      }
-    >
-      <MocksContent />
-    </Suspense>
-  );
-}

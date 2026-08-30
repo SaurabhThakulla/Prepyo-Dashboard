@@ -389,3 +389,72 @@ export interface Pagination {
   offset: number;
   hasMore: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Dashboard
+// ---------------------------------------------------------------------------
+
+export interface SkillQuestionStat {
+  skill: SkillType;
+  label: string;
+  completedQuestions: number;
+  totalQuestions: number;
+  accuracyPercentage: number;
+  trend: string;
+  latestScore: string;
+  targetScore: number;
+  readinessPercent: number;
+  sub: string;
+  actionHref: string;
+}
+
+export interface StudyPlanEvent {
+  id: string;
+  date: string;
+  title: string;
+  type: 'diagnostic' | 'mock' | 'practice' | 'review' | string;
+  completed: boolean;
+}
+
+export interface StudyPlanData {
+  currentMonth: string;
+  selectedDate: string;
+  activeDays: string[];
+  dailyTargetMinutes: number;
+  completedMinutesToday: number;
+  scheduledEvents: StudyPlanEvent[];
+}
+
+export interface WeakestSkillFocus {
+  skill: SkillType;
+  taskTypeName: string;
+  latestScore: string;
+  maxScore: number;
+  analysis: string;
+  actionText: string;
+  actionHref: string;
+  period: string;
+}
+
+export interface DashboardData {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    targetExam: ExamType;
+    targetScore: number;
+    estimatedScore: number;
+    examDate?: string;
+    nepalRegion: string;
+    xp: number;
+    level: number;
+    streakDays: number;
+    rank: number;
+    readinessPercentage: number;
+  };
+  skillStats: Record<SkillType, SkillQuestionStat>;
+  studyPlan: StudyPlanData;
+  weakestSkill: WeakestSkillFocus;
+  unresolvedMistakesCount: number;
+}
+

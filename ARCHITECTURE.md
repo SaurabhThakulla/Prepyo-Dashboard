@@ -15,8 +15,11 @@ Learners answer **questions** one at a time in Practice, or sit a whole timed
 ## Where things live
 
 ```
+index.html      the shell: title, fonts, #root
 src/
-  app/          one folder per URL. page.tsx is that page.
+  main.tsx      entry point: mounts the router and the providers
+  App.tsx       the route table — every URL the app answers to
+  pages/        one component per route, named after it
   components/
     ui/         generic primitives (Button, Card, Badge). No app logic.
     layout/     the shell: sidebar, header
@@ -28,6 +31,16 @@ src/
     fixtures.ts sample data for working without a backend
   context/      React context for app-wide state (user, exam, theme)
 ```
+
+**Adding a page takes two steps, not one.** Under Next's App Router a route was
+a folder with a `page.tsx` in it, and creating the folder created the URL. Now
+you write the component in `pages/` and add a `<Route>` to
+[App.tsx](src/App.tsx). The upside is that the entire URL surface — including
+the redirects and the auth gating — is readable on one screen.
+
+Pages are lazy-loaded so each one is its own bundle. A new page should be
+`lazy(() => import(...))` like its neighbours; importing it directly still works
+but quietly adds it to everyone's first download.
 
 ## The rules worth knowing
 
@@ -87,7 +100,7 @@ confident-looking wrong data is worse off than one who sees "could not load".
 This mistake has already been made here once — see fixtures below.
 
 **5. Prices and quotas have no fallback.**
-[src/app/subscription/page.tsx](src/app/subscription/page.tsx) shows an error
+[src/pages/SubscriptionPage.tsx](src/pages/SubscriptionPage.tsx) shows an error
 rather than a guess, because whatever it displays must match what checkout
 charges.
 
@@ -96,7 +109,7 @@ charges.
 Set this in `.env.local` and restart:
 
 ```
-NEXT_PUBLIC_USE_FIXTURES=true
+VITE_USE_FIXTURES=true
 ```
 
 Queries then use `src/data/*.json` as React Query `placeholderData`, via
@@ -110,7 +123,7 @@ stay off in production.
 The pattern used throughout: **a page decides what to show; components render
 it; a hook holds the state.**
 
-[src/app/mocks/page.tsx](src/app/mocks/page.tsx) is the clearest example.
+[src/pages/MocksPage.tsx](src/pages/MocksPage.tsx) is the clearest example.
 It picks one of four screens and does nothing else. The exam itself —
 questions, countdown, answers, submitting — lives in
 [useMockExam](src/lib/hooks/useMockExam.ts). Each screen is its own component
@@ -156,11 +169,12 @@ These are real and not yet fixed. Worth knowing before you build on them.
 - **The dashboard shows placeholder numbers.** Skill scores, readiness, and the
   "Weakest skill" card are from the original design mock, not from the API.
   See the note at the top of
-  [src/app/dashboard/page.tsx](src/app/dashboard/page.tsx).
+  [src/pages/DashboardPage.tsx](src/pages/DashboardPage.tsx).
 - **`.env.local` may point at the production backend.** Check before assuming a
   local API change will show up in your browser.
-- **One dev server at a time.** Stray `next dev` processes corrupt `.next` and
-  produce bugs that look like broken CSS or stale data.
+- **One dev server at a time.** A stray `vite` process still holding port 3000
+  will serve a different checkout than the one you are editing, which reads as
+  broken CSS or stale data. Check the port before debugging the code.
 
 ## Before you push
 

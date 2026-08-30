@@ -1,5 +1,3 @@
-'use client';
-
 import React from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { AnswerSubmission, Question } from '@/lib/types';

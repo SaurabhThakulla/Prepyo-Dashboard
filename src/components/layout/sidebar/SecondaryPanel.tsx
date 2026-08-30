@@ -1,7 +1,5 @@
-'use client';
-
 import React from 'react';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { Bot, Flame, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -71,7 +69,7 @@ export default function SecondaryPanel({
           </Button>
 
           <Link
-            href="/profile"
+            to="/profile"
             onClick={onNavigate}
             className="flex items-center justify-between p-2 rounded-xl bg-card border border-border hover:border-primary/40 transition-colors"
           >

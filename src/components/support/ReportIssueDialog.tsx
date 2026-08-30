@@ -1,7 +1,5 @@
-'use client';
-
 import React, { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { useLocation } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -13,13 +11,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Bug, CheckCircle2 } from 'lucide-react';
+import { api, ApiError } from '@/lib/api';
 
 interface ReportIssueDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-/** Wording this dialog owns, keyed by the code /api/report returns. */
+/** Wording this dialog owns, keyed by the code /api/v1/report returns. */
 const ERRORS: Record<string, string> = {
   unauthorized: 'Your session ended. Sign in again and resend this.',
   too_many_requests: 'That is a lot of reports in a short time. Please wait a few minutes.',
@@ -31,7 +30,7 @@ const ERRORS: Record<string, string> = {
 const GENERIC = 'Something went wrong. Please try again.';
 
 export default function ReportIssueDialog({ open, onOpenChange }: ReportIssueDialogProps) {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -53,22 +52,19 @@ export default function ReportIssueDialog({ open, onOpenChange }: ReportIssueDia
     setSending(true);
     setError(null);
     try {
-      const res = await fetch('/api/report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message.trim(), path: pathname }),
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        setError(ERRORS[body?.error] ?? GENERIC);
-        return;
-      }
+      // This used to be a bare fetch to /api/report, a Next route handler that
+      // lived in this repo. The endpoint moved to the Go backend when the app
+      // became a static build, so it goes through the normal API client now.
+      await api.post('/report', { message: message.trim(), path: pathname });
 
       setSent(true);
       setTimeout(() => onOpenChange(false), 1200);
-    } catch {
-      setError('We could not reach Prepyo. Check your connection and try again.');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(ERRORS[err.code] ?? GENERIC);
+      } else {
+        setError('We could not reach Prepyo. Check your connection and try again.');
+      }
     } finally {
       setSending(false);
     }

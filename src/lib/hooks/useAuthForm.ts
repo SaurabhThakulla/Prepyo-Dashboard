@@ -1,7 +1,5 @@
-'use client';
-
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { ApiError, errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
@@ -38,8 +36,8 @@ export function passwordStrength(password: string): PasswordStrength {
  * submit. Kept apart from the markup so the form component stays readable.
  */
 export function useAuthForm(initialMode: AuthMode) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, register } = useApp();
   const toast = useToast();
 
@@ -111,7 +109,7 @@ export function useAuthForm(initialMode: AuthMode) {
 
       // Only same-origin redirects, so ?next= cannot bounce you off-site.
       const next = searchParams.get('next');
-      router.push(next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard');
+      navigate(next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard');
     } catch (err) {
       const message = errorMessage(err);
       if (err instanceof ApiError && err.fields) setFieldErrors(err.fields);

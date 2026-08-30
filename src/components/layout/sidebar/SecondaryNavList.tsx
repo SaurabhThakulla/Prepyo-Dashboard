@@ -1,7 +1,5 @@
-'use client';
-
 import React from 'react';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { SecondaryNavItem } from './navigation';
@@ -81,7 +79,7 @@ function GroupHeading({ item, onNavigate }: { item: SecondaryNavItem; onNavigate
     <div className="mt-3.5 mb-1.5 first:mt-0 px-2.5 py-1.5 rounded-lg bg-muted/80 dark:bg-muted/50 border border-border/50">
       <h5 className="text-[11px] font-bold uppercase tracking-wider text-foreground">
         {item.groupHref ? (
-          <Link href={item.groupHref} onClick={onNavigate} className="hover:text-primary transition-colors block">
+          <Link to={item.groupHref} onClick={onNavigate} className="hover:text-primary transition-colors block">
             {item.group}
           </Link>
         ) : (
@@ -148,7 +146,7 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
     return (
       <Link
         ref={ref as React.Ref<HTMLAnchorElement>}
-        href={item.href}
+        to={item.href}
         onClick={onNavigate}
         className={className}
       >

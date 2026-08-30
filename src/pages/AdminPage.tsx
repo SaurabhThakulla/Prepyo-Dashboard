@@ -1,7 +1,5 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import {
   Zap,
   Activity,
@@ -85,7 +83,7 @@ export default function AdminPage() {
           This area is limited to accounts with the admin role.
         </CardDescription>
         <Button asChild variant="outline" size="sm" className="font-bold text-xs">
-          <Link href="/dashboard">Back to home</Link>
+          <Link to="/dashboard">Back to home</Link>
         </Button>
       </Card>
     );

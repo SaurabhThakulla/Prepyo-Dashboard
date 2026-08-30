@@ -1,8 +1,5 @@
-'use client';
-
 import React, { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import {
   Sparkles,
@@ -26,7 +23,7 @@ interface HeaderProps {
 
 export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps) {
   const { user, activeExam, unreadCount, setIsTutorOpen, theme, toggleTheme } = useApp();
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
 
   const getPageTitle = (path: string) => {
@@ -91,7 +88,7 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
             size="sm"
             className="hidden md:inline-flex text-xs font-bold"
           >
-            <Link href="/subscription">
+            <Link to="/subscription">
               <ShieldCheck className="w-3.5 h-3.5 mr-1" />
               <span>{planId && planId !== 'free' ? planId.toUpperCase() : 'UPGRADE'}</span>
             </Link>

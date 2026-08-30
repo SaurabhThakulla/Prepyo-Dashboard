@@ -1,7 +1,5 @@
-'use client';
-
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { api, errorMessage } from '@/lib/api';
 import { ExamType } from '@/lib/types';
@@ -179,7 +177,7 @@ export default function ProfilePage() {
             {/* Upgrade button */}
             <div className="pt-2">
               <Link
-                href="/subscription"
+                to="/subscription"
                 className="w-full py-2.5 px-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 dark:hover:bg-emerald-950/50 hover:border-emerald-500/60 font-bold text-xs sm:text-sm flex items-center justify-center transition-all shadow-sm"
               >
                 {isPaid ? 'Manage subscription' : 'Upgrade for unlimited'}

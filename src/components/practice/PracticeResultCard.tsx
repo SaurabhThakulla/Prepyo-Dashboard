@@ -1,5 +1,3 @@
-'use client';
-
 import React from 'react';
 import { Award, CheckCircle2, XCircle, Quote } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';

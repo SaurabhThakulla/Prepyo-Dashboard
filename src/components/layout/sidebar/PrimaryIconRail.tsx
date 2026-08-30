@@ -1,7 +1,5 @@
-'use client';
-
 import React from 'react';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { Bug, User, CreditCard, LogOut } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -47,7 +45,7 @@ export default function PrimaryIconRail({
     <aside className="w-16 shrink-0 border-r border-border bg-card flex flex-col justify-between items-center py-4 px-2.5 z-20 select-none">
       <div className="flex flex-col items-center w-full pb-3 mb-2 border-b border-border/50">
         <Link
-          href="/dashboard"
+          to="/dashboard"
           onClick={onLogoClick}
           className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-indigo-600 to-violet-700 text-white shadow-md shadow-primary/25 font-black text-base hover:scale-105 transition-transform"
           title="Prepyo — AI Exam Prep"
@@ -150,7 +148,7 @@ export default function PrimaryIconRail({
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link
-                href="/profile"
+                to="/profile"
                 onClick={onCloseMobile}
                 className="cursor-pointer flex items-center gap-2.5 py-2 px-2.5 rounded-xl text-xs font-medium hover:bg-muted/70 transition-colors"
               >
@@ -160,7 +158,7 @@ export default function PrimaryIconRail({
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link
-                href="/subscription"
+                to="/subscription"
                 onClick={onCloseMobile}
                 className="cursor-pointer flex items-center gap-2.5 py-2 px-2.5 rounded-xl text-xs font-medium hover:bg-muted/70 transition-colors"
               >

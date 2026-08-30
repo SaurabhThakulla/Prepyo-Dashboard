@@ -1,7 +1,5 @@
-'use client';
-
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/ui/toast';
 import { api, ApiError, errorMessage } from '@/lib/api';
@@ -44,7 +42,7 @@ const SKILLS: SkillType[] = ['speaking', 'writing', 'reading', 'listening'];
 export function usePracticeSession() {
   const { activeExam, refreshUser } = useApp();
   const toast = useToast();
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   const [selectedSkill, setSelectedSkill] = useState<SkillType>(
     (searchParams.get('skill') as SkillType) || 'reading',

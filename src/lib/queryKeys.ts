@@ -16,6 +16,7 @@ import { ExamType, SkillType } from '@/lib/types';
  * query regardless of exam.
  */
 export const queryKeys = {
+  dashboard: (exam: ExamType) => ['dashboard', exam] as const,
   progress: () => ['progress'] as const,
 
   leaderboard: (exam: ExamType, region?: string, period?: string) =>

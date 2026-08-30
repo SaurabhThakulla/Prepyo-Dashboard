@@ -1,5 +1,3 @@
-'use client';
-
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useApp } from '@/context/AppContext';
