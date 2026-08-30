@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/toast';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload, UPLOAD_FORMAT } from '@/lib/audio';
 import { typeKey } from '@/lib/syllabus';
+import { useQuestions } from '@/lib/hooks/useResources';
 import { Evaluation, PracticeAttempt, Question, SkillType } from '@/lib/types';
 
 /**
@@ -48,9 +49,7 @@ export function usePracticeSession() {
   const [selectedSkill, setSelectedSkill] = useState<SkillType>(
     (searchParams.get('skill') as SkillType) || 'reading',
   );
-  const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
-  const [loading, setLoading] = useState(true);
 
   // The answer being written, in whichever form this skill takes.
   const [textAnswer, setTextAnswer] = useState('');
@@ -80,27 +79,19 @@ export function usePracticeSession() {
     if (skillParam && SKILLS.includes(skillParam)) setSelectedSkill(skillParam);
   }, [searchParams]);
 
+  // Cached per exam+skill, so switching back to a skill you have already opened
+  // costs no request.
+  const questionsQuery = useQuestions(activeExam, selectedSkill);
+  const questions = questionsQuery.data?.questions ?? [];
+  const loading = questionsQuery.isPending;
+
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    resetAnswer();
-
-    api
-      .get<{ questions: Question[] }>('/questions', { exam: activeExam, skill: selectedSkill })
-      .then(data => !cancelled && setQuestions(data.questions ?? []))
-      .catch(err => {
-        if (cancelled) return;
-        setQuestions([]);
-        setCurrentQuestion(null);
-        toast.error('Could not load questions', errorMessage(err));
-      })
-      .finally(() => !cancelled && setLoading(false));
-
-    return () => {
-      cancelled = true;
-    };
+    if (questionsQuery.error) {
+      setCurrentQuestion(null);
+      toast.error('Could not load questions', errorMessage(questionsQuery.error));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeExam, selectedSkill]);
+  }, [questionsQuery.error]);
 
   // Which question to open. The sidebar links to a task type rather than a
   // question, so picking a type here is just a different starting point in the

@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useApp } from '@/context/AppContext';
-import { api } from '@/lib/api';
-import { SubscriptionPlan } from '@/lib/types';
+import { useSubscriptionPlans } from '@/lib/hooks/useResources';
 import { Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
@@ -32,22 +31,9 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
 
   // The free plan's name and price are shown in the hero. If the endpoint is
   // down the card falls back to static copy rather than blocking sign-in.
-  const [freePlan, setFreePlan] = useState<SubscriptionPlan | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    api
-      .get<{ plans: SubscriptionPlan[] }>('/subscriptions/plans')
-      .then(data => !cancelled && setFreePlan(data.plans.find(plan => plan.id === 'free') ?? null))
-      .catch(() => {
-        // Hero renders with its default copy.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Shares the subscription page's cache.
+  const { data: plansData } = useSubscriptionPlans();
+  const freePlan = plansData?.plans.find(plan => plan.id === 'free') ?? null;
 
   const handleSocialSelect = (provider: string) =>
     toast.info(`${provider} sign-in coming soon`, 'Please use email and password for now.');

@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { SubscriptionPlan, SubscriptionState } from '@/lib/types';
 import { api, errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
+import { useSubscriptionPlans } from '@/lib/hooks/useResources';
 
 type Gateway = 'esewa' | 'khalti' | 'fonepay';
 
@@ -23,9 +24,6 @@ export default function SubscriptionPage() {
   const { user, refreshUser } = useApp();
   const toast = useToast();
 
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [selectedGateway, setSelectedGateway] = useState<Gateway>('esewa');
@@ -34,26 +32,15 @@ export default function SubscriptionPage() {
 
   const currentPlanId = user?.subscription?.planId;
 
-  useEffect(() => {
-    let cancelled = false;
-
-    // No fixture fallback here on purpose. Prices and quotas must come from the
-    // same source checkout charges from, so if the fetch fails the page says so
-    // rather than advertising a price we might not honour.
-    api
-      .get<{ plans: SubscriptionPlan[] }>('/subscriptions/plans')
-      .then(data => {
-        if (cancelled) return;
-        setPlans(data.plans ?? []);
-        setLoadError(null);
-      })
-      .catch(err => !cancelled && setLoadError(errorMessage(err, 'Could not load plans.')))
-      .finally(() => !cancelled && setLoading(false));
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // No fixture fallback here on purpose. Prices and quotas must come from the
+  // same source checkout charges from, so if the fetch fails the page says so
+  // rather than advertising a price we might not honour.
+  const plansQuery = useSubscriptionPlans();
+  const plans = plansQuery.data?.plans ?? [];
+  const loading = plansQuery.isPending;
+  const loadError = plansQuery.error
+    ? errorMessage(plansQuery.error, 'Could not load plans.')
+    : null;
 
   const handleOpenCheckout = (plan: SubscriptionPlan) => {
     setSelectedPlan(plan);

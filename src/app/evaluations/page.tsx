@@ -13,57 +13,53 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Evaluation, Question } from '@/lib/types';
+import { Evaluation } from '@/lib/types';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
-import { fixtureEvaluations, fixtureWritingQuestions, seed } from '@/lib/fixtures';
+import { useEvaluationHistory, useQuestions } from '@/lib/hooks/useResources';
+import { queryKeys } from '@/lib/queryKeys';
+import { useQueryClient } from '@tanstack/react-query';
+
+const HISTORY_LIMIT = 5;
 
 export default function EvaluationsPage() {
   const { activeExam, user, refreshUser } = useApp();
   const toast = useToast();
+  const queryClient = useQueryClient();
 
-  const [questions, setQuestions] = useState<Question[]>(() =>
-    seed(() => fixtureWritingQuestions(activeExam), []),
-  );
-  const [selectedQuestionId, setSelectedQuestionId] = useState(
-    () => seed(() => fixtureWritingQuestions(activeExam)[0].id, ''),
-  );
+  // Only writing has an evaluator endpoint, so only writing questions are
+  // offered. Same query key as the practice page uses for writing, so the two
+  // pages share one request.
+  const questionsQuery = useQuestions(activeExam, 'writing');
+  const historyQuery = useEvaluationHistory(HISTORY_LIMIT);
+
+  const questions = questionsQuery.data?.questions ?? [];
+  const history = historyQuery.data?.evaluations ?? [];
+
+  const [selectedQuestionId, setSelectedQuestionId] = useState('');
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Evaluation | null>(null);
-  const [history, setHistory] = useState<Evaluation[]>(() => seed(fixtureEvaluations, []));
   const [unavailable, setUnavailable] = useState(false);
+
+  // Default to the first task once the list arrives, without clobbering a
+  // choice the learner has already made.
+  useEffect(() => {
+    if (!selectedQuestionId && questions.length > 0) setSelectedQuestionId(questions[0].id);
+  }, [questions, selectedQuestionId]);
+
+  useEffect(() => {
+    if (questionsQuery.error) {
+      toast.error('Could not load writing tasks', errorMessage(questionsQuery.error));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questionsQuery.error]);
 
   const selectedQuestion = questions.find(q => q.id === selectedQuestionId) ?? null;
   const wordCount = inputText.trim().split(/\s+/).filter(Boolean).length;
   const subscription = user?.subscription;
   const quotaExhausted =
     subscription != null && subscription.dailyEvaluationsUsed >= subscription.dailyEvaluationsLimit;
-
-  // Only writing has an evaluator endpoint, so only writing questions are offered.
-  useEffect(() => {
-    let cancelled = false;
-
-    api
-      .get<{ questions: Question[] }>('/questions', { exam: activeExam, skill: 'writing' })
-      .then(data => {
-        if (cancelled) return;
-        const list = data.questions ?? [];
-        setQuestions(list);
-        setSelectedQuestionId(list[0]?.id ?? '');
-      })
-      .catch(err => !cancelled && toast.error('Could not load writing tasks', errorMessage(err)));
-
-    api
-      .get<{ evaluations: Evaluation[] }>('/evaluations', { limit: 5 })
-      .then(data => !cancelled && setHistory(data.evaluations ?? []))
-      .catch(() => !cancelled && setHistory([]));
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeExam]);
 
   const handleEvaluate = async () => {
     if (!selectedQuestionId || !inputText.trim() || loading) return;
@@ -76,7 +72,15 @@ export default function EvaluationsPage() {
         text: inputText,
       });
       setResult(data.evaluation);
-      setHistory(prev => [data.evaluation, ...prev].slice(0, 5));
+
+      // Push the new evaluation onto the cached history so it appears at once.
+      queryClient.setQueryData(
+        queryKeys.evaluations(HISTORY_LIMIT),
+        (previous: { evaluations: Evaluation[] } | undefined) => ({
+          evaluations: [data.evaluation, ...(previous?.evaluations ?? [])].slice(0, HISTORY_LIMIT),
+        }),
+      );
+
       // The evaluation consumed part of today's quota and awarded XP.
       await refreshUser();
     } catch (err) {

@@ -2,13 +2,15 @@
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '@/context/AppContext';
+import { queryKeys } from '@/lib/queryKeys';
 import { Award, RefreshCw, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { Mock, MockAttempt } from '@/lib/types';
-import { api, errorMessage } from '@/lib/api';
+import { MockAttempt } from '@/lib/types';
+import { errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
-import { fixtureMocks, seed, USE_FIXTURES } from '@/lib/fixtures';
+import { useMocks, useMockAttempts } from '@/lib/hooks/useResources';
 import { useMockExam } from '@/lib/hooks/useMockExam';
 import MockCatalog from '@/components/mocks/MockCatalog';
 import MockExamRunner from '@/components/mocks/MockExamRunner';
@@ -34,38 +36,37 @@ function MocksContent() {
 
   const activeTab = searchParams.get('tab') === 'reports' ? 'reports' : 'catalog';
 
-  const [mocks, setMocks] = useState<Mock[]>(() => seed(fixtureMocks, []));
-  const [pastAttempts, setPastAttempts] = useState<MockAttempt[]>([]);
-  const [loading, setLoading] = useState(!USE_FIXTURES);
   const [reviewAttempt, setReviewAttempt] = useState<MockAttempt | null>(null);
 
-  const addAttempt = useCallback((attempt: MockAttempt) => {
-    setPastAttempts(prev => [attempt, ...prev]);
-  }, []);
+  const mocksQuery = useMocks(activeExam);
+  const attemptsQuery = useMockAttempts();
+  const queryClient = useQueryClient();
+
+  const mocks = mocksQuery.data?.mocks ?? [];
+  const pastAttempts = attemptsQuery.data?.attempts ?? [];
+  const loading = mocksQuery.isPending || attemptsQuery.isPending;
+  const loadError = mocksQuery.error ?? attemptsQuery.error;
+
+  // A finished attempt goes into the cache directly, so the report list shows
+  // it without waiting for a refetch.
+  const addAttempt = useCallback(
+    (attempt: MockAttempt) => {
+      queryClient.setQueryData(
+        queryKeys.mockAttempts(),
+        (previous: { attempts: MockAttempt[] } | undefined) => ({
+          attempts: [attempt, ...(previous?.attempts ?? [])],
+        }),
+      );
+    },
+    [queryClient],
+  );
 
   const exam = useMockExam(addAttempt);
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-
-    Promise.all([
-      api.get<{ mocks: Mock[] }>('/mocks', { exam: activeExam }),
-      api.get<{ attempts: MockAttempt[] }>('/mocks/attempts'),
-    ])
-      .then(([mockData, attemptData]) => {
-        if (cancelled) return;
-        setMocks(mockData.mocks ?? []);
-        setPastAttempts(attemptData.attempts ?? []);
-      })
-      .catch(err => !cancelled && toast.error('Could not load mock exams', errorMessage(err)))
-      .finally(() => !cancelled && setLoading(false));
-
-    return () => {
-      cancelled = true;
-    };
+    if (loadError) toast.error('Could not load mock exams', errorMessage(loadError));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeExam]);
+  }, [loadError]);
 
   // /diagnostic hands off here with ?start=<mockId> so there is only one exam
   // runner in the app.
