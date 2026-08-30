@@ -47,18 +47,6 @@ import mockTestsData from '@/data/mock-tests.json';
 /** True only when you have explicitly opted in via .env.local. */
 export const USE_FIXTURES = process.env.NEXT_PUBLIC_USE_FIXTURES === 'true';
 
-/**
- * Returns `fixture()` when fixtures are on, otherwise `empty`.
- *
- * Use it to seed `useState`, so the "am I in fixture mode?" check appears once
- * per page instead of being scattered through the component:
- *
- *     const [mocks, setMocks] = useState<Mock[]>(() => seed(fixtureMocks, []));
- */
-export function seed<T>(fixture: () => T, empty: T): T {
-  return USE_FIXTURES ? fixture() : empty;
-}
-
 // ---------------------------------------------------------------------------
 // Helpers
 //
@@ -85,8 +73,16 @@ function toExam(value: string): ExamType {
 // Fixtures
 // ---------------------------------------------------------------------------
 
-export function fixtureMocks(): Mock[] {
-  return mockTestsData.availableMockTests.map(mock => ({
+/**
+ * The mock catalog, with the diagnostic first.
+ *
+ * The real GET /mocks returns the diagnostic alongside the rest — the
+ * diagnostic page finds it with `mocks.find(m => m.isDiagnostic)` rather than
+ * calling a separate endpoint. The fixture has to include it too, or that page
+ * shows "no diagnostic available" in fixture mode.
+ */
+export function fixtureMocks(exam: ExamType): Mock[] {
+  const catalog: Mock[] = mockTestsData.availableMockTests.map(mock => ({
     id: mock.id,
     examVersionId: 'v1',
     exam: toExam(mock.exam),
@@ -106,9 +102,11 @@ export function fixtureMocks(): Mock[] {
       ),
     })),
   }));
+
+  return [fixtureDiagnostic(exam), ...catalog];
 }
 
-export function fixtureDiagnostic(exam: ExamType): Mock {
+function fixtureDiagnostic(exam: ExamType): Mock {
   return {
     id: 'diagnostic-01',
     examVersionId: 'v1',
