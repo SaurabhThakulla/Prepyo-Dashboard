@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { AnswerSubmission, Question } from '@/lib/types';
@@ -8,17 +10,6 @@ interface MockAnswerInputProps {
   onChange: (patch: Partial<AnswerSubmission>) => void;
 }
 
-/**
- * The input widget for one question. Which one you get depends on the shape of
- * the question, not on its skill:
- *
- *   - `options` present  → checkboxes
- *   - `blanks` present   → a dropdown or text box per blank
- *   - writing / speaking → a free-text box
- *
- * A question can have more than one of these, so they are independent `if`s
- * rather than a switch.
- */
 export default function MockAnswerInput({ question, answer, onChange }: MockAnswerInputProps) {
   const selectedOptions = answer?.selectedOptions ?? [];
   const blankResponses = answer?.blankResponses ?? {};
@@ -33,9 +24,8 @@ export default function MockAnswerInput({ question, answer, onChange }: MockAnsw
             return (
               <label
                 key={option.id}
-                className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer text-xs transition-colors ${
-                  checked ? 'border-primary bg-primary/5' : 'border-border bg-background hover:border-primary/40'
-                }`}
+                className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer text-xs transition-colors ${checked ? 'border-primary bg-primary/5' : 'border-border bg-background hover:border-primary/40'
+                  }`}
               >
                 <input
                   type="checkbox"
