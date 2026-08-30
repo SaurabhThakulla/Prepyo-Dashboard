@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useLeaderboard, LeaderboardPeriod } from '@/lib/hooks/useLeaderboard';
 import {
   Trophy,
   Flame,
@@ -14,52 +15,31 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LeaderboardEntry } from '@/lib/types';
-import { api, errorMessage } from '@/lib/api';
+import { errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 
-type Period = 'weekly' | 'monthly' | 'all-time';
-
 /** Matches the Period constants in backend/internal/leaderboards. */
-const PERIODS: Period[] = ['weekly', 'monthly', 'all-time'];
+const PERIODS: LeaderboardPeriod[] = ['weekly', 'monthly', 'all-time'];
 
 export default function LeaderboardPage() {
   const { activeExam } = useApp();
   const toast = useToast();
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [regions, setRegions] = useState<string[]>(['all']);
   const [selectedRegion, setSelectedRegion] = useState('all');
-  const [period, setPeriod] = useState<Period>('all-time');
-  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<LeaderboardPeriod>('all-time');
 
+  const { data, isPending, error } = useLeaderboard(activeExam, selectedRegion, period);
+
+  const leaderboard = data?.leaderboard ?? [];
+  // The list of districts comes from the API so it cannot drift from the ones
+  // the query actually filters on.
+  const regions = data?.regions?.length ? data.regions : ['all'];
+  const loading = isPending;
+
+  // Reported once per failure rather than on every render.
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-
-    api
-      .get<{ leaderboard: LeaderboardEntry[]; regions: string[] }>('/leaderboards', {
-        exam: activeExam,
-        region: selectedRegion === 'all' ? undefined : selectedRegion,
-        period,
-      })
-      .then(data => {
-        if (cancelled) return;
-        setLeaderboard(data.leaderboard ?? []);
-        // The list of districts comes from the API so it cannot drift from the
-        // ones the query actually filters on.
-        if (data.regions?.length) setRegions(data.regions);
-      })
-      .catch(err => {
-        if (cancelled) return;
-        setLeaderboard([]);
-        toast.error('Could not load the leaderboard', errorMessage(err));
-      })
-      .finally(() => !cancelled && setLoading(false));
-
-    return () => {
-      cancelled = true;
-    };
+    if (error) toast.error('Could not load the leaderboard', errorMessage(error));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeExam, selectedRegion, period]);
+  }, [error]);
 
   const top3 = leaderboard.slice(0, 3);
   const rest = leaderboard.slice(3);

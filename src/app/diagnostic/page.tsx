@@ -16,8 +16,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
-import { Mock } from '@/lib/types';
-import { api, errorMessage } from '@/lib/api';
+import { errorMessage } from '@/lib/api';
+import { useMocks } from '@/lib/hooks/useResources';
 
 /**
  * The diagnostic is not a separate quiz — it is the mock flagged as diagnostic
@@ -28,28 +28,12 @@ export default function DiagnosticPage() {
   const { activeExam } = useApp();
   const router = useRouter();
 
-  const [diagnostic, setDiagnostic] = useState<Mock | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Same query as the mocks page, so arriving here from /mocks costs nothing.
+  const { data, isPending, error: queryError } = useMocks(activeExam);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-
-    api
-      .get<{ mocks: Mock[] }>('/mocks', { exam: activeExam })
-      .then(data => {
-        if (cancelled) return;
-        setDiagnostic(data.mocks?.find(m => m.isDiagnostic) ?? null);
-        setError(null);
-      })
-      .catch(err => !cancelled && setError(errorMessage(err)))
-      .finally(() => !cancelled && setLoading(false));
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeExam]);
+  const diagnostic = data?.mocks?.find(mock => mock.isDiagnostic) ?? null;
+  const loading = isPending;
+  const error = queryError ? errorMessage(queryError) : null;
 
   if (loading) {
     return (

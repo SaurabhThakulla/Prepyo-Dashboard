@@ -1,0 +1,54 @@
+{
+  "pageName": "Diagnostic Test Page",
+  "pageRoute": "/diagnostic",
+  "pageDescription": "15-minute quick test to check baseline English level before studying",
+  "testName": "Prepyo Quick 15-Minute Diagnostic Test",
+  "description": "A quick baseline test to find out your current English skill level and target score gap",
+  "totalDurationMinutes": 15,
+  "questionCount": 8,
+  "sections": [
+    {
+      "sectionName": "Vocabulary & Grammar Check",
+      "questionCount": 3,
+      "timeLimitMinutes": 4
+    },
+    {
+      "sectionName": "Speed Reading Mini-Passage",
+      "questionCount": 2,
+      "timeLimitMinutes": 4
+    },
+    {
+      "sectionName": "Audio Comprehension",
+      "questionCount": 2,
+      "timeLimitMinutes": 4
+    },
+    {
+      "sectionName": "Quick Speaking Response",
+      "questionCount": 1,
+      "timeLimitMinutes": 3
+    }
+  ],
+  "sampleQuestions": [
+    {
+      "id": "diag-q1",
+      "type": "Grammar",
+      "question": "Choose the sentence with the correct grammar:",
+      "options": [
+        "Neither of the boys were ready for the test.",
+        "Neither of the boys was ready for the test.",
+        "Neither of the boys are ready for the test.",
+        "Neither of the boys have been ready for the test."
+      ],
+      "correctOptionIndex": 1,
+      "simpleExplanation": "'Neither' is singular, so it uses 'was' instead of 'were'."
+    },
+    {
+      "id": "diag-q2",
+      "type": "Vocabulary",
+      "question": "Which word means 'causing great wonder or excitement'?",
+      "options": ["Monotonous", "Spectacular", "Tedious", "Ordinary"],
+      "correctOptionIndex": 1,
+      "simpleExplanation": "'Spectacular' means amazing and eye-catching."
+    }
+  ]
+}

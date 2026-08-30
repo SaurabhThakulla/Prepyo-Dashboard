@@ -21,6 +21,9 @@ export default function ProfilePage() {
   const { user, updateProfile } = useApp();
   const toast = useToast();
 
+  // These start empty and are filled by the effect below once the account
+  // loads. Never seed them with sample data: the form writes straight back to
+  // the real profile on save.
   const [name, setName] = useState('');
   const [targetExam, setTargetExam] = useState<ExamType>('PTE');
   const [targetScore, setTargetScore] = useState('');

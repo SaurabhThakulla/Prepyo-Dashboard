@@ -14,51 +14,48 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Mistake, Pagination } from '@/lib/types';
+import { Mistake } from '@/lib/types';
 import { api, errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
+import { useMistakes } from '@/lib/hooks/useResources';
+import { queryKeys } from '@/lib/queryKeys';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function MistakesPage() {
   const { activeExam, refreshUser } = useApp();
   const toast = useToast();
-  const [mistakes, setMistakes] = useState<Mistake[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [selectedSkill, setSelectedSkill] = useState<string>('all');
   const [unresolvedOnly, setUnresolvedOnly] = useState(false);
   const [activeReplayItem, setActiveReplayItem] = useState<Mistake | null>(null);
   const [replayAnswer, setReplayAnswer] = useState('');
   const [replaySuccess, setReplaySuccess] = useState<boolean | null>(null);
 
+  const { data, isPending, error } = useMistakes(activeExam, selectedSkill, unresolvedOnly);
+  const mistakes = data?.mistakes ?? [];
+  const loading = isPending;
+
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-
-    api
-      .get<{ mistakes: Mistake[]; pagination: Pagination }>('/mistakes', {
-        exam: activeExam,
-        skill: selectedSkill === 'all' ? undefined : selectedSkill,
-        unresolved: unresolvedOnly ? 'true' : undefined,
-      })
-      .then(data => !cancelled && setMistakes(data.mistakes ?? []))
-      .catch(err => {
-        if (cancelled) return;
-        setMistakes([]);
-        toast.error('Could not load your mistake bank', errorMessage(err));
-      })
-      .finally(() => !cancelled && setLoading(false));
-
-    return () => {
-      cancelled = true;
-    };
-    // toast is stable from context; excluding it keeps this from refetching on
-    // every toast render.
+    if (error) toast.error('Could not load your mistake bank', errorMessage(error));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeExam, selectedSkill, unresolvedOnly]);
+  }, [error]);
 
   const handleResolve = async (id: string) => {
     try {
       await api.post(`/mistakes/${id}/resolve`);
-      setMistakes(prev => prev.map(m => (m.id === id ? { ...m, resolved: true } : m)));
+
+      // Mark it resolved in the cache straight away so the row updates without
+      // a refetch, then let the dashboard's unresolved count re-read.
+      queryClient.setQueryData(
+        queryKeys.mistakes(activeExam, selectedSkill, unresolvedOnly),
+        (previous: typeof data) =>
+          previous && {
+            ...previous,
+            mistakes: previous.mistakes.map(m => (m.id === id ? { ...m, resolved: true } : m)),
+          },
+      );
+      queryClient.invalidateQueries({ queryKey: queryKeys.unresolvedMistakeCount() });
+
       // XP is awarded server-side; pull the new total rather than guessing it.
       await refreshUser();
     } catch (err) {
