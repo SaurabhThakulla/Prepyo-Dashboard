@@ -84,11 +84,11 @@
     },
 
     "POST /evaluations/speaking": {
-      "_use": "speaking - the server transcribes the audio, then scores the transcript",
+      "_use": "speaking - the model listens to the recording itself, transcribing it and scoring pronunciation and fluency from the audio, not from the transcript",
       "_request": {
         "questionId": "string - required",
         "audio": "string - required, base64 of the encoded file, no data: URI prefix",
-        "format": "string - required, currently always 'wav' (src/lib/audio.ts UPLOAD_FORMAT)",
+        "format": "string - required, 'mp3' or 'wav' - send what encodeForUpload returns, do not assume (src/lib/audio.ts)",
         "durationSeconds": "number - required, length of the take"
       },
       "_response": {

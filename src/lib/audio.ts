@@ -6,17 +6,47 @@
 //     browser records natively and what plays back cleanly in an <audio> tag,
 //     so it is what the learner listens to.
 //   - The API accepts WAV or MP3 only, because that is what the provider
-//     accepts inline. So the recording is decoded and re-encoded to 16 kHz mono
-//     PCM before it is uploaded.
+//     accepts inline. Opus cannot be forwarded as-is, so the recording is
+//     decoded and re-encoded before it is uploaded.
 //
-// 16 kHz mono is the standard rate for speech models and keeps a 40-second
-// answer near 1.3 MB before base64. Recording at a higher rate and uploading it
-// would cost a learner on mobile data several times that for no extra accuracy.
+// 16 kHz mono is the standard rate for speech models. Recording at a higher
+// rate would cost a learner on mobile data several times as much for no extra
+// accuracy: the model is listening for pronunciation and fluency, not fidelity.
+//
+// WHY MP3 RATHER THAN WAV
+// ----------------------
+// WAV is uncompressed: 16 kHz 16-bit mono is 32 KB per second, and base64 adds
+// a third on top, so a 40-second answer was ~1.7 MB on the wire. Most learners
+// here are on mobile data. MP3 at 64 kbps is a quarter of that for audio the
+// model cannot tell apart — at a 16 kHz sample rate the signal is already
+// band-limited to 8 kHz, and 64 kbps is a generous budget for that.
+//
+// WAV is still supported and is the fallback. See encodeForUpload.
 
-/** What the API accepts. Mirrors ai.AudioFormats in the backend. */
-export const UPLOAD_FORMAT = 'wav';
+import type { EncodeRequest, EncodeResponse } from './audio.worker';
+
+/** Formats the API accepts. Mirrors ai.AudioFormats in the backend. */
+export type UploadFormat = 'mp3' | 'wav';
 
 const TARGET_SAMPLE_RATE = 16000;
+
+/**
+ * Comfortably transparent for band-limited speech, and still 4x smaller than
+ * WAV. Worth being generous here: this audio is scored on pronunciation, so
+ * saving another 100 KB is not worth introducing artefacts the model might read
+ * as a mispronunciation.
+ */
+const MP3_BITRATE_KBPS = 64;
+
+/** Samples handed to the encoder per call. One MPEG frame's worth. */
+const MP3_BLOCK_SIZE = 1152;
+
+/**
+ * Generous: the longest allowed answer is two minutes, which encodes in about
+ * three seconds on a laptop and several times that on a budget phone. This is
+ * here to catch a worker that never replies at all, not to police slow devices.
+ */
+const MP3_ENCODE_TIMEOUT_MS = 60_000;
 
 /**
  * MediaRecorder container preferences, best first.
@@ -55,18 +85,26 @@ function audioContextCtor(): AudioContextCtor | null {
 }
 
 export interface EncodedRecording {
-  /** Base64 WAV, with no data: URL prefix. */
+  /** Base64 audio, with no data: URL prefix. */
   base64: string;
+  /** What `base64` actually holds. Send this to the API, do not assume it. */
+  format: UploadFormat;
   /** Rounded up, because the API validates against the task's time limit. */
   durationSeconds: number;
 }
 
 /**
- * Turns a recorded blob into the WAV the API expects.
+ * Turns a recorded blob into audio the API accepts.
  *
  * Throws when the blob cannot be decoded, which in practice means the recording
  * never captured anything. The caller reports that rather than uploading an
  * empty file and paying an evaluation to be told it was silent.
+ *
+ * A failure to encode MP3 is not treated the same way. The encoder is a
+ * third-party library loaded on demand, so it can fail for reasons that have
+ * nothing to do with the learner — an offline chunk fetch, an exotic browser.
+ * None of those are worth losing an answer over when the API takes WAV too, so
+ * this falls back rather than throwing.
  */
 export async function encodeForUpload(blob: Blob): Promise<EncodedRecording> {
   const Ctor = audioContextCtor();
@@ -86,10 +124,63 @@ export async function encodeForUpload(blob: Blob): Promise<EncodedRecording> {
   }
 
   const mono = await toMono16k(decoded);
-  return {
-    base64: toBase64(encodeWav(mono, TARGET_SAMPLE_RATE)),
-    durationSeconds: Math.max(1, Math.ceil(mono.length / TARGET_SAMPLE_RATE)),
-  };
+  const durationSeconds = Math.max(1, Math.ceil(mono.length / TARGET_SAMPLE_RATE));
+  const samples = toInt16(mono);
+
+  try {
+    return { base64: toBase64(await encodeMp3(samples)), format: 'mp3', durationSeconds };
+  } catch (err) {
+    console.error('MP3 encoding failed; uploading WAV instead:', err);
+    return { base64: toBase64(encodeWav(samples, TARGET_SAMPLE_RATE)), format: 'wav', durationSeconds };
+  }
+}
+
+/**
+ * Encodes 16 kHz mono PCM as MP3 in a worker.
+ *
+ * The worker module — and the encoder library inside it, by far the largest
+ * dependency in the app — is only fetched when someone actually submits a
+ * speaking answer. Most sessions never touch it.
+ *
+ * `samples` is deliberately copied to the worker rather than transferred: the
+ * WAV fallback in encodeForUpload still needs it if this fails, and a transfer
+ * would leave the main thread holding a detached buffer.
+ */
+function encodeMp3(samples: Int16Array): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL('./audio.worker.ts', import.meta.url), { type: 'module' });
+
+    // A worker that never answers must not strand a learner on a spinner
+    // holding the only copy of their answer.
+    const timer = setTimeout(() => {
+      worker.terminate();
+      reject(new Error('The MP3 encoder timed out.'));
+    }, MP3_ENCODE_TIMEOUT_MS);
+
+    const finish = (settle: () => void) => {
+      clearTimeout(timer);
+      worker.terminate();
+      settle();
+    };
+
+    worker.onmessage = (event: MessageEvent<EncodeResponse>) => {
+      const data = event.data;
+      finish(() =>
+        data.ok ? resolve(data.mp3) : reject(new Error(data.error)),
+      );
+    };
+    worker.onerror = event => {
+      finish(() => reject(new Error(event.message || 'The MP3 encoder failed to start.')));
+    };
+
+    const request: EncodeRequest = {
+      samples,
+      sampleRate: TARGET_SAMPLE_RATE,
+      bitrateKbps: MP3_BITRATE_KBPS,
+      blockSize: MP3_BLOCK_SIZE,
+    };
+    worker.postMessage(request);
+  });
 }
 
 /**
@@ -110,8 +201,24 @@ async function toMono16k(buffer: AudioBuffer): Promise<Float32Array> {
   return rendered.getChannelData(0);
 }
 
-/** Writes a 16-bit PCM WAV. Samples outside [-1, 1] are clipped, not wrapped. */
-function encodeWav(samples: Float32Array, sampleRate: number): ArrayBuffer {
+/**
+ * Converts normalised float samples to signed 16-bit PCM, which is what both
+ * encoders below take. Samples outside [-1, 1] are clipped, not wrapped —
+ * wrapping would turn a moment of clipping into a burst of noise.
+ */
+function toInt16(samples: Float32Array): Int16Array {
+  const out = new Int16Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    const clamped = Math.max(-1, Math.min(1, samples[i]));
+    // Asymmetric on purpose: -1 maps to -32768 and +1 to 32767, the actual
+    // range of a signed 16-bit sample.
+    out[i] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff;
+  }
+  return out;
+}
+
+/** Writes a 16-bit PCM WAV around already-converted samples. */
+function encodeWav(samples: Int16Array, sampleRate: number): ArrayBuffer {
   const bytesPerSample = 2;
   const buffer = new ArrayBuffer(44 + samples.length * bytesPerSample);
   const view = new DataView(buffer);
@@ -135,10 +242,7 @@ function encodeWav(samples: Float32Array, sampleRate: number): ArrayBuffer {
   view.setUint32(40, samples.length * bytesPerSample, true);
 
   for (let i = 0; i < samples.length; i++) {
-    const clamped = Math.max(-1, Math.min(1, samples[i]));
-    // Asymmetric on purpose: -1 maps to -32768 and +1 to 32767, the actual
-    // range of a signed 16-bit sample.
-    view.setInt16(44 + i * bytesPerSample, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true);
+    view.setInt16(44 + i * bytesPerSample, samples[i], true);
   }
 
   return buffer;

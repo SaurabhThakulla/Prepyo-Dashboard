@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/ui/toast';
 import { api, ApiError, errorMessage } from '@/lib/api';
-import { encodeForUpload, UPLOAD_FORMAT } from '@/lib/audio';
+import { encodeForUpload } from '@/lib/audio';
 import { typeKey } from '@/lib/syllabus';
 import { useQuestions } from '@/lib/hooks/useResources';
 import { Evaluation, PracticeAttempt, Question, SkillType } from '@/lib/types';
@@ -145,7 +145,7 @@ export function usePracticeSession() {
         const data = await api.post<{ evaluation: Evaluation; xpAwarded: number }>('/evaluations/speaking', {
           questionId: currentQuestion.id,
           audio: encoded.base64,
-          format: UPLOAD_FORMAT,
+          format: encoded.format,
           durationSeconds: encoded.durationSeconds,
         });
         setResult({ evaluation: data.evaluation, xpAwarded: data.xpAwarded });

@@ -25,7 +25,7 @@ import PromptAudio from '@/components/practice/PromptAudio';
 import QuestionNavigator from '@/components/practice/QuestionNavigator';
 import { Evaluation, PracticeAttempt, Question, SkillType } from '@/lib/types';
 import { api, ApiError, errorMessage } from '@/lib/api';
-import { encodeForUpload, UPLOAD_FORMAT } from '@/lib/audio';
+import { encodeForUpload } from '@/lib/audio';
 import { useToast } from '@/components/ui/toast';
 
 const GRADING: Record<SkillType, 'deterministic' | 'ai' | 'speech'> = {
@@ -135,7 +135,7 @@ export default function PracticePage() {
         const data = await api.post<{ evaluation: Evaluation; xpAwarded: number }>('/evaluations/speaking', {
           questionId: currentQuestion.id,
           audio: encoded.base64,
-          format: UPLOAD_FORMAT,
+          format: encoded.format,
           durationSeconds: encoded.durationSeconds,
         });
         setResult({ evaluation: data.evaluation, xpAwarded: data.xpAwarded });
