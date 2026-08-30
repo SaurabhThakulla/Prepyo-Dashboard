@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
+import QueryProvider from '@/context/QueryProvider';
 import { ToastProvider } from '@/components/ui/toast';
 import AppLayout from '@/components/layout/AppLayout';
 
@@ -25,11 +26,13 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-background text-foreground min-h-screen antialiased selection:bg-primary selection:text-white transition-colors duration-200">
-        <ToastProvider>
-          <AppProvider>
-            <AppLayout>{children}</AppLayout>
-          </AppProvider>
-        </ToastProvider>
+        <QueryProvider>
+          <ToastProvider>
+            <AppProvider>
+              <AppLayout>{children}</AppLayout>
+            </AppProvider>
+          </ToastProvider>
+        </QueryProvider>
       </body>
     </html>
   );
