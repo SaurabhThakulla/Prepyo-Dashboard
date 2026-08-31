@@ -36,6 +36,8 @@ export default function QuestionPrompt({ question }: { question: Question }) {
           <img
             src={question.imageUrl}
             alt={question.title}
+            loading="lazy"
+            decoding="async"
             className="rounded-lg max-h-60 object-cover w-full"
           />
         </div>

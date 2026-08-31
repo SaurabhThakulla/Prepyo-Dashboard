@@ -1,0 +1,36 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 760 440' width='760' height='440' role='img' aria-label='Sources of Electricity Generation'>
+<rect width='760' height='440' fill='#ffffff'/>
+<text x='24' y='34' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='19' font-weight='700' fill='#0f172a'>Sources of Electricity Generation</text>
+<text x='24' y='56' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='13' fill='#475569'>Share of total electricity generated, one country</text>
+<text x='190' y='110' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='15' font-weight='700' fill='#0f172a' text-anchor='middle'>1990</text>
+<path d='M190,250 L190.0,145.0 A105,105 0 1,1 176.8,354.2 Z' fill='#2563eb' stroke='#ffffff' stroke-width='2'/>
+<text x='259.16325228007923' y='258.35138300338144' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#ffffff' text-anchor='middle'>52%</text>
+<path d='M190,250 L176.8,354.2 A105,105 0 0,1 101.3,306.3 Z' fill='#f59e0b' stroke='#ffffff' stroke-width='2'/>
+<text x='152.86720310795556' y='312.51192523728963' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#ffffff' text-anchor='middle'>14%</text>
+<path d='M190,250 L101.3,306.3 A105,105 0 0,1 109.1,183.1 Z' fill='#10b981' stroke='#ffffff' stroke-width='2'/>
+<text x='120.83674771992078' y='249.64861699661859' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#ffffff' text-anchor='middle'>20%</text>
+<path d='M190,250 L109.1,183.1 A105,105 0 0,1 170.3,146.9 Z' fill='#ef4444' stroke='#ffffff' stroke-width='2'/>
+<text x='154.72342988849928' y='194.3505775286267' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#ffffff' text-anchor='middle'>11%</text>
+<path d='M190,250 L170.3,146.9 A105,105 0 0,1 190.0,145.0 Z' fill='#8b5cf6' stroke='#ffffff' stroke-width='2'/>
+<text x='490' y='110' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='15' font-weight='700' fill='#0f172a' text-anchor='middle'>2020</text>
+<path d='M490,250 L490.0,145.0 A105,105 0 0,1 585.0,205.3 Z' fill='#2563eb' stroke='#ffffff' stroke-width='2'/>
+<text x='527.1327968920444' y='195.48807476271037' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#ffffff' text-anchor='middle'>18%</text>
+<path d='M490,250 L585.0,205.3 A105,105 0 0,1 522.4,349.9 Z' fill='#f59e0b' stroke='#ffffff' stroke-width='2'/>
+<text x='553.6003955598999' y='281.5223488209903' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#ffffff' text-anchor='middle'>27%</text>
+<path d='M490,250 L522.4,349.9 A105,105 0 0,1 428.3,334.9 Z' fill='#10b981' stroke='#ffffff' stroke-width='2'/>
+<text x='479.159091572712' y='322.4468020032431' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#ffffff' text-anchor='middle'>15%</text>
+<path d='M490,250 L428.3,334.9 A105,105 0 0,1 386.9,269.7 Z' fill='#ef4444' stroke='#ffffff' stroke-width='2'/>
+<text x='431.48807476271037' y='291.13279689204444' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#ffffff' text-anchor='middle'>12%</text>
+<path d='M490,250 L386.9,269.7 A105,105 0 0,1 490.0,145.0 Z' fill='#8b5cf6' stroke='#ffffff' stroke-width='2'/>
+<text x='436.60343227563783' y='209.8265175104158' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#ffffff' text-anchor='middle'>28%</text>
+<rect x='70' y='391' width='12' height='12' rx='3' fill='#2563eb'/>
+<text x='88' y='401' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='600' fill='#0f172a' text-anchor='start'>Coal</text>
+<rect x='220' y='391' width='12' height='12' rx='3' fill='#f59e0b'/>
+<text x='238' y='401' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='600' fill='#0f172a' text-anchor='start'>Gas</text>
+<rect x='370' y='391' width='12' height='12' rx='3' fill='#10b981'/>
+<text x='388' y='401' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='600' fill='#0f172a' text-anchor='start'>Nuclear</text>
+<rect x='70' y='415' width='12' height='12' rx='3' fill='#ef4444'/>
+<text x='88' y='425' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='600' fill='#0f172a' text-anchor='start'>Hydro</text>
+<rect x='220' y='415' width='12' height='12' rx='3' fill='#8b5cf6'/>
+<text x='238' y='425' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='600' fill='#0f172a' text-anchor='start'>Wind and solar</text>
+</svg>

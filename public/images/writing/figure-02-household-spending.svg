@@ -1,0 +1,54 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 760 440' width='760' height='440' role='img' aria-label='Average Household Spending by Category'>
+<rect width='760' height='440' fill='#ffffff'/>
+<text x='24' y='34' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='19' font-weight='700' fill='#0f172a'>Average Household Spending by Category</text>
+<text x='24' y='56' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='13' fill='#475569'>Percentage of total monthly spending</text>
+<line x1='70' y1='378.0' x2='730' y2='378.0' stroke='#e2e8f0' stroke-width='1'/>
+<text x='60' y='382.0' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='end'>0</text>
+<line x1='70' y1='321.6' x2='730' y2='321.6' stroke='#e2e8f0' stroke-width='1'/>
+<text x='60' y='325.6' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='end'>8</text>
+<line x1='70' y1='265.2' x2='730' y2='265.2' stroke='#e2e8f0' stroke-width='1'/>
+<text x='60' y='269.2' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='end'>16</text>
+<line x1='70' y1='208.8' x2='730' y2='208.8' stroke='#e2e8f0' stroke-width='1'/>
+<text x='60' y='212.8' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='end'>24</text>
+<line x1='70' y1='152.4' x2='730' y2='152.4' stroke='#e2e8f0' stroke-width='1'/>
+<text x='60' y='156.4' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='end'>32</text>
+<line x1='70' y1='96.0' x2='730' y2='96.0' stroke='#e2e8f0' stroke-width='1'/>
+<text x='60' y='100.0' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='end'>40</text>
+<line x1='70' y1='96' x2='70' y2='378' stroke='#475569' stroke-width='1.5'/>
+<line x1='70' y1='378' x2='730' y2='378' stroke='#475569' stroke-width='1.5'/>
+<text x='28' y='237.0' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' fill='#475569' text-anchor='middle' transform='rotate(-90 28 237.0)'>% of spending</text>
+<rect x='90.6' y='208.8' width='30.4' height='169.2' rx='3' fill='#2563eb'/>
+<text x='105.8125' y='202.8' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>24</text>
+<rect x='125.0' y='131.2' width='30.4' height='246.8' rx='3' fill='#f59e0b'/>
+<text x='140.1875' y='125.25' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>35</text>
+<text x='125.0' y='397' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='middle'>Housing</text>
+<rect x='200.6' y='187.6' width='30.4' height='190.4' rx='3' fill='#2563eb'/>
+<text x='215.8125' y='181.64999999999998' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>27</text>
+<rect x='235.0' y='251.1' width='30.4' height='126.9' rx='3' fill='#f59e0b'/>
+<text x='250.1875' y='245.1' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>18</text>
+<text x='235.0' y='397' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='middle'>Food</text>
+<rect x='310.6' y='265.2' width='30.4' height='112.8' rx='3' fill='#2563eb'/>
+<text x='325.8125' y='259.2' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>16</text>
+<rect x='345.0' y='286.4' width='30.4' height='91.7' rx='3' fill='#f59e0b'/>
+<text x='360.1875' y='280.35' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>13</text>
+<text x='345.0' y='397' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='middle'>Transport</text>
+<rect x='420.6' y='321.6' width='30.4' height='56.4' rx='3' fill='#2563eb'/>
+<text x='435.8125' y='315.6' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>8</text>
+<rect x='455.0' y='293.4' width='30.4' height='84.6' rx='3' fill='#f59e0b'/>
+<text x='470.1875' y='287.4' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>12</text>
+<text x='455.0' y='397' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='middle'>Healthcare</text>
+<rect x='530.6' y='286.4' width='30.4' height='91.7' rx='3' fill='#2563eb'/>
+<text x='545.8125' y='280.35' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>13</text>
+<rect x='565.0' y='300.4' width='30.4' height='77.6' rx='3' fill='#f59e0b'/>
+<text x='580.1875' y='294.45' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>11</text>
+<text x='565.0' y='397' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='middle'>Leisure</text>
+<rect x='640.6' y='293.4' width='30.4' height='84.6' rx='3' fill='#2563eb'/>
+<text x='655.8125' y='287.4' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>12</text>
+<rect x='675.0' y='300.4' width='30.4' height='77.6' rx='3' fill='#f59e0b'/>
+<text x='690.1875' y='294.45' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>11</text>
+<text x='675.0' y='397' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='middle'>Other</text>
+<rect x='70' y='409' width='12' height='12' rx='3' fill='#2563eb'/>
+<text x='88' y='419' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='600' fill='#0f172a' text-anchor='start'>2005</text>
+<rect x='220' y='409' width='12' height='12' rx='3' fill='#f59e0b'/>
+<text x='238' y='419' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='600' fill='#0f172a' text-anchor='start'>2025</text>
+</svg>

@@ -1,0 +1,42 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 760 440' width='760' height='440' role='img' aria-label='The Glass Bottle Recycling Process'>
+<rect width='760' height='440' fill='#ffffff'/>
+<text x='24' y='34' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='19' font-weight='700' fill='#0f172a'>The Glass Bottle Recycling Process</text>
+<text x='24' y='56' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='13' fill='#475569'>Seven stages, from collection to redistribution</text>
+<rect x='46' y='110' width='152' height='62' rx='10' fill='#eff6ff' stroke='#2563eb' stroke-width='1.5'/>
+<text x='58' y='132' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#2563eb' text-anchor='start'>1</text>
+<text x='122.0' y='150' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11.5' font-weight='600' fill='#0f172a' text-anchor='middle'>Used bottles collected</text>
+<text x='122.0' y='164' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11.5' font-weight='600' fill='#0f172a' text-anchor='middle'>in kerbside bins</text>
+<rect x='256' y='110' width='152' height='62' rx='10' fill='#eff6ff' stroke='#2563eb' stroke-width='1.5'/>
+<text x='268' y='132' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#2563eb' text-anchor='start'>2</text>
+<text x='332.0' y='150' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11.5' font-weight='600' fill='#0f172a' text-anchor='middle'>Transported by lorry</text>
+<text x='332.0' y='164' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11.5' font-weight='600' fill='#0f172a' text-anchor='middle'>to sorting facility</text>
+<rect x='466' y='110' width='152' height='62' rx='10' fill='#eff6ff' stroke='#2563eb' stroke-width='1.5'/>
+<text x='478' y='132' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#2563eb' text-anchor='start'>3</text>
+<text x='542.0' y='150' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11.5' font-weight='600' fill='#0f172a' text-anchor='middle'>Sorted by colour:</text>
+<text x='542.0' y='164' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11.5' font-weight='600' fill='#0f172a' text-anchor='middle'>clear, green, brown</text>
+<rect x='466' y='250' width='152' height='62' rx='10' fill='#eff6ff' stroke='#2563eb' stroke-width='1.5'/>
+<text x='478' y='272' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#2563eb' text-anchor='start'>4</text>
+<text x='542.0' y='290' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11.5' font-weight='600' fill='#0f172a' text-anchor='middle'>Washed to remove</text>
+<text x='542.0' y='304' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11.5' font-weight='600' fill='#0f172a' text-anchor='middle'>labels and residue</text>
+<rect x='256' y='250' width='152' height='62' rx='10' fill='#eff6ff' stroke='#2563eb' stroke-width='1.5'/>
+<text x='268' y='272' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#2563eb' text-anchor='start'>5</text>
+<text x='332.0' y='290' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11.5' font-weight='600' fill='#0f172a' text-anchor='middle'>Crushed into fragments</text>
+<text x='332.0' y='304' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11.5' font-weight='600' fill='#0f172a' text-anchor='middle'>called cullet</text>
+<rect x='46' y='250' width='152' height='62' rx='10' fill='#eff6ff' stroke='#2563eb' stroke-width='1.5'/>
+<text x='58' y='272' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#2563eb' text-anchor='start'>6</text>
+<text x='122.0' y='290' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11.5' font-weight='600' fill='#0f172a' text-anchor='middle'>Melted at 1,500C</text>
+<text x='122.0' y='304' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11.5' font-weight='600' fill='#0f172a' text-anchor='middle'>with sand and</text>
+<rect x='256' y='355' width='152' height='62' rx='10' fill='#eff6ff' stroke='#2563eb' stroke-width='1.5'/>
+<text x='268' y='377' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='700' fill='#2563eb' text-anchor='start'>7</text>
+<text x='332.0' y='395' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11.5' font-weight='600' fill='#0f172a' text-anchor='middle'>Moulded into new</text>
+<text x='332.0' y='409' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11.5' font-weight='600' fill='#0f172a' text-anchor='middle'>containers and distributed</text>
+<defs><marker id='a' markerWidth='9' markerHeight='9' refX='8' refY='4.5' orient='auto'><path d='M0,0 L9,4.5 L0,9 z' fill='#475569'/></marker></defs>
+<path d='M198,141 L252,141' fill='none' stroke='#475569' stroke-width='1.8' stroke-linejoin='round' marker-end='url(#a)'/>
+<path d='M408,141 L462,141' fill='none' stroke='#475569' stroke-width='1.8' stroke-linejoin='round' marker-end='url(#a)'/>
+<path d='M542.0,172 L542.0,246' fill='none' stroke='#475569' stroke-width='1.8' stroke-linejoin='round' marker-end='url(#a)'/>
+<path d='M466,281 L412,281' fill='none' stroke='#475569' stroke-width='1.8' stroke-linejoin='round' marker-end='url(#a)'/>
+<path d='M256,281 L202,281' fill='none' stroke='#475569' stroke-width='1.8' stroke-linejoin='round' marker-end='url(#a)'/>
+<path d='M122.0,312 L122.0,386 L252,386' fill='none' stroke='#475569' stroke-width='1.8' stroke-linejoin='round' marker-end='url(#a)'/>
+<path d='M332.0,417 L332.0,414 L18,414 L18,141.0 L42,141.0' fill='none' stroke='#475569' stroke-width='1.8' stroke-linejoin='round' marker-end='url(#a)'/>
+<text x='730' y='426' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='end'>the cycle repeats</text>
+</svg>

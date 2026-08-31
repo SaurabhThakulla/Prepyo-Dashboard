@@ -1,0 +1,49 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 760 440' width='760' height='440' role='img' aria-label='University Enrolment by Subject and Sex'>
+<rect width='760' height='440' fill='#ffffff'/>
+<text x='24' y='34' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='19' font-weight='700' fill='#0f172a'>University Enrolment by Subject and Sex</text>
+<text x='24' y='56' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='13' fill='#475569'>Thousands of students enrolled</text>
+<line x1='70' y1='378.0' x2='730' y2='378.0' stroke='#e2e8f0' stroke-width='1'/>
+<text x='60' y='382.0' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='end'>0</text>
+<line x1='70' y1='321.6' x2='730' y2='321.6' stroke='#e2e8f0' stroke-width='1'/>
+<text x='60' y='325.6' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='end'>18</text>
+<line x1='70' y1='265.2' x2='730' y2='265.2' stroke='#e2e8f0' stroke-width='1'/>
+<text x='60' y='269.2' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='end'>36</text>
+<line x1='70' y1='208.8' x2='730' y2='208.8' stroke='#e2e8f0' stroke-width='1'/>
+<text x='60' y='212.8' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='end'>54</text>
+<line x1='70' y1='152.4' x2='730' y2='152.4' stroke='#e2e8f0' stroke-width='1'/>
+<text x='60' y='156.4' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='end'>72</text>
+<line x1='70' y1='96.0' x2='730' y2='96.0' stroke='#e2e8f0' stroke-width='1'/>
+<text x='60' y='100.0' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='end'>90</text>
+<line x1='70' y1='96' x2='70' y2='378' stroke='#475569' stroke-width='1.5'/>
+<line x1='70' y1='378' x2='730' y2='378' stroke='#475569' stroke-width='1.5'/>
+<text x='28' y='237.0' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' fill='#475569' text-anchor='middle' transform='rotate(-90 28 237.0)'>thousands</text>
+<rect x='94.8' y='121.1' width='37.2' height='256.9' rx='3' fill='#2563eb'/>
+<text x='113.375' y='115.06666666666666' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>82</text>
+<rect x='136.0' y='302.8' width='37.2' height='75.2' rx='3' fill='#f59e0b'/>
+<text x='154.625' y='296.8' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>24</text>
+<text x='136.0' y='397' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='middle'>Engineering</text>
+<rect x='226.8' y='249.5' width='37.2' height='128.5' rx='3' fill='#2563eb'/>
+<text x='245.375' y='243.53333333333333' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>41</text>
+<rect x='268.0' y='193.1' width='37.2' height='184.9' rx='3' fill='#f59e0b'/>
+<text x='286.625' y='187.13333333333333' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>59</text>
+<text x='268.0' y='397' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='middle'>Medicine</text>
+<rect x='358.8' y='171.2' width='37.2' height='206.8' rx='3' fill='#2563eb'/>
+<text x='377.375' y='165.20000000000002' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>66</text>
+<rect x='400.0' y='186.9' width='37.2' height='191.1' rx='3' fill='#f59e0b'/>
+<text x='418.625' y='180.86666666666665' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>61</text>
+<text x='400.0' y='397' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='middle'>Business</text>
+<rect x='490.8' y='321.6' width='37.2' height='56.4' rx='3' fill='#2563eb'/>
+<text x='509.375' y='315.6' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>18</text>
+<rect x='532.0' y='152.4' width='37.2' height='225.6' rx='3' fill='#f59e0b'/>
+<text x='550.625' y='146.39999999999998' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>72</text>
+<text x='532.0' y='397' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='middle'>Education</text>
+<rect x='622.8' y='146.1' width='37.2' height='231.9' rx='3' fill='#2563eb'/>
+<text x='641.375' y='140.13333333333335' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>74</text>
+<rect x='664.0' y='312.2' width='37.2' height='65.8' rx='3' fill='#f59e0b'/>
+<text x='682.625' y='306.2' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#475569' text-anchor='middle'>21</text>
+<text x='664.0' y='397' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='middle'>Computer Sci.</text>
+<rect x='70' y='409' width='12' height='12' rx='3' fill='#2563eb'/>
+<text x='88' y='419' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='600' fill='#0f172a' text-anchor='start'>Men</text>
+<rect x='220' y='409' width='12' height='12' rx='3' fill='#f59e0b'/>
+<text x='238' y='419' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='12' font-weight='600' fill='#0f172a' text-anchor='start'>Women</text>
+</svg>

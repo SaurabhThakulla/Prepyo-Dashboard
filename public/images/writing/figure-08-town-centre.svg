@@ -1,0 +1,32 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 760 440' width='760' height='440' role='img' aria-label='Redevelopment of Halton Town Centre'>
+<rect width='760' height='440' fill='#ffffff'/>
+<text x='24' y='34' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='19' font-weight='700' fill='#0f172a'>Redevelopment of Halton Town Centre</text>
+<text x='24' y='56' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='13' fill='#475569'>The same area before and after redevelopment</text>
+<text x='195' y='108' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='15' font-weight='700' fill='#0f172a' text-anchor='middle'>1990</text>
+<rect x='40' y='120' width='310' height='280' fill='#f8fafc' stroke='#cbd5e1'/>
+<path d='M40,350 Q195,330 350,355' fill='none' stroke='#93c5fd' stroke-width='14'/>
+<text x='52' y='392' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#2563eb' text-anchor='start'>River</text>
+<rect x='190' y='125' width='135' height='62' rx='4' fill='#ef4444' fill-opacity='0.35' stroke='#ef4444' stroke-width='1.5'/>
+<text x='257.5' y='160.0' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10.5' font-weight='700' fill='#0f172a' text-anchor='middle'>Factory</text>
+<rect x='86' y='240' width='105' height='58' rx='4' fill='#64748b' fill-opacity='0.35' stroke='#64748b' stroke-width='1.5'/>
+<text x='138.5' y='273.0' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10.5' font-weight='700' fill='#0f172a' text-anchor='middle'>Car park</text>
+<rect x='56' y='145' width='92' height='55' rx='4' fill='#8b5cf6' fill-opacity='0.35' stroke='#8b5cf6' stroke-width='1.5'/>
+<text x='102.0' y='176.5' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10.5' font-weight='700' fill='#0f172a' text-anchor='middle'>Station</text>
+<rect x='236' y='240' width='92' height='62' rx='4' fill='#10b981' fill-opacity='0.35' stroke='#10b981' stroke-width='1.5'/>
+<text x='282.0' y='275.0' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10.5' font-weight='700' fill='#0f172a' text-anchor='middle'>Housing</text>
+<text x='545' y='108' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='15' font-weight='700' fill='#0f172a' text-anchor='middle'>2020</text>
+<rect x='390' y='120' width='310' height='280' fill='#f8fafc' stroke='#cbd5e1'/>
+<path d='M390,350 Q545,330 700,355' fill='none' stroke='#93c5fd' stroke-width='14'/>
+<text x='402' y='392' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10' font-weight='600' fill='#2563eb' text-anchor='start'>River</text>
+<rect x='540' y='125' width='135' height='62' rx='4' fill='#10b981' fill-opacity='0.35' stroke='#10b981' stroke-width='1.5'/>
+<text x='607.5' y='160.0' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10.5' font-weight='700' fill='#0f172a' text-anchor='middle'>Park</text>
+<rect x='436' y='240' width='105' height='58' rx='4' fill='#f59e0b' fill-opacity='0.35' stroke='#f59e0b' stroke-width='1.5'/>
+<text x='488.5' y='273.0' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10.5' font-weight='700' fill='#0f172a' text-anchor='middle'>Shopping</text>
+<rect x='406' y='145' width='92' height='55' rx='4' fill='#8b5cf6' fill-opacity='0.35' stroke='#8b5cf6' stroke-width='1.5'/>
+<text x='452.0' y='176.5' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10.5' font-weight='700' fill='#0f172a' text-anchor='middle'>Station</text>
+<rect x='586' y='205' width='92' height='97' rx='4' fill='#10b981' fill-opacity='0.35' stroke='#10b981' stroke-width='1.5'/>
+<text x='632.0' y='257.5' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10.5' font-weight='700' fill='#0f172a' text-anchor='middle'>Housing</text>
+<rect x='508' y='337' width='78' height='20' rx='4' fill='#2563eb' fill-opacity='0.35' stroke='#2563eb' stroke-width='1.5'/>
+<text x='547.0' y='351.0' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='10.5' font-weight='700' fill='#0f172a' text-anchor='middle'>Bridge</text>
+<text x='40' y='428' font-family='ui-sans-serif,Segoe UI,Helvetica,Arial,sans-serif' font-size='11' font-weight='400' fill='#475569' text-anchor='start'>N ↑   Both maps show the same area at the same scale.</text>
+</svg>
