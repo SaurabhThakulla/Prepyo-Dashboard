@@ -21,7 +21,7 @@ export default function ScoreReport({ attempt, outcome, onBack }: ScoreReportPro
   const skillScores = Object.entries(attempt.skillScores ?? {});
 
   return (
-    <Card className="border-primary/40 p-6 sm:p-8 space-y-6">
+    <Card className="border-primary/40 p-6 sm:p-8 space-y-6 mx-4 sm:mx-6 lg:mx-8 my-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div>
           <div className="flex items-center gap-2">

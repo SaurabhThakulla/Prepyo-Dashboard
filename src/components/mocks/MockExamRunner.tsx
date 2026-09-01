@@ -53,7 +53,7 @@ export default function MockExamRunner({
   const isLastQuestion = currentIndex >= questions.length - 1;
 
   return (
-    <div className="space-y-6">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
       <div className="bg-card border border-border p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4 sticky top-20 z-30 shadow-xl backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <Badge variant="default">{mock.exam}</Badge>

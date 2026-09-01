@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '@/context/AppContext';
@@ -11,23 +11,14 @@ import { useToast } from '@/components/ui/toast';
 import { useMocks, useMockAttempts } from '@/lib/hooks/useResources';
 import { useMockExam } from '@/lib/hooks/useMockExam';
 import { useReadingMock } from '@/lib/hooks/useReading';
-import MockCatalog from '@/components/mocks/MockCatalog';
-import MockExamRunner from '@/components/mocks/MockExamRunner';
-import ReadingMockRunner from '@/components/reading/ReadingMockRunner';
-import ScoreReport from '@/components/mocks/ScoreReport';
+import MockStartPanel from '@/components/mocks/MockStartPanel';
 import ScoreReportList from '@/components/mocks/ScoreReportList';
+import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
 
-/**
- * The Mock Exam Center. This page shows one of four screens:
- *
- *   1. A score report, right after submitting          (exam.outcome)
- *   2. A score report for an old attempt               (reviewAttempt)
- *   3. The live exam                                   (exam.activeMock)
- *   4. The catalog / past reports hub                  (default)
- *
- * Everything that happens *during* an exam lives in `useMockExam`. This file
- * only loads the mock list and decides which screen to render.
- */
+const MockExamRunner = lazy(() => import('@/components/mocks/MockExamRunner'));
+const ReadingMockRunner = lazy(() => import('@/components/reading/ReadingMockRunner'));
+const ScoreReport = lazy(() => import('@/components/mocks/ScoreReport'));
+
 export default function MocksPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -47,8 +38,6 @@ export default function MocksPage() {
   const loading = mocksQuery.isPending || attemptsQuery.isPending;
   const loadError = mocksQuery.error ?? attemptsQuery.error;
 
-  // A finished attempt goes into the cache directly, so the report list shows
-  // it without waiting for a refetch.
   const addAttempt = useCallback(
     (attempt: MockAttempt) => {
       queryClient.setQueryData(
@@ -62,10 +51,6 @@ export default function MocksPage() {
   );
 
   const exam = useMockExam(addAttempt);
-
-  // A generated mock has no fixed question list, so it cannot go through
-  // useMockExam: its paper is composed when the learner starts it, and it is
-  // submitted to that paper's own session rather than to the blueprint.
   const readingMock = useReadingMock(activeExam, addAttempt);
 
   const startMock = useCallback(
@@ -73,13 +58,14 @@ export default function MocksPage() {
     [exam, readingMock],
   );
 
+  const startableMock = mocks.find(mock => !mock.isDiagnostic) ?? mocks[0] ?? null;
+  const isStartingMock =
+    readingMock.starting || (startableMock != null && exam.startingMockId === startableMock.id);
+
   useEffect(() => {
     if (loadError) toast.error('Could not load mock exams', errorMessage(loadError));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadError]);
 
-  // /diagnostic hands off here with ?start=<mockId> so there is only one exam
-  // runner in the app.
   const startParam = searchParams.get('start');
   useEffect(() => {
     if (!startParam || exam.activeMock || loading) return;
@@ -95,52 +81,66 @@ export default function MocksPage() {
     setReviewAttempt(null);
   };
 
-  // ── 1 & 2. Score reports ──
   if (readingMock.outcome) {
     return (
-      <ScoreReport
-        attempt={readingMock.outcome.attempt}
-        outcome={readingMock.outcome}
-        onBack={readingMock.exit}
-      />
+      <Suspense fallback={<AppPageSkeleton />}>
+        <ScoreReport
+          attempt={readingMock.outcome.attempt}
+          outcome={readingMock.outcome}
+          onBack={readingMock.exit}
+        />
+      </Suspense>
     );
   }
   if (exam.outcome) {
-    return <ScoreReport attempt={exam.outcome.attempt} outcome={exam.outcome} onBack={leaveReport} />;
+    return (
+      <Suspense fallback={<AppPageSkeleton />}>
+        <ScoreReport attempt={exam.outcome.attempt} outcome={exam.outcome} onBack={leaveReport} />
+      </Suspense>
+    );
   }
   if (reviewAttempt) {
-    return <ScoreReport attempt={reviewAttempt} onBack={leaveReport} />;
+    return (
+      <Suspense fallback={<AppPageSkeleton />}>
+        <ScoreReport attempt={reviewAttempt} onBack={leaveReport} />
+      </Suspense>
+    );
   }
 
   // ── 3. Live exam ──
   if (readingMock.session) {
-    return <ReadingMockRunner session={readingMock.session} mock={readingMock} />;
+    return (
+      <Suspense fallback={<AppPageSkeleton />}>
+        <ReadingMockRunner session={readingMock.session} mock={readingMock} />
+      </Suspense>
+    );
   }
   if (exam.activeMock) {
     return (
-      <MockExamRunner
-        mock={exam.activeMock}
-        questions={exam.questions}
-        currentIndex={exam.currentIndex}
-        currentQuestion={exam.currentQuestion}
-        secondsLeft={exam.secondsLeft}
-        answers={exam.answers}
-        flaggedIds={exam.flaggedIds}
-        isSubmitting={exam.isSubmitting}
-        onAnswer={exam.answerQuestion}
-        onToggleFlag={exam.toggleFlag}
-        onGoToIndex={exam.goToIndex}
-        onPrevious={exam.goToPrevious}
-        onNext={exam.goToNext}
-        onFinish={exam.finish}
-        onExit={exam.exit}
-      />
+      <Suspense fallback={<AppPageSkeleton />}>
+        <MockExamRunner
+          mock={exam.activeMock}
+          questions={exam.questions}
+          currentIndex={exam.currentIndex}
+          currentQuestion={exam.currentQuestion}
+          secondsLeft={exam.secondsLeft}
+          answers={exam.answers}
+          flaggedIds={exam.flaggedIds}
+          isSubmitting={exam.isSubmitting}
+          onAnswer={exam.answerQuestion}
+          onToggleFlag={exam.toggleFlag}
+          onGoToIndex={exam.goToIndex}
+          onPrevious={exam.goToPrevious}
+          onNext={exam.goToNext}
+          onFinish={exam.finish}
+          onExit={exam.exit}
+        />
+      </Suspense>
     );
   }
 
-  // ── 4. Catalog / reports hub ──
   return (
-    <div className="space-y-6">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">{activeExam} Mock Exam Center</h1>
@@ -176,20 +176,15 @@ export default function MocksPage() {
           onBrowseCatalog={() => navigate('/mocks?tab=catalog')}
         />
       ) : (
-        <MockCatalog
-          mocks={mocks}
+        <MockStartPanel
+          mock={startableMock}
           exam={activeExam}
-          startingMockId={readingMock.starting ? generatedMockId(mocks) : exam.startingMockId}
+          isStarting={isStartingMock}
           onStart={startMock}
         />
       )}
     </div>
   );
-}
-
-/** The blueprint the reading mock flow is starting, for the card spinner. */
-function generatedMockId(mocks: Mock[]): string | null {
-  return mocks.find(mock => mock.isGenerated)?.id ?? null;
 }
 
 interface TabButtonProps {
