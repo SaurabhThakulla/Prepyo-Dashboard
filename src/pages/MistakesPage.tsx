@@ -2,243 +2,248 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import {
   CheckCircle2,
+  XCircle,
   RefreshCw,
-  RotateCcw,
+  AlertCircle,
+  BookOpen,
   Sparkles,
-  Check,
-  AlertCircle
+  Search,
+  Tag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Mistake } from '@/lib/types';
-import { api, errorMessage } from '@/lib/api';
+import { errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { useMistakes } from '@/lib/hooks/useResources';
-import { queryKeys } from '@/lib/queryKeys';
-import { useQueryClient } from '@tanstack/react-query';
+
+function renderResponseBadges(text: string, isWrong: boolean) {
+  if (!text) return <span className="text-muted-foreground italic text-xs">No response</span>;
+
+  // If format is like "b1: val, b2: val"
+  if (/b\d+:/.test(text)) {
+    const parts = text.split(/,\s*/);
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {parts.map((part, i) => {
+          const colonIdx = part.indexOf(':');
+          const key = colonIdx > -1 ? part.slice(0, colonIdx) : `Gap ${i + 1}`;
+          const val = colonIdx > -1 ? part.slice(colonIdx + 1).trim() : part.trim();
+          return (
+            <span
+              key={i}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-medium border ${
+                isWrong
+                  ? 'bg-rose-50/80 dark:bg-rose-950/30 border-rose-200/80 dark:border-rose-900/50 text-rose-700 dark:text-rose-300'
+                  : 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-300'
+              }`}
+            >
+              <span className="font-bold opacity-70">{key}:</span>
+              <span>{val || '—'}</span>
+            </span>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Default clean text presentation
+  return (
+    <p
+      className={`text-xs sm:text-sm font-medium leading-relaxed ${
+        isWrong ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300'
+      }`}
+    >
+      {text}
+    </p>
+  );
+}
 
 export default function MistakesPage() {
-  const { activeExam, refreshUser } = useApp();
+  const { activeExam } = useApp();
   const toast = useToast();
-  const queryClient = useQueryClient();
   const [selectedSkill, setSelectedSkill] = useState<string>('all');
-  const [unresolvedOnly, setUnresolvedOnly] = useState(false);
-  const [activeReplayItem, setActiveReplayItem] = useState<Mistake | null>(null);
-  const [replayAnswer, setReplayAnswer] = useState('');
-  const [replaySuccess, setReplaySuccess] = useState<boolean | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const { data, isPending, error } = useMistakes(activeExam, selectedSkill, unresolvedOnly);
+  const { data, isPending, error } = useMistakes(activeExam, selectedSkill, false);
   const mistakes = data?.mistakes ?? [];
   const loading = isPending;
 
   useEffect(() => {
     if (error) toast.error('Could not load your mistake bank', errorMessage(error));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error]);
 
-  const handleResolve = async (id: string) => {
-    try {
-      await api.post(`/mistakes/${id}/resolve`);
-
-      // Mark it resolved in the cache straight away so the row updates without
-      // a refetch, then let the dashboard's unresolved count re-read.
-      queryClient.setQueryData(
-        queryKeys.mistakes(activeExam, selectedSkill, unresolvedOnly),
-        (previous: typeof data) =>
-          previous && {
-            ...previous,
-            mistakes: previous.mistakes.map(m => (m.id === id ? { ...m, resolved: true } : m)),
-          },
-      );
-      queryClient.invalidateQueries({ queryKey: queryKeys.unresolvedMistakeCount() });
-
-      // XP is awarded server-side; pull the new total rather than guessing it.
-      await refreshUser();
-    } catch (err) {
-      toast.error('Could not resolve that mistake', errorMessage(err));
-    }
-  };
-
-  const handleCheckReplay = () => {
-    if (!activeReplayItem) return;
-    const isCorrect = replayAnswer.trim().toLowerCase() === activeReplayItem.correctResponse.trim().toLowerCase();
-    setReplaySuccess(isCorrect);
-    if (isCorrect) {
-      handleResolve(activeReplayItem.id);
-    }
-  };
-
-  // The API filters by skill, so these are the filters that actually work.
   const skillFilters = ['all', 'speaking', 'writing', 'reading', 'listening'];
 
+  const filteredMistakes = mistakes.filter(item => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      item.questionTitle?.toLowerCase().includes(q) ||
+      item.prompt?.toLowerCase().includes(q) ||
+      item.explanation?.toLowerCase().includes(q) ||
+      item.errorTag?.toLowerCase().includes(q) ||
+      item.typeName?.toLowerCase().includes(q)
+    );
+  });
+
   return (
-    <div className="space-y-6">
-      
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">Mistake Bank & Spaced Review</h1>
-          <p className="text-xs text-muted-foreground">
-            Review errors made during practice tasks and replay them to achieve mastery.
-          </p>
-        </div>
-
-        <Badge variant="outline" className="text-xs px-3 py-1">
-          {mistakes.filter(m => !m.resolved).length} Unresolved Mistakes
-        </Badge>
-      </div>
-
-      {/* Filter Tag Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-muted/40 p-3 rounded-2xl border border-border">
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-          {skillFilters.map(t => (
-            <Button
-              key={t}
-              size="sm"
-              variant={selectedSkill === t ? 'default' : 'ghost'}
-              onClick={() => setSelectedSkill(t)}
-              className="text-xs font-bold whitespace-nowrap h-8"
-            >
-              {t.toUpperCase()}
-            </Button>
-          ))}
-        </div>
-
-        <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground cursor-pointer">
-          <input
-            type="checkbox"
-            checked={unresolvedOnly}
-            onChange={(e) => setUnresolvedOnly(e.target.checked)}
-            className="rounded bg-background border-border text-primary focus:ring-0"
-          />
-          <span>Show Unresolved Only</span>
-        </label>
-      </div>
-
-      {/* Replay Modal */}
-      {activeReplayItem && (
-        <Card className="border-primary/40 p-6 space-y-4 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between border-b border-border pb-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-amber-400" />
-              <CardTitle className="text-sm">Replay: {activeReplayItem.questionTitle}</CardTitle>
+    <div className="w-full pb-16 space-y-6">
+      {/* Full width edge-to-edge Header Banner matching ProfilePage */}
+      <div className="w-full bg-card border-b border-border/80 overflow-hidden">
+        <div className="px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2.5">
+              <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+                Mistake Bank
+              </h1>
+              <Badge variant="outline" className="text-xs font-mono font-bold px-2.5 py-0.5">
+                {activeExam}
+              </Badge>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => setActiveReplayItem(null)} className="h-7 text-xs">
-              Close ✕
-            </Button>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Review errors from your practice sessions and mock tests to analyze correct solutions and examiner explanations.
+            </p>
           </div>
 
-          <div className="space-y-3">
-            <div className="p-4 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed">
-              {activeReplayItem.prompt}
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-foreground">Type the correct answer:</label>
-              <Input
-                value={replayAnswer}
-                onChange={(e) => setReplayAnswer(e.target.value)}
-                placeholder="Type the corrected answer..."
-              />
-            </div>
-
-            {replaySuccess !== null && (
-              <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
-                replaySuccess ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30' : 'bg-destructive/20 text-rose-600 dark:text-rose-400 border border-destructive/30'
-              }`}>
-                {replaySuccess ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span>Correct! Mistake resolved (+30 XP).</span>
-                  </>
-                ) : (
-                  <>
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>Incorrect. Hint: &quot;{activeReplayItem.correctResponse}&quot;</span>
-                  </>
-                )}
-              </div>
-            )}
-
-            <Button onClick={handleCheckReplay} size="sm" className="font-bold text-xs">
-              Verify Answer
-            </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs font-mono font-bold text-muted-foreground uppercase tracking-wider bg-muted/80 px-3 py-1.5 rounded-xl border border-border shadow-xs">
+              {mistakes.length} Logged Mistakes
+            </span>
           </div>
-        </Card>
-      )}
+        </div>
+      </div>
+
+      {/* Main Content: Filters & Mistake Cards stretching full width */}
+      <div className="w-full px-4 sm:px-6 lg:px-8 space-y-6">
+        {/* Filter Tag & Search Bar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-muted/40 p-2.5 sm:p-3 rounded-2xl border border-border/80">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            {skillFilters.map(t => (
+              <Button
+                key={t}
+                size="sm"
+                variant={selectedSkill === t ? 'default' : 'ghost'}
+                onClick={() => setSelectedSkill(t)}
+                className="text-xs font-bold whitespace-nowrap h-8 rounded-xl capitalize"
+              >
+                {t}
+              </Button>
+            ))}
+          </div>
+
+          <div className="relative min-w-[220px] sm:max-w-xs">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search mistakes or topics…"
+              className="h-8 pl-8 text-xs bg-background rounded-xl border-border/80"
+            />
+          </div>
+        </div>
 
       {loading ? (
-        <div className="text-center py-16 bg-card rounded-2xl border border-border">
+        <div className="text-center py-24 bg-card rounded-2xl border border-border/80">
           <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
+          <p className="text-xs text-muted-foreground mt-2 font-medium">Loading your mistake log…</p>
         </div>
-      ) : mistakes.length === 0 ? (
-        <Card className="p-12 text-center space-y-3">
-          <CheckCircle2 className="w-10 h-10 text-nepal-emerald mx-auto" />
-          <CardTitle className="text-base">Nothing here</CardTitle>
-          <CardDescription>
-            Questions you get wrong in practice and mock exams are collected here automatically.
+      ) : filteredMistakes.length === 0 ? (
+        <Card className="p-12 text-center space-y-3 rounded-2xl border-border/80">
+          <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
+          <CardTitle className="text-base font-bold">
+            {mistakes.length === 0 ? 'No mistakes recorded yet' : 'No matching mistakes found'}
+          </CardTitle>
+          <CardDescription className="text-xs max-w-md mx-auto">
+            {mistakes.length === 0
+              ? 'Questions you miss during practice and full mock exams will be automatically catalogued here for review.'
+              : 'Try clearing your search query or switching to another skill filter.'}
           </CardDescription>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {mistakes.map(item => (
-            <Card key={item.id} className={`p-5 space-y-3 ${item.resolved ? 'opacity-70 border-border/50' : 'hover:border-primary/40'}`}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Badge variant="default">{item.typeName}</Badge>
-                  <Badge variant="warning">{item.errorTag}</Badge>
-                  {item.resolved && <Badge variant="success">Resolved</Badge>}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => { setActiveReplayItem(item); setReplayAnswer(''); setReplaySuccess(null); }}
-                    className="font-bold text-xs gap-1.5 h-8"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Replay</span>
-                  </Button>
-                  {!item.resolved && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleResolve(item.id)}
-                      className="font-bold text-xs gap-1.5 h-8"
-                    >
-                      <Check className="w-3.5 h-3.5 text-nepal-emerald" />
-                      <span>Resolve</span>
-                    </Button>
+        <div className="space-y-4">
+          {filteredMistakes.map(item => (
+            <div
+              key={item.id}
+              className="rounded-2xl border border-border/80 bg-card p-6 shadow-xs hover:border-primary/30 hover:shadow-md transition-all duration-200 space-y-4"
+            >
+              {/* Header row: Skill & metadata pills */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
+                    {item.typeName}
+                  </span>
+                  {item.skill && (
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/80 px-2.5 py-0.5 rounded-md border border-border">
+                      {item.skill}
+                    </span>
+                  )}
+                  {item.errorTag && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-md border border-amber-500/20">
+                      <Tag className="w-3 h-3" />
+                      <span>{item.errorTag}</span>
+                    </span>
                   )}
                 </div>
               </div>
 
-              <h4 className="font-display font-bold text-sm text-foreground">{item.questionTitle}</h4>
-              <p className="text-xs text-muted-foreground bg-background p-3 rounded-xl border border-border leading-relaxed">
-                {item.prompt}
-              </p>
+              {/* Title & Prompt Context */}
+              <div className="space-y-1.5">
+                <h3 className="font-display font-bold text-base sm:text-lg text-foreground tracking-tight">
+                  {item.questionTitle}
+                </h3>
+                {item.prompt && (
+                  <p className="text-xs sm:text-[13px] text-muted-foreground leading-relaxed">
+                    {item.prompt}
+                  </p>
+                )}
+              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 space-y-1">
-                  <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase">Your Wrong Attempt:</span>
-                  <div className="text-rose-700 dark:text-rose-200 font-semibold">{item.userResponse}</div>
+              {/* Response Comparison Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 rounded-xl border border-border/80 divide-y sm:divide-y-0 sm:divide-x divide-border/80 bg-muted/15 overflow-hidden">
+                {/* Your Response */}
+                <div className="p-4 space-y-2.5 bg-background/50">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400">
+                    <XCircle className="w-4 h-4 shrink-0" />
+                    <span>Your Response</span>
+                  </div>
+                  <div>
+                    {renderResponseBadges(item.userResponse, true)}
+                  </div>
                 </div>
-                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
-                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">Correct Answer:</span>
-                  <div className="text-emerald-700 dark:text-emerald-200 font-semibold">{item.correctResponse}</div>
+
+                {/* Correct Solution */}
+                <div className="p-4 space-y-2.5 bg-background/80">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span>Correct Solution</span>
+                  </div>
+                  <div>
+                    {renderResponseBadges(item.correctResponse, false)}
+                  </div>
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-background border border-border text-xs text-muted-foreground space-y-1">
-                <span className="text-[10px] font-bold text-foreground uppercase">Examiner Explanation:</span>
-                <p className="leading-relaxed text-foreground">{item.explanation}</p>
-              </div>
-            </Card>
+              {/* Examiner Explanation Callout */}
+              {item.explanation && (
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/30 text-xs sm:text-[13px]">
+                  <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300 block">
+                      Examiner Explanation
+                    </span>
+                    <p className="text-foreground/90 leading-relaxed font-normal">
+                      {item.explanation}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }
