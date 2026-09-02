@@ -38,7 +38,7 @@ export default function SecondaryNavList({
             const startsGroup = Boolean(item.group) && item.group !== previousGroup;
 
             return (
-              <React.Fragment key={item.href ?? item.label}>
+              <React.Fragment key={`${item.href ?? item.label}-${index}`}>
                 {startsGroup && <GroupHeading item={item} onNavigate={onNavigate} />}
                 <Tooltip>
                   <TooltipTrigger asChild>

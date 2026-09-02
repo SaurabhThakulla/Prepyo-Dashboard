@@ -40,24 +40,36 @@
           "description": "Read long stories/articles and answer questions about them",
           "topics": [
             {
-              "name": "Answer according to paragraph",
-              "simpleDescription": "Find specific facts inside the reading text to answer questions"
+              "name": "Complete the sentences",
+              "simpleDescription": "Fill in missing words in sentences using words taken directly from the passage"
             },
             {
-              "name": "Find out the writer",
-              "simpleDescription": "Match opinions and statements with the people who said them"
+              "name": "True and False",
+              "simpleDescription": "Decide whether statements agree with facts or are false according to the text"
             },
             {
-              "name": "Topic of the paragraph",
-              "simpleDescription": "Choose the best title or main idea for each paragraph"
+              "name": "Find the writer",
+              "simpleDescription": "Match opinions, claims, and theories with the specific writers or researchers"
             },
             {
-              "name": "True / False / Not Given",
-              "simpleDescription": "Decide if statements match the facts, disagree, or are missing from the text"
+              "name": "Arrange the passage",
+              "simpleDescription": "Organize paragraphs or sentences into their correct logical order"
             },
             {
-              "name": "Fill in the blanks",
-              "simpleDescription": "Put missing words into a summary using words from the story"
+              "name": "Yes / No / Not Given",
+              "simpleDescription": "Identify if statements agree with, contradict, or are not mentioned in the writer's views"
+            },
+            {
+              "name": "Sentence completions",
+              "simpleDescription": "Complete sentences using key terms and ideas directly from the passage"
+            },
+            {
+              "name": "Matching information",
+              "simpleDescription": "Match specific information, details, or characteristics to the correct paragraphs"
+            },
+            {
+              "name": "Yes / No / Not Given",
+              "simpleDescription": "Determine if statements match the author's arguments and claims in the passage"
             }
           ]
         },
