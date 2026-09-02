@@ -98,12 +98,57 @@ async function request<T>(method: string, path: string, options: { body?: unknow
   return payload as T;
 }
 
+/**
+ * Sends a file as the raw request body.
+ *
+ * Profile pictures go up as bytes rather than base64 in JSON: the server sniffs
+ * the content type from the bytes anyway, and base64 would add a third to every
+ * upload for nothing.
+ */
+async function upload<T>(path: string, file: Blob): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(buildPath(path), {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      body: file,
+    });
+  } catch {
+    throw new ApiError(0, { code: 'network_error', message: '' });
+  }
+
+  let payload: any;
+  try {
+    payload = await res.json();
+  } catch {
+    throw new ApiError(res.status, { code: 'bad_response', message: '' });
+  }
+
+  if (!res.ok || payload?.success === false) {
+    const err: ApiErrorBody = payload?.error ?? {
+      code: 'internal_error',
+      message: 'Something went wrong. Please try again.',
+    };
+    throw new ApiError(res.status, err);
+  }
+  return payload as T;
+}
+
 export const api = {
   get: <T>(path: string, query?: Query) => request<T>('GET', path, { query }),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, { body }),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, { body }),
   delete: <T>(path: string, body?: unknown) => request<T>('DELETE', path, { body }),
+  upload,
 };
+
+/** Where a stored profile picture is served from. */
+export function profileImageUrl(kind: 'avatar' | 'cover', updatedAt: string): string {
+  // The timestamp is the cache key: the URL is stable until the image changes,
+  // and changes the moment it does.
+  return `/api/v1/profile/${kind}?v=${encodeURIComponent(updatedAt)}`;
+}
 
 /**
  * Wording this app owns, keyed by the stable error code.

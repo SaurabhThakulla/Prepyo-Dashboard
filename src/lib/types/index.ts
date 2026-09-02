@@ -72,6 +72,13 @@ export interface UserProfile {
   level: number;
   xpToNextLevel: number;
 
+  /**
+   * When a profile picture was last set, absent when there is none. Doubles as
+   * the cache key for the image URL — see profileImageUrl in lib/api.
+   */
+  avatarUpdatedAt?: string;
+  coverUpdatedAt?: string;
+
   // Only present on endpoints that ask for them.
   estimate?: ScoreEstimate;
   subscription?: SubscriptionState;
@@ -275,12 +282,36 @@ export interface SkillProgress {
   accuracy: number;
   estimate: number | null;
   /** 'no_data' until the learner has attempted something in this skill. */
-  status: 'no_data' | 'weak' | 'moderate' | 'strong';
+  status: 'no_data' | 'needs_work' | 'steady' | 'strong';
 }
 
 export interface ProgressSummary {
   estimate: ScoreEstimate;
   skills: SkillProgress[];
+}
+
+/**
+ * One practised day, bucketed in the learner's own timezone by the server.
+ *
+ * Only days with attempts are sent, so the heatmap fills its own blanks. An
+ * absent date means no practice, never "not loaded yet".
+ */
+export interface ActivityDay {
+  /** YYYY-MM-DD in the learner's timezone. */
+  date: string;
+  count: number;
+  minutes: number;
+  skills: Partial<Record<SkillType, number>>;
+}
+
+export interface ActivitySummary {
+  from: string;
+  to: string;
+  days: ActivityDay[];
+  totalSessions: number;
+  totalMinutes: number;
+  currentStreak: number;
+  longestStreak: number;
 }
 
 export interface DailyMission {
