@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { ExamType, LeaderboardEntry } from '@/lib/types';
-import { fixtureLeaderboard, fixtureLeaderboardRegions, USE_FIXTURES } from '@/lib/fixtures';
 
 export type LeaderboardPeriod = 'weekly' | 'monthly' | 'all-time';
 
@@ -30,9 +29,6 @@ export function useLeaderboard(
         region: region === 'all' ? undefined : region,
         period,
       }),
-    placeholderData: USE_FIXTURES
-      ? { leaderboard: fixtureLeaderboard(exam), regions: fixtureLeaderboardRegions() }
-      : undefined,
   });
 }
 

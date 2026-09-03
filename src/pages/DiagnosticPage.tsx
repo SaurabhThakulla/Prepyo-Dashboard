@@ -62,7 +62,7 @@ export default function DiagnosticPage() {
   const skills = Array.from(new Set(diagnostic.sections.map(s => s.skill)));
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 py-4">
+    <div className="max-w-4xl mx-auto space-y-8 px-4 sm:px-6 py-6 pb-12">
       <Card className="p-8 sm:p-12 text-center space-y-6">
         <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto border border-amber-500/20">
           <Zap className="w-8 h-8 fill-amber-400" />

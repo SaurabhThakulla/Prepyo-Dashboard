@@ -133,7 +133,7 @@ export default function AdminPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
 
       <div className="border-b border-border pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
