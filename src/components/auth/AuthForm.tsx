@@ -18,13 +18,12 @@ export default function AuthForm({ form, onSocialSelect }: AuthFormProps) {
   const emailId = useId();
   const passwordId = useId();
 
-  const { mode, fieldErrors, error, loading } = form;
+  const { mode, fieldErrors, loading } = form;
   const isSignup = mode === 'signup';
   const strength = passwordStrength(form.password);
 
   const inputClass = (field: string) =>
-    `w-full rounded-xl border bg-card pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all font-medium shadow-xs ${
-      fieldErrors[field] ? 'border-destructive focus:border-destructive' : 'border-input focus:border-primary'
+    `w-full rounded-xl border bg-card pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all font-medium shadow-xs ${fieldErrors[field] ? 'border-destructive focus:border-destructive' : 'border-input focus:border-primary'
     }`;
 
   return (
@@ -43,14 +42,6 @@ export default function AuthForm({ form, onSocialSelect }: AuthFormProps) {
       </div>
 
       <SocialSignInButtons onSelect={onSocialSelect} />
-
-      {error && (
-        <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs font-medium flex items-center gap-2 animate-in fade-in">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
       <form onSubmit={form.submit} className="space-y-3">
         {isSignup && (
           <div className="space-y-1.5 animate-in fade-in duration-200">
@@ -207,9 +198,8 @@ function ModeSwitcher({ mode, onSwitch }: { mode: AuthMode; onSwitch: (mode: Aut
           key={tab.value}
           type="button"
           onClick={() => onSwitch(tab.value)}
-          className={`flex-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-            mode === tab.value ? tab.activeClass : 'text-muted-foreground hover:text-foreground'
-          }`}
+          className={`flex-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${mode === tab.value ? tab.activeClass : 'text-muted-foreground hover:text-foreground'
+            }`}
         >
           {tab.label}
         </button>
