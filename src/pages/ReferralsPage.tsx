@@ -68,7 +68,7 @@ export default function ReferralsPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto py-4">
+    <div className="space-y-8 max-w-5xl mx-auto px-4 sm:px-6 py-6 pb-12">
       {/* Hero Header */}
       <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-br from-card via-card/90 to-primary/10 p-6 sm:p-10 shadow-xl space-y-6">
         <div className="absolute top-0 right-0 w-80 h-80 bg-primary/15 blur-3xl rounded-full pointer-events-none -z-10" />
