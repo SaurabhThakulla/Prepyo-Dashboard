@@ -5,13 +5,15 @@ import { useApp } from '@/context/AppContext';
 import { queryKeys } from '@/lib/queryKeys';
 import { Award, RefreshCw, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { MockAttempt } from '@/lib/types';
+import { Mock, MockAttempt } from '@/lib/types';
 import { errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { useMocks, useMockAttempts } from '@/lib/hooks/useResources';
 import { useMockExam } from '@/lib/hooks/useMockExam';
+import { useReadingMock } from '@/lib/hooks/useReading';
 import MockCatalog from '@/components/mocks/MockCatalog';
 import MockExamRunner from '@/components/mocks/MockExamRunner';
+import ReadingMockRunner from '@/components/reading/ReadingMockRunner';
 import ScoreReport from '@/components/mocks/ScoreReport';
 import ScoreReportList from '@/components/mocks/ScoreReportList';
 
@@ -61,6 +63,16 @@ export default function MocksPage() {
 
   const exam = useMockExam(addAttempt);
 
+  // A generated mock has no fixed question list, so it cannot go through
+  // useMockExam: its paper is composed when the learner starts it, and it is
+  // submitted to that paper's own session rather than to the blueprint.
+  const readingMock = useReadingMock(activeExam, addAttempt);
+
+  const startMock = useCallback(
+    (mock: Mock) => (mock.isGenerated ? void readingMock.start() : exam.start(mock)),
+    [exam, readingMock],
+  );
+
   useEffect(() => {
     if (loadError) toast.error('Could not load mock exams', errorMessage(loadError));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -73,10 +85,10 @@ export default function MocksPage() {
     if (!startParam || exam.activeMock || loading) return;
     const target = mocks.find(mock => mock.id === startParam);
     if (target) {
-      exam.start(target);
+      startMock(target);
       navigate('/mocks', { replace: true });
     }
-  }, [startParam, exam, loading, mocks, navigate]);
+  }, [startParam, exam, loading, mocks, navigate, startMock]);
 
   const leaveReport = () => {
     exam.exit();
@@ -84,6 +96,15 @@ export default function MocksPage() {
   };
 
   // ── 1 & 2. Score reports ──
+  if (readingMock.outcome) {
+    return (
+      <ScoreReport
+        attempt={readingMock.outcome.attempt}
+        outcome={readingMock.outcome}
+        onBack={readingMock.exit}
+      />
+    );
+  }
   if (exam.outcome) {
     return <ScoreReport attempt={exam.outcome.attempt} outcome={exam.outcome} onBack={leaveReport} />;
   }
@@ -92,6 +113,9 @@ export default function MocksPage() {
   }
 
   // ── 3. Live exam ──
+  if (readingMock.session) {
+    return <ReadingMockRunner session={readingMock.session} mock={readingMock} />;
+  }
   if (exam.activeMock) {
     return (
       <MockExamRunner
@@ -155,12 +179,17 @@ export default function MocksPage() {
         <MockCatalog
           mocks={mocks}
           exam={activeExam}
-          startingMockId={exam.startingMockId}
-          onStart={exam.start}
+          startingMockId={readingMock.starting ? generatedMockId(mocks) : exam.startingMockId}
+          onStart={startMock}
         />
       )}
     </div>
   );
+}
+
+/** The blueprint the reading mock flow is starting, for the card spinner. */
+function generatedMockId(mocks: Mock[]): string | null {
+  return mocks.find(mock => mock.isGenerated)?.id ?? null;
 }
 
 interface TabButtonProps {

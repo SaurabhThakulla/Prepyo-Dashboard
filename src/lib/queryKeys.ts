@@ -33,6 +33,11 @@ export const queryKeys = {
   mocks: (exam: ExamType) => ['mocks', exam] as const,
   mockAttempts: () => ['mocks', 'attempts'] as const,
 
+  /** The reading task-type menu. Content, so it is the same for everyone. */
+  readingTypes: (exam: ExamType) => ['reading', 'types', exam] as const,
+  /** The learner's live reading paper, if they have one. */
+  readingMockSession: (exam: ExamType) => ['reading', 'mock', exam] as const,
+
   evaluations: (limit: number) => ['evaluations', limit] as const,
 
   subscriptionPlans: () => ['subscription-plans'] as const,

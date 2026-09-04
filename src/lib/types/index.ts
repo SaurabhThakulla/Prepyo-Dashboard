@@ -159,7 +159,94 @@ export interface Mock {
   totalDurationMinutes: number;
   totalQuestions: number;
   isDiagnostic: boolean;
+  /**
+   * The paper is composed per learner when they start it, so `sections` and
+   * `totalQuestions` are empty here — there is no fixed question list to
+   * report. These go through the reading mock endpoints, not GET /mocks/:id,
+   * which refuses them with a 409.
+   */
+  isGenerated: boolean;
   sections: MockSection[];
+}
+
+// ---------------------------------------------------------------------------
+// Reading passages
+// ---------------------------------------------------------------------------
+
+/**
+ * One labelled block of a passage. The label carries meaning: a Matching
+ * Information answer *is* a paragraph label, and Find the Writer answers point
+ * at a source label.
+ */
+export interface ReadingParagraph {
+  label: string;
+  text: string;
+}
+
+export interface ReadingPassage {
+  id: string;
+  examVersionId: string;
+  exam: ExamType;
+  title: string;
+  subtitle?: string;
+  paragraphs: ReadingParagraph[];
+  /** Attributed excerpts, for passages written in several voices. */
+  sources?: ReadingParagraph[];
+  wordCount: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  topic?: string;
+  tags: string[];
+}
+
+/** One task set on a passage: a type, its instruction line, its questions. */
+export interface ReadingGroup {
+  id: string;
+  passageId: string;
+  position: number;
+  typeId: string;
+  typeName: string;
+  instructions: string;
+  /** Material belonging to the task, not the passage — the boxes to order. */
+  resources?: ReadingParagraph[];
+  timeLimitSeconds?: number;
+  questions: Question[];
+}
+
+/** A passage with some of its groups: one for practice, all for a mock. */
+export interface ReadingSet {
+  passage: ReadingPassage;
+  groups: ReadingGroup[];
+  totalQuestions: number;
+}
+
+/** An entry in the "what can I practise?" menu, with the size of the bank. */
+export interface ReadingTaskType {
+  typeId: string;
+  typeName: string;
+  passageCount: number;
+  questionCount: number;
+}
+
+/** One generated reading paper. `sets` is filled only when it is being sat. */
+export interface ReadingMockSession {
+  id: string;
+  mockId: string;
+  mockTitle?: string;
+  exam: ExamType;
+  examVersionId: string;
+  status: 'in_progress' | 'submitted' | 'abandoned';
+  durationMinutes: number;
+  totalQuestions: number;
+  passageIds: string[];
+  createdAt: string;
+  submittedAt?: string;
+  /**
+   * True when the bank had no unseen passages left and one had to be repeated.
+   * Shown to the learner rather than hidden — a repeat is not a bug, but it
+   * looks like one if nothing says so.
+   */
+  reusedPassages: boolean;
+  sets?: ReadingSet[];
 }
 
 // ---------------------------------------------------------------------------
@@ -216,6 +303,12 @@ export interface MockSubmitOutcome {
   scoredQuestions: number;
   ungradedQuestions: number;
   scoreConfidence: string;
+  /**
+   * The paper with its answer key restored, in the order it was dealt. Only
+   * generated reading mocks return this; it is safe because the paper is
+   * already graded and closed by the time it is sent.
+   */
+  review?: Question[];
 }
 
 export interface Mistake {

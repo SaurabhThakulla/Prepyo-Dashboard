@@ -93,6 +93,9 @@ export function fixtureMocks(exam: ExamType): Mock[] {
     totalDurationMinutes: mock.durationMinutes,
     totalQuestions: mock.totalQuestions,
     isDiagnostic: false,
+    // Fixtures stand in for fixed blueprints only; a generated paper cannot be
+    // faked offline because the server composes it per learner.
+    isGenerated: false,
     sections: mock.sections.map((section, index) => ({
       id: `sec-${mock.id}-${index}`,
       name: section.name,
@@ -118,6 +121,7 @@ function fixtureDiagnostic(exam: ExamType): Mock {
     totalDurationMinutes: diagnosticTestData.totalDurationMinutes,
     totalQuestions: diagnosticTestData.questionCount,
     isDiagnostic: true,
+    isGenerated: false,
     sections: diagnosticTestData.sections.map((section, index) => ({
       id: `diag-sec-${index}`,
       name: section.sectionName,

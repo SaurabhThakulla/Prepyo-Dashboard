@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import AudioRecorder from '@/components/practice/AudioRecorder';
 import PromptAudio from '@/components/practice/PromptAudio';
 import QuestionNavigator from '@/components/practice/QuestionNavigator';
+import ReadingPracticePanel from '@/components/reading/ReadingPracticePanel';
 import { Evaluation, PracticeAttempt, Question, SkillType } from '@/lib/types';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
@@ -80,7 +81,17 @@ export default function PracticePage() {
     setStartedAt(Date.now());
   }, []);
 
+  const isReading = selectedSkill === 'reading';
+
   useEffect(() => {
+    // Reading is served by /reading, passage and all — see the panel below.
+    // Fetching here would return an almost empty list, because a question that
+    // belongs to a passage is deliberately left out of the shared bank.
+    if (isReading) {
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
     resetAnswer();
@@ -105,7 +116,7 @@ export default function PracticePage() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeExam, selectedSkill]);
+  }, [activeExam, selectedSkill, isReading]);
 
   const wordCount = textAnswer.trim().split(/\s+/).filter(Boolean).length;
 
@@ -230,7 +241,9 @@ export default function PracticePage() {
         </div>
       </div>
 
-      {loading ? (
+      {isReading ? (
+        <ReadingPracticePanel initialTypeKey={searchParams.get('type') ?? undefined} />
+      ) : loading ? (
         <div className="text-center py-20 bg-card rounded-2xl border border-border space-y-3">
           <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
           <p className="text-xs text-muted-foreground">Loading questions…</p>

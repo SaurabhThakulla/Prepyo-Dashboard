@@ -36,12 +36,18 @@ export default function MockCatalog({ mocks, exam, startingMockId, onStart }: Mo
               <div className="flex items-center justify-between">
                 <Badge variant="indigo">{mock.exam} • {mock.totalDurationMinutes} min</Badge>
                 {mock.isDiagnostic && <Badge variant="warning">Diagnostic</Badge>}
+                {mock.isGenerated && <Badge variant="success">Fresh each time</Badge>}
               </div>
               <CardTitle className="text-base">{mock.title}</CardTitle>
               <CardDescription>{mock.description}</CardDescription>
+              {/* A generated paper has no question list to count: it is drawn
+                  when the learner starts it, so the card says what it will be
+                  rather than reporting a zero. */}
               <p className="text-[11px] text-muted-foreground">
-                {mock.totalQuestions} question{mock.totalQuestions === 1 ? '' : 's'} across{' '}
-                {mock.sections.length} section{mock.sections.length === 1 ? '' : 's'}
+                {mock.isGenerated
+                  ? 'Passages you have not sat before, drawn when you start'
+                  : `${mock.totalQuestions} question${mock.totalQuestions === 1 ? '' : 's'} across ` +
+                    `${mock.sections.length} section${mock.sections.length === 1 ? '' : 's'}`}
               </p>
             </div>
             <Button
