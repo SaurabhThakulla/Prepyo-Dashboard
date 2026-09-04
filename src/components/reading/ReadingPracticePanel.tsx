@@ -58,12 +58,14 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
   }, [typesQuery.error]);
 
   // Open on the type the sidebar linked to, or the first one with questions.
-  // Runs once the menu arrives, and again if the learner switches exam.
+  // Runs once the menu arrives, and again if the learner switches exam or task type.
   useEffect(() => {
-    if (types.length === 0 || set) return;
+    if (types.length === 0) return;
     const linked = initialTypeKey ? TYPE_BY_SYLLABUS_KEY[initialTypeKey] : undefined;
-    const wanted = types.find(type => type.typeId === linked) ?? types[0];
-    void deal(wanted.typeId);
+    const wanted = (linked ? types.find(type => type.typeId === linked) : undefined) ?? (set ? undefined : types[0]);
+    if (wanted && wanted.typeId !== currentTypeId) {
+      void deal(wanted.typeId);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [types, initialTypeKey, activeExam]);
 
@@ -99,30 +101,6 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
 
   return (
     <div className="space-y-5">
-      {/* Task type picker. Counts come from the server so a type with nothing
-          behind it reads as empty instead of failing when it is opened. */}
-      <div className="flex flex-wrap gap-2">
-        {types.map(type => {
-          const active = currentTypeId === type.typeId;
-          return (
-            <button
-              key={type.typeId}
-              type="button"
-              disabled={practice.dealing}
-              onClick={() => void deal(type.typeId)}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors disabled:opacity-60 ${
-                active
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
-              }`}
-            >
-              {type.typeName}
-              <span className="ml-1.5 font-mono text-[10px] opacity-70">{type.questionCount}</span>
-            </button>
-          );
-        })}
-      </div>
-
       {practice.dealing ? (
         <Card className="text-center py-20 space-y-3">
           <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
@@ -134,12 +112,12 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
           <h3 className="text-sm font-bold text-foreground">Pick a task type to begin</h3>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-7">
-            <PassageReader passage={set.passage} />
+        <div className="space-y-6">
+          <div className="w-full">
+            <PassageReader passage={set.passage} scroll={false} />
           </div>
 
-          <div className="lg:col-span-5 space-y-4">
+          <div className="w-full space-y-4">
             {set.groups.map(group => (
               <ReadingGroupCard
                 key={group.id}
@@ -166,7 +144,7 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
               </Card>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
               <Button variant="outline" size="sm" onClick={askTutor} className="gap-1.5 font-bold">
                 <Bot className="w-3.5 h-3.5 text-primary" />
                 <span>Ask AI Coach</span>

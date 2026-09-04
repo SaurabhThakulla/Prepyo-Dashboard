@@ -34,29 +34,31 @@ export default function ReadingGroupCard({
   const last = startNumber + group.questions.length - 1;
 
   return (
-    <Card className="p-5 space-y-3">
-      <div className="space-y-1.5 border-b border-border pb-3">
+    <Card className="p-5 sm:p-6 space-y-4 bg-card dark:bg-[#0f141f] border-border/80 shadow-md rounded-2xl">
+      <div className="space-y-2 border-b border-border/80 pb-3.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Badge variant="default">{group.typeName}</Badge>
-          <span className="text-[11px] text-muted-foreground font-mono">
-            {startNumber === last ? `Q${startNumber}` : `Q${startNumber}–${last}`}
+          <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
+            {group.typeName}
+          </Badge>
+          <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-lg border border-primary/20 font-mono">
+            {startNumber === last ? `Question ${startNumber}` : `Questions ${startNumber}–${last}`}
           </span>
         </div>
-        <p className="text-[11px] text-muted-foreground leading-relaxed">{group.instructions}</p>
+        <p className="text-xs sm:text-[13px] text-muted-foreground font-medium leading-relaxed">{group.instructions}</p>
       </div>
 
       {group.resources && group.resources.length > 0 && (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {group.resources.map(resource => (
-            <div key={resource.label} className="p-3 rounded-xl bg-muted/40 border border-border space-y-1">
-              <span className="text-[11px] font-bold text-primary">{resource.label}</span>
-              <p className="text-xs text-foreground leading-relaxed">{resource.text}</p>
+            <div key={resource.label} className="p-3.5 rounded-xl bg-muted/30 border border-border space-y-1">
+              <span className="text-xs font-bold text-primary">{resource.label}</span>
+              <p className="text-sm text-foreground leading-relaxed">{resource.text}</p>
             </div>
           ))}
         </div>
       )}
 
-      <div className="space-y-2.5">
+      <div className="space-y-4">
         {group.questions.map((question, index) => (
           <ReadingQuestionRow
             key={question.id}

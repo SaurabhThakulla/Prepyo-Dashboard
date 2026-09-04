@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { Check, CheckCircle2, XCircle } from 'lucide-react';
 import { AnswerSubmission, Question } from '@/lib/types';
 import { ReadingAnswerResult } from '@/lib/hooks/useReading';
 
@@ -13,17 +13,8 @@ interface ReadingQuestionRowProps {
 }
 
 /**
- * One reading question: its prompt, its input, and — once checked — what the
- * answer was.
- *
- * Which input to render is decided by the question, not by its type id. A
- * question with options is a choice; one without is a gap to type into. That
- * way a task type added on the server renders correctly here without a matching
- * release of this file.
- *
- * Choices are radios rather than checkboxes: every reading task type in the bank
- * has exactly one right answer, and a checkbox invites a learner to select two
- * and be marked down for it.
+ * Clean, modern question row with simple 2-column option cards.
+ * When an option is selected, it fills with the brand primary color.
  */
 export default function ReadingQuestionRow({
   question,
@@ -37,72 +28,128 @@ export default function ReadingQuestionRow({
   const selected = answer?.selectedOptions?.[0] ?? '';
   const locked = disabled || Boolean(result);
 
+  const getOptionLetter = (index: number) => String.fromCharCode(65 + index);
+
+  const cleanOptionText = (text: string, letter: string) => {
+    const regex = new RegExp(`^${letter}[:.]\\s*`, 'i');
+    return text.replace(regex, '');
+  };
+
   return (
-    <div className="p-3.5 rounded-xl bg-background border border-border space-y-2.5">
-      <div className="flex items-start gap-2.5">
-        <span
-          className={`shrink-0 w-6 h-6 rounded-lg text-[11px] font-bold flex items-center justify-center ${
-            result
-              ? result.attempt.isCorrect
-                ? 'bg-emerald-500/15 text-emerald-600'
-                : 'bg-rose-500/15 text-rose-600'
-              : 'bg-muted text-muted-foreground'
-          }`}
-        >
+    <div className="rounded-2xl p-5 bg-card border border-border/80 space-y-4 shadow-xs hover:border-border transition-colors">
+      {/* Question Prompt Header */}
+      <div className="flex items-start gap-3">
+        <span className="shrink-0 w-7 h-7 rounded-xl bg-primary/10 text-primary font-mono font-bold text-xs flex items-center justify-center border border-primary/20">
           {number}
         </span>
-        <p className="text-xs text-foreground font-medium leading-relaxed pt-0.5">{question.prompt}</p>
+        <p className="text-sm sm:text-[15px] font-semibold text-foreground leading-relaxed pt-0.5">
+          {question.prompt}
+        </p>
       </div>
 
+      {/* 2-Column Options Grid */}
       {hasOptions ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pl-8.5">
-          {question.options!.map(option => {
-            const checked = selected === option.id;
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pl-0 sm:pl-10">
+          {question.options!.map((option, index) => {
+            const letter = getOptionLetter(index);
+            const isSelected = selected === option.id;
+            const isCorrect = result?.review.correctAnswers?.includes(option.id);
+            const isWrongSelection = result && isSelected && !result.attempt.isCorrect;
+            const showCorrectReveal = result && isCorrect;
+
+            let cardClasses =
+              'bg-background border-border text-foreground hover:border-primary/40 hover:bg-muted/40';
+            let badgeClasses = 'bg-muted text-muted-foreground border-border';
+
+            if (showCorrectReveal) {
+              cardClasses = 'bg-emerald-600 text-white border-emerald-600 shadow-sm font-semibold';
+              badgeClasses = 'bg-white/20 text-white border-transparent';
+            } else if (isWrongSelection) {
+              cardClasses = 'bg-rose-600 text-white border-rose-600 shadow-sm font-semibold';
+              badgeClasses = 'bg-white/20 text-white border-transparent';
+            } else if (isSelected) {
+              // Selected uses our brand primary color
+              cardClasses = 'bg-primary text-primary-foreground border-primary shadow-sm font-semibold';
+              badgeClasses = 'bg-white/20 text-white border-transparent';
+            } else if (result) {
+              cardClasses = 'opacity-50 bg-background border-border text-muted-foreground';
+            }
+
             return (
               <label
                 key={option.id}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs transition-colors ${
-                  locked ? 'cursor-default' : 'cursor-pointer hover:border-primary/40'
-                } ${checked ? 'border-primary bg-primary/5' : 'border-border bg-card'}`}
+                className={`relative flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-sm transition-all select-none ${
+                  locked ? 'cursor-default' : 'cursor-pointer active:scale-[0.99]'
+                } ${cardClasses}`}
               >
                 <input
                   type="radio"
                   name={question.id}
-                  checked={checked}
+                  checked={isSelected}
                   disabled={locked}
                   onChange={() => onChange({ selectedOptions: [option.id] })}
-                  className="text-primary focus:ring-primary h-3.5 w-3.5"
+                  className="sr-only"
                 />
-                <span className="text-foreground font-medium">{option.text}</span>
+
+                <div className="flex items-center gap-2.5 min-w-0 pr-1">
+                  <span
+                    className={`w-6 h-6 rounded-lg font-mono font-bold text-xs flex items-center justify-center shrink-0 border ${badgeClasses}`}
+                  >
+                    {letter}
+                  </span>
+                  <span className="truncate">
+                    {cleanOptionText(option.text, letter)}
+                  </span>
+                </div>
+
+                {/* Status Indicator */}
+                {showCorrectReveal ? (
+                  <Check className="w-4 h-4 text-white shrink-0 ml-auto" />
+                ) : isWrongSelection ? (
+                  <XCircle className="w-4 h-4 text-white shrink-0 ml-auto" />
+                ) : isSelected ? (
+                  <Check className="w-4 h-4 text-white shrink-0 ml-auto" />
+                ) : null}
               </label>
             );
           })}
         </div>
       ) : (
-        <input
-          value={answer?.textResponse ?? ''}
-          disabled={locked}
-          onChange={event => onChange({ textResponse: event.target.value })}
-          placeholder="Type the word from the passage"
-          className="w-full bg-card border border-border text-xs font-medium text-foreground px-3 py-2 rounded-lg focus:outline-none focus:border-primary disabled:opacity-70"
-        />
+        <div className="pl-0 sm:pl-10">
+          <input
+            value={answer?.textResponse ?? ''}
+            disabled={locked}
+            onChange={event => onChange({ textResponse: event.target.value })}
+            placeholder="Type your answer from the passage…"
+            className="w-full bg-background border border-border text-sm font-medium text-foreground px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-70 shadow-2xs"
+          />
+        </div>
       )}
 
+      {/* Review Feedback */}
       {result && (
-        <div className="flex items-start gap-2 pt-2 border-t border-border">
+        <div
+          className={`p-3.5 sm:p-4 rounded-xl border flex items-start gap-2.5 text-xs sm:text-sm ${
+            result.attempt.isCorrect
+              ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-800 dark:text-emerald-200'
+              : 'bg-rose-500/10 border-rose-500/25 text-rose-800 dark:text-rose-200'
+          }`}
+        >
           {result.attempt.isCorrect ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
           ) : (
-            <XCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+            <XCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
           )}
-          <div className="space-y-0.5">
+
+          <div className="space-y-1">
             {!result.attempt.isCorrect && (
-              <p className="text-[11px] text-foreground font-bold">
-                Answer: {displayAnswer(result.review)}
+              <p className="font-bold">
+                Correct answer: <span className="underline">{displayAnswer(result.review)}</span>
               </p>
             )}
+
             {result.review.explanation && (
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
+              <p className="text-muted-foreground leading-relaxed">
                 {result.review.explanation}
               </p>
             )}
@@ -115,10 +162,6 @@ export default function ReadingQuestionRow({
 
 /**
  * The answer key as a learner reads it.
- *
- * `correctAnswers` holds option ids, which for a choice question are tokens
- * like NOT_GIVEN. Showing the option's own text instead means the review reads
- * the same as the buttons did.
  */
 function displayAnswer(review: Question): string {
   const answers = review.correctAnswers ?? [];
