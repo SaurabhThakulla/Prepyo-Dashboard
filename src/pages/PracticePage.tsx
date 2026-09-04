@@ -3,9 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import {
   Mic,
-  PenTool,
   BookOpen,
-  Headphones,
   RefreshCw,
   Clock,
   Bot,
@@ -46,7 +44,7 @@ interface SubmitResult {
 export default function PracticePage() {
   const { activeExam, refreshUser, setIsTutorOpen, setTutorContextPrompt } = useApp();
   const toast = useToast();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [selectedSkill, setSelectedSkill] = useState<SkillType>(
     (searchParams.get('skill') as SkillType) || 'reading',
@@ -201,46 +199,6 @@ export default function PracticePage() {
 
   return (
     <div className="space-y-6">
-
-      {/* Skill Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">
-            {activeExam} Practice Studio
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            Answers are graded on the server — nothing is scored in your browser.
-          </p>
-        </div>
-
-        <div className="flex bg-muted/60 p-1 rounded-xl border border-border overflow-x-auto no-scrollbar">
-          {[
-            { id: 'reading', label: 'Reading', icon: BookOpen },
-            { id: 'listening', label: 'Listening', icon: Headphones },
-            { id: 'writing', label: 'Writing', icon: PenTool },
-            { id: 'speaking', label: 'Speaking', icon: Mic },
-          ].map(tab => {
-            const Icon = tab.icon;
-            const active = selectedSkill === tab.id;
-            return (
-              <Button
-                key={tab.id}
-                size="sm"
-                variant={active ? 'default' : 'ghost'}
-                onClick={() => {
-                  setSelectedSkill(tab.id as SkillType);
-                  window.history.pushState(null, '', `/practice?skill=${tab.id}`);
-                }}
-                className="font-bold text-xs gap-1.5"
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{tab.label}</span>
-              </Button>
-            );
-          })}
-        </div>
-      </div>
-
       {isReading ? (
         <ReadingPracticePanel initialTypeKey={searchParams.get('type') ?? undefined} />
       ) : loading ? (

@@ -60,16 +60,8 @@
               "simpleDescription": "Identify if statements agree with, contradict, or are not mentioned in the writer's views"
             },
             {
-              "name": "Sentence completions",
-              "simpleDescription": "Complete sentences using key terms and ideas directly from the passage"
-            },
-            {
               "name": "Matching information",
               "simpleDescription": "Match specific information, details, or characteristics to the correct paragraphs"
-            },
-            {
-              "name": "Yes / No / Not Given",
-              "simpleDescription": "Determine if statements match the author's arguments and claims in the passage"
             }
           ]
         },
