@@ -22,7 +22,7 @@ export default {
         },
         primary: {
           DEFAULT: "hsl(var(--primary))",
-          hover: "#059669",
+          hover: "#143387",
           foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
@@ -45,8 +45,8 @@ export default {
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         navy: {
-          DEFAULT: "#191945",
-          light: "#2D2DB8",
+          DEFAULT: "#0f172a",
+          light: "#1e3a8a",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
@@ -62,7 +62,7 @@ export default {
           crimson: "#DC143C",
           blue: "#003893",
           gold: "#F59E0B",
-          emerald: "#10B981",
+          emerald: "#1b40a7",
         }
       },
       borderRadius: {
@@ -77,7 +77,7 @@ export default {
       boxShadow: {
         hero: "0 24px 60px -15px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.05)",
         card: "0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.03)",
-        float: "0 18px 45px rgba(16, 185, 129, 0.15)",
+        float: "0 18px 45px rgba(30, 58, 138, 0.2)",
       }
     },
   },

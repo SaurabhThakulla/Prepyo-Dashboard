@@ -56,7 +56,7 @@ export default function NotificationDrawer({ open, onClose }: Props) {
                   <div className="flex items-center gap-1.5">
                     {notif.type === 'streak' && <Flame className="w-4 h-4 text-amber-500 shrink-0" />}
                     {notif.type === 'evaluation' && <Award className="w-4 h-4 text-primary shrink-0" />}
-                    {notif.type === 'system' && <AlertCircle className="w-4 h-4 text-nepal-emerald shrink-0" />}
+                    {notif.type === 'system' && <AlertCircle className="w-4 h-4 text-primary shrink-0" />}
                     <h4 className="font-semibold text-xs text-foreground">{notif.title}</h4>
                   </div>
                   {!notif.read && (

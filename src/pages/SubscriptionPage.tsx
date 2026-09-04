@@ -162,7 +162,7 @@ export default function SubscriptionPage() {
                   </div>
 
                   {plan.bonusDays > 0 && (
-                    <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                    <div className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/30 text-primary text-[11px] font-bold px-2.5 py-1 rounded-lg">
                       <Gift className="w-3.5 h-3.5" />
                       <span>+{plan.bonusDays} bonus days</span>
                     </div>
@@ -171,7 +171,7 @@ export default function SubscriptionPage() {
                   <div className="space-y-2.5 pt-2 border-t border-border">
                     {plan.features.map(f => (
                       <div key={f} className="flex items-center gap-2 text-xs text-foreground font-medium">
-                        <CheckCircle2 className="w-4 h-4 text-nepal-emerald shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
                         <span>{f}</span>
                       </div>
                     ))}
@@ -203,8 +203,8 @@ export default function SubscriptionPage() {
           </DialogHeader>
 
           {successMessage ? (
-            <div className="p-4 rounded-xl bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-xs font-bold text-center space-y-1">
-              <CheckCircle2 className="w-8 h-8 text-nepal-emerald mx-auto" />
+            <div className="p-4 rounded-xl bg-primary/20 text-primary border border-primary/30 text-xs font-bold text-center space-y-1">
+              <CheckCircle2 className="w-8 h-8 text-primary mx-auto" />
               <div>{successMessage}</div>
             </div>
           ) : (
@@ -239,7 +239,7 @@ export default function SubscriptionPage() {
               </div>
 
               {selectedPlan && selectedPlan.bonusDays > 0 && (
-                <p className="text-[11px] text-emerald-500 font-bold text-center">
+                <p className="text-[11px] text-primary font-bold text-center">
                   Includes +{selectedPlan.bonusDays} bonus days on confirmation.
                 </p>
               )}

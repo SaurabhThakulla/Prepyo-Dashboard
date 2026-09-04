@@ -76,8 +76,8 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
         {/* Right Action Icons & Badges */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* XP Badge */}
-          <div className="hidden sm:flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1.5 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-400" title="XP Points">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+          <div className="hidden sm:flex items-center gap-1 bg-primary/10 border border-primary/30 px-2.5 py-1.5 rounded-xl text-xs font-bold text-primary" title="XP Points">
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
             <span>{user?.xp ?? 0} XP</span>
           </div>
 

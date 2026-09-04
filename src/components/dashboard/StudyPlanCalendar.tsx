@@ -169,7 +169,7 @@ export default function StudyPlanCalendar({
                   relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all
                   ${
                     isSelected
-                      ? 'border-2 border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400 font-bold bg-indigo-50/40 dark:bg-indigo-950/20'
+                      ? 'border-2 border-primary text-primary font-bold bg-primary/10'
                       : isCurrentMonth
                         ? 'text-foreground hover:bg-muted dark:hover:bg-white/5'
                         : 'text-muted-foreground/40 dark:text-muted-foreground/30 hover:bg-muted/50'
@@ -181,7 +181,7 @@ export default function StudyPlanCalendar({
                   <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-orange-500" />
                 )}
                 {isActiveStudyDay && !hasEvent && !isSelected && (
-                  <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-emerald-500/60" />
+                  <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-primary/70" />
                 )}
               </button>
             </div>
@@ -203,7 +203,7 @@ export default function StudyPlanCalendar({
               <div className="flex items-center gap-2">
                 <span
                   className={`w-2 h-2 rounded-full ${
-                    event.completed ? 'bg-emerald-500' : 'bg-orange-500'
+                    event.completed ? 'bg-primary' : 'bg-orange-500'
                   }`}
                 />
                 <span className="font-medium text-foreground">{event.title}</span>

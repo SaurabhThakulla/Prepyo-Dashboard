@@ -179,10 +179,10 @@ export default function ReferralsPage() {
 
         <Card className="p-4 bg-card/80 border-border space-y-1">
           <div className="text-xs text-muted-foreground flex items-center gap-1.5 font-bold">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
             <span>Qualified Referrals</span>
           </div>
-          <div className="font-display text-2xl font-black text-emerald-500">
+          <div className="font-display text-2xl font-black text-primary">
             {stats.completed}
           </div>
         </Card>
@@ -213,7 +213,7 @@ export default function ReferralsPage() {
           {/* Milestone 1: 3 Referrals */}
           <div className={`p-5 rounded-2xl border transition-all ${
             milestones.threeReferrals.completed
-              ? 'bg-emerald-500/10 border-emerald-500/30'
+              ? 'bg-primary/10 border-primary/30'
               : 'bg-card border-border'
           }`}>
             <div className="flex items-start justify-between">
@@ -249,7 +249,7 @@ export default function ReferralsPage() {
           {/* Milestone 2: 5 Referrals */}
           <div className={`p-5 rounded-2xl border transition-all ${
             milestones.fiveReferrals.completed
-              ? 'bg-emerald-500/10 border-emerald-500/30'
+              ? 'bg-primary/10 border-primary/30'
               : 'bg-card border-border'
           }`}>
             <div className="flex items-start justify-between">
@@ -309,8 +309,8 @@ export default function ReferralsPage() {
 
                   <div className="flex items-center gap-2">
                     {item.status === 'completed' ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
+                        <CheckCircle2 className="w-3 h-3 text-primary" />
                         Qualified (+200 XP)
                       </span>
                     ) : (

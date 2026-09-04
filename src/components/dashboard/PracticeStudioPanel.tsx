@@ -15,7 +15,7 @@ interface PracticeStudioPanelProps {
 }
 
 const ACTION_LINK_CLASS =
-  'text-xs font-medium text-foreground dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-white px-3.5 py-1.5 rounded-lg border border-border dark:border-transparent hover:bg-muted dark:hover:bg-white/5 transition-colors shrink-0';
+  'text-xs font-medium text-foreground dark:text-zinc-300 hover:text-primary dark:hover:text-white px-3.5 py-1.5 rounded-lg border border-border dark:border-transparent hover:bg-muted dark:hover:bg-white/5 transition-colors shrink-0';
 
 /** Left column: the four skills, plus the tests and review shortcuts. */
 export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeStudioPanelProps) {
@@ -25,7 +25,7 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
         <h2 className="text-base font-bold text-foreground">Practice studio</h2>
         <Link
           to="/practice"
-          className="text-xs font-semibold text-emerald-600 dark:text-[#00e599] hover:underline transition-all"
+          className="text-xs font-semibold text-primary hover:underline transition-all"
         >
           View all tasks
         </Link>
@@ -41,7 +41,7 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
           {skills.map(skill => (
             <div key={skill.name} className="flex items-center justify-between py-1 group gap-3">
               <div className="space-y-0.5 min-w-0 flex-1">
-                <div className="text-sm font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-[#00e599] transition-colors">
+                <div className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
                   {skill.name}
                 </div>
                 <div className="text-[11px] text-muted-foreground font-normal truncate">{skill.sub}</div>
@@ -51,7 +51,7 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
                 <div className="flex items-center gap-3">
                   <div className="w-16 sm:w-24 h-1 bg-slate-100 dark:bg-zinc-800/90 rounded-full overflow-hidden hidden sm:block">
                     <div
-                      className="h-full bg-emerald-500 dark:bg-[#00e599] rounded-full"
+                      className="h-full bg-primary rounded-full"
                       style={{ width: `${skill.percent}%` }}
                     />
                   </div>
@@ -62,7 +62,7 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
 
                 <Link
                   to={skill.href}
-                  className="text-xs font-medium text-foreground dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-white px-3.5 py-1.5 rounded-lg border border-border dark:border-white/5 hover:border-emerald-500/30 dark:hover:border-white/15 bg-muted/30 dark:bg-transparent hover:bg-muted dark:hover:bg-white/5 transition-all text-center shrink-0 min-w-[70px]"
+                  className="text-xs font-medium text-foreground dark:text-zinc-300 hover:text-primary dark:hover:text-white px-3.5 py-1.5 rounded-lg border border-border dark:border-white/5 hover:border-primary/30 dark:hover:border-white/15 bg-muted/30 dark:bg-transparent hover:bg-muted dark:hover:bg-white/5 transition-all text-center shrink-0 min-w-[70px]"
                 >
                   Practice
                 </Link>
@@ -120,7 +120,7 @@ function TestRow({ title, sub, href, action, highlight }: TestRowProps) {
         to={href}
         className={
           highlight
-            ? 'text-xs font-semibold text-emerald-600 dark:text-[#00e599] hover:underline px-3.5 py-1.5 transition-colors shrink-0'
+            ? 'text-xs font-semibold text-primary hover:underline px-3.5 py-1.5 transition-colors shrink-0'
             : ACTION_LINK_CLASS
         }
       >

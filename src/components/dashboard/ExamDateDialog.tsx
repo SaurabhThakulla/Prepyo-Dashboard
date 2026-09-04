@@ -114,7 +114,7 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
       <DialogContent className="max-w-md bg-card dark:bg-[#12161c] border border-border dark:border-white/10 text-foreground dark:text-white p-6 rounded-2xl shadow-2xl">
         <DialogHeader className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 dark:bg-[#00e599]/10 border border-emerald-500/20 dark:border-[#00e599]/20 flex items-center justify-center text-emerald-600 dark:text-[#00e599]">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
               <CalendarIcon className="w-4 h-4" />
             </div>
             <DialogTitle className="text-base font-bold text-foreground">
@@ -135,7 +135,7 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xl font-black text-emerald-600 dark:text-[#00e599] leading-none">{daysRemaining}</div>
+            <div className="text-xl font-black text-primary leading-none">{daysRemaining}</div>
             <div className="text-[9px] uppercase font-bold text-muted-foreground">Days Left</div>
           </div>
         </div>
@@ -150,7 +150,7 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
                   key={preset.label}
                   type="button"
                   onClick={() => setPresetDays(preset.days)}
-                  className="py-1.5 px-2 rounded-lg bg-card dark:bg-[#181c24] hover:bg-muted dark:hover:bg-[#222733] border border-border dark:border-white/5 text-[11px] font-medium text-foreground dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-white transition-all text-center"
+                  className="py-1.5 px-2 rounded-lg bg-card dark:bg-[#181c24] hover:bg-muted dark:hover:bg-[#222733] border border-border dark:border-white/5 text-[11px] font-medium text-foreground dark:text-zinc-300 hover:text-primary dark:hover:text-white transition-all text-center"
                 >
                   +{preset.label}
                 </button>
@@ -161,21 +161,21 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
           {/* Exam Date Picker */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-              <CalendarIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-[#00e599]" />
+              <CalendarIcon className="w-3.5 h-3.5 text-primary" />
               <span>Official Exam Date</span>
             </label>
             <Input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="bg-card dark:bg-[#181c24] border-border dark:border-white/10 text-foreground dark:text-white focus-visible:ring-emerald-500 dark:focus-visible:ring-[#00e599] text-xs h-10 rounded-xl"
+              className="bg-card dark:bg-[#181c24] border-border dark:border-white/10 text-foreground dark:text-white focus-visible:ring-primary text-xs h-10 rounded-xl"
             />
           </div>
 
           {/* Exam Time / Slot Picker */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-[#00e599]" />
+              <Clock className="w-3.5 h-3.5 text-primary" />
               <span>Exam Time / Session Slot</span>
             </label>
             <div className="grid grid-cols-3 gap-2 mb-2">
@@ -186,7 +186,7 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
                   onClick={() => setTime(slot.value)}
                   className={`p-2 rounded-xl text-left border transition-all ${
                     time === slot.value
-                      ? 'bg-emerald-500/10 dark:bg-[#00e599]/10 border-emerald-500 dark:border-[#00e599] text-foreground dark:text-white shadow-sm'
+                      ? 'bg-primary/10 border-primary text-foreground dark:text-white shadow-sm'
                       : 'bg-card dark:bg-[#181c24] border-border dark:border-white/5 text-muted-foreground hover:text-foreground dark:hover:text-white hover:bg-muted dark:hover:bg-[#222733]'
                   }`}
                 >
@@ -199,14 +199,14 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="bg-card dark:bg-[#181c24] border-border dark:border-white/10 text-foreground dark:text-white focus-visible:ring-emerald-500 dark:focus-visible:ring-[#00e599] text-xs h-10 rounded-xl"
+              className="bg-card dark:bg-[#181c24] border-border dark:border-white/10 text-foreground dark:text-white focus-visible:ring-primary text-xs h-10 rounded-xl"
             />
           </div>
 
           {/* Target Score */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-              <Target className="w-3.5 h-3.5 text-emerald-600 dark:text-[#00e599]" />
+              <Target className="w-3.5 h-3.5 text-primary" />
               <span>Target Score ({activeExam})</span>
             </label>
             <Input
@@ -214,7 +214,7 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
               step={activeExam === 'PTE' ? '1' : '0.5'}
               value={String(targetScore)}
               onChange={(e) => setTargetScore(parseFloat(e.target.value) || 0)}
-              className="bg-card dark:bg-[#181c24] border-border dark:border-white/10 text-foreground dark:text-white focus-visible:ring-emerald-500 dark:focus-visible:ring-[#00e599] text-xs h-10 rounded-xl"
+              className="bg-card dark:bg-[#181c24] border-border dark:border-white/10 text-foreground dark:text-white focus-visible:ring-primary text-xs h-10 rounded-xl"
             />
           </div>
         </div>
@@ -233,7 +233,7 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="bg-emerald-500 hover:bg-emerald-600 dark:bg-[#00e599] dark:hover:bg-[#00d08a] text-white dark:text-black font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 dark:shadow-[#00e599]/20 px-5"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-xl shadow-lg shadow-primary/20 px-5"
           >
             {savedSuccess ? (
               <span className="flex items-center gap-1.5">

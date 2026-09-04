@@ -162,7 +162,7 @@ export default function PrimaryIconRail({
                 onClick={onCloseMobile}
                 className="cursor-pointer flex items-center gap-2.5 py-2 px-2.5 rounded-xl text-xs font-medium hover:bg-muted/70 transition-colors"
               >
-                <CreditCard className="w-4 h-4 text-emerald-500 shrink-0" />
+                <CreditCard className="w-4 h-4 text-primary shrink-0" />
                 <span className="flex-1">Subscription</span>
               </Link>
             </DropdownMenuItem>

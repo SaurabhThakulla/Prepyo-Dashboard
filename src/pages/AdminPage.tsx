@@ -182,7 +182,7 @@ export default function AdminPage() {
       {/* Usage by model */}
       <Card className="p-6 space-y-4">
         <div className="flex items-center gap-2">
-          <Zap className="w-4 h-4 text-nepal-emerald" />
+          <Zap className="w-4 h-4 text-primary" />
           <CardTitle className="text-base">Usage by model</CardTitle>
         </div>
         {usageByModel.length === 0 ? (

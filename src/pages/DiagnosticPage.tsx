@@ -98,7 +98,7 @@ export default function DiagnosticPage() {
           </div>
           <div className="p-4 rounded-xl bg-background border border-border space-y-1">
             <span className="font-bold text-foreground flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-nepal-emerald" /> Sets your estimate
+              <Sparkles className="w-3.5 h-3.5 text-primary" /> Sets your estimate
             </span>
             <p className="text-muted-foreground">
               Your first score estimate and readiness figure come from this attempt.

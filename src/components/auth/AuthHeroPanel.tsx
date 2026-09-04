@@ -37,7 +37,7 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
               <span className="font-display text-2xl font-black tracking-tight text-white">
                 prep<span className="text-primary">yo</span>
               </span>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/25 text-emerald-300 px-2 py-0.5 rounded-md border border-emerald-500/40">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-primary/25 text-blue-200 px-2 py-0.5 rounded-md border border-primary/40">
                 NP
               </span>
             </div>
@@ -65,8 +65,8 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
             icon={<Gift className="w-4 h-4" />}
             iconClass="bg-amber-500/20 text-amber-400"
             title={freePlan?.name || 'Instant Free Starter'}
-            badge={<Badge variant="success" className="text-[10px] py-0 font-bold shrink-0">NPR {freePlan?.priceNPR ?? 0}</Badge>}
-            tickClass="text-emerald-400"
+            badge={<Badge variant="secondary" className="text-[10px] py-0 font-bold shrink-0">NPR {freePlan?.priceNPR ?? 0}</Badge>}
+            tickClass="text-primary"
             points={['1 Full AI Mock Exam', '3 Daily AI Evaluations', 'Nepali Accent AI Engine']}
           />
           <HeroCard
@@ -81,7 +81,7 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
 
         <div className="flex items-center justify-between text-xs text-slate-300 px-1 font-medium">
           <span>🇳🇵 Kathmandu • Pokhara • Lalitpur • Chitwan</span>
-          <span className="text-emerald-400 font-semibold">Nepal Official</span>
+          <span className="text-primary font-semibold">Nepal Official</span>
         </div>
       </div>
     </div>

@@ -36,7 +36,7 @@ export default function MockCatalog({ mocks, exam, startingMockId, onStart }: Mo
               <div className="flex items-center justify-between">
                 <Badge variant="indigo">{mock.exam} • {mock.totalDurationMinutes} min</Badge>
                 {mock.isDiagnostic && <Badge variant="warning">Diagnostic</Badge>}
-                {mock.isGenerated && <Badge variant="success">Fresh each time</Badge>}
+                {mock.isGenerated && <Badge variant="default">Fresh each time</Badge>}
               </div>
               <CardTitle className="text-base">{mock.title}</CardTitle>
               <CardDescription>{mock.description}</CardDescription>

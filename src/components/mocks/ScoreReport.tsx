@@ -42,7 +42,7 @@ export default function ScoreReport({ attempt, outcome, onBack }: ScoreReportPro
         <Card className="bg-background p-5 text-center space-y-1">
           <span className="text-xs font-bold text-muted-foreground uppercase">Estimated Overall</span>
           <div className="font-display text-4xl font-black text-foreground">{attempt.userScore}</div>
-          <Badge variant="success">Practice estimate</Badge>
+          <Badge variant="default">Practice estimate</Badge>
         </Card>
 
         <Card className="bg-background p-5 text-center space-y-1">
