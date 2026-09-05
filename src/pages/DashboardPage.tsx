@@ -151,6 +151,7 @@ export default function DashboardPage() {
           onAskCoach={handleAskCoach}
           weakestSkill={dashboard.weakestSkill}
           studyPlan={dashboard.studyPlan}
+          user={user}
         />
       </div>
 

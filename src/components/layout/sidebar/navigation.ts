@@ -12,10 +12,11 @@ import {
   Bot,
   HelpCircle,
   FileText,
+  CreditCard,
   LucideIcon,
 } from 'lucide-react';
 import { SYLLABUS, typeKey } from '@/lib/syllabus';
-import { ExamType, SkillType } from '@/lib/types';
+import { ExamType, SkillType, UserProfile } from '@/lib/types';
 
 /**
  * What goes in the sidebar, and which item is highlighted.
@@ -74,7 +75,11 @@ export function getSectionFromPathname(path: string): PrimarySectionId {
  * `onOpenTutor` is passed in rather than imported so this stays free of React
  * context and can be unit tested.
  */
-export function buildSections(activeExam: ExamType, onOpenTutor: () => void): PrimarySectionConfig[] {
+export function buildSections(
+  activeExam: ExamType,
+  onOpenTutor: () => void,
+  user?: UserProfile | null,
+): PrimarySectionConfig[] {
   const isPTE = activeExam === 'PTE';
 
   return [
@@ -90,6 +95,15 @@ export function buildSections(activeExam: ExamType, onOpenTutor: () => void): Pr
           label: 'Home Overview',
           icon: Home,
           sublabel: 'Target gaps & score breakdown',
+        },
+        {
+          href: '/subscription',
+          label: 'Your Current Plan',
+          icon: CreditCard,
+          sublabel: user?.subscription?.planName
+            ? `${user.subscription.planName} · ${user.subscription.isActive ? 'Active' : 'Expired'}`
+            : 'Plan tier, quotas & billing',
+          badge: user?.subscription?.isActive ? 'Active' : 'Free',
         },
         {
           href: '/mistakes',

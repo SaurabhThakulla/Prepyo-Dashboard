@@ -70,17 +70,6 @@ export default function SubscriptionPage() {
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto py-4">
-
-      <div className="text-center space-y-2">
-        <Badge variant="indigo" className="px-3 py-1">Nepal pricing</Badge>
-        <h1 className="font-display text-3xl sm:text-4xl font-black text-foreground">
-          Choose your plan
-        </h1>
-        <p className="text-xs sm:text-sm text-muted-foreground max-w-xl mx-auto">
-          Prices in NPR. Paid plans include bonus days on top of the base duration.
-        </p>
-      </div>
-
       {/* Current plan */}
       {user?.subscription && (
         <Card className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -98,9 +87,9 @@ export default function SubscriptionPage() {
           </div>
           <div className="flex gap-6 text-xs">
             <div>
-              <span className="text-[10px] text-muted-foreground block">AI evals today</span>
+              <span className="text-[10px] text-muted-foreground block">Sub-tests today</span>
               <span className="font-bold text-foreground">
-                {user.subscription.dailyEvaluationsUsed} / {user.subscription.dailyEvaluationsLimit}
+                {user.subscription.dailySubTestsUsed} / {user.subscription.dailySubTestsLimit}
               </span>
             </div>
             <div>

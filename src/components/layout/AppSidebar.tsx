@@ -52,7 +52,7 @@ export default function AppSidebar({
     setActiveSection(getSectionFromPathname(pathname));
   }, [pathname]);
 
-  const sections = buildSections(activeExam, () => setIsTutorOpen(true));
+  const sections = buildSections(activeExam, () => setIsTutorOpen(true), user);
   const currentSection = sections.find(section => section.id === activeSection) ?? sections[0];
 
   const closeMobileSidebar = () => setIsOpen(false);

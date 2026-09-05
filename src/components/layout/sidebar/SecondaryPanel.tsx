@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Bot, Flame, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Flame, ChevronRight } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import SecondaryNavList from './SecondaryNavList';
@@ -58,16 +57,6 @@ export default function SecondaryPanel({
         <Separator className="bg-border" />
 
         <div className="p-3 space-y-2 bg-sidebar-background">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onOpenTutor}
-            className="w-full flex items-center justify-center gap-1.5 border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary font-bold text-xs"
-          >
-            <Bot className="w-4 h-4 text-primary" />
-            <span>Ask AI Coach</span>
-          </Button>
-
           <Link
             to="/profile"
             onClick={onNavigate}

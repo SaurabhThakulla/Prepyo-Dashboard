@@ -42,8 +42,13 @@ export interface SubscriptionState {
   planName: string;
   validUntil?: string;
   isActive: boolean;
-  dailyEvaluationsUsed: number;
-  dailyEvaluationsLimit: number;
+  /** Task sets attempted in the learner's own day, across every skill. */
+  dailySubTestsUsed: number;
+  dailySubTestsLimit: number;
+  /** @deprecated Duplicates of dailySubTests*, served while older builds exist. */
+  dailyEvaluationsUsed?: number;
+  /** @deprecated */
+  dailyEvaluationsLimit?: number;
   mockTestsIncluded: number;
   bonusMockTests: number;
   totalMockTestsAllowed: number;
@@ -483,7 +488,10 @@ export interface SubscriptionPlan {
   durationDays: number;
   bonusDays: number;
   features: string[];
-  aiEvaluationsPerDay: number;
+  /** Daily allowance of task sets, in any skill. */
+  subTestsPerDay: number;
+  /** @deprecated Duplicate of subTestsPerDay, served while older builds exist. */
+  aiEvaluationsPerDay?: number;
   mockTestsIncluded: number;
   isPopular: boolean;
 }

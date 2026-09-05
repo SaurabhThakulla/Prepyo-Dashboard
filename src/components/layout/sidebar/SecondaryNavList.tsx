@@ -29,6 +29,7 @@ import {
   Highlighter,
   PenLine,
   Folder,
+  CreditCard,
   LucideIcon,
 } from 'lucide-react';
 import { SecondaryNavItem } from './navigation';
@@ -87,6 +88,9 @@ function getSubtopicIcon(label: string, fallbackIcon: LucideIcon): LucideIcon {
   if (norm.includes('highlight correct')) return Highlighter;
   if (norm.includes('missing word')) return HelpCircle;
   if (norm.includes('dictation')) return PenLine;
+
+  // Plan & subscription subtopics
+  if (norm.includes('plan') || norm.includes('subscription')) return CreditCard;
 
   return fallbackIcon;
 }

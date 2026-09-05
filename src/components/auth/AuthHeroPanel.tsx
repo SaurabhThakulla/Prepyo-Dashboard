@@ -67,7 +67,7 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
             title={freePlan?.name || 'Instant Free Starter'}
             badge={<Badge variant="secondary" className="text-[10px] py-0 font-bold shrink-0">NPR {freePlan?.priceNPR ?? 0}</Badge>}
             tickClass="text-primary"
-            points={['1 Full AI Mock Exam', '3 Daily AI Evaluations', 'Nepali Accent AI Engine']}
+            points={freePlan?.features?.length ? freePlan.features : ['Nepali Accent AI Engine']}
           />
           <HeroCard
             icon={<ShieldCheck className="w-4 h-4 text-primary" />}

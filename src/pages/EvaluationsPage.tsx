@@ -57,7 +57,7 @@ export default function EvaluationsPage() {
   const wordCount = inputText.trim().split(/\s+/).filter(Boolean).length;
   const subscription = user?.subscription;
   const quotaExhausted =
-    subscription != null && subscription.dailyEvaluationsUsed >= subscription.dailyEvaluationsLimit;
+    subscription != null && subscription.dailySubTestsUsed >= subscription.dailySubTestsLimit;
 
   const handleEvaluate = async () => {
     if (!selectedQuestionId || !inputText.trim() || loading) return;
@@ -108,7 +108,7 @@ export default function EvaluationsPage() {
 
         {subscription && (
           <Badge variant={quotaExhausted ? 'destructive' : 'outline'} className="text-xs px-3 py-1">
-            {subscription.dailyEvaluationsUsed} / {subscription.dailyEvaluationsLimit} used today
+            {subscription.dailySubTestsUsed} / {subscription.dailySubTestsLimit} sub-tests used today
           </Badge>
         )}
       </div>
