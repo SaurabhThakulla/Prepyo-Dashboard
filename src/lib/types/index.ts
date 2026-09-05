@@ -396,6 +396,10 @@ export interface SkillProgress {
   estimate: number | null;
   /** 'no_data' until the learner has attempted something in this skill. */
   status: 'no_data' | 'needs_work' | 'steady' | 'strong';
+  /** Published questions in the bank for this skill and the learner's exam. */
+  available: number;
+  /** Distinct questions of this skill the learner has answered, all-time. */
+  completed: number;
 }
 
 export interface ProgressSummary {
@@ -541,19 +545,7 @@ export interface Pagination {
 // Dashboard
 // ---------------------------------------------------------------------------
 
-export interface SkillQuestionStat {
-  skill: SkillType;
-  label: string;
-  completedQuestions: number;
-  totalQuestions: number;
-  accuracyPercentage: number;
-  trend: string;
-  latestScore: string;
-  targetScore: number;
-  readinessPercent: number;
-  sub: string;
-  actionHref: string;
-}
+
 
 export interface StudyPlanEvent {
   id: string;
@@ -572,36 +564,7 @@ export interface StudyPlanData {
   scheduledEvents: StudyPlanEvent[];
 }
 
-export interface WeakestSkillFocus {
-  skill: SkillType;
-  taskTypeName: string;
-  latestScore: string;
-  maxScore: number;
-  analysis: string;
-  actionText: string;
-  actionHref: string;
-  period: string;
-}
 
-export interface DashboardData {
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    targetExam: ExamType;
-    targetScore: number;
-    estimatedScore: number;
-    examDate?: string;
-    nepalRegion: string;
-    xp: number;
-    level: number;
-    streakDays: number;
-    rank: number;
-    readinessPercentage: number;
-  };
-  skillStats: Record<SkillType, SkillQuestionStat>;
-  studyPlan: StudyPlanData;
-  weakestSkill: WeakestSkillFocus;
-  unresolvedMistakesCount: number;
-}
+
+
 

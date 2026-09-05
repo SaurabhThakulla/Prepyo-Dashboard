@@ -9,6 +9,11 @@ interface StudyPlanCalendarProps {
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
+/** YYYY-MM-DD in local time, which is what the cell keys use. */
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 const MONTH_NAMES = [
   'January',
   'February',
@@ -28,7 +33,9 @@ export default function StudyPlanCalendar({
   studyPlan,
   onSelectDate,
 }: StudyPlanCalendarProps) {
-  // Default to August 2026 to match mock/reference, or today
+  // Opens on the learner's own month, not a fixed one. It used to default to
+  // August 2026 "to match mock/reference", which meant the calendar showed the
+  // wrong month to everyone once that date passed.
   const [currentDate, setCurrentDate] = useState(() => {
     if (studyPlan?.selectedDate) {
       const parts = studyPlan.selectedDate.split('-');
@@ -36,11 +43,12 @@ export default function StudyPlanCalendar({
         return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, 1);
       }
     }
-    return new Date(2026, 7, 1); // August 2026
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
   });
 
   const [selectedDateStr, setSelectedDateStr] = useState<string>(
-    studyPlan?.selectedDate || '2026-08-30',
+    () => studyPlan?.selectedDate || isoDate(new Date()),
   );
 
   const year = currentDate.getFullYear();

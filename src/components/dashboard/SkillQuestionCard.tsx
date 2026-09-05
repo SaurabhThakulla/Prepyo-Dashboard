@@ -8,7 +8,8 @@ export interface SkillQuestionCardProps {
   label: string;
   completed: number;
   total: number;
-  trend?: string;
+  /** Recent accuracy as a percentage, or null when nothing has been attempted. */
+  accuracy?: number | null;
   href?: string;
 }
 
@@ -24,7 +25,7 @@ export default function SkillQuestionCard({
   label,
   completed,
   total,
-  trend = '+0.0%',
+  accuracy = null,
   href = `/practice?skill=${skill}`,
 }: SkillQuestionCardProps) {
   const Icon = SKILL_ICONS[skill] || BookOpen;
@@ -40,11 +41,13 @@ export default function SkillQuestionCard({
           <Icon className="w-5 h-5" />
         </div>
 
-        {/* Trend Badge */}
-        <div className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/30">
-          <TrendingUp className="w-3 h-3" />
-          <span>{trend}</span>
-        </div>
+        {/* Accuracy, when there is any history to report */}
+        {accuracy != null && (
+          <div className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/30">
+            <TrendingUp className="w-3 h-3" />
+            <span>{accuracy}% correct</span>
+          </div>
+        )}
       </div>
 
       {/* Label and Count */}
@@ -53,7 +56,7 @@ export default function SkillQuestionCard({
           {label}
         </div>
         <div className="text-xl sm:text-2xl font-black text-indigo-950 dark:text-white tracking-tight">
-          {completed}/{total.toLocaleString()}
+          {total > 0 ? `${completed}/${total.toLocaleString()}` : 'None yet'}
         </div>
       </div>
     </Link>

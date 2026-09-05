@@ -25,7 +25,14 @@ interface ExamDateDialogProps {
 export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogProps) {
   const { user, activeExam, updateProfile } = useApp();
 
-  const [date, setDate] = useState<string>(user?.examDate ? String(user.examDate).split('T')[0] : '2026-10-15');
+  // Defaults to six weeks out rather than a fixed date, which would drift into
+  // the past and offer the learner an exam day that has already been.
+  const [date, setDate] = useState<string>(() => {
+    if (user?.examDate) return String(user.examDate).split('T')[0];
+    const d = new Date();
+    d.setDate(d.getDate() + 42);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   const [time, setTime] = useState<string>('09:00');
   const [targetScore, setTargetScore] = useState<number>(user?.targetScore || (activeExam === 'PTE' ? 79 : 7.5));
   const [saving, setSaving] = useState<boolean>(false);

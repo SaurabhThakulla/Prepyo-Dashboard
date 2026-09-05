@@ -29,7 +29,6 @@
  */
 
 import {
-  DashboardData,
   Evaluation,
   ExamType,
   LeaderboardEntry,
@@ -40,7 +39,6 @@ import {
 } from '@/lib/types';
 
 import aiEvaluationsData from '@/data/ai-evaluations.json';
-import dashboardData from '@/data/dashboard.json';
 import diagnosticTestData from '@/data/diagnostic-test.json';
 import leaderboardRankingsData from '@/data/leaderboard-rankings.json';
 import mistakesBankData from '@/data/mistakes-bank.json';
@@ -214,20 +212,5 @@ export function fixtureWritingQuestions(exam: ExamType): Question[] {
       points: 100,
     },
   ];
-}
-
-export function fixtureDashboard(exam: ExamType): DashboardData {
-  const isPTE = exam === 'PTE';
-  const raw = dashboardData as unknown as DashboardData;
-
-  return {
-    ...raw,
-    user: {
-      ...raw.user,
-      targetExam: exam,
-      targetScore: isPTE ? 79 : 7.5,
-      estimatedScore: isPTE ? 68 : 6.5,
-    },
-  };
 }
 

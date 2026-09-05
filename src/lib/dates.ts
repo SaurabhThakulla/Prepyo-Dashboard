@@ -20,7 +20,7 @@ function parseDateParts(value: string): { year: number; month: number; day: numb
 }
 
 /** `2026-10-15` → `15 Oct 2026`. Returns `fallback` for anything unparseable. */
-export function formatExamDate(value: string | undefined, fallback: string): string {
+export function formatExamDate(value: string | undefined, fallback = ''): string {
   if (!value) return fallback;
 
   const parts = parseDateParts(value);
@@ -36,7 +36,7 @@ export function formatExamDate(value: string | undefined, fallback: string): str
  * The exam is treated as 9am local, so the count does not tick down at
  * midnight on the day itself.
  */
-export function daysUntilExam(value: string | undefined, fallback: number): number {
+export function daysUntilExam(value: string | undefined, fallback = 0): number {
   if (!value) return fallback;
 
   const parts = parseDateParts(value);

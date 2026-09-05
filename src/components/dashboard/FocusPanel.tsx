@@ -1,11 +1,10 @@
 import React from 'react';
-import { StudyPlanData, UserProfile, WeakestSkillFocus } from '@/lib/types';
+import { StudyPlanData, UserProfile } from '@/lib/types';
 import StudyPlanCalendar from '@/components/dashboard/StudyPlanCalendar';
 import CurrentPlanCard from '@/components/dashboard/CurrentPlanCard';
 
 interface FocusPanelProps {
   onAskCoach?: () => void;
-  weakestSkill?: WeakestSkillFocus;
   studyPlan?: StudyPlanData;
   user?: UserProfile | null;
 }

@@ -7,7 +7,7 @@ import PracticeStudioPanel, { SkillRow } from '@/components/dashboard/PracticeSt
 import FocusPanel from '@/components/dashboard/FocusPanel';
 import { useDashboardSummary } from '@/lib/hooks/useDashboardSummary';
 import { daysUntilExam, formatExamDate } from '@/lib/dates';
-import { ExamType, SkillQuestionStat, SkillType } from '@/lib/types';
+import { ExamType, ProgressSummary, SkillType } from '@/lib/types';
 
 /**
  * The learner's home screen.
@@ -17,68 +17,72 @@ import { ExamType, SkillQuestionStat, SkillType } from '@/lib/types';
  * and weakest skill coaching focus.
  */
 
-/** Per-skill rows for PracticeStudioPanel. */
-function buildSkillRows(
-  exam: ExamType,
-  stats?: Record<SkillType, SkillQuestionStat>,
-): SkillRow[] {
+/** Per-skill rows for PracticeStudioPanel, built from real progress. */
+function buildSkillRows(exam: ExamType, progress: ProgressSummary | null): SkillRow[] {
   const isPTE = exam === 'PTE';
+  const bySkill = new Map((progress?.skills ?? []).map(row => [row.skill, row]));
 
-  return [
-    {
-      name: 'Speaking',
-      sub: stats?.speaking?.sub ?? (isPTE ? 'Read aloud, describe image' : 'Part 1, 2, 3 questions'),
-      scoreText: stats?.speaking?.latestScore ?? (isPTE ? '74/90' : '7.0/9.0'),
-      percent: stats?.speaking?.readinessPercent ?? 82,
-      href: '/practice?skill=speaking',
-    },
-    {
-      name: 'Writing',
-      sub: stats?.writing?.sub ?? (isPTE ? 'Essay, summarise written text' : 'Task 1 & Task 2'),
-      scoreText: stats?.writing?.latestScore ?? (isPTE ? '68/90' : '6.5/9.0'),
-      percent: stats?.writing?.readinessPercent ?? 75,
-      href: '/practice?skill=writing',
-    },
-    {
-      name: 'Reading',
-      sub: stats?.reading?.sub ?? (isPTE ? 'Fill in the blanks, reading & writing' : 'Passages 1–3'),
-      scoreText: stats?.reading?.latestScore ?? (isPTE ? '79/90' : '7.5/9.0'),
-      percent: stats?.reading?.readinessPercent ?? 88,
-      href: '/practice?skill=reading',
-    },
-    {
-      name: 'Listening',
-      sub: stats?.listening?.sub ?? (isPTE ? 'Dictation, summarise spoken text' : 'Sections 1–4'),
-      scoreText: stats?.listening?.latestScore ?? (isPTE ? '76/90' : '7.0/9.0'),
-      percent: stats?.listening?.readinessPercent ?? 84,
-      href: '/practice?skill=listening',
-    },
-  ];
+  const subtitles: Record<SkillType, string> = {
+    speaking: isPTE ? 'Read aloud, describe image' : 'Part 1, 2, 3 questions',
+    writing: isPTE ? 'Essay, summarise written text' : 'Task 1 & Task 2',
+    reading: isPTE ? 'Fill in the blanks, multiple choice' : 'Passages 1–3',
+    listening: isPTE ? 'Dictation, summarise spoken text' : 'Sections 1–4',
+  };
+
+  return (['speaking', 'writing', 'reading', 'listening'] as SkillType[]).map(skill => {
+    const row = bySkill.get(skill);
+    const max = isPTE ? 90 : 9;
+    // PTE is a whole-number scale out of 90; IELTS is bands to one decimal, and
+    // "0/9" for a band score reads as a fraction rather than a band.
+    const band = (value: number) => (isPTE ? String(Math.round(value)) : value.toFixed(1));
+
+    // No attempts means no score. Inventing one here would put a number in
+    // front of the learner that nothing in their history supports — the same
+    // reason progress.Estimate returns null rather than a default.
+    const hasScore = row != null && row.estimate != null;
+
+    return {
+      name: skill.charAt(0).toUpperCase() + skill.slice(1),
+      sub: subtitles[skill],
+      scoreText: hasScore ? `${band(row!.estimate!)}/${band(max)}` : 'Not enough data yet',
+      percent: hasScore ? Math.round((row!.estimate! / max) * 100) : 0,
+      href: `/practice?skill=${skill}`,
+    };
+  });
 }
 
 export default function DashboardPage() {
   const { user, activeExam, setIsTutorOpen, setTutorContextPrompt } = useApp();
   const [isExamDateOpen, setIsExamDateOpen] = useState(false);
-  const { dashboard, unresolvedMistakes } = useDashboardSummary(activeExam);
+  const { progress, unresolvedMistakes } = useDashboardSummary(activeExam);
 
   const isPTE = activeExam === 'PTE';
-  const userName = user?.name ? user.name.split(' ')[0] : dashboard.user.name.split(' ')[0];
-  const mistakeCount = unresolvedMistakes ?? dashboard.unresolvedMistakesCount ?? 3;
+  const userName = user?.name?.split(' ')[0] ?? 'there';
+  const mistakeCount = unresolvedMistakes ?? 0;
 
-  const examDate = formatExamDate(user?.examDate ?? dashboard.user.examDate, '15 Oct 2026');
-  const daysLeft = daysUntilExam(user?.examDate ?? dashboard.user.examDate, 55);
+  // No invented exam date. Until the learner sets one the countdown says so,
+  // which is also the prompt to set it.
+  const examDate = user?.examDate ? formatExamDate(user.examDate) : null;
+  const daysLeft = user?.examDate ? daysUntilExam(user.examDate) : null;
 
   const handleAskCoach = () => {
-    const prompt =
-      dashboard.weakestSkill?.analysis
-        ? `I need a high-scoring strategy for ${activeExam} ${dashboard.weakestSkill.taskTypeName}. Context: ${dashboard.weakestSkill.analysis} How do I improve my score and get full points?`
-        : 'I need a high-scoring strategy for PTE Summarise Written Text. My single-sentence constraint was broken in recent attempts. How do I maintain complex grammar within 75 words and get full points?';
+    const attempted = (progress?.skills ?? []).filter(row => row.attempts > 0);
+    const weakest = attempted.length
+      ? attempted.reduce((worst, row) => (row.accuracy < worst.accuracy ? row : worst))
+      : null;
 
-    setTutorContextPrompt(prompt);
+    setTutorContextPrompt(
+      weakest
+        ? `I am preparing for ${activeExam}. My weakest skill is ${weakest.skill} — ${weakest.accuracy}% accuracy across ${weakest.attempts} recent attempts. What should I work on to improve it?`
+        : `I am preparing for ${activeExam} and have not practised yet. Where should I start?`,
+    );
     setIsTutorOpen(true);
   };
 
-  const skillStats = dashboard.skillStats;
+  // Question counts and accuracy come from /progress, which reads the real
+  // bank and the learner's real attempts. The dashboard fixture used to supply
+  // these and claimed a bank of 21,033 questions against an actual 139.
+  const skillProgress = new Map((progress?.skills ?? []).map(row => [row.skill, row]));
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
@@ -102,55 +106,33 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* ── 4 SKILL QUESTION STAT CARDS (Image 1) ── */}
+      {/* ── 4 SKILL QUESTION STAT CARDS ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <SkillQuestionCard
-          skill="speaking"
-          label={skillStats.speaking?.label || 'Speaking Questions'}
-          completed={skillStats.speaking?.completedQuestions ?? 0}
-          total={skillStats.speaking?.totalQuestions ?? 5833}
-          trend={skillStats.speaking?.trend ?? '+0.0%'}
-          href={skillStats.speaking?.actionHref ?? '/practice?skill=speaking'}
-        />
-
-        <SkillQuestionCard
-          skill="writing"
-          label={skillStats.writing?.label || 'Writing Questions'}
-          completed={skillStats.writing?.completedQuestions ?? 0}
-          total={skillStats.writing?.totalQuestions ?? 2096}
-          trend={skillStats.writing?.trend ?? '+0.0%'}
-          href={skillStats.writing?.actionHref ?? '/practice?skill=writing'}
-        />
-
-        <SkillQuestionCard
-          skill="reading"
-          label={skillStats.reading?.label || 'Reading Questions'}
-          completed={skillStats.reading?.completedQuestions ?? 0}
-          total={skillStats.reading?.totalQuestions ?? 4929}
-          trend={skillStats.reading?.trend ?? '+0.0%'}
-          href={skillStats.reading?.actionHref ?? '/practice?skill=reading'}
-        />
-
-        <SkillQuestionCard
-          skill="listening"
-          label={skillStats.listening?.label || 'Listening Questions'}
-          completed={skillStats.listening?.completedQuestions ?? 0}
-          total={skillStats.listening?.totalQuestions ?? 8175}
-          trend={skillStats.listening?.trend ?? '+0.0%'}
-          href={skillStats.listening?.actionHref ?? '/practice?skill=listening'}
-        />
+        {(['speaking', 'writing', 'reading', 'listening'] as SkillType[]).map(skill => {
+          const row = skillProgress.get(skill);
+          return (
+            <SkillQuestionCard
+              key={skill}
+              skill={skill}
+              label={`${skill.charAt(0).toUpperCase() + skill.slice(1)} Questions`}
+              completed={row?.completed ?? 0}
+              total={row?.available ?? 0}
+              accuracy={row && row.attempts > 0 ? row.accuracy : null}
+              href={`/practice?skill=${skill}`}
+            />
+          );
+        })}
       </div>
 
       {/* ── MAIN STUDIO & STUDY PLAN / FOCUS COLUMNS (Image 2) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         <PracticeStudioPanel
-          skills={buildSkillRows(activeExam, skillStats)}
+          skills={buildSkillRows(activeExam, progress)}
           mistakeCount={mistakeCount}
         />
         <FocusPanel
           onAskCoach={handleAskCoach}
-          weakestSkill={dashboard.weakestSkill}
-          studyPlan={dashboard.studyPlan}
+
           user={user}
         />
       </div>

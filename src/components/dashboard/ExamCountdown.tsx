@@ -2,8 +2,9 @@ import React from 'react';
 import { Edit2 } from 'lucide-react';
 
 interface ExamCountdownProps {
-  examDate: string;
-  daysLeft: number;
+  /** Null until the learner has set a date — the widget then invites them to. */
+  examDate: string | null;
+  daysLeft: number | null;
   onEdit: () => void;
 }
 
@@ -24,13 +25,13 @@ export default function ExamCountdown({ examDate, daysLeft, onEdit }: ExamCountd
           <Edit2 className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 text-primary transition-opacity" />
         </div>
         <div className="text-xs sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors">
-          {examDate}
+          {examDate ?? 'Not set'}
         </div>
       </div>
 
       <div className="pl-5 space-y-0.5">
         <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">DAYS LEFT</div>
-        <div className="text-xs sm:text-sm font-bold text-primary">{daysLeft}</div>
+        <div className="text-xs sm:text-sm font-bold text-primary">{daysLeft ?? '—'}</div>
       </div>
     </div>
   );
