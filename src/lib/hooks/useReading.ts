@@ -120,8 +120,8 @@ export function useReadingPractice(exam: ExamType) {
       Math.round((Date.now() - startedAt) / 1000 / Math.max(1, answered.length)),
     );
 
+    const graded: Record<string, ReadingAnswerResult> = {};
     try {
-      const graded: Record<string, ReadingAnswerResult> = {};
       for (const question of answered) {
         const submission = answers[question.id];
         const data = await api.post<ReadingAnswerResult & { xpAwarded: number }>('/practice/attempts', {
@@ -138,7 +138,19 @@ export function useReadingPractice(exam: ExamType) {
       // XP, streak and mission progress all moved server-side.
       await refreshUser();
     } catch (err) {
-      toast.error('Could not check your answers', errorMessage(err));
+      // Answering the first question of a set now spends a sub-test, so this
+      // call can be refused where it never could before. Anything already
+      // graded above stays on screen — the learner keeps the marks they earned.
+      if (err instanceof ApiError && err.isLimitReached) {
+        setResults(graded);
+        toast.warning(
+          'Daily sub-test limit reached',
+          errorMessage(err, "You have used all of today's practice sub-tests."),
+        );
+        await refreshUser();
+      } else {
+        toast.error('Could not check your answers', errorMessage(err));
+      }
     } finally {
       setChecking(false);
     }

@@ -208,13 +208,28 @@ export interface ReadingGroup {
   instructions: string;
   /** Material belonging to the task, not the passage — the boxes to order. */
   resources?: ReadingParagraph[];
+  /**
+   * Whether to render the passage this group hangs from.
+   *
+   * 'hidden' is for tasks whose text is a gapped rewrite of the passage: the
+   * learner works on `question.contextPassage`, and showing the clean original
+   * beside it would give away every gap.
+   */
+  passageDisplay?: 'full' | 'hidden';
+  /** Which section of a generated paper this group belongs to, 0 if none. */
+  paperSlot?: number;
   timeLimitSeconds?: number;
   questions: Question[];
 }
 
-/** A passage with some of its groups: one for practice, all for a mock. */
+/**
+ * A passage with some of its groups: one for practice, one section for a mock.
+ *
+ * `passage` is optional because a set does not always have one. Re-order
+ * Paragraphs is dealt as groups with no passage — its boxes are the whole task.
+ */
 export interface ReadingSet {
-  passage: ReadingPassage;
+  passage?: ReadingPassage;
   groups: ReadingGroup[];
   totalQuestions: number;
 }

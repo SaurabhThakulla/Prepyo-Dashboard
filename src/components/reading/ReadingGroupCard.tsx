@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { AnswerSubmission, ReadingGroup } from '@/lib/types';
 import { ReadingAnswerResult } from '@/lib/hooks/useReading';
 import ReadingQuestionRow from '@/components/reading/ReadingQuestionRow';
+import { isGapFill } from '@/lib/readingTypes';
 
 interface ReadingGroupCardProps {
   group: ReadingGroup;
@@ -19,9 +20,11 @@ interface ReadingGroupCardProps {
  * One task set: the instruction line, any material the task carries with it,
  * and the questions.
  *
- * `resources` is where an ordering task keeps its boxes. Without them the
- * questions reference paragraphs that appear nowhere, so they render above the
- * questions rather than being treated as optional decoration.
+ * `resources` is where a task keeps the material that belongs to it rather than
+ * to the passage, and it is read two ways. For an ordering task it is the boxes,
+ * which have to appear above the questions or they reference paragraphs shown
+ * nowhere. For a gap-fill it is the word bank, which belongs inside the question
+ * next to the gaps it fills, so it is handed down instead of rendered here.
  */
 export default function ReadingGroupCard({
   group,
@@ -32,6 +35,7 @@ export default function ReadingGroupCard({
   onAnswer,
 }: ReadingGroupCardProps) {
   const last = startNumber + group.questions.length - 1;
+  const wordBank = isGapFill(group.typeId) ? group.resources : undefined;
 
   return (
     <Card className="p-5 sm:p-6 space-y-4 bg-card dark:bg-[#0f141f] border-border/80 shadow-md rounded-2xl">
@@ -47,7 +51,7 @@ export default function ReadingGroupCard({
         <p className="text-xs sm:text-[13px] text-muted-foreground font-medium leading-relaxed">{group.instructions}</p>
       </div>
 
-      {group.resources && group.resources.length > 0 && (
+      {!wordBank && group.resources && group.resources.length > 0 && (
         <div className="space-y-2">
           {group.resources.map(resource => (
             <div key={resource.label} className="p-3.5 rounded-xl bg-muted/30 border border-border space-y-1">
@@ -67,6 +71,7 @@ export default function ReadingGroupCard({
             answer={answers[question.id]}
             result={results?.[question.id]}
             disabled={disabled}
+            wordBank={wordBank}
             onChange={patch => onAnswer(question.id, patch)}
           />
         ))}

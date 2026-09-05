@@ -9,30 +9,12 @@ import { useToast } from '@/components/ui/toast';
 import { useReadingPractice, useReadingTypes } from '@/lib/hooks/useReading';
 import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
+import { TYPE_BY_SYLLABUS_KEY } from '@/lib/readingTypes';
 
 interface ReadingPracticePanelProps {
   /** The `?type=` key the sidebar linked with, if any. */
   initialTypeKey?: string;
 }
-
-/**
- * Sidebar task names to server task types.
- *
- * The syllabus lists eight reading tasks; the server has six types. That is not
- * a mismatch to fix — "Complete the sentences" and "Sentence completions" are
- * the same task appearing twice on a passage, as are the two Yes/No/Not Given
- * sets, so both names resolve to the one type. Keyed by `typeKey`, which is how
- * the sidebar builds its links.
- */
-const TYPE_BY_SYLLABUS_KEY: Record<string, string> = {
-  completesentences: 'reading-sentence-completion',
-  sentencecompletions: 'reading-sentence-completion',
-  truefalse: 'reading-true-false',
-  findwriter: 'reading-find-the-writer',
-  arrangepassage: 'reading-arrange-passage',
-  yesnonotgiven: 'reading-yes-no-not-given',
-  matchinginformation: 'reading-matching-information',
-};
 
 /**
  * Reading practice: choose a task type, get a passage, answer its questions.
@@ -74,8 +56,11 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
   const askTutor = () => {
     if (!set) return;
     const group = set.groups[0];
+    const subject = set.passage
+      ? `Reading passage: ${set.passage.title}`
+      : `Reading task: ${group?.typeName}`;
     setTutorContextPrompt(
-      `Reading passage: ${set.passage.title}\nTask type: ${group?.typeName}\nInstructions: ${group?.instructions}`,
+      `${subject}\nTask type: ${group?.typeName}\nInstructions: ${group?.instructions}`,
     );
     setIsTutorOpen(true);
   };
@@ -113,9 +98,16 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
         </Card>
       ) : (
         <div className="space-y-6">
-          <div className="w-full">
-            <PassageReader passage={set.passage} scroll={false} />
-          </div>
+          {/*
+            A gap-fill works on its own rewritten text and Re-order has no
+            passage at all. Rendering the clean original beside either would show
+            the learner the answer, so the group decides whether it appears.
+          */}
+          {set.passage && set.groups[0]?.passageDisplay !== 'hidden' && (
+            <div className="w-full">
+              <PassageReader passage={set.passage} scroll={false} />
+            </div>
+          )}
 
           <div className="w-full space-y-4">
             {set.groups.map(group => (

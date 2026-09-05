@@ -101,7 +101,7 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
       <div className="flex gap-2">
         {sets.map((set, index) => (
           <button
-            key={set.passage.id}
+            key={set.passage?.id ?? index}
             type="button"
             onClick={() => setActiveIndex(index)}
             className={`flex-1 px-3 py-2 rounded-xl border text-xs font-bold transition-colors ${
@@ -112,7 +112,7 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
           >
             Passage {index + 1}
             <span className="block font-medium text-[10px] opacity-70 truncate">
-              {set.passage.title}
+              {set.passage?.title}
             </span>
           </button>
         ))}
@@ -120,11 +120,13 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
 
       {activeSet && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-6">
-            <PassageReader passage={activeSet.passage} />
-          </div>
+          {activeSet.passage && (
+            <div className="lg:col-span-6">
+              <PassageReader passage={activeSet.passage} />
+            </div>
+          )}
 
-          <div className="lg:col-span-6 space-y-4">
+          <div className={`space-y-4 ${activeSet.passage ? 'lg:col-span-6' : 'lg:col-span-12'}`}>
             {activeSet.groups.map((group, groupIndex) => (
               <ReadingGroupCard
                 key={group.id}
