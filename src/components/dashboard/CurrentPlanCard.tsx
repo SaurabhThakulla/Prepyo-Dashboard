@@ -4,6 +4,7 @@ import { Sparkles, ArrowRight, ShieldCheck, Zap, Gift, CheckCircle2 } from 'luci
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { UserProfile } from '@/lib/types';
+import { formatPlanName } from '@/lib/subscriptions';
 
 interface CurrentPlanCardProps {
   user?: UserProfile | null;
@@ -24,7 +25,7 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
   const sub = user?.subscription;
   if (!sub) return <CurrentPlanCardSkeleton />;
 
-  const planName = sub.planName;
+  const planName = formatPlanName(sub.planName || sub.planId);
   const isActive = sub.isActive;
   const isFree = sub.planId === 'free';
   const validUntil = sub.validUntil;
