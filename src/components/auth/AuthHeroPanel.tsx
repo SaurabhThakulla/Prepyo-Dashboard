@@ -2,6 +2,7 @@ import React from 'react';
 import { CheckCircle2, ShieldCheck, Gift } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { SubscriptionPlan } from '@/lib/types';
+import { formatPlanName } from '@/lib/subscriptions';
 
 /**
  * The marketing half of the auth screen. Desktop only — it is hidden below
@@ -64,7 +65,7 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
           <HeroCard
             icon={<Gift className="w-4 h-4" />}
             iconClass="bg-amber-500/20 text-amber-400"
-            title={freePlan?.name || 'Instant Free Starter'}
+            title={formatPlanName(freePlan?.name || freePlan?.id) || 'Instant Free Starter'}
             badge={<Badge variant="secondary" className="text-[10px] py-0 font-bold shrink-0">NPR {freePlan?.priceNPR ?? 0}</Badge>}
             tickClass="text-primary"
             points={freePlan?.features?.length ? freePlan.features : ['Nepali Accent AI Engine']}

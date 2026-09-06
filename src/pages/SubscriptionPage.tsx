@@ -1,32 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import {
   CheckCircle2,
   RefreshCw,
   Gift,
   AlertCircle,
-  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { SubscriptionPlan, SubscriptionState } from '@/lib/types';
-import { api, errorMessage } from '@/lib/api';
-import { useToast } from '@/components/ui/toast';
+import { SubscriptionPlan } from '@/lib/types';
+import { errorMessage } from '@/lib/api';
 import { useSubscriptionPlans } from '@/lib/hooks/useResources';
-
-type Gateway = 'esewa' | 'khalti' | 'fonepay';
+import { formatPlanName } from '@/lib/subscriptions';
+import QRPaymentCheckoutDialog from '@/components/subscription/QRPaymentCheckoutDialog';
 
 export default function SubscriptionPage() {
-  const { user, refreshUser } = useApp();
-  const toast = useToast();
+  const { user } = useApp();
 
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
-  const [selectedGateway, setSelectedGateway] = useState<Gateway>('esewa');
-  const [processing, setProcessing] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const currentPlanId = user?.subscription?.planId;
 
@@ -41,32 +34,10 @@ export default function SubscriptionPage() {
     : null;
 
   const handleOpenCheckout = (plan: SubscriptionPlan) => {
-    setSelectedPlan(plan);
-    setSuccessMessage(null);
+    setSelectedPlan({ ...plan, name: formatPlanName(plan.name || plan.id) });
     setCheckoutModalOpen(true);
   };
 
-  const handleProcessPayment = async () => {
-    if (!selectedPlan || processing) return;
-    setProcessing(true);
-
-    try {
-      const data = await api.post<{ subscription: SubscriptionState; message: string }>(
-        '/subscriptions/confirm',
-        {
-          planId: selectedPlan.id,
-          paymentGateway: selectedGateway.toUpperCase(),
-        },
-      );
-      setSuccessMessage(data.message);
-      await refreshUser();
-      setTimeout(() => setCheckoutModalOpen(false), 2000);
-    } catch (err) {
-      toast.error('Checkout failed', errorMessage(err));
-    } finally {
-      setProcessing(false);
-    }
-  };
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto py-4">
@@ -76,7 +47,7 @@ export default function SubscriptionPage() {
           <div className="space-y-1">
             <span className="text-[10px] font-bold text-muted-foreground uppercase">Your current plan</span>
             <div className="flex items-center gap-2">
-              <CardTitle className="text-base">{user.subscription.planName}</CardTitle>
+              <CardTitle className="text-base">{formatPlanName(user.subscription.planName)}</CardTitle>
               <Badge variant={user.subscription.isActive ? 'success' : 'destructive'} className="text-[9px]">
                 {user.subscription.isActive ? 'Active' : 'Expired'}
               </Badge>
@@ -122,9 +93,8 @@ export default function SubscriptionPage() {
             return (
               <Card
                 key={plan.id}
-                className={`p-6 flex flex-col justify-between space-y-6 relative transition-all ${
-                  plan.isPopular ? 'border-primary/60 shadow-xl shadow-primary/10 bg-card/90 ring-1 ring-primary/40' : 'border-border'
-                }`}
+                className={`p-6 flex flex-col justify-between space-y-6 relative transition-all ${plan.isPopular ? 'border-primary/60 shadow-xl shadow-primary/10 bg-card/90 ring-1 ring-primary/40' : 'border-border'
+                  }`}
               >
                 {plan.isPopular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-wider px-3 py-0.5 rounded-full shadow-md">
@@ -134,7 +104,7 @@ export default function SubscriptionPage() {
 
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <CardTitle className="text-base">{plan.name}</CardTitle>
+                    <CardTitle className="text-base">{formatPlanName(plan.name || plan.id)}</CardTitle>
                     <CardDescription className="text-xs">
                       {plan.priceNPR === 0
                         ? 'Free starter plan'
@@ -181,65 +151,12 @@ export default function SubscriptionPage() {
         </div>
       )}
 
-      {/* Checkout */}
-      <Dialog open={checkoutModalOpen} onOpenChange={setCheckoutModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Checkout</DialogTitle>
-            <DialogDescription>
-              NPR {selectedPlan?.priceNPR.toLocaleString()} for {selectedPlan?.name}
-            </DialogDescription>
-          </DialogHeader>
-
-          {successMessage ? (
-            <div className="p-4 rounded-xl bg-primary/20 text-primary border border-primary/30 text-xs font-bold text-center space-y-1">
-              <CheckCircle2 className="w-8 h-8 text-primary mx-auto" />
-              <div>{successMessage}</div>
-            </div>
-          ) : (
-            <div className="space-y-4 pt-2">
-              {/* No real gateway is connected. Saying so beats a fake QR code. */}
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[11px] font-medium flex items-start gap-2">
-                <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                <span>
-                  No payment gateway is connected yet. Confirming records the subscription in your account
-                  without charging anything — it is a test checkout, not a real payment.
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                <span className="text-xs font-bold text-foreground">Gateway to record</span>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['esewa', 'khalti', 'fonepay'] as const).map(gw => (
-                    <button
-                      key={gw}
-                      type="button"
-                      onClick={() => setSelectedGateway(gw)}
-                      className={`p-3 rounded-xl border text-center font-bold text-xs capitalize transition-all ${
-                        selectedGateway === gw
-                          ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                          : 'bg-background border-border text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      {gw}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {selectedPlan && selectedPlan.bonusDays > 0 && (
-                <p className="text-[11px] text-primary font-bold text-center">
-                  Includes +{selectedPlan.bonusDays} bonus days on confirmation.
-                </p>
-              )}
-
-              <Button onClick={handleProcessPayment} disabled={processing} className="w-full font-bold text-xs">
-                {processing ? 'Recording…' : 'Confirm test checkout'}
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* QR Payment Checkout */}
+      <QRPaymentCheckoutDialog
+        open={checkoutModalOpen}
+        onOpenChange={setCheckoutModalOpen}
+        selectedPlan={selectedPlan}
+      />
     </div>
   );
 }

@@ -31,7 +31,12 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export interface ToastProviderProps {
+  children: React.ReactNode;
+  position?: 'top-right' | 'top-left' | 'top-center' | 'bottom-right' | 'bottom-left' | 'bottom-center';
+}
+
+export function ToastProvider({ children, position = 'top-right' }: ToastProviderProps) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const dismissToast = useCallback((id: string) => {
@@ -79,6 +84,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       showToast({ type: 'warning', title, description, duration: 4500 }),
     [showToast]
   );
+  const isTop = position.startsWith('top');
+  const positionClasses: Record<string, string> = {
+    'top-right': 'top-4 right-4 sm:top-6 sm:right-6',
+    'top-left': 'top-4 left-4 sm:top-6 sm:left-6',
+    'top-center': 'top-4 left-1/2 -translate-x-1/2 sm:top-6',
+    'bottom-right': 'bottom-4 right-4 sm:bottom-6 sm:right-6',
+    'bottom-left': 'bottom-4 left-4 sm:bottom-6 sm:left-6',
+    'bottom-center': 'bottom-4 left-1/2 -translate-x-1/2 sm:bottom-6',
+  };
 
   return (
     <ToastContext.Provider
@@ -97,7 +111,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {/* Global Toast Container */}
       <div
         aria-live="polite"
-        className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0"
+        className={cn('fixed z-[9999] flex flex-col gap-3 max-w-md w-full pointer-events-none px-4 sm:px-0', positionClasses[position] || positionClasses['top-right'])}
       >
         {toasts.map((t) => {
           const isError = t.type === 'error';
@@ -109,46 +123,47 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               key={t.id}
               role={isError ? 'alert' : 'status'}
               className={cn(
-                'pointer-events-auto flex items-start gap-3 p-4 rounded-2xl border shadow-2xl backdrop-blur-xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 zoom-in-95',
+                'pointer-events-auto flex items-start gap-3.5 p-4 sm:p-5 rounded-2xl border shadow-2xl backdrop-blur-xl transition-all duration-300 animate-in fade-in zoom-in-95',
+                isTop ? 'slide-in-from-top-4' : 'slide-in-from-bottom-4',
                 isSuccess &&
-                  'bg-emerald-950/90 text-emerald-100 border-emerald-500/40 shadow-emerald-950/40 dark:bg-emerald-950/95',
+                'bg-emerald-950/90 text-emerald-100 border-emerald-500/40 shadow-emerald-950/40 dark:bg-emerald-950/95',
                 isError &&
-                  'bg-rose-950/90 text-rose-100 border-rose-500/40 shadow-rose-950/40 dark:bg-rose-950/95',
+                'bg-rose-950/90 text-rose-100 border-rose-500/40 shadow-rose-950/40 dark:bg-rose-950/95',
                 isWarning &&
-                  'bg-amber-950/90 text-amber-100 border-amber-500/40 shadow-amber-950/40 dark:bg-amber-950/95',
+                'bg-amber-950/90 text-amber-100 border-amber-500/40 shadow-amber-950/40 dark:bg-amber-950/95',
                 t.type === 'info' &&
-                  'bg-slate-900/90 text-slate-100 border-border shadow-slate-950/40'
+                'bg-slate-900/90 text-slate-100 border-border shadow-slate-950/40'
               )}
             >
               {/* Variant Icon */}
               <div className="shrink-0 mt-0.5">
                 {isSuccess && (
-                  <div className="h-6 w-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                    <CheckCircle2 className="w-4 h-4" />
+                  <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                    <CheckCircle2 className="w-5 h-5" />
                   </div>
                 )}
                 {isError && (
-                  <div className="h-6 w-6 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400">
-                    <AlertCircle className="w-4 h-4" />
+                  <div className="h-8 w-8 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400">
+                    <AlertCircle className="w-5 h-5" />
                   </div>
                 )}
                 {isWarning && (
-                  <div className="h-6 w-6 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
-                    <AlertTriangle className="w-4 h-4" />
+                  <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
+                    <AlertTriangle className="w-5 h-5" />
                   </div>
                 )}
                 {t.type === 'info' && (
-                  <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                    <Info className="w-4 h-4" />
+                  <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                    <Info className="w-5 h-5" />
                   </div>
                 )}
               </div>
 
               {/* Message Content */}
               <div className="flex-1 min-w-0 pr-1">
-                <h4 className="text-xs font-bold leading-tight">{t.title}</h4>
+                <h4 className="text-sm sm:text-base font-bold leading-snug tracking-tight">{t.title}</h4>
                 {t.description && (
-                  <p className="text-[11px] opacity-90 mt-1 leading-snug font-normal">
+                  <p className="text-xs sm:text-sm opacity-90 mt-1 leading-relaxed font-normal">
                     {t.description}
                   </p>
                 )}
@@ -158,10 +173,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => dismissToast(t.id)}
-                className="shrink-0 p-1 rounded-lg opacity-70 hover:opacity-100 hover:bg-white/10 transition-colors"
+                className="shrink-0 p-1.5 rounded-lg opacity-70 hover:opacity-100 hover:bg-white/10 transition-colors"
                 aria-label="Dismiss toast"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           );

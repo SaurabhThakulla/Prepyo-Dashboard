@@ -116,3 +116,29 @@ h6 {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* QR Scanner laser beam animation */
+@keyframes qr-scanner-beam {
+  0% {
+    top: 2%;
+    opacity: 0.2;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  50% {
+    top: 92%;
+    opacity: 0.95;
+  }
+  85% {
+    opacity: 0.85;
+  }
+  100% {
+    top: 2%;
+    opacity: 0.2;
+  }
+}
+
+.animate-qr-laser {
+  animation: qr-scanner-beam 2.6s ease-in-out infinite;
+}
