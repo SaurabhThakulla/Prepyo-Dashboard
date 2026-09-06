@@ -1,209 +1,228 @@
-import React, { useId, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, Phone, ShieldCheck, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import SocialSignInButtons from './SocialSignInButtons';
-import { AuthMode, MIN_PASSWORD_LENGTH, passwordStrength, useAuthForm } from '@/lib/hooks/useAuthForm';
+import { Input } from '@/components/ui/input';
+import { AuthFormState, OTP_LENGTH, localPhoneDigits } from '@/lib/hooks/useAuthForm';
 
-interface AuthFormProps {
-  form: ReturnType<typeof useAuthForm>;
-  onSocialSelect: (provider: string) => void;
-}
+export default function AuthForm({ form }: { form: AuthFormState }) {
+  const {
+    isSignup,
+    switchMode,
+    step,
+    name,
+    setName,
+    email,
+    setEmail,
+    phone,
+    setPhone,
+    code,
+    setCode,
+    agreeTerms,
+    setAgreeTerms,
+    loading,
+    error,
+    fieldErrors,
+    resendIn,
+    submit,
+    sendCode,
+    editDetails,
+  } = form;
 
-/** The sign-in / sign-up form. State and submission live in `useAuthForm`. */
-export default function AuthForm({ form, onSocialSelect }: AuthFormProps) {
-  const [showPassword, setShowPassword] = useState(false);
-
-  const nameId = useId();
-  const emailId = useId();
-  const passwordId = useId();
-
-  const { mode, fieldErrors, loading } = form;
-  const isSignup = mode === 'signup';
-  const strength = passwordStrength(form.password);
-
-  const inputClass = (field: string) =>
-    `w-full rounded-xl border bg-card pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all font-medium shadow-xs ${fieldErrors[field] ? 'border-destructive focus:border-destructive' : 'border-input focus:border-primary'
-    }`;
+  const onCode = step === 'code';
 
   return (
-    <div className="w-full max-w-sm sm:max-w-md mx-auto space-y-4 my-auto py-2">
-      <ModeSwitcher mode={mode} onSwitch={form.switchMode} />
-
-      <div className="space-y-1 text-center sm:text-left">
+    <div className="w-full max-w-md mx-auto py-6">
+      <div className="space-y-1.5 mb-6">
         <h1 className="font-display text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-          {isSignup ? 'Create your free account' : 'Welcome back to Prepyo'}
+          {onCode ? 'Enter your code' : isSignup ? 'Create your account' : 'Sign in to Prepyo'}
         </h1>
         <p className="text-xs sm:text-sm text-muted-foreground">
-          {isSignup
-            ? 'Claim 1 Free AI Mock Exam & 3 Daily AI Evaluations.'
-            : 'Sign in to continue your drills and track your score progress.'}
+          {onCode
+            ? `We sent a ${OTP_LENGTH}-digit code to ${localPhoneDigits(phone)}.`
+            : isSignup
+              ? 'We verify your mobile number so every account belongs to a real person.'
+              : 'Your mobile number is your account. No password to remember.'}
         </p>
       </div>
 
-      <SocialSignInButtons onSelect={onSocialSelect} />
-      <form onSubmit={form.submit} className="space-y-3">
-        {isSignup && (
-          <div className="space-y-1.5 animate-in fade-in duration-200">
-            <label htmlFor={nameId} className="text-xs font-bold text-foreground">Full Name</label>
-            <div className="relative">
-              <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                id={nameId}
-                type="text"
-                required
-                autoComplete="name"
-                value={form.name}
-                onChange={event => form.setName(event.target.value)}
-                placeholder="Your full name"
-                className={inputClass('name')}
+      <form onSubmit={submit} className="space-y-4">
+        {onCode ? (
+          <>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="code" className="text-xs font-bold text-foreground">
+                  Verification code
+                </label>
+                <button
+                  type="button"
+                  onClick={editDetails}
+                  className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1"
+                >
+                  <ArrowLeft className="w-3 h-3" />
+                  {isSignup ? 'Edit details' : 'Change number'}
+                </button>
+              </div>
+              <Input
+                id="code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                autoFocus
+                maxLength={OTP_LENGTH}
+                value={code}
+                onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="000000"
+                className="h-12 text-center text-xl font-mono font-bold tracking-[0.5em]"
               />
+              {fieldErrors.code && <p className="text-[11px] text-rose-500 font-medium">{fieldErrors.code}</p>}
             </div>
-            {fieldErrors.name && <p className="text-xs text-destructive font-medium">{fieldErrors.name}</p>}
-          </div>
-        )}
 
-        <div className="space-y-1.5">
-          <label htmlFor={emailId} className="text-xs font-bold text-foreground">Email Address</label>
-          <div className="relative">
-            <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              id={emailId}
-              type="email"
-              required
-              autoComplete="email"
-              value={form.email}
-              onChange={event => form.setEmail(event.target.value)}
-              placeholder="you@example.com"
-              className={inputClass('email')}
-            />
-          </div>
-          {fieldErrors.email && <p className="text-xs text-destructive font-medium">{fieldErrors.email}</p>}
-        </div>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label htmlFor={passwordId} className="text-xs font-bold text-foreground">Password</label>
-            {!isSignup && (
-              <Link to="#" className="text-xs font-medium text-primary hover:underline">
-                Forgot password?
-              </Link>
-            )}
-          </div>
-          <div className="relative">
-            <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              id={passwordId}
-              type={showPassword ? 'text' : 'password'}
-              required
-              autoComplete={isSignup ? 'new-password' : 'current-password'}
-              minLength={isSignup ? MIN_PASSWORD_LENGTH : undefined}
-              value={form.password}
-              onChange={event => form.setPassword(event.target.value)}
-              placeholder={isSignup ? `Min. ${MIN_PASSWORD_LENGTH} characters` : 'Enter password'}
-              className={`${inputClass('password')} pr-10`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-          {fieldErrors.password && <p className="text-xs text-destructive font-medium">{fieldErrors.password}</p>}
-
-          {isSignup && form.password.length > 0 && (
-            <div className="space-y-1 pt-1 animate-in fade-in">
-              <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground">
-                <span>Strength</span>
-                <span className={strength.score >= 2 ? 'text-emerald-500' : 'text-rose-500'}>
-                  {strength.level}
+            <div className="text-center">
+              {resendIn > 0 ? (
+                <span className="text-[11px] text-muted-foreground">
+                  Didn&apos;t get it? Resend in {resendIn}s
                 </span>
-              </div>
-              <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden flex gap-1">
-                {[1, 2, 3].map(bar => (
-                  <div
-                    key={bar}
-                    className={`h-full flex-1 rounded-full ${strength.score >= bar ? strength.color : 'bg-transparent'}`}
-                  />
-                ))}
-              </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={sendCode}
+                  disabled={loading}
+                  className="text-[11px] font-semibold text-primary hover:underline disabled:opacity-50"
+                >
+                  Send a new code
+                </button>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        ) : (
+          <>
+            {isSignup && (
+              <>
+                <div className="space-y-1.5">
+                  <label htmlFor="name" className="text-xs font-bold text-foreground">
+                    Full name
+                  </label>
+                  <Input
+                    id="name"
+                    autoComplete="name"
+                    autoFocus
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    placeholder="Sita Sharma"
+                    className="h-11 text-sm"
+                  />
+                  {fieldErrors.name && <p className="text-[11px] text-rose-500 font-medium">{fieldErrors.name}</p>}
+                </div>
 
-        {isSignup && (
-          <div className="pt-0.5 animate-in fade-in">
-            <label className="flex items-start gap-2.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={form.agreeTerms}
-                onChange={event => form.setAgreeTerms(event.target.checked)}
-                className="rounded border-input text-primary focus:ring-primary h-4 w-4 mt-0.5 cursor-pointer"
-              />
-              <span className="text-xs text-muted-foreground leading-tight font-medium">
-                I agree to the Terms of Service and Privacy Policy.
-              </span>
-            </label>
+                <div className="space-y-1.5">
+                  <label htmlFor="email" className="text-xs font-bold text-foreground">
+                    Email address
+                  </label>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="sita@example.com"
+                    className="h-11 text-sm"
+                  />
+                  {fieldErrors.email && <p className="text-[11px] text-rose-500 font-medium">{fieldErrors.email}</p>}
+                </div>
+              </>
+            )}
+
+            <div className="space-y-1.5">
+              <label htmlFor="phone" className="text-xs font-bold text-foreground">
+                Mobile number
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-sm text-muted-foreground pointer-events-none">
+                  <Phone className="w-3.5 h-3.5" />
+                  <span className="font-mono font-semibold">+977</span>
+                </span>
+                <Input
+                  id="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  autoFocus={!isSignup}
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder="9801234567"
+                  className="h-11 pl-[86px] text-sm font-mono tracking-wide"
+                />
+              </div>
+              {fieldErrors.phone && <p className="text-[11px] text-rose-500 font-medium">{fieldErrors.phone}</p>}
+            </div>
+
+            <div className="space-y-1">
+              <label className="flex items-start gap-2.5 text-[11px] text-muted-foreground cursor-pointer select-none">
+                <input
+                  id="agreeTerms"
+                  type="checkbox"
+                  checked={agreeTerms}
+                  onChange={e => setAgreeTerms(e.target.checked)}
+                  className="mt-0.5 rounded border-input text-primary focus:ring-primary h-3.5 w-3.5 accent-primary cursor-pointer"
+                />
+                <span>
+                  I agree to the{' '}
+                  <Link to="/terms" className="text-primary font-semibold hover:underline">
+                    Terms of Service
+                  </Link>{' '}
+                  and{' '}
+                  <Link to="/privacy" className="text-primary font-semibold hover:underline">
+                    Privacy Policy
+                  </Link>
+                  .
+                </span>
+              </label>
+              {fieldErrors.terms && (
+                <p className="text-[11px] text-rose-500 font-medium pl-6">{fieldErrors.terms}</p>
+              )}
+            </div>
+          </>
+        )}
+
+        {error && (
+          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-[11px] font-medium text-rose-600 dark:text-rose-400">
+            {error}
           </div>
         )}
 
-        <Button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-xl font-bold text-xs sm:text-sm h-10.5 shadow-md shadow-primary/25 hover:shadow-primary/35 transition-all flex items-center justify-center gap-2 cursor-pointer mt-1"
-        >
+        <Button type="submit" disabled={loading} className="w-full h-11 font-bold text-sm gap-2 shadow-md">
           {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : onCode ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>{isSignup ? 'Creating account…' : 'Signing in…'}</span>
+              <ShieldCheck className="w-4 h-4" />
+              <span>{isSignup ? 'Create my account' : 'Sign in'}</span>
             </>
           ) : (
             <>
-              <span>{isSignup ? 'Create Free Account' : 'Sign In to Prepyo'}</span>
+              <span>{isSignup ? 'Send verification code' : 'Continue'}</span>
               <ArrowRight className="w-4 h-4" />
             </>
           )}
         </Button>
       </form>
 
-      <div className="text-center pt-1">
-        <p className="text-xs sm:text-sm text-muted-foreground font-medium">
-          {isSignup ? 'Already registered? ' : "Don't have an account yet? "}
+      {!onCode && (
+        <p className="mt-5 text-xs text-center text-muted-foreground">
+          {isSignup ? 'Already have an account?' : 'New to Prepyo?'}{' '}
           <button
             type="button"
-            onClick={() => form.switchMode(isSignup ? 'login' : 'signup')}
-            className="font-extrabold text-primary hover:underline cursor-pointer"
+            onClick={() => switchMode(isSignup ? 'login' : 'signup')}
+            className="font-bold text-primary hover:underline"
           >
-            {isSignup ? 'Sign in here' : 'Create one (+1 Free Mock)'}
+            {isSignup ? 'Sign in' : 'Create an account'}
           </button>
         </p>
-      </div>
-    </div>
-  );
-}
+      )}
 
-function ModeSwitcher({ mode, onSwitch }: { mode: AuthMode; onSwitch: (mode: AuthMode) => void }) {
-  const TABS: { value: AuthMode; label: string; activeClass: string }[] = [
-    { value: 'login', label: 'Sign In', activeClass: 'bg-card text-foreground shadow-sm ring-1 ring-border' },
-    { value: 'signup', label: 'Create Account', activeClass: 'bg-primary text-primary-foreground shadow-sm' },
-  ];
-
-  return (
-    <div className="p-1 rounded-2xl bg-muted/70 border border-border flex items-center gap-1 shadow-xs">
-      {TABS.map(tab => (
-        <button
-          key={tab.value}
-          type="button"
-          onClick={() => onSwitch(tab.value)}
-          className={`flex-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${mode === tab.value ? tab.activeClass : 'text-muted-foreground hover:text-foreground'
-            }`}
-        >
-          {tab.label}
-        </button>
-      ))}
+      <p className="mt-3 text-[11px] text-center text-muted-foreground">
+        Standard SMS charges may apply. We never share your number.
+      </p>
     </div>
   );
 }

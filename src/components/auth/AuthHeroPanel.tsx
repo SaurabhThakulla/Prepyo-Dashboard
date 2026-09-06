@@ -4,17 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { SubscriptionPlan } from '@/lib/types';
 import { formatPlanName } from '@/lib/subscriptions';
 
-/**
- * The marketing half of the auth screen. Desktop only — it is hidden below
- * `lg` so the form gets the whole viewport on a phone.
- */
 export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan | null }) {
   return (
     <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 h-screen max-h-screen relative flex-col justify-between p-8 xl:p-12 overflow-hidden bg-slate-950 text-white">
       <div className="absolute inset-0 z-0 pointer-events-none">
-        {/* `absolute inset-0` and the eager fetch are what next/image's `fill`
-            and `priority` used to add. This is the first thing a signed-out
-            visitor sees, so it should not wait its turn. */}
         <img
           src="/images/auth-hero.jpg"
           alt="Student preparing for PTE and IELTS in Kathmandu"
@@ -28,8 +21,6 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
 
       <div className="relative z-10 space-y-5">
         <div className="flex items-center justify-between">
-          {/* Not a link: this screen is "/", so there is nowhere for the logo
-              to go. The marketing site is a separate deployment. */}
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-indigo-600 to-violet-700 text-white font-black text-lg shadow-lg shadow-primary/30">
               P

@@ -1,18 +1,14 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { useSubscriptionPlans } from '@/lib/hooks/useResources';
 import { Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
 import AuthHeroPanel from './AuthHeroPanel';
 import AuthForm from './AuthForm';
 import { AuthMode, useAuthForm } from '@/lib/hooks/useAuthForm';
 
 export type { AuthMode };
-
-interface UnifiedAuthProps {
-  initialMode?: AuthMode;
-}
 
 /**
  * The sign-in / sign-up screen. One component serves both, because the two
@@ -22,9 +18,8 @@ interface UnifiedAuthProps {
  *   AuthForm        the form itself
  *   useAuthForm     field state, validation, and submit
  */
-export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps) {
+export default function UnifiedAuth({ initialMode = 'login' }: { initialMode?: AuthMode }) {
   const { theme, toggleTheme } = useApp();
-  const toast = useToast();
   const form = useAuthForm(initialMode);
 
   // The free plan's name and price are shown in the hero. If the endpoint is
@@ -32,9 +27,6 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
   // Shares the subscription page's cache.
   const { data: plansData } = useSubscriptionPlans();
   const freePlan = plansData?.plans.find(plan => plan.id === 'free') ?? null;
-
-  const handleSocialSelect = (provider: string) =>
-    toast.info(`${provider} sign-in coming soon`, 'Please use email and password for now.');
 
   return (
     <div className="h-screen max-h-screen w-full flex flex-col lg:flex-row bg-background overflow-hidden">
@@ -68,10 +60,18 @@ export default function UnifiedAuth({ initialMode = 'login' }: UnifiedAuthProps)
           </div>
         </div>
 
-        <AuthForm form={form} onSocialSelect={handleSocialSelect} />
+        <AuthForm form={form} />
 
-        <div className="pt-2 text-center text-xs text-muted-foreground border-t border-border/60">
-          <span>Protected by Prepyo 256-bit encryption • Kathmandu, Nepal</span>
+        <div className="pt-2 text-center text-xs text-muted-foreground border-t border-border/60 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+          <span>Protected by Prepyo 256-bit encryption</span>
+          <span>•</span>
+          <Link to="/terms" className="text-muted-foreground hover:text-foreground hover:underline">
+            Terms of Service
+          </Link>
+          <span>•</span>
+          <Link to="/privacy" className="text-muted-foreground hover:text-foreground hover:underline">
+            Privacy Policy
+          </Link>
         </div>
       </div>
     </div>

@@ -5,54 +5,46 @@ import { ApiError, errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 
 export type AuthMode = 'login' | 'signup';
+export type AuthStep = 'details' | 'code';
 
-/** Mirrors minPasswordLength in backend/internal/auth/handler.go. */
-export const MIN_PASSWORD_LENGTH = 10;
+export const OTP_LENGTH = 6;
+export const RESEND_SECONDS = 60;
 
-export interface PasswordStrength {
-  level: string;
-  /** 1 = too short, 2 = good, 3 = strong. Drives the three-bar meter. */
-  score: 1 | 2 | 3;
-  color: string;
+/** Mirrors nepaliMobile in backend/internal/auth/phone.go. */
+const NEPALI_MOBILE = /^9[678]\d{8}$/;
+
+export function localPhoneDigits(raw: string): string {
+  const digits = raw.replace(/\D/g, '').replace(/^00/, '');
+  return digits.length > 10 ? digits.replace(/^977/, '') : digits;
 }
 
-export function passwordStrength(password: string): PasswordStrength {
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return { level: `Min ${MIN_PASSWORD_LENGTH} chars`, score: 1, color: 'bg-rose-500' };
-  }
-
-  const isLong = password.length >= 14;
-  const isMixed =
-    /[0-9]/.test(password) && /[A-Z]/.test(password) && /[^A-Za-z0-9]/.test(password);
-
-  if (isLong || isMixed) {
-    return { level: 'Strong', score: 3, color: 'bg-emerald-500' };
-  }
-  return { level: 'Good', score: 2, color: 'bg-amber-500' };
+export function isValidPhone(raw: string): boolean {
+  return NEPALI_MOBILE.test(localPhoneDigits(raw));
 }
 
-/**
- * The sign-in / sign-up form: its fields, its validation, and what happens on
- * submit. Kept apart from the markup so the form component stays readable.
- */
 export function useAuthForm(initialMode: AuthMode) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login, register } = useApp();
+  const { requestOtp, verifyOtp } = useApp();
   const toast = useToast();
 
   const [mode, setMode] = useState<AuthMode>(initialMode);
+  const [step, setStep] = useState<AuthStep>('details');
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [code, setCode] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [resendIn, setResendIn] = useState(0);
 
-  // ?mode= picks the tab; ?ref= pre-fills a referral and forces signup.
+  const isSignup = mode === 'signup';
+
   useEffect(() => {
     const urlMode = searchParams.get('mode');
     if (urlMode === 'login' || urlMode === 'signup') setMode(urlMode);
@@ -64,76 +56,156 @@ export function useAuthForm(initialMode: AuthMode) {
     }
   }, [searchParams]);
 
-  const switchMode = (newMode: AuthMode) => {
-    setMode(newMode);
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = setTimeout(() => setResendIn(seconds => seconds - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendIn]);
+
+  const clearErrors = () => {
     setError(null);
     setFieldErrors({});
   };
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setError(null);
-    setFieldErrors({});
+  const fail = (err: unknown, title: string) => {
+    const message = errorMessage(err);
+    if (err instanceof ApiError && err.fields) setFieldErrors(err.fields);
+    setError(message);
+    toast.error(title, message);
+  };
 
-    if (mode === 'signup') {
-      if (!agreeTerms) {
-        const message = 'Please accept the Terms of Service to create your account.';
-        setError(message);
-        toast.warning('One more thing', message);
-        return;
-      }
-      if (password.length < MIN_PASSWORD_LENGTH) {
-        const message = `Use at least ${MIN_PASSWORD_LENGTH} characters for your password.`;
-        setFieldErrors({ password: message });
-        setError(message);
-        return;
-      }
+  const switchMode = (next: AuthMode) => {
+    setMode(next);
+    setStep('details');
+    setCode('');
+    setResendIn(0);
+    clearErrors();
+  };
+
+  const sendCode = async () => {
+    clearErrors();
+
+    const problems: Record<string, string> = {};
+    if (isSignup && !name.trim()) problems.name = 'Enter your name.';
+    if (isSignup && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
+      problems.email = 'Enter a valid email address.';
+    }
+    if (!isValidPhone(phone)) {
+      problems.phone = 'Enter a Nepali mobile number, for example 9801234567.';
+    }
+    if (!agreeTerms) {
+      problems.terms = isSignup
+        ? 'Please accept the Terms of Service and Privacy Policy to create your account.'
+        : 'Please accept the Terms of Service and Privacy Policy to sign in.';
+    }
+    if (Object.keys(problems).length > 0) {
+      setFieldErrors(problems);
+      setError(Object.values(problems)[0]);
+      return;
     }
 
     setLoading(true);
     try {
-      if (mode === 'login') {
-        // The name, not the email: on a shared machine at a prep centre there
-        // is no reason to paint someone's address across the screen.
-        const account = await login(email.trim(), password);
-        toast.success('Welcome back!', `Good to see you again, ${account.name}.`);
-      } else {
-        const account = await register({
-          name: name.trim(),
-          email: email.trim(),
-          password,
-          referralCode: referralCode.trim() || undefined,
-        });
-        toast.success('Account created', `Welcome to Prepyo, ${account.name}.`);
+      const { registered } = await requestOtp(localPhoneDigits(phone));
+
+      if (isSignup && registered) {
+        const message = 'That number already has an account. Sign in instead.';
+        setFieldErrors({ phone: message });
+        setError(message);
+        return;
+      }
+      if (!isSignup && !registered) {
+        const message = 'No account uses that number yet. Create one first.';
+        setFieldErrors({ phone: message });
+        setError(message);
+        return;
       }
 
-      // Only same-origin redirects, so ?next= cannot bounce you off-site.
-      const next = searchParams.get('next');
-      navigate(next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard');
+      setStep('code');
+      setResendIn(RESEND_SECONDS);
+      setCode('');
+      toast.success('Code sent', `We texted a ${OTP_LENGTH}-digit code to ${localPhoneDigits(phone)}.`);
     } catch (err) {
-      const message = errorMessage(err);
-      if (err instanceof ApiError && err.fields) setFieldErrors(err.fields);
-      setError(message);
-      toast.error(mode === 'login' ? 'Could not sign you in' : 'Could not create your account', message);
+      fail(err, 'Could not send the code');
     } finally {
       setLoading(false);
     }
   };
 
+  const confirmCode = async () => {
+    clearErrors();
+
+    if (code.trim().length !== OTP_LENGTH) {
+      const message = `Enter the ${OTP_LENGTH}-digit code we sent you.`;
+      setFieldErrors({ code: message });
+      setError(message);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const account = await verifyOtp({
+        phone: localPhoneDigits(phone),
+        code: code.trim(),
+        name: isSignup ? name.trim() : undefined,
+        email: isSignup ? email.trim() : undefined,
+        referralCode: referralCode.trim() || undefined,
+      });
+
+      toast.success(
+        isSignup ? 'Account created' : 'Welcome back!',
+        isSignup ? `Welcome to Prepyo, ${account.name}.` : `Good to see you again, ${account.name}.`,
+      );
+
+      // Only same-origin redirects, so ?next= cannot bounce you off-site.
+      const next = searchParams.get('next');
+      navigate(next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard');
+    } catch (err) {
+      fail(err, isSignup ? 'Could not create your account' : 'Could not sign you in');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const editDetails = () => {
+    clearErrors();
+    setStep('details');
+    setCode('');
+    setResendIn(0);
+  };
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (step === 'details') {
+      await sendCode();
+      return;
+    }
+    await confirmCode();
+  };
+
   return {
     mode,
+    isSignup,
     switchMode,
+    step,
     name,
     setName,
     email,
     setEmail,
-    password,
-    setPassword,
+    phone,
+    setPhone,
+    code,
+    setCode,
     agreeTerms,
     setAgreeTerms,
     loading,
     error,
     fieldErrors,
+    resendIn,
     submit,
+    sendCode,
+    editDetails,
   };
 }
+
+export type AuthFormState = ReturnType<typeof useAuthForm>;
