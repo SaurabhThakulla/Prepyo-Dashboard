@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import AppSidebar from './AppSidebar';
 import Header from './Header';
-import AITutorDrawer from '@/components/ai/AITutorDrawer';
 import RequireAuth from '@/components/auth/RequireAuth';
+
+const AITutorDrawer = lazy(() => import('@/components/ai/AITutorDrawer'));
 
 const PROTECTED_PREFIXES = [
   '/dashboard',
@@ -26,15 +27,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSecondaryOpen, setIsSecondaryOpen] = useState(true);
 
-  // The sign-in screen is its own full-page layout, so these routes get the
-  // bare shell rather than the sidebar and header.
   const isAuthPage = pathname === '/' || pathname === '/login' || pathname === '/signup';
+  const isLegalPage =
+    pathname === '/terms' ||
+    pathname === '/privacy' ||
+    pathname === '/terms-and-conditions' ||
+    pathname === '/privacy-policy';
   const isProtected = PROTECTED_PREFIXES.some(
     prefix => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
 
-  // If on auth page, or signed out on an unprotected/404 route, render bare shell
-  if (isAuthPage || (!user && !isProtected)) {
+  if (isAuthPage || isLegalPage || (!user && !isProtected)) {
     return (
       <div className="min-h-screen bg-background text-foreground flex flex-col transition-colors duration-200">
         {children}
@@ -44,7 +47,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col transition-colors duration-200">
-      {/* 2-Level Sidebar (App pages only) */}
       <AppSidebar
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
@@ -52,11 +54,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         setIsSecondaryOpen={setIsSecondaryOpen}
       />
 
-      {/* Main Content Area */}
       <div
-        className={`${
-          isSecondaryOpen ? 'lg:pl-[384px]' : 'lg:pl-16'
-        } flex flex-col min-h-screen transition-[padding] duration-300 ease-in-out`}
+        className={`${isSecondaryOpen ? 'lg:pl-[384px]' : 'lg:pl-16'
+          } flex flex-col min-h-screen transition-[padding] duration-300 ease-in-out`}
       >
         <Header
           isSecondaryOpen={isSecondaryOpen}
@@ -69,16 +69,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             }
           }}
         />
-        
-        {/* 80vw is a comfortable reading width on a laptop but wastes a third
-            of a phone screen, so it only kicks in from lg up. */}
-        <main className="flex-1 w-full lg:max-w-[80vw] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <main className="flex-1 w-full p-0">
           {isProtected ? <RequireAuth>{children}</RequireAuth> : children}
         </main>
       </div>
 
-      {/* Global AI Tutor Drawer */}
-      <AITutorDrawer />
+      <Suspense fallback={null}>
+        <AITutorDrawer />
+      </Suspense>
     </div>
   );
 }

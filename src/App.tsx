@@ -6,11 +6,6 @@ import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
 import AuthScreen from '@/components/auth/AuthScreen';
 import RedirectIfAuthenticated from '@/components/auth/RedirectIfAuthenticated';
 
-// Lazy so each page is its own chunk. Next split routes automatically and a
-// single bundle would have been a real regression: nobody signing in needs the
-// mock exam runner in their first download. AuthScreen stays eager because it
-// is what a signed-out visitor lands on, so splitting it would only add a
-// round trip to the most common first paint.
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const PracticePage = lazy(() => import('@/pages/PracticePage'));
 const MocksPage = lazy(() => import('@/pages/MocksPage'));
@@ -22,31 +17,15 @@ const ReferralsPage = lazy(() => import('@/pages/ReferralsPage'));
 const SubscriptionPage = lazy(() => import('@/pages/SubscriptionPage'));
 const DiagnosticPage = lazy(() => import('@/pages/DiagnosticPage'));
 const AdminPage = lazy(() => import('@/pages/AdminPage'));
+const TermsPage = lazy(() => import('@/pages/TermsPage'));
+const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
-/**
- * Every URL the app answers to.
- *
- * This replaces the app/ folder convention: a route used to be a directory with
- * a page.tsx in it, and is now a line here. The trade is that adding a page
- * takes two steps instead of one, and in exchange the whole URL surface is
- * readable in one screen.
- *
- * AppLayout wraps the table rather than sitting inside it because it decides
- * which shell a route gets (bare for the auth screens, sidebar + header for the
- * app) and applies RequireAuth to the protected ones.
- */
 export default function App() {
   return (
     <AppLayout>
-      {/* Covers the gap while a lazy page chunk downloads. It sits inside
-          AppLayout so the sidebar and header stay put during the swap. */}
       <Suspense fallback={<AppPageSkeleton />}>
         <Routes>
-          {/* "/" is the sign-in screen: this app only serves the signed-in
-              product, and the marketing site is a separate Astro project.
-              /login and /signup stay because the landing site links to them by
-              name and RequireAuth sends `?next=` redirects to /login. */}
           <Route
             path="/"
             element={
@@ -84,8 +63,11 @@ export default function App() {
           <Route path="/diagnostic" element={<DiagnosticPage />} />
           <Route path="/admin" element={<AdminPage />} />
 
-          {/* Both of these were redirects before: /account in a page.tsx, and
-              /progress in next.config.js. Neither has ever had a page. */}
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms-and-conditions" element={<Navigate to="/terms" replace />} />
+          <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
+
           <Route path="/account" element={<Navigate to="/subscription" replace />} />
           <Route path="/progress" element={<Navigate to="/dashboard" replace />} />
 
