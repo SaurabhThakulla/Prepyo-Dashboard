@@ -24,56 +24,54 @@ const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 export default function App() {
   return (
     <AppLayout>
-      <Suspense fallback={<AppPageSkeleton />}>
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <RedirectIfAuthenticated>
-                <AuthScreen mode="login" />
-              </RedirectIfAuthenticated>
-            }
-          />
-          <Route
-            path="/login"
-            element={
-              <RedirectIfAuthenticated>
-                <AuthScreen mode="login" />
-              </RedirectIfAuthenticated>
-            }
-          />
-          <Route
-            path="/signup"
-            element={
-              <RedirectIfAuthenticated>
-                <AuthScreen mode="signup" />
-              </RedirectIfAuthenticated>
-            }
-          />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <RedirectIfAuthenticated>
+              <AuthScreen mode="login" />
+            </RedirectIfAuthenticated>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <RedirectIfAuthenticated>
+              <AuthScreen mode="login" />
+            </RedirectIfAuthenticated>
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            <RedirectIfAuthenticated>
+              <AuthScreen mode="signup" />
+            </RedirectIfAuthenticated>
+          }
+        />
 
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/practice" element={<PracticePage />} />
-          <Route path="/mocks" element={<MocksPage />} />
-          <Route path="/mistakes" element={<MistakesPage />} />
-          <Route path="/evaluations" element={<EvaluationsPage />} />
-          <Route path="/leaderboard" element={<LeaderboardPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/referrals" element={<ReferralsPage />} />
-          <Route path="/subscription" element={<SubscriptionPage />} />
-          <Route path="/diagnostic" element={<DiagnosticPage />} />
-          <Route path="/admin" element={<AdminPage />} />
+        <Route path="/dashboard" element={<Suspense fallback={<AppPageSkeleton />}><DashboardPage /></Suspense>} />
+        <Route path="/practice" element={<Suspense fallback={<AppPageSkeleton />}><PracticePage /></Suspense>} />
+        <Route path="/mocks" element={<Suspense fallback={<AppPageSkeleton />}><MocksPage /></Suspense>} />
+        <Route path="/mistakes" element={<Suspense fallback={<AppPageSkeleton />}><MistakesPage /></Suspense>} />
+        <Route path="/evaluations" element={<Suspense fallback={<AppPageSkeleton />}><EvaluationsPage /></Suspense>} />
+        <Route path="/leaderboard" element={<Suspense fallback={<AppPageSkeleton />}><LeaderboardPage /></Suspense>} />
+        <Route path="/profile" element={<Suspense fallback={<AppPageSkeleton />}><ProfilePage /></Suspense>} />
+        <Route path="/referrals" element={<Suspense fallback={<AppPageSkeleton />}><ReferralsPage /></Suspense>} />
+        <Route path="/subscription" element={<Suspense fallback={<AppPageSkeleton />}><SubscriptionPage /></Suspense>} />
+        <Route path="/diagnostic" element={<Suspense fallback={<AppPageSkeleton />}><DiagnosticPage /></Suspense>} />
+        <Route path="/admin" element={<Suspense fallback={<AppPageSkeleton />}><AdminPage /></Suspense>} />
 
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/terms-and-conditions" element={<Navigate to="/terms" replace />} />
-          <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
+        <Route path="/terms" element={<Suspense fallback={null}><TermsPage /></Suspense>} />
+        <Route path="/privacy" element={<Suspense fallback={null}><PrivacyPage /></Suspense>} />
+        <Route path="/terms-and-conditions" element={<Navigate to="/terms" replace />} />
+        <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
 
-          <Route path="/account" element={<Navigate to="/subscription" replace />} />
-          <Route path="/progress" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/account" element={<Navigate to="/subscription" replace />} />
+        <Route path="/progress" element={<Navigate to="/dashboard" replace />} />
 
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </Suspense>
+        <Route path="*" element={<Suspense fallback={null}><NotFoundPage /></Suspense>} />
+      </Routes>
     </AppLayout>
   );
 }

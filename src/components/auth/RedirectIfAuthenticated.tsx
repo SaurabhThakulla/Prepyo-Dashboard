@@ -1,7 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
-import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
 
 /**
  * Keeps signed-in learners off the sign-in screen.
@@ -20,7 +19,7 @@ export default function RedirectIfAuthenticated({ children }: { children: React.
   const { user, loading } = useApp();
   const location = useLocation();
 
-  if (loading) return <AppPageSkeleton />;
+  if (loading) return null;
 
   if (user) {
     // Honour `?next=` so a learner who was bounced to /login, then signed in on

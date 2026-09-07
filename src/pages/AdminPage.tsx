@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom';
 import {
   Zap,
   Activity,
-  RefreshCw,
   Sparkles,
   Bot,
   Users,
   AlertCircle,
   ShieldAlert,
 } from 'lucide-react';
+import { AdminPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
@@ -67,11 +67,7 @@ export default function AdminPage() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="py-20 text-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
-      </div>
-    );
+    return <AdminPageSkeleton />;
   }
 
   if (forbidden) {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '@/context/AppContext';
-import { Mic, PenTool, BookOpen, Headphones, RefreshCw, AlertCircle, LucideIcon } from 'lucide-react';
+import { Mic, PenTool, BookOpen, Headphones, AlertCircle, LucideIcon } from 'lucide-react';
+import PageSkeleton from '@/components/layout/PageSkeleton';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import QuestionNavigator from '@/components/practice/QuestionNavigator';
@@ -75,10 +76,7 @@ export default function PracticeScreen() {
       </div>
 
       {loading ? (
-        <Card className="text-center py-20 space-y-3">
-          <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
-          <p className="text-xs text-muted-foreground">Loading questions…</p>
-        </Card>
+        <PageSkeleton variant="practice" bare />
       ) : !currentQuestion ? (
         <Card className="text-center py-20 space-y-3">
           <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />

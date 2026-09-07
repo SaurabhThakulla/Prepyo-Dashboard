@@ -3,7 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '@/context/AppContext';
 import { queryKeys } from '@/lib/queryKeys';
-import { Award, RefreshCw, FileText } from 'lucide-react';
+import { Award, FileText } from 'lucide-react';
+import { MocksPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Card } from '@/components/ui/card';
 import { Mock, MockAttempt } from '@/lib/types';
 import { errorMessage } from '@/lib/api';
@@ -165,9 +166,7 @@ export default function MocksPage() {
       </div>
 
       {loading ? (
-        <Card className="text-center py-16">
-          <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
-        </Card>
+        <MocksPageSkeleton bare />
       ) : activeTab === 'reports' ? (
         <ScoreReportList
           attempts={pastAttempts}

@@ -5,11 +5,11 @@ import {
   Zap,
   Clock,
   Award,
-  RefreshCw,
   Sparkles,
   Play,
   AlertCircle,
 } from 'lucide-react';
+import { DiagnosticPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
@@ -33,11 +33,7 @@ export default function DiagnosticPage() {
   const error = queryError ? errorMessage(queryError) : null;
 
   if (loading) {
-    return (
-      <div className="max-w-4xl mx-auto py-20 text-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
-      </div>
-    );
+    return <DiagnosticPageSkeleton />;
   }
 
   if (error || !diagnostic) {
