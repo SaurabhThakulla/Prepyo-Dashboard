@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { AlertCircle, BookOpen, Bot, CheckCircle2, RefreshCw, Send, Shuffle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle } from '@/components/ui/card';
 import { useApp } from '@/context/AppContext';
 import { errorMessage } from '@/lib/api';
@@ -17,12 +16,9 @@ interface ReadingPracticePanelProps {
 }
 
 /**
- * Reading practice: choose a task type, get a passage, answer its questions.
- *
- * The passage is chosen by the server, which prefers ones this learner has not
- * read and otherwise the one they read longest ago. So "Deal another passage"
- * rotates through the bank instead of handing back the same text — and the
- * questions inside a set come back in a random order each time.
+ * Reading practice: IELTS-style split-pane screen.
+ * Left pane: Reading passage with centered title and continuous natural paragraphs.
+ * Right pane: Question notes completion card with inline inputs and circled numbers.
  */
 export default function ReadingPracticePanel({ initialTypeKey }: ReadingPracticePanelProps) {
   const { activeExam, setIsTutorOpen, setTutorContextPrompt } = useApp();
@@ -34,13 +30,14 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
   const practice = useReadingPractice(activeExam);
   const { set, deal } = practice;
 
+  const currentTypeId = set?.groups[0]?.typeId;
+
   useEffect(() => {
     if (typesQuery.error) toast.error('Could not load reading tasks', errorMessage(typesQuery.error));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typesQuery.error]);
 
   // Open on the type the sidebar linked to, or the first one with questions.
-  // Runs once the menu arrives, and again if the learner switches exam or task type.
   useEffect(() => {
     if (types.length === 0) return;
     const linked = initialTypeKey ? TYPE_BY_SYLLABUS_KEY[initialTypeKey] : undefined;
@@ -50,8 +47,6 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [types, initialTypeKey, activeExam]);
-
-  const currentTypeId = set?.groups[0]?.typeId;
 
   const askTutor = () => {
     if (!set) return;
@@ -84,86 +79,79 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
     );
   }
 
+  const hasPassage = Boolean(set?.passage && set?.groups[0]?.passageDisplay !== 'hidden');
+
   return (
-    <div className="w-full min-h-[calc(100vh-4rem)] p-0 m-0 flex flex-col bg-background">
+    <div className="w-full h-[calc(100vh-4rem)] p-0 m-0 flex flex-col bg-background overflow-hidden">
       {practice.dealing ? (
-        <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center py-20 text-center space-y-3 bg-card/20">
+        <div className="w-full flex-1 flex flex-col items-center justify-center py-20 text-center space-y-3 bg-card/20">
           <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
           <p className="text-xs text-muted-foreground">Finding you a passage…</p>
         </div>
       ) : !set ? (
-        <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center py-20 text-center space-y-3 bg-card/20">
+        <div className="w-full flex-1 flex flex-col items-center justify-center py-20 text-center space-y-3 bg-card/20">
           <BookOpen className="w-8 h-8 text-muted-foreground mx-auto opacity-50" />
           <h3 className="text-sm font-bold text-foreground">Pick a task type to begin</h3>
         </div>
       ) : (
-        <div className="w-full flex flex-col flex-1">
-          {/* Flush Edge-to-Edge Reading Top Bar */}
-          <div className="w-full border-b border-border/80 bg-background px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-16 z-10">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider px-3.5 py-1 rounded-full shadow-xs">
-                {set.groups[0]?.typeName || 'Reading Task'}
-              </span>
-              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/80 px-3 py-1 rounded-full border border-border">
-                {activeExam} • READING
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-mono font-bold text-muted-foreground uppercase tracking-wider">
-                {practice.answeredCount}/{practice.totalQuestions} ANSWERED
-              </span>
-            </div>
-          </div>
-
-          <div className="w-full max-w-[1380px] mx-auto px-4 sm:px-8 py-6 space-y-5 flex-1 flex flex-col justify-between">
-            {set.passage && set.groups[0]?.passageDisplay !== 'hidden' && (
-              <div className="w-full">
+        <div className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
+          {/* Compact IELTS Two-Column Split Screen Layout */}
+          <div className="flex-1 w-full px-0 py-1 grid grid-cols-1 lg:grid-cols-2 gap-[4px] min-h-0 overflow-hidden">
+            {/* Left Pane: Reading Passage (Independent scroll) */}
+            {hasPassage && (
+              <div className="h-full min-h-0 flex flex-col overflow-hidden">
                 <PassageReader
-                  passage={set.passage}
-                  scroll={false}
+                  passage={set.passage!}
+                  scroll={true}
+                  passageNumber={1}
+                  questionRange={`Questions 1–${practice.totalQuestions}`}
                   showSources={set.groups.some(group => group.typeId === READING_TYPES.findTheWriter)}
+                  showLabels={set.groups.some(group => group.typeId === READING_TYPES.matchingInformation)}
                 />
               </div>
             )}
 
-            <div className="w-full space-y-5">
-              {set.groups.map(group => (
-                <ReadingGroupCard
-                  key={group.id}
-                  group={group}
-                  startNumber={1}
-                  answers={practice.answers}
-                  results={practice.results}
-                  disabled={practice.checking}
-                  onAnswer={practice.answer}
-                />
-              ))}
+            {/* Right Pane: Questions & Answer Cards (Independent scroll) */}
+            <div className={`h-full min-h-0 flex flex-col overflow-hidden ${!hasPassage ? 'lg:col-span-2' : ''}`}>
+              <div className="flex-1 overflow-y-auto pl-1 pr-1.5 space-y-2 scrollbar-thin">
+                {set.groups.map(group => (
+                  <ReadingGroupCard
+                    key={group.id}
+                    group={group}
+                    startNumber={1}
+                    answers={practice.answers}
+                    results={practice.results}
+                    disabled={practice.checking}
+                    onAnswer={practice.answer}
+                  />
+                ))}
 
-              {practice.checked && (
-                <Card className="border-primary/40 p-5 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                    <CardTitle className="text-base">
-                      {practice.correctCount} of {Object.keys(practice.results).length} correct
-                    </CardTitle>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Anything you got wrong is in your Mistakes bank with the explanation.
-                  </p>
-                </Card>
-              )}
+                {practice.checked && (
+                  <Card className="border-primary/40 border-r-0 rounded-r-none rounded-l-lg p-3 space-y-1.5 bg-card/60">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <CardTitle className="text-sm">
+                        {practice.correctCount} of {Object.keys(practice.results).length} correct
+                      </CardTitle>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Anything you got wrong is in your Mistakes bank with the explanation.
+                    </p>
+                  </Card>
+                )}
+              </div>
 
-              <div className="w-full flex flex-wrap items-center justify-between gap-3 pt-2">
-                <Button variant="outline" size="sm" onClick={askTutor} className="gap-2 font-bold text-xs rounded-xl h-10 px-4">
-                  <Bot className="w-4 h-4 text-primary" />
+              {/* Bottom Sticky Action Bar - Compact */}
+              <div className="pt-2 mt-1 border-t border-border/70 flex flex-wrap items-center justify-between gap-2 shrink-0 bg-background/90 backdrop-blur-xs py-1.5 px-3">
+                <Button variant="outline" size="sm" onClick={askTutor} className="gap-1.5 font-bold text-xs rounded-lg h-8 px-3">
+                  <Bot className="w-3.5 h-3.5 text-primary" />
                   <span>Ask AI Coach</span>
                 </Button>
 
                 {practice.checked ? (
                   <Button
                     onClick={() => currentTypeId && void deal(currentTypeId)}
-                    className="font-bold gap-2 text-xs rounded-xl h-10 px-5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                    className="font-bold gap-1.5 text-xs rounded-lg h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
                   >
                     <Shuffle className="w-3.5 h-3.5" />
                     <span>Another passage</span>
@@ -172,7 +160,7 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
                   <Button
                     onClick={() => void practice.check()}
                     disabled={practice.checking || practice.answeredCount === 0}
-                    className="font-bold gap-2 text-xs rounded-xl h-10 px-5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                    className="font-bold gap-1.5 text-xs rounded-lg h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
                   >
                     {practice.checking ? (
                       <>

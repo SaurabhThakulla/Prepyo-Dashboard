@@ -39,17 +39,17 @@ export default function ReadingQuestionRow({
   const locked = disabled || Boolean(result);
 
   return (
-    <div className="rounded-2xl p-5 bg-card border border-border/80 space-y-4 shadow-xs hover:border-border transition-colors">
-      <div className="flex items-start gap-3">
-        <span className="shrink-0 w-7 h-7 rounded-xl bg-primary/10 text-primary font-mono font-bold text-xs flex items-center justify-center border border-primary/20">
+    <div className="rounded-lg p-3 bg-card/60 dark:bg-white/[0.015] border border-border/70 space-y-2 shadow-2xs hover:border-border transition-colors">
+      <div className="flex items-start gap-2.5">
+        <span className="shrink-0 w-5 h-5 rounded-md bg-primary/10 text-primary font-mono font-bold text-xs flex items-center justify-center border border-primary/20">
           {number}
         </span>
-        <p className="text-sm sm:text-[15px] font-semibold text-foreground leading-relaxed pt-0.5">
+        <p className="text-xs sm:text-sm font-medium text-foreground leading-snug pt-0.5">
           {question.prompt}
         </p>
       </div>
 
-      <div className="pl-0 sm:pl-10">
+      <div className="pl-0 sm:pl-7">
         <AnswerControl
           question={question}
           answer={answer}
@@ -62,7 +62,7 @@ export default function ReadingQuestionRow({
 
       {result && (
         <div
-          className={`p-3.5 sm:p-4 rounded-xl border flex items-start gap-2.5 text-xs sm:text-sm ${
+          className={`p-2.5 rounded-lg border flex items-start gap-2 text-xs ${
             result.attempt.isCorrect
               ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-800 dark:text-emerald-200'
               : 'bg-rose-500/10 border-rose-500/25 text-rose-800 dark:text-rose-200'
@@ -74,14 +74,14 @@ export default function ReadingQuestionRow({
             <XCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
           )}
 
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {!result.attempt.isCorrect && showsAnswerInline(question.typeId) && (
               <p className="font-bold">
                 Correct answer: <span className="underline">{displayAnswer(result.review)}</span>
               </p>
             )}
             {result.review.explanation && (
-              <p className="text-muted-foreground leading-relaxed">{result.review.explanation}</p>
+              <p className="text-muted-foreground leading-normal">{result.review.explanation}</p>
             )}
           </div>
         </div>
@@ -146,7 +146,7 @@ function AnswerControl({ question, answer, result, locked, wordBank, onChange }:
       disabled={locked}
       onChange={event => onChange({ textResponse: event.target.value })}
       placeholder="Type your answer from the passage…"
-      className="w-full bg-background border border-border text-sm font-medium text-foreground px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-70 shadow-2xs"
+      className="w-full bg-background border border-border text-xs sm:text-sm font-medium text-foreground px-3 py-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent disabled:opacity-70 shadow-2xs h-8 sm:h-9"
     />
   );
 }
@@ -178,7 +178,7 @@ function OptionGrid({ question, selected, result, locked, multiple, onChange }: 
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
       {question.options!.map((option, index) => {
         const letter = letterFor(index);
         const isSelected = selected.includes(option.id);
@@ -205,7 +205,7 @@ function OptionGrid({ question, selected, result, locked, multiple, onChange }: 
         return (
           <label
             key={option.id}
-            className={`relative flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-sm transition-all select-none ${
+            className={`relative flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg border text-xs sm:text-[13px] transition-all select-none ${
               locked ? 'cursor-default' : 'cursor-pointer active:scale-[0.99]'
             } ${cardClasses}`}
           >
@@ -218,9 +218,9 @@ function OptionGrid({ question, selected, result, locked, multiple, onChange }: 
               className="sr-only"
             />
 
-            <div className="flex items-center gap-2.5 min-w-0 pr-1">
+            <div className="flex items-center gap-2 min-w-0 pr-1">
               <span
-                className={`w-6 h-6 font-mono font-bold text-xs flex items-center justify-center shrink-0 border ${badgeClasses} ${
+                className={`w-5 h-5 font-mono font-bold text-xs flex items-center justify-center shrink-0 border ${badgeClasses} ${
                   multiple ? 'rounded-md' : 'rounded-lg'
                 }`}
               >

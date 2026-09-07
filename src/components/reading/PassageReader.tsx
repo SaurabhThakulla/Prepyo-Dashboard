@@ -1,32 +1,159 @@
-import React, { useState } from 'react';
-import { BookOpen, Clock, FileText, Type, Users, ZoomIn, ZoomOut } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { BookOpen, Users, ZoomIn, ZoomOut, Highlighter, Eraser, PenLine, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { ReadingPassage } from '@/lib/types';
 
 interface PassageReaderProps {
   passage: ReadingPassage;
-  /** Caps the height and scrolls, so the questions stay beside it on a mock. */
+  /** Caps the height and scrolls, so the questions stay beside it on a mock or practice split screen. */
   scroll?: boolean;
   showSources?: boolean;
+  showLabels?: boolean;
+  passageNumber?: number;
+  questionRange?: string;
 }
 
 type TextSize = 'sm' | 'base' | 'lg';
+type FontType = 'reading' | 'sans';
 
 const FONT_CLASSES: Record<TextSize, { body: string; label: string; line: string }> = {
-  sm: { body: 'text-sm leading-6', label: 'text-xs', line: 'space-y-3.5' },
-  base: { body: 'text-[15px] sm:text-base leading-7', label: 'text-xs sm:text-sm', line: 'space-y-4 sm:space-y-5' },
-  lg: { body: 'text-base sm:text-lg leading-8', label: 'text-sm sm:text-base', line: 'space-y-5 sm:space-y-6' },
+  sm: { body: 'text-[13px] sm:text-[14px] leading-6', label: 'text-[11px]', line: 'space-y-2.5' },
+  base: { body: 'text-[14.5px] sm:text-[15.5px] leading-7', label: 'text-xs', line: 'space-y-3' },
+  lg: { body: 'text-[16px] sm:text-[17px] leading-8', label: 'text-sm', line: 'space-y-3.5' },
 };
 
-/**
- * Enhanced passage reader with optimized readability, custom text sizing,
- * clear paragraph anchors, and high-contrast typography.
- */
-export default function PassageReader({ passage, scroll = true, showSources = false }: PassageReaderProps) {
-  const [textSize, setTextSize] = useState<TextSize>('base');
+interface TextHighlight {
+  id: string;
+  paragraphIndex: number;
+  start: number;
+  end: number;
+  note?: string;
+}
 
-  const estimatedMinutes = Math.max(1, Math.ceil((passage.wordCount || 500) / 200));
+interface ContextMenuState {
+  x: number;
+  y: number;
+  canHighlight: boolean;
+  canClear: boolean;
+  selectedRanges?: { paragraphIndex: number; start: number; end: number }[];
+  targetHighlightId?: string;
+}
+
+/**
+ * Accurately calculates character offset within a paragraph's body element,
+ * ignoring markup differences and text nodes created by previous highlights.
+ */
+function getCharacterOffset(bodyEl: HTMLElement, targetNode: Node, targetOffset: number): number {
+  let actualNode = targetNode;
+  let actualOffset = targetOffset;
+
+  if (targetNode.nodeType === Node.ELEMENT_NODE) {
+    const el = targetNode as Element;
+    if (el.childNodes.length > 0) {
+      if (targetOffset < el.childNodes.length) {
+        actualNode = el.childNodes[targetOffset];
+        actualOffset = 0;
+      } else {
+        actualNode = el.childNodes[el.childNodes.length - 1];
+        actualOffset = actualNode.textContent?.length || 0;
+      }
+    }
+  }
+
+  let offset = 0;
+  const walker = document.createTreeWalker(bodyEl, NodeFilter.SHOW_TEXT, null);
+  let node = walker.nextNode();
+  while (node) {
+    if (node === actualNode || node.contains(actualNode) || actualNode.contains(node)) {
+      return offset + actualOffset;
+    }
+    offset += node.textContent?.length || 0;
+    node = walker.nextNode();
+  }
+  return offset;
+}
+
+/**
+ * Merge newly added highlight into existing highlights list, combining overlaps.
+ */
+function addAndMergeHighlight(existing: TextHighlight[], newHl: TextHighlight): TextHighlight[] {
+  const all = [...existing, newHl];
+  all.sort((a, b) => a.start - b.start);
+
+  const merged: TextHighlight[] = [];
+  for (const hl of all) {
+    if (merged.length === 0) {
+      merged.push({ ...hl });
+      continue;
+    }
+    const prev = merged[merged.length - 1];
+    if (hl.start <= prev.end) {
+      prev.end = Math.max(prev.end, hl.end);
+      if (hl.note) {
+        prev.note = prev.note ? `${prev.note}; ${hl.note}` : hl.note;
+      }
+    } else {
+      merged.push({ ...hl });
+    }
+  }
+  return merged;
+}
+
+/**
+ * Subtracts a cleared range from existing highlights, splitting or shrinking as needed.
+ */
+function removeRangeFromHighlights(
+  existing: TextHighlight[],
+  clearStart: number,
+  clearEnd: number
+): TextHighlight[] {
+  const result: TextHighlight[] = [];
+  for (const h of existing) {
+    if (h.end <= clearStart || h.start >= clearEnd) {
+      result.push(h);
+    } else if (h.start < clearStart && h.end > clearEnd) {
+      result.push({ ...h, id: `${h.id}_a`, end: clearStart });
+      result.push({ ...h, id: `${h.id}_b`, start: clearEnd });
+    } else if (h.start < clearStart && h.end <= clearEnd) {
+      result.push({ ...h, end: clearStart });
+    } else if (h.start >= clearStart && h.end > clearEnd) {
+      result.push({ ...h, start: clearEnd });
+    }
+  }
+  return result;
+}
+
+/**
+ * Compact, elegant IELTS passage reader with dedicated reading typography (Lora / Georgia),
+ * multi-time highlighting opening at the mouse cursor, and right-click clear functionality.
+ */
+export default function PassageReader({
+  passage,
+  scroll = true,
+  showSources = false,
+  showLabels = false,
+  passageNumber = 1,
+  questionRange = 'Questions 1–13',
+}: PassageReaderProps) {
+  const [textSize, setTextSize] = useState<TextSize>('base');
+  const [fontType, setFontType] = useState<FontType>('reading');
+
+  // Highlights state stored per passage ID
+  const [highlightsByPassage, setHighlightsByPassage] = useState<
+    Record<string, Record<number, TextHighlight[]>>
+  >({});
+  const highlights = highlightsByPassage[passage.id] || {};
+
+  const [menuState, setMenuState] = useState<ContextMenuState | null>(null);
+  const [noteModal, setNoteModal] = useState<{
+    highlightId: string;
+    paragraphIndex: number;
+    initialText: string;
+  } | null>(null);
+  const [noteText, setNoteText] = useState('');
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const cycleTextSize = (direction: 'up' | 'down') => {
     const order: TextSize[] = ['sm', 'base', 'lg'];
@@ -38,137 +165,463 @@ export default function PassageReader({ passage, scroll = true, showSources = fa
     }
   };
 
+  // Close context menu on outside click or escape
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuState(null);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenuState(null);
+        setNoteModal(null);
+      }
+    };
+
+    window.addEventListener('mousedown', handleOutsideClick);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('mousedown', handleOutsideClick);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Handle user mouse selection inside passage - opens menu AT THE MOUSE CURSOR
+  const handleMouseUp = useCallback(
+    (e: React.MouseEvent) => {
+      // If user clicked inside the menu itself, do nothing
+      if (menuRef.current && menuRef.current.contains(e.target as Node)) {
+        return;
+      }
+
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed || !selection.rangeCount) return;
+
+      const range = selection.getRangeAt(0);
+      const selectedText = selection.toString().trim();
+      if (!selectedText) return;
+
+      if (!containerRef.current?.contains(range.commonAncestorContainer)) return;
+
+      const bodyElements = containerRef.current.querySelectorAll<HTMLElement>('[data-paragraph-body]');
+      if (!bodyElements.length) return;
+
+      let startPIndex = -1;
+      let endPIndex = -1;
+
+      bodyElements.forEach((el, idx) => {
+        if (el.contains(range.startContainer)) startPIndex = idx;
+        if (el.contains(range.endContainer)) endPIndex = idx;
+      });
+
+      if (startPIndex === -1 || endPIndex === -1) {
+        bodyElements.forEach((el, idx) => {
+          if (range.intersectsNode(el)) {
+            if (startPIndex === -1) startPIndex = idx;
+            endPIndex = idx;
+          }
+        });
+      }
+
+      if (startPIndex === -1 || endPIndex === -1) return;
+      if (startPIndex > endPIndex) [startPIndex, endPIndex] = [endPIndex, startPIndex];
+
+      const selectedRanges: { paragraphIndex: number; start: number; end: number }[] = [];
+      let hasOverlappingHighlights = false;
+
+      for (let pIdx = startPIndex; pIdx <= endPIndex; pIdx++) {
+        const el = bodyElements[pIdx];
+        const pText = passage.paragraphs[pIdx]?.text || '';
+        if (!el || !pText) continue;
+
+        let start = 0;
+        let end = pText.length;
+
+        if (pIdx === startPIndex) {
+          start = getCharacterOffset(el, range.startContainer, range.startOffset);
+        }
+        if (pIdx === endPIndex) {
+          end = getCharacterOffset(el, range.endContainer, range.endOffset);
+        }
+
+        if (start > end) [start, end] = [end, start];
+        start = Math.max(0, Math.min(start, pText.length));
+        end = Math.max(start, Math.min(end, pText.length));
+
+        if (end > start) {
+          selectedRanges.push({ paragraphIndex: pIdx, start, end });
+
+          const pHighlights = highlights[pIdx] || [];
+          if (pHighlights.some(h => Math.max(start, h.start) < Math.min(end, h.end))) {
+            hasOverlappingHighlights = true;
+          }
+        }
+      }
+
+      if (selectedRanges.length === 0) return;
+
+      // Position context menu directly at the mouse cursor position!
+      const mouseX = e.clientX;
+      const mouseY = e.clientY;
+
+      const menuWidth = 140;
+      const menuHeight = 110;
+      const x = Math.min(Math.max(10, mouseX + 8), window.innerWidth - menuWidth - 10);
+      const y = Math.min(Math.max(10, mouseY + 8), window.innerHeight - menuHeight - 10);
+
+      setMenuState({
+        x,
+        y,
+        canHighlight: true,
+        canClear: hasOverlappingHighlights,
+        selectedRanges,
+      });
+    },
+    [highlights, passage.paragraphs]
+  );
+
+  // Handle right-click directly on an existing highlight section - opens menu AT THE MOUSE CURSOR
+  const handleHighlightContextMenu = useCallback((e: React.MouseEvent, highlight: TextHighlight) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    window.getSelection()?.removeAllRanges();
+
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    const menuWidth = 140;
+    const menuHeight = 110;
+    const x = Math.min(Math.max(10, mouseX + 4), window.innerWidth - menuWidth - 10);
+    const y = Math.min(Math.max(10, mouseY + 4), window.innerHeight - menuHeight - 10);
+
+    setMenuState({
+      x,
+      y,
+      canHighlight: false,
+      canClear: true,
+      targetHighlightId: highlight.id,
+      selectedRanges: [
+        {
+          paragraphIndex: highlight.paragraphIndex,
+          start: highlight.start,
+          end: highlight.end,
+        },
+      ],
+    });
+  }, []);
+
+  // Handle left-click on an existing highlight
+  const handleHighlightClick = useCallback((e: React.MouseEvent, highlight: TextHighlight) => {
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    const menuWidth = 140;
+    const menuHeight = 110;
+    const x = Math.min(Math.max(10, mouseX + 4), window.innerWidth - menuWidth - 10);
+    const y = Math.min(Math.max(10, mouseY + 4), window.innerHeight - menuHeight - 10);
+
+    setMenuState({
+      x,
+      y,
+      canHighlight: false,
+      canClear: true,
+      targetHighlightId: highlight.id,
+      selectedRanges: [
+        {
+          paragraphIndex: highlight.paragraphIndex,
+          start: highlight.start,
+          end: highlight.end,
+        },
+      ],
+    });
+  }, []);
+
+  // Apply Highlight action - supports unlimited multiple highlights
+  const handleApplyHighlight = useCallback(() => {
+    if (!menuState || !menuState.selectedRanges) return;
+
+    setHighlightsByPassage(prev => {
+      const passageHighlights = { ...(prev[passage.id] || {}) };
+
+      menuState.selectedRanges!.forEach(({ paragraphIndex, start, end }) => {
+        const currentList = passageHighlights[paragraphIndex] ? [...passageHighlights[paragraphIndex]] : [];
+        const newHighlight: TextHighlight = {
+          id: `hl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          paragraphIndex,
+          start,
+          end,
+        };
+
+        passageHighlights[paragraphIndex] = addAndMergeHighlight(currentList, newHighlight);
+      });
+
+      return { ...prev, [passage.id]: passageHighlights };
+    });
+
+    window.getSelection()?.removeAllRanges();
+    setMenuState(null);
+  }, [menuState, passage.id]);
+
+  // Apply Clear action - removes right-clicked highlight or clears selected range
+  const handleClearHighlight = useCallback(() => {
+    if (!menuState) return;
+
+    setHighlightsByPassage(prev => {
+      const passageHighlights = { ...(prev[passage.id] || {}) };
+
+      if (menuState.targetHighlightId) {
+        for (const pIdx in passageHighlights) {
+          passageHighlights[pIdx] = passageHighlights[pIdx].filter(
+            h => h.id !== menuState.targetHighlightId
+          );
+        }
+      } else if (menuState.selectedRanges) {
+        menuState.selectedRanges.forEach(({ paragraphIndex, start, end }) => {
+          const currentList = passageHighlights[paragraphIndex] || [];
+          passageHighlights[paragraphIndex] = removeRangeFromHighlights(currentList, start, end);
+        });
+      }
+
+      return { ...prev, [passage.id]: passageHighlights };
+    });
+
+    window.getSelection()?.removeAllRanges();
+    setMenuState(null);
+  }, [menuState, passage.id]);
+
+  // Open Notes action
+  const handleOpenNotes = useCallback(() => {
+    if (!menuState) return;
+
+    if (menuState.targetHighlightId) {
+      for (const pIdx in highlights) {
+        const found = highlights[pIdx]?.find(h => h.id === menuState.targetHighlightId);
+        if (found) {
+          setNoteModal({
+            highlightId: found.id,
+            paragraphIndex: found.paragraphIndex,
+            initialText: found.note || '',
+          });
+          setNoteText(found.note || '');
+          setMenuState(null);
+          return;
+        }
+      }
+    } else if (menuState.selectedRanges && menuState.selectedRanges.length > 0) {
+      const first = menuState.selectedRanges[0];
+      const newId = `hl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+      setHighlightsByPassage(prev => {
+        const passageHighlights = { ...(prev[passage.id] || {}) };
+        const currentList = passageHighlights[first.paragraphIndex] || [];
+        const newHighlight: TextHighlight = {
+          id: newId,
+          paragraphIndex: first.paragraphIndex,
+          start: first.start,
+          end: first.end,
+        };
+        passageHighlights[first.paragraphIndex] = addAndMergeHighlight(currentList, newHighlight);
+        return { ...prev, [passage.id]: passageHighlights };
+      });
+
+      setNoteModal({
+        highlightId: newId,
+        paragraphIndex: first.paragraphIndex,
+        initialText: '',
+      });
+      setNoteText('');
+      window.getSelection()?.removeAllRanges();
+      setMenuState(null);
+    }
+  }, [menuState, highlights, passage.id]);
+
+  const handleSaveNote = () => {
+    if (!noteModal) return;
+
+    setHighlightsByPassage(prev => {
+      const passageHighlights = { ...(prev[passage.id] || {}) };
+      const pList = passageHighlights[noteModal.paragraphIndex] || [];
+      passageHighlights[noteModal.paragraphIndex] = pList.map(h =>
+        h.id === noteModal.highlightId ? { ...h, note: noteText.trim() || undefined } : h
+      );
+      return { ...prev, [passage.id]: passageHighlights };
+    });
+
+    setNoteModal(null);
+  };
+
+  // Helper to render paragraph with highlighted spans
+  const renderParagraphContent = (paragraphText: string, paragraphIndex: number) => {
+    const pHighlights = highlights[paragraphIndex];
+    if (!pHighlights || pHighlights.length === 0) return paragraphText;
+
+    const sorted = [...pHighlights].sort((a, b) => a.start - b.start);
+    const elements: React.ReactNode[] = [];
+    let cursor = 0;
+
+    sorted.forEach((hl, i) => {
+      const start = Math.max(cursor, Math.min(hl.start, paragraphText.length));
+      const end = Math.max(start, Math.min(hl.end, paragraphText.length));
+
+      if (start > cursor) {
+        elements.push(paragraphText.slice(cursor, start));
+      }
+
+      if (end > start) {
+        const textSnippet = paragraphText.slice(start, end);
+        elements.push(
+          <mark
+            key={hl.id || `hl_${paragraphIndex}_${i}_${start}`}
+            data-highlight-id={hl.id}
+            onContextMenu={e => handleHighlightContextMenu(e, hl)}
+            onClick={e => handleHighlightClick(e, hl)}
+            className="bg-amber-300/60 dark:bg-[#78541e]/70 text-foreground dark:text-amber-100 border border-amber-400/80 dark:border-[#b87c28]/80 rounded-[2px] px-0.5 cursor-pointer hover:brightness-110 select-text transition-colors"
+            title={hl.note ? `Note: "${hl.note}" (Right-click to Clear/Edit)` : 'Right-click to Clear or Add Note'}
+          >
+            {textSnippet}
+            {hl.note && (
+              <span className="inline-flex items-center justify-center w-3.5 h-3.5 ml-1 bg-amber-600 dark:bg-amber-500 text-white rounded-full text-[9px] font-mono font-bold align-super select-none">
+                *
+              </span>
+            )}
+          </mark>
+        );
+      }
+
+      cursor = end;
+    });
+
+    if (cursor < paragraphText.length) {
+      elements.push(paragraphText.slice(cursor));
+    }
+
+    return elements;
+  };
+
   const currentStyles = FONT_CLASSES[textSize];
+  const fontClass = fontType === 'reading' ? 'font-reading' : 'font-sans';
 
   return (
-    <Card className="p-5 sm:p-7 space-y-5 bg-card dark:bg-[#0f141f] border-border/80 shadow-md rounded-2xl">
-      {/* Passage Top Header Bar */}
-      <div className="space-y-3 border-b border-border/70 pb-4">
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="default" className="gap-1.5 px-2.5 py-0.5 text-xs font-bold shadow-xs">
-              <BookOpen className="w-3.5 h-3.5" />
-              {passage.exam} Reading
-            </Badge>
-
-            {passage.difficulty && (
-              <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
-                {passage.difficulty}
-              </span>
-            )}
-
-            {passage.topic && (
-              <span className="text-[11px] font-medium text-muted-foreground px-2 py-0.5 rounded-md bg-primary/5 text-primary border border-primary/15">
-                {passage.topic}
-              </span>
-            )}
-          </div>
-
-          {/* Reading Metadata & Text Size Controls */}
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="hidden sm:inline-flex items-center gap-1 font-medium">
-              <FileText className="w-3.5 h-3.5 text-muted-foreground" />
-              {passage.wordCount} words
-            </span>
-
-            <span className="hidden sm:inline-flex items-center gap-1 font-medium">
-              <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-              ~{estimatedMinutes} min read
-            </span>
-
-            {/* Font Size Toolbar */}
-            <div className="flex items-center gap-1 bg-muted/60 dark:bg-white/[0.04] p-1 rounded-xl border border-border/70">
-              <button
-                type="button"
-                onClick={() => cycleTextSize('down')}
-                disabled={textSize === 'sm'}
-                aria-label="Decrease text size"
-                className="w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-background disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="Smaller text"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-
-              <span className="text-[10px] font-mono font-bold px-1 text-foreground/80 select-none">
-                {textSize.toUpperCase()}
-              </span>
-
-              <button
-                type="button"
-                onClick={() => cycleTextSize('up')}
-                disabled={textSize === 'lg'}
-                aria-label="Increase text size"
-                className="w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-background disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="Larger text"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
+    <Card className="p-3.5 sm:p-4 space-y-2.5 bg-card dark:bg-[#0f141f] border-border/80 border-l-0 rounded-l-none rounded-r-lg shadow-2xs flex flex-col h-full overflow-hidden relative">
+      {/* Compact IELTS Top Header Bar */}
+      <div className="flex items-start justify-between gap-3 border-b border-border/70 pb-2 shrink-0">
+        <div className="space-y-0.5">
+          <h2 className="font-sans font-bold text-sm sm:text-base text-foreground tracking-wide uppercase">
+            PASSAGE {passageNumber}
+          </h2>
+          <p className="text-[11px] sm:text-xs text-muted-foreground font-normal leading-tight">
+            You should spend about 20 minutes on {questionRange}, which are based on Reading Passage {passageNumber}.
+          </p>
         </div>
 
-        {/* Title & Subtitle */}
-        <div className="space-y-1.5 pt-1">
-          <h2 className="font-display font-black text-xl sm:text-2xl text-foreground tracking-tight leading-snug">
+        {/* Compact Tool Icons */}
+        <div className="flex items-center gap-1 shrink-0 pt-0.5">
+          <button
+            type="button"
+            onClick={() => setFontType(f => (f === 'reading' ? 'sans' : 'reading'))}
+            className="px-1.5 py-0.5 rounded text-[11px] font-mono font-semibold text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400 transition-colors"
+            title={fontType === 'reading' ? 'Switch to Sans-serif font' : 'Switch to Book Serif font'}
+          >
+            {fontType === 'reading' ? 'Serif' : 'Sans'}
+          </button>
+
+          <span className="text-border">|</span>
+
+          <button
+            type="button"
+            onClick={() => cycleTextSize('down')}
+            disabled={textSize === 'sm'}
+            aria-label="Decrease text size"
+            className="p-1 rounded text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+            title="Smaller text"
+          >
+            <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+
+          <span className="text-[10px] font-mono font-bold px-0.5 text-muted-foreground select-none">
+            {textSize.toUpperCase()}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => cycleTextSize('up')}
+            disabled={textSize === 'lg'}
+            aria-label="Increase text size"
+            className="p-1 rounded text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+            title="Larger text"
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Paragraphs and Content Container with MouseUp Selection Detection */}
+      <div
+        ref={containerRef}
+        onMouseUp={handleMouseUp}
+        className={`flex-1 ${
+          scroll
+            ? `${currentStyles.line} overflow-y-auto pr-1.5 scrollbar-thin`
+            : currentStyles.line
+        }`}
+      >
+        {/* Title & Subtitle - Refined, elegant, less bold */}
+        <div className="text-center space-y-1 pt-1.5 pb-2.5">
+          <h1 className={`${fontClass} font-semibold text-xl sm:text-2xl text-foreground/90 tracking-tight leading-snug`}>
             {passage.title}
-          </h2>
+          </h1>
           {passage.subtitle && (
-            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-normal">
+            <p className={`${fontClass} italic text-xs sm:text-[13px] text-muted-foreground/85 max-w-xl mx-auto leading-relaxed font-normal`}>
               {passage.subtitle}
             </p>
           )}
         </div>
-      </div>
 
-      {/* Paragraphs Container */}
-      <div
-        className={
-          scroll
-            ? `${currentStyles.line} max-h-[36rem] overflow-y-auto pr-2 scrollbar-thin`
-            : currentStyles.line
-        }
-      >
-        {passage.paragraphs.map(paragraph => (
-          <div
-            key={paragraph.label}
-            className="group relative flex gap-3.5 sm:gap-4.5 p-3 sm:p-4 rounded-xl hover:bg-muted/40 dark:hover:bg-white/[0.02] border border-transparent hover:border-border/50 transition-colors"
-          >
-            {/* Distinct Paragraph Letter Badge */}
-            <span
-              className={`shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-xl font-mono font-black ${currentStyles.label} flex items-center justify-center bg-primary/10 text-primary border border-primary/25 shadow-xs select-none group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all`}
-              title={`Paragraph ${paragraph.label}`}
-            >
-              {paragraph.label}
-            </span>
-
-            {/* Paragraph Text with generous readable spacing */}
+        {/* Paragraphs Flow with Multiple Highlights Support */}
+        <div className={currentStyles.line}>
+          {passage.paragraphs.map((paragraph, index) => (
             <p
-              className={`flex-1 text-foreground/95 dark:text-zinc-200 font-normal tracking-normal selection:bg-primary/20 ${currentStyles.body}`}
+              key={paragraph.label || index}
+              className={`${fontClass} font-normal font-[400] text-neutral-800 dark:text-neutral-200 selection:bg-blue-600 selection:text-white text-justify sm:text-left ${currentStyles.body}`}
             >
-              {paragraph.text}
+              {showLabels && paragraph.label && (
+                <span className="font-semibold mr-1.5 text-primary dark:text-blue-400 font-sans select-none">
+                  [{paragraph.label}]
+                </span>
+              )}
+              <span data-paragraph-body={index}>
+                {renderParagraphContent(paragraph.text, index)}
+              </span>
             </p>
-          </div>
-        ))}
+          ))}
+        </div>
 
+        {/* Commentaries & Sources (if applicable) */}
         {showSources && passage.sources && passage.sources.length > 0 && (
-          <div className="pt-4 mt-6 border-t border-border/80 space-y-3.5">
-            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              <Users className="w-4 h-4 text-primary" />
+          <div className="pt-3 mt-4 border-t border-border/80 space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground uppercase tracking-wider font-sans">
+              <Users className="w-3.5 h-3.5 text-primary" />
               <span>Commentaries &amp; Sources</span>
             </div>
 
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 gap-2">
               {passage.sources.map(source => (
                 <div
                   key={source.label}
-                  className="p-4 rounded-xl bg-muted/30 dark:bg-white/[0.02] border-l-4 border-l-primary border-y border-r border-border space-y-1.5 shadow-xs"
+                  className="p-3 rounded-lg bg-muted/30 dark:bg-white/[0.02] border-l-4 border-l-primary border-y border-r border-border space-y-1 shadow-2xs"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-primary px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-primary px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 font-sans">
                       {source.label}
                     </span>
                   </div>
-                  <p className={`text-foreground/90 dark:text-zinc-200 font-normal ${currentStyles.body}`}>
+                  <p className={`${fontClass} text-foreground/90 dark:text-zinc-200 font-normal ${currentStyles.body}`}>
                     {source.text}
                   </p>
                 </div>
@@ -177,6 +630,93 @@ export default function PassageReader({ passage, scroll = true, showSources = fa
           </div>
         )}
       </div>
+
+      {/* Floating IELTS Context Menu: Opens directly at mouse cursor */}
+      {menuState && (
+        <div
+          ref={menuRef}
+          style={{ left: menuState.x, top: menuState.y }}
+          className="fixed z-50 bg-[#1c2026] text-white border border-neutral-700/80 shadow-2xl rounded-xl py-1 px-1 min-w-[130px] space-y-0.5 animate-in fade-in zoom-in-95 duration-100 select-none text-xs"
+        >
+          {menuState.canHighlight && (
+            <button
+              type="button"
+              onClick={handleApplyHighlight}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-left text-neutral-200 hover:text-white transition-colors"
+            >
+              <Highlighter className="w-3.5 h-3.5 text-amber-400" />
+              <span className="font-medium">Highlight</span>
+            </button>
+          )}
+
+          {menuState.canClear && (
+            <button
+              type="button"
+              onClick={handleClearHighlight}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-left text-neutral-200 hover:text-white transition-colors"
+            >
+              <Eraser className="w-3.5 h-3.5 text-rose-400" />
+              <span className="font-medium">Clear</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleOpenNotes}
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-left text-neutral-200 hover:text-white transition-colors"
+          >
+            <PenLine className="w-3.5 h-3.5 text-blue-400" />
+            <span className="font-medium">Notes</span>
+          </button>
+        </div>
+      )}
+
+      {/* Notes Modal / Popover */}
+      {noteModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-[#1c2026] text-white border border-neutral-700 rounded-xl p-4 w-full max-w-sm space-y-3 shadow-2xl animate-in fade-in zoom-in-95 duration-100">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-neutral-300 flex items-center gap-1.5">
+                <PenLine className="w-3.5 h-3.5 text-blue-400" />
+                Highlight Note
+              </span>
+              <button
+                type="button"
+                onClick={() => setNoteModal(null)}
+                className="text-neutral-400 hover:text-white p-1 rounded"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <textarea
+              value={noteText}
+              onChange={e => setNoteText(e.target.value)}
+              placeholder="Write your note for this highlight…"
+              rows={3}
+              className="w-full bg-[#12151b] border border-neutral-700 rounded-lg p-2.5 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              autoFocus
+            />
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setNoteModal(null)}
+                className="px-3 py-1 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveNote}
+                className="px-3.5 py-1 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-xs"
+              >
+                Save Note
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

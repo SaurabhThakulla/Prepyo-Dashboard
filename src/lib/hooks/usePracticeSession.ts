@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/ui/toast';
@@ -80,8 +80,21 @@ export function usePracticeSession() {
   // Cached per exam+skill, so switching back to a skill you have already opened
   // costs no request.
   const questionsQuery = useQuestions(activeExam, selectedSkill);
-  const questions = questionsQuery.data?.questions ?? [];
   const loading = questionsQuery.isPending;
+
+  // A skill's bank holds every task type, so a sidebar link to one type has to
+  // narrow the list rather than just pick a starting point in it. Without this
+  // the navigator and Next question walk from Describe the figure straight into
+  // the opinion essays.
+  //
+  // Memoised because the effect below depends on this array: a fresh one on
+  // every render would reset the learner's answer on every render.
+  const questions = useMemo(() => {
+    const all = questionsQuery.data?.questions ?? [];
+    if (!typeParam) return all;
+    const ofType = all.filter(question => typeKey(question.typeName) === typeParam);
+    return ofType.length > 0 ? ofType : all;
+  }, [questionsQuery.data, typeParam]);
 
   useEffect(() => {
     if (questionsQuery.error) {
@@ -95,13 +108,9 @@ export function usePracticeSession() {
   // question, so picking a type here is just a different starting point in the
   // list already loaded for the skill — no second fetch.
   useEffect(() => {
-    setCurrentQuestion(
-      typeParam
-        ? questions.find(question => typeKey(question.typeName) === typeParam) ?? null
-        : questions[0] ?? null,
-    );
+    setCurrentQuestion(questions[0] ?? null);
     resetAnswer();
-  }, [questions, typeParam, resetAnswer]);
+  }, [questions, resetAnswer]);
 
   const selectQuestion = useCallback(
     (question: Question) => {

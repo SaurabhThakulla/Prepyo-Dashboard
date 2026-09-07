@@ -17,14 +17,7 @@ interface ReadingGroupCardProps {
 }
 
 /**
- * One task set: the instruction line, any material the task carries with it,
- * and the questions.
- *
- * `resources` is where a task keeps the material that belongs to it rather than
- * to the passage, and it is read two ways. For an ordering task it is the boxes,
- * which have to appear above the questions or they reference paragraphs shown
- * nowhere. For a gap-fill it is the word bank, which belongs inside the question
- * next to the gaps it fills, so it is handed down instead of rendered here.
+ * Compact & strict Question Group container with minimal whitespace.
  */
 export default function ReadingGroupCard({
   group,
@@ -38,31 +31,31 @@ export default function ReadingGroupCard({
   const wordBank = isGapFill(group.typeId) ? group.resources : undefined;
 
   return (
-    <Card className="p-5 sm:p-6 space-y-4 bg-card dark:bg-[#0f141f] border-border/80 shadow-md rounded-2xl">
-      <div className="space-y-2 border-b border-border/80 pb-3.5">
+    <Card className="p-3.5 sm:p-4 space-y-2.5 bg-card dark:bg-[#0f141f] border-border/80 border-r-0 rounded-r-none rounded-l-lg shadow-2xs">
+      <div className="space-y-1 border-b border-border/70 pb-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Badge variant="default" className="text-xs px-2.5 py-0.5 font-bold shadow-xs">
+          <Badge variant="default" className="text-[11px] px-2 py-0.5 font-bold shadow-xs">
             {group.typeName}
           </Badge>
-          <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-lg border border-primary/20 font-mono">
+          <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20 font-mono">
             {startNumber === last ? `Question ${startNumber}` : `Questions ${startNumber}–${last}`}
           </span>
         </div>
-        <p className="text-xs sm:text-[13px] text-muted-foreground font-medium leading-relaxed">{group.instructions}</p>
+        <p className="text-xs text-muted-foreground font-medium leading-tight">{group.instructions}</p>
       </div>
 
       {!wordBank && group.resources && group.resources.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {group.resources.map(resource => (
-            <div key={resource.label} className="p-3.5 rounded-xl bg-muted/30 border border-border space-y-1">
+            <div key={resource.label} className="p-2.5 rounded-lg bg-muted/30 border border-border space-y-0.5">
               <span className="text-xs font-bold text-primary">{resource.label}</span>
-              <p className="text-sm text-foreground leading-relaxed">{resource.text}</p>
+              <p className="text-xs text-foreground leading-normal">{resource.text}</p>
             </div>
           ))}
         </div>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-2">
         {group.questions.map((question, index) => (
           <ReadingQuestionRow
             key={question.id}

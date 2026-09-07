@@ -26,6 +26,9 @@ import { Evaluation, PracticeAttempt, Question, SkillType } from '@/lib/types';
 const ReadingPracticePanel = lazy(() => import('@/components/reading/ReadingPracticePanel'));
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
+import { typeKey } from '@/lib/syllabus';
+
+const QUESTION_LIMIT = 200;
 import { useToast } from '@/components/ui/toast';
 
 const GRADING: Record<SkillType, 'deterministic' | 'ai' | 'speech'> = {
@@ -81,6 +84,7 @@ export default function PracticePage() {
   }, []);
 
   const isReading = selectedSkill === 'reading';
+  const typeParam = searchParams.get('type');
 
   useEffect(() => {
     if (isReading) {
@@ -93,10 +97,21 @@ export default function PracticePage() {
     resetAnswer();
 
     api
-      .get<{ questions: Question[] }>('/questions', { exam: activeExam, skill: selectedSkill })
+      .get<{ questions: Question[] }>('/questions', {
+        exam: activeExam,
+        skill: selectedSkill,
+        limit: QUESTION_LIMIT,
+      })
       .then(data => {
         if (cancelled) return;
-        const list = data.questions ?? [];
+        const all = data.questions ?? [];
+        // A skill's bank holds every task type. The sidebar links to one type,
+        // so the list has to be narrowed to it: otherwise Describe the figure
+        // opens on an essay and the navigator walks into the opinion questions.
+        const ofType = typeParam
+          ? all.filter(question => typeKey(question.typeName) === typeParam)
+          : all;
+        const list = ofType.length > 0 ? ofType : all;
         setQuestions(list);
         setCurrentQuestion(list[0] ?? null);
       })
@@ -111,7 +126,7 @@ export default function PracticePage() {
     return () => {
       cancelled = true;
     };
-  }, [activeExam, selectedSkill, isReading]);
+  }, [activeExam, selectedSkill, isReading, typeParam]);
 
   const wordCount = textAnswer.trim().split(/\s+/).filter(Boolean).length;
 
@@ -219,35 +234,6 @@ export default function PracticePage() {
         </div>
       ) : (
         <div className="w-full flex flex-col flex-1">
-          {/* Flush Edge-to-Edge Sub-Header Bar */}
-          <div className="w-full border-b border-border/80 bg-background px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-16 z-10">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider px-3.5 py-1 rounded-full shadow-xs">
-                {currentQuestion.typeName}
-              </span>
-              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/80 px-3 py-1 rounded-full border border-border">
-                {activeExam} • {selectedSkill.toUpperCase()}
-              </span>
-              {currentQuestion.difficulty && (
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hidden sm:inline">
-                  {currentQuestion.difficulty.toUpperCase()} • {currentQuestion.points} Points
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-mono font-bold text-muted-foreground uppercase tracking-wider">
-                Question {currentIndex + 1} of {questions.length}
-              </span>
-              {currentQuestion.timeLimitSeconds && (
-                <span className="text-xs font-mono font-semibold text-muted-foreground flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-primary" />
-                  {Math.round(currentQuestion.timeLimitSeconds / 60)} MIN
-                </span>
-              )}
-            </div>
-          </div>
-
           {/* Unified Full-Width Workspace matching Reading layout */}
           <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-5 flex-1 flex flex-col justify-between">
             {/* Main Unified Card */}
