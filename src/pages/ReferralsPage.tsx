@@ -23,6 +23,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { ReferralOverview } from '@/lib/types';
 import { api, errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
+import { ReferralsPageSkeleton } from '@/components/layout/PageSkeleton';
 
 export default function ReferralsPage() {
   const { user } = useApp();
@@ -66,6 +67,10 @@ export default function ReferralsPage() {
     threeReferrals: { required: 3, current: 0, completed: false },
     fiveReferrals: { required: 5, current: 0, completed: false },
   };
+
+  if (loading && !data) {
+    return <ReferralsPageSkeleton />;
+  }
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto px-4 sm:px-6 py-6 pb-12">

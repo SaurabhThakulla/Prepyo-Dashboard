@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import {
   Check,
-  RefreshCw,
   AlertCircle,
   ArrowRight,
 } from 'lucide-react';
+import { SubscriptionPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { SubscriptionPlan } from '@/lib/types';
@@ -153,6 +153,10 @@ export default function SubscriptionPage() {
     },
   ];
 
+  if (loading && plans.length === 0) {
+    return <SubscriptionPageSkeleton />;
+  }
+
   return (
     <div className="w-full pb-16 space-y-6">
       {/* Full width edge-to-edge Header Banner matching ProfilePage */}
@@ -210,12 +214,7 @@ export default function SubscriptionPage() {
 
       {/* Main Content: Comparison Matrix stretching full width */}
       <div className="w-full px-4 sm:px-6 lg:px-8 space-y-6">
-        {loading ? (
-          <div className="text-center py-24 bg-card rounded-2xl border border-border">
-            <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
-            <p className="text-xs text-muted-foreground mt-2 font-medium">Loading subscription plans…</p>
-          </div>
-        ) : loadError ? (
+        {loadError ? (
           <Card className="p-12 text-center space-y-3">
             <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
             <CardTitle className="text-base">Plans unavailable</CardTitle>

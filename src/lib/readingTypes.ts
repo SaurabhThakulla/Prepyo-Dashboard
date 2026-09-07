@@ -59,3 +59,10 @@ export const isGapFill = (typeId: string): boolean =>
 /** Tasks where more than one option may be selected. */
 export const isMultiSelect = (typeId: string): boolean =>
   typeId === READING_TYPES.mcqMultiple;
+
+/** Checks if a reading task (by syllabus typeKey, typeId, or typeName) is a multiple-choice task. */
+export function isReadingMultipleChoice(typeKeyOrId?: string | null): boolean {
+  if (!typeKeyOrId) return false;
+  const normalized = typeKeyOrId.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return normalized.includes('multiplechoice') || normalized.includes('mcq');
+}

@@ -21,12 +21,14 @@ import { Card, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import AudioRecorder from '@/components/practice/AudioRecorder';
 import PromptAudio from '@/components/practice/PromptAudio';
+import { PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 import { Evaluation, PracticeAttempt, Question, SkillType } from '@/lib/types';
 
 const ReadingPracticePanel = lazy(() => import('@/components/reading/ReadingPracticePanel'));
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
 import { typeKey } from '@/lib/syllabus';
+import { isReadingMultipleChoice } from '@/lib/readingTypes';
 
 const QUESTION_LIMIT = 200;
 import { useToast } from '@/components/ui/toast';
@@ -211,21 +213,11 @@ export default function PracticePage() {
   return (
     <div className="w-full min-h-[calc(100vh-4rem)] p-0 m-0 flex flex-col bg-background">
       {isReading ? (
-        <Suspense
-          fallback={
-            <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center py-20 text-center space-y-3 bg-card/20">
-              <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
-              <p className="text-xs text-muted-foreground">Loading reading studio…</p>
-            </div>
-          }
-        >
+        <Suspense fallback={isReadingMultipleChoice(typeParam) ? <ReadingPracticeSkeleton /> : <PracticePageSkeleton />}>
           <ReadingPracticePanel initialTypeKey={searchParams.get('type') ?? undefined} />
         </Suspense>
       ) : loading ? (
-        <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center py-20 text-center space-y-3 bg-card/20">
-          <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
-          <p className="text-xs text-muted-foreground">Loading questions…</p>
-        </div>
+        <PracticePageSkeleton />
       ) : !currentQuestion ? (
         <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-8 text-center space-y-3 bg-card/20">
           <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />

@@ -65,12 +65,14 @@ export function useReadingPractice(exam: ExamType) {
   const [answers, setAnswers] = useState<Record<string, AnswerSubmission>>({});
   const [results, setResults] = useState<Record<string, ReadingAnswerResult>>({});
   const [dealing, setDealing] = useState(false);
+  const [dealError, setDealError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [startedAt, setStartedAt] = useState(() => Date.now());
 
   const deal = useCallback(
     async (typeId: string) => {
       setDealing(true);
+      setDealError(null);
       try {
         const data = await api.post<{ set: ReadingSet }>('/reading/practice', { exam, typeId });
         setSet(data.set);
@@ -79,6 +81,7 @@ export function useReadingPractice(exam: ExamType) {
         setStartedAt(Date.now());
       } catch (err) {
         setSet(null);
+        setDealError(errorMessage(err));
         if (err instanceof ApiError && err.status === 404) {
           toast.warning('Nothing to practise there yet', errorMessage(err));
         } else {
@@ -165,6 +168,7 @@ export function useReadingPractice(exam: ExamType) {
     answers,
     results,
     dealing,
+    dealError,
     checking,
     deal,
     answer,

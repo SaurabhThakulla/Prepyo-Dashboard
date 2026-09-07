@@ -5,6 +5,7 @@ import { api, errorMessage, profileImageUrl } from '@/lib/api';
 import { ActivitySummary, ExamType, ProgressSummary, SkillType } from '@/lib/types';
 import { useToast } from '@/components/ui/toast';
 import { BookOpen, Camera, Trash2, Sparkles, Edit3, Loader2, CheckCircle2, X } from 'lucide-react';
+import { ProfilePageSkeleton } from '@/components/layout/PageSkeleton';
 
 const REGIONS = ['Kathmandu', 'Lalitpur', 'Bhaktapur', 'Pokhara', 'Chitwan', 'Butwal', 'Dharan', 'Biratnagar', 'Melbourne', 'Sydney'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -221,6 +222,10 @@ export default function ProfilePage() {
   const predicted = estimate != null ? (isIELTS ? estimate.toFixed(1) : String(Math.round(estimate))) : NONE;
   const readiness = user?.estimate?.readiness ?? progress?.estimate?.readiness ?? null;
   const hasSkillData = skillList.some(s => s.score != null);
+
+  if (loading && !loaded) {
+    return <ProfilePageSkeleton />;
+  }
 
   return (
     <div className="w-full pb-12">

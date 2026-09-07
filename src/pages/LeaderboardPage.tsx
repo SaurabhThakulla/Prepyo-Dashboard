@@ -5,9 +5,9 @@ import {
   Trophy,
   Flame,
   MapPin,
-  RefreshCw,
   Crown,
 } from 'lucide-react';
+import { LeaderboardPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
@@ -144,9 +144,7 @@ export default function LeaderboardPage() {
       </div>
 
       {loading ? (
-        <Card className="text-center py-16">
-          <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
-        </Card>
+        <LeaderboardPageSkeleton bare />
       ) : leaderboard.length === 0 ? (
         <Card className="p-12 text-center space-y-3">
           <Trophy className="w-10 h-10 text-muted-foreground mx-auto" />

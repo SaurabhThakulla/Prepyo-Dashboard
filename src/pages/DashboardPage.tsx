@@ -8,6 +8,7 @@ import FocusPanel from '@/components/dashboard/FocusPanel';
 import { useDashboardSummary } from '@/lib/hooks/useDashboardSummary';
 import { daysUntilExam, formatExamDate } from '@/lib/dates';
 import { ExamType, ProgressSummary, SkillType } from '@/lib/types';
+import { DashboardPageSkeleton } from '@/components/layout/PageSkeleton';
 
 function buildSkillRows(exam: ExamType, progress: ProgressSummary | null): SkillRow[] {
   const isPTE = exam === 'PTE';
@@ -39,7 +40,11 @@ function buildSkillRows(exam: ExamType, progress: ProgressSummary | null): Skill
 export default function DashboardPage() {
   const { user, activeExam, setIsTutorOpen, setTutorContextPrompt } = useApp();
   const [isExamDateOpen, setIsExamDateOpen] = useState(false);
-  const { progress, unresolvedMistakes } = useDashboardSummary(activeExam);
+  const { progress, unresolvedMistakes, isLoading } = useDashboardSummary(activeExam);
+
+  if (isLoading && !progress) {
+    return <DashboardPageSkeleton />;
+  }
 
   const isPTE = activeExam === 'PTE';
   const userName = user?.name?.split(' ')[0] ?? 'there';

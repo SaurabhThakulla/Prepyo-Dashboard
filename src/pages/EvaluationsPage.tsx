@@ -17,6 +17,7 @@ import { useToast } from '@/components/ui/toast';
 import { useEvaluationHistory, useQuestions } from '@/lib/hooks/useResources';
 import { queryKeys } from '@/lib/queryKeys';
 import { useQueryClient } from '@tanstack/react-query';
+import { EvaluationsPageSkeleton } from '@/components/layout/PageSkeleton';
 
 const HISTORY_LIMIT = 5;
 
@@ -94,6 +95,10 @@ export default function EvaluationsPage() {
       setLoading(false);
     }
   };
+
+  if (questionsQuery.isPending) {
+    return <EvaluationsPageSkeleton />;
+  }
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">

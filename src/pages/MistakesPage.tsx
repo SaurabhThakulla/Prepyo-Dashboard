@@ -3,13 +3,11 @@ import { useApp } from '@/context/AppContext';
 import {
   CheckCircle2,
   XCircle,
-  RefreshCw,
-  AlertCircle,
-  BookOpen,
   Sparkles,
   Search,
   Tag,
 } from 'lucide-react';
+import { MistakesPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
@@ -145,10 +143,7 @@ export default function MistakesPage() {
         </div>
 
       {loading ? (
-        <div className="text-center py-24 bg-card rounded-2xl border border-border/80">
-          <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto" />
-          <p className="text-xs text-muted-foreground mt-2 font-medium">Loading your mistake log…</p>
-        </div>
+        <MistakesPageSkeleton bare />
       ) : filteredMistakes.length === 0 ? (
         <Card className="p-12 text-center space-y-3 rounded-2xl border-border/80">
           <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
