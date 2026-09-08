@@ -13,10 +13,11 @@ import {
   HelpCircle,
   FileText,
   CreditCard,
+  ShieldCheck,
   LucideIcon,
 } from 'lucide-react';
 import { SYLLABUS, typeKey } from '@/lib/syllabus';
-import { ExamType, SkillType, UserProfile } from '@/lib/types';
+import { ExamType, isAdmin, SkillType, UserProfile } from '@/lib/types';
 
 /**
  * What goes in the sidebar, and which item is highlighted.
@@ -90,12 +91,23 @@ export function buildSections(
       title: 'Learner Hub',
       description: 'Progress, study resources & recent activity',
       items: [
-        {
-          href: '/dashboard',
-          label: 'Home Overview',
-          icon: Home,
-          sublabel: 'Target gaps & score breakdown',
-        },
+        // An admin has no practice history of their own, so the learner's
+        // score breakdown would be an empty page. They get the dashboard they
+        // actually work from instead.
+        isAdmin(user ?? null)
+          ? {
+              href: '/admin',
+              label: 'Admin Dashboard',
+              icon: ShieldCheck,
+              sublabel: 'Users, plans & platform metrics',
+              badge: 'Admin',
+            }
+          : {
+              href: '/dashboard',
+              label: 'Home Overview',
+              icon: Home,
+              sublabel: 'Target gaps & score breakdown',
+            },
         {
           href: '/subscription',
           label: 'Your Current Plan',

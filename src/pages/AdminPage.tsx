@@ -14,10 +14,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { api, ApiError, errorMessage } from '@/lib/api';
+import AdminUsersPanel from '@/components/admin/AdminUsersPanel';
 
 interface AdminMetrics {
   questions: number;
   mocks: number;
+  totalUsers: number;
   learners: number;
   activeLast7Days: number;
   practiceAttempts: number;
@@ -106,9 +108,9 @@ export default function AdminPage() {
       color: 'text-primary',
     },
     {
-      label: 'Learners',
-      value: metrics.learners.toLocaleString(),
-      note: `${metrics.activeLast7Days} active in last 7 days`,
+      label: 'Total users',
+      value: metrics.totalUsers.toLocaleString(),
+      note: `${metrics.learners.toLocaleString()} learners · ${metrics.activeLast7Days} active in last 7 days`,
       icon: Users,
       color: 'text-foreground',
     },
@@ -156,6 +158,8 @@ export default function AdminPage() {
           </Card>
         ))}
       </div>
+
+      <AdminUsersPanel />
 
       {/* Activity */}
       <Card className="p-6 space-y-4">
