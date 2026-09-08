@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  CreditCard,
   Zap,
   Activity,
   Sparkles,
   Bot,
-  Users,
   AlertCircle,
   ShieldAlert,
 } from 'lucide-react';
@@ -16,8 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import AdminUsersPanel from '@/components/admin/AdminUsersPanel';
-import StatCard, { StatOption } from '@/components/admin/StatCard';
-import { ROLE_LABELS, UserRole } from '@/lib/types';
+import StatCard from '@/components/admin/StatCard';
 
 interface AdminMetrics {
   questions: number;
@@ -58,33 +55,10 @@ const EMPTY_METRICS: AdminMetrics = {
   medianLatencyMs: 0,
 };
 
-interface RoleCount {
-  role: UserRole;
-  plan: string;
-  count: number;
-}
-
 interface ExamQuestionCount {
   exam: string;
   count: number;
 }
-
-/** Paid tiers. Suru is the free plan, so it is not a subscription. */
-const PAID_ROLES: UserRole[] = ['abhyas', 'taiyari', 'udaan'];
-
-const ALL = 'all';
-
-/**
- * Japanese has no questions and no exam type behind it yet, so it is listed
- * unselectable rather than left out: the dashboard should show what is coming,
- * without implying it can be filtered to today.
- */
-const EXAM_OPTIONS: StatOption[] = [
-  { value: ALL, label: 'All exams' },
-  { value: 'PTE', label: 'PTE' },
-  { value: 'IELTS', label: 'IELTS' },
-  { value: 'Japanese', label: 'Japanese (coming soon)', disabled: true },
-];
 
 interface ModelUsage {
   model: string;
@@ -93,13 +67,16 @@ interface ModelUsage {
   completionTokens: number;
 }
 
+/** Percentage of the bank one exam holds, as a readable string. */
+function share(count: number, total: number): string {
+  if (total <= 0) return '0%';
+  return `${Math.round((count / total) * 100)}%`;
+}
+
 export default function AdminPage() {
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
   const [usageByModel, setUsageByModel] = useState<ModelUsage[]>([]);
-  const [usersByRole, setUsersByRole] = useState<RoleCount[]>([]);
   const [questionsByExam, setQuestionsByExam] = useState<ExamQuestionCount[]>([]);
-  const [planFilter, setPlanFilter] = useState<string>(ALL);
-  const [examFilter, setExamFilter] = useState<string>(ALL);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
@@ -111,14 +88,12 @@ export default function AdminPage() {
       .get<{
         metrics: AdminMetrics;
         usageByModel: ModelUsage[];
-        usersByRole?: RoleCount[];
         questionsByExam?: ExamQuestionCount[];
       }>('/admin/metrics')
       .then(data => {
         if (cancelled) return;
         setMetrics({ ...EMPTY_METRICS, ...data.metrics });
         setUsageByModel(data.usageByModel ?? []);
-        setUsersByRole(data.usersByRole ?? []);
         setQuestionsByExam(data.questionsByExam ?? []);
         setError(null);
       })
@@ -163,37 +138,10 @@ export default function AdminPage() {
     );
   }
 
-  // Every figure below is a slice of data already loaded, so the dropdowns
-  // never refetch and cannot show a number from a stale response.
-  const countFor = (role: UserRole) => usersByRole.find(entry => entry.role === role)?.count ?? 0;
-  const paidTotal = PAID_ROLES.reduce((sum, role) => sum + countFor(role), 0);
-  const totalUsers = Math.max(metrics.totalUsers, metrics.learners);
-
-  const subscribedValue = planFilter === ALL ? paidTotal : countFor(planFilter as UserRole);
-  const subscribedNote =
-    planFilter === ALL
-      ? `${PAID_ROLES.map(role => `${ROLE_LABELS[role]} ${countFor(role)}`).join(' · ')}`
-      : planFilter === 'suru'
-        ? 'Free tier — not a subscription'
-        : `${totalUsers > 0 ? Math.round((subscribedValue / totalUsers) * 100) : 0}% of all users`;
-
-  const planOptions: StatOption[] = [
-    { value: ALL, label: 'All paid plans' },
-    { value: 'suru', label: `${ROLE_LABELS.suru} (free)` },
-    ...PAID_ROLES.map(role => ({ value: role, label: ROLE_LABELS[role] })),
-  ];
-
-  // An older API sends no breakdown; fall back to the flat published count so
-  // the card still reads true rather than dropping to zero.
-  const examTotal = questionsByExam.reduce((sum, entry) => sum + entry.count, 0);
-  const questionsValue =
-    examFilter === ALL
-      ? examTotal || metrics.questions
-      : (questionsByExam.find(entry => entry.exam === examFilter)?.count ?? 0);
-  const questionsNote =
-    examFilter === ALL
-      ? `${metrics.mocks} mock exam${metrics.mocks === 1 ? '' : 's'}`
-      : `${examFilter} only`;
+  // The exam cards read straight off the breakdown. An older API sends none, so
+  // the total falls back to the flat published count rather than showing zero.
+  const questionsFor = (exam: string) => questionsByExam.find(entry => entry.exam === exam)?.count ?? 0;
+  const examTotal = questionsByExam.reduce((sum, entry) => sum + entry.count, 0) || metrics.questions;
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
@@ -210,35 +158,31 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* KPI cards */}
+      {/* Question bank by exam. Counts live below the users table, which
+          already breaks them down by plan, so they are not repeated here. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
-          label="Total users"
-          value={totalUsers.toLocaleString()}
-          note={`${metrics.activeLast7Days} active in last 7 days`}
-          icon={Users}
-        />
-        <StatCard
-          label="Subscribed users"
-          value={subscribedValue.toLocaleString()}
-          note={subscribedNote}
-          icon={CreditCard}
+          label="PTE questions"
+          value={questionsFor('PTE').toLocaleString()}
+          note={`${share(questionsFor('PTE'), examTotal)} of the question bank`}
+          icon={Activity}
           color="text-primary"
-          options={planOptions}
-          selected={planFilter}
-          onSelect={setPlanFilter}
-          selectLabel="Filter subscribed users by plan"
         />
         <StatCard
-          label="Total questions"
-          value={questionsValue.toLocaleString()}
-          note={questionsNote}
+          label="IELTS questions"
+          value={questionsFor('IELTS').toLocaleString()}
+          note={`${share(questionsFor('IELTS'), examTotal)} of the question bank`}
           icon={Activity}
           color="text-indigo-400"
-          options={EXAM_OPTIONS}
-          selected={examFilter}
-          onSelect={setExamFilter}
-          selectLabel="Filter questions by exam"
+        />
+        {/* No exam type, no questions, nothing to count. Shown so the plan is
+            visible, muted so it cannot be mistaken for a live figure. */}
+        <StatCard
+          label="Japanese questions"
+          value="—"
+          note="Coming soon"
+          icon={Sparkles}
+          color="text-muted-foreground"
         />
       </div>
 

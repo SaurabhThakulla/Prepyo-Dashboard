@@ -23,9 +23,10 @@ import { Textarea } from '@/components/ui/textarea';
 import AudioRecorder from '@/components/practice/AudioRecorder';
 import PromptAudio from '@/components/practice/PromptAudio';
 import { PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
-import { Evaluation, PracticeAttempt, Question, SkillType } from '@/lib/types';
+import { Evaluation, isAdmin, PracticeAttempt, Question, SkillType } from '@/lib/types';
 
 const ReadingPracticePanel = lazy(() => import('@/components/reading/ReadingPracticePanel'));
+const AdminPassageUpload = lazy(() => import('@/components/admin/AdminPassageUpload'));
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
 import { typeKey } from '@/lib/syllabus';
@@ -50,7 +51,7 @@ interface SubmitResult {
 }
 
 export default function PracticePage() {
-  const { activeExam, refreshUser, setIsTutorOpen, setTutorContextPrompt } = useApp();
+  const { user, activeExam, refreshUser, setIsTutorOpen, setTutorContextPrompt } = useApp();
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -254,7 +255,13 @@ export default function PracticePage() {
 
   return (
     <div className="w-full min-h-[calc(100vh-4rem)] p-0 m-0 flex flex-col bg-background">
-      {isReading ? (
+      {/* An admin has no reason to sit the paper. The reading section is where
+          they add one instead. */}
+      {isReading && isAdmin(user) ? (
+        <Suspense fallback={<PracticePageSkeleton />}>
+          <AdminPassageUpload />
+        </Suspense>
+      ) : isReading ? (
         <Suspense fallback={isReadingMultipleChoice(typeParam) ? <ReadingPracticeSkeleton /> : <PracticePageSkeleton />}>
           <ReadingPracticePanel initialTypeKey={searchParams.get('type') ?? undefined} />
         </Suspense>

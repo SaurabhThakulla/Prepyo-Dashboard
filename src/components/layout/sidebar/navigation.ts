@@ -142,16 +142,33 @@ export function buildSections(
       // One heading per skill, one item per task type underneath — the exam's
       // own shape, straight from the syllabus, so PTE and IELTS each list their
       // own tasks and a change there needs no edit here.
-      items: PRACTICE_SKILLS.flatMap(({ skill, label, icon, sublabel }) =>
-        (SYLLABUS[activeExam][skill] ?? []).map(name => ({
+      items: PRACTICE_SKILLS.flatMap(({ skill, label, icon, sublabel }) => {
+        // The reading section is where an admin adds content rather than sits
+        // it, so the task-type links are replaced by the one thing that page
+        // does for them. Every other skill still lists its tasks.
+        if (skill === 'reading' && isAdmin(user ?? null)) {
+          return [
+            {
+              href: '/practice?skill=reading',
+              label: 'Add passage & questions',
+              icon: ShieldCheck,
+              sublabel: 'Author a reading passage and its task sets',
+              badge: 'Admin',
+              group: label,
+              groupHref: '/practice?skill=reading',
+            },
+          ];
+        }
+
+        return (SYLLABUS[activeExam][skill] ?? []).map(name => ({
           href: `/practice?skill=${skill}&type=${typeKey(name)}`,
           label: name,
           icon,
           sublabel,
           group: label,
           groupHref: `/practice?skill=${skill}`,
-        })),
-      ),
+        }));
+      }),
     },
     {
       id: 'aicoach',

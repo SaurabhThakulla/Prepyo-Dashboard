@@ -210,7 +210,8 @@ export default function AdminUsersPanel() {
               <tr className="text-left text-[10px] uppercase text-muted-foreground font-bold border-b border-border">
                 <th className="py-2 pr-3">User</th>
                 <th className="py-2 pr-3">Role</th>
-                <th className="py-2 pr-3">Plan period</th>
+                <th className="py-2 pr-3">Started</th>
+                <th className="py-2 pr-3">Expires</th>
                 <th className="py-2 pr-3">Exam</th>
                 <th className="py-2 pr-3 text-right">XP</th>
                 <th className="py-2 pr-3">Joined</th>
@@ -233,9 +234,10 @@ export default function AdminUsersPanel() {
                     </Badge>
                   </td>
                   <td className="py-2.5 pr-3 text-muted-foreground">
-                    {user.planValidUntil
-                      ? `${formatExamDate(user.planStartedAt)} – ${formatExamDate(user.planValidUntil)}`
-                      : `Since ${formatExamDate(user.planStartedAt)}`}
+                    {formatExamDate(user.planStartedAt)}
+                  </td>
+                  <td className="py-2.5 pr-3">
+                    <ExpiryCell validUntil={user.planValidUntil} />
                   </td>
                   <td className="py-2.5 pr-3 text-muted-foreground">{user.targetExam}</td>
                   <td className="py-2.5 pr-3 text-right font-semibold text-foreground">
@@ -303,5 +305,30 @@ export default function AdminUsersPanel() {
         </div>
       </Card>
     </div>
+  );
+}
+
+/**
+ * When a plan runs out.
+ *
+ * Suru is the free tier and never expires, so it reads "None" rather than an
+ * empty cell — scanning the column, an admin should not have to wonder whether
+ * the date is missing or absent by design.
+ *
+ * A date already past is called out. The row's tier will read Suru by then,
+ * because the hourly reconcile has dropped it, and without this the leftover
+ * date would look like a live one.
+ */
+function ExpiryCell({ validUntil }: { validUntil?: string }) {
+  if (!validUntil) return <span className="text-muted-foreground">None</span>;
+
+  // Compared at end of day: a plan valid until the 8th is still valid on the 8th.
+  const expired = new Date(`${validUntil}T23:59:59`) < new Date();
+
+  return (
+    <span className={expired ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-foreground'}>
+      {formatExamDate(validUntil)}
+      {expired && <span className="ml-1 text-[10px] font-bold uppercase">expired</span>}
+    </span>
   );
 }
