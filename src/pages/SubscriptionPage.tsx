@@ -117,13 +117,6 @@ export default function SubscriptionPage() {
       elite: `${elitePlan.mockTestsIncluded} / calendar month`,
     },
     {
-      label: 'Practice question types',
-      free: 'Core tasks',
-      weekly: 'All types',
-      pro: 'All types',
-      elite: 'All types',
-    },
-    {
       label: 'Sentence-level rewrites',
       free: dashMark,
       weekly: checkMark,

@@ -109,7 +109,7 @@ export default function TermsPage() {
             Acceptance of Terms
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-            These Terms & Conditions (&quot;Terms&quot;) constitute a legally binding agreement between you (&quot;User&quot;, &quot;Learner&quot;, or &quot;You&quot;) and Prepyo (&quot;Prepyo&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;), headquartered in Kathmandu, Nepal. By creating an account, logging in via SMS verification, accessing practice modules, taking diagnostic/mock tests, or utilizing our AI tutoring technologies, you explicitly agree to adhere to and be bound by all terms, conditions, and policies stated herein.
+            These Terms & Conditions (&quot;Terms&quot;) constitute a legally binding agreement between you (&quot;User&quot;, &quot;Learner&quot;, or &quot;You&quot;) and Prepyo (&quot;Prepyo&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;), headquartered in Kathmandu, Nepal. By creating an account, signing in with your Google account, accessing practice modules, taking diagnostic/mock tests, or utilizing our AI tutoring technologies, you explicitly agree to adhere to and be bound by all terms, conditions, and policies stated herein.
           </p>
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
             If you do not agree with any part of these Terms, you must discontinue your use of Prepyo immediately.
@@ -206,7 +206,7 @@ export default function TermsPage() {
             Account Registration & Single-User License
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-            To use Prepyo, you authenticate using your valid Nepali mobile number via SMS One-Time Passcode (OTP). You agree to provide accurate registration information.
+            To use Prepyo, you authenticate with your Google account. Your Google email address identifies your account, and you agree to keep the details on it accurate.
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-sm sm:text-base text-muted-foreground">
             <li>

@@ -111,7 +111,7 @@ export default function PrivacyPage() {
             Prepyo operates an AI-assisted language test prep platform designed for candidates taking PTE Academic and IELTS examinations. This Privacy Policy describes how we collect, process, and protect your information when you access our web application, mobile interfaces, and AI evaluation services.
           </p>
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-            By creating an account, entering your mobile number, or completing mock tests on Prepyo, you acknowledge the terms described in this policy as well as our{' '}
+            By creating an account, signing in with Google, or completing mock tests on Prepyo, you acknowledge the terms described in this policy as well as our{' '}
             <Link to="/terms" className="text-primary font-semibold hover:underline">
               Terms & Conditions
             </Link>
@@ -126,7 +126,7 @@ export default function PrivacyPage() {
             Information We Collect
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-            We collect only the minimum personal data required to deliver reliable OTP authentication and accurate exam scoring:
+            We collect only the minimum personal data required to deliver reliable Google sign-in and accurate exam scoring:
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 rounded-2xl bg-card border border-border space-y-2">
@@ -135,7 +135,7 @@ export default function PrivacyPage() {
                 Account & Profile Information
               </div>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Nepali mobile number (used as your primary account identifier and for SMS OTP verification), optional full name, email address, target exam (PTE/IELTS), and target band score.
+                The verified email address on your Google account (used as your primary account identifier), the name on that account, target exam (PTE/IELTS), and target band score. Google never shares your password with us.
               </p>
             </div>
 

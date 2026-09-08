@@ -9,8 +9,7 @@ import {
   ChevronRight,
   Sun,
   Moon,
-  PanelLeftClose,
-  PanelLeftOpen
+  PanelLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,14 +52,15 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
-            className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted/70 rounded-xl"
-            title={isSecondaryOpen ? "Close sidebar" : "Open sidebar"}
+            className={`h-8 w-8 rounded-lg border transition-all duration-150 active:scale-95 flex items-center justify-center ${
+              isSecondaryOpen
+                ? 'border-border/80 bg-muted/70 text-foreground shadow-2xs'
+                : 'border-border/50 bg-background/50 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+            }`}
+            title={isSecondaryOpen ? "Collapse sidebar" : "Expand sidebar"}
+            aria-label={isSecondaryOpen ? "Collapse sidebar" : "Expand sidebar"}
           >
-            {isSecondaryOpen ? (
-              <PanelLeftClose className="w-4 h-4" />
-            ) : (
-              <PanelLeftOpen className="w-4 h-4" />
-            )}
+            <PanelLeft className="w-4 h-4" strokeWidth={1.8} />
           </Button>
 
           <div className="flex items-center gap-2 text-xs">
