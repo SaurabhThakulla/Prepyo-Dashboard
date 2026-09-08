@@ -1,5 +1,6 @@
 import React, { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import LearnerOnly from '@/components/auth/LearnerOnly';
 
 import AppLayout from '@/components/layout/AppLayout';
 import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
@@ -50,7 +51,14 @@ export default function App() {
           }
         />
 
-        <Route path="/dashboard" element={<Suspense fallback={<AppPageSkeleton />}><DashboardPage /></Suspense>} />
+        <Route
+          path="/dashboard"
+          element={
+            <LearnerOnly>
+              <Suspense fallback={<AppPageSkeleton />}><DashboardPage /></Suspense>
+            </LearnerOnly>
+          }
+        />
         <Route path="/practice" element={<Suspense fallback={<AppPageSkeleton />}><PracticePage /></Suspense>} />
         <Route path="/mocks" element={<Suspense fallback={<AppPageSkeleton />}><MocksPage /></Suspense>} />
         <Route path="/mistakes" element={<Suspense fallback={<AppPageSkeleton />}><MistakesPage /></Suspense>} />
