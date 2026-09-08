@@ -1,6 +1,6 @@
 import React from 'react';
-import UnifiedAuth, { AuthMode } from '@/components/auth/UnifiedAuth';
+import UnifiedAuth from '@/components/auth/UnifiedAuth';
 
-export default function AuthScreen({ mode }: { mode: AuthMode }) {
-  return <UnifiedAuth initialMode={mode} />;
+export default function AuthScreen() {
+  return <UnifiedAuth />;
 }

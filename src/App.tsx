@@ -29,7 +29,7 @@ export default function App() {
           path="/"
           element={
             <RedirectIfAuthenticated>
-              <AuthScreen mode="login" />
+              <AuthScreen />
             </RedirectIfAuthenticated>
           }
         />
@@ -37,7 +37,7 @@ export default function App() {
           path="/login"
           element={
             <RedirectIfAuthenticated>
-              <AuthScreen mode="login" />
+              <AuthScreen />
             </RedirectIfAuthenticated>
           }
         />
@@ -45,7 +45,7 @@ export default function App() {
           path="/signup"
           element={
             <RedirectIfAuthenticated>
-              <AuthScreen mode="signup" />
+              <AuthScreen />
             </RedirectIfAuthenticated>
           }
         />

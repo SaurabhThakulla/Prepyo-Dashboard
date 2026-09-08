@@ -5,22 +5,12 @@ import { useSubscriptionPlans } from '@/lib/hooks/useResources';
 import { Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AuthHeroPanel from './AuthHeroPanel';
-import AuthForm from './AuthForm';
-import { AuthMode, useAuthForm } from '@/lib/hooks/useAuthForm';
+import AuthPanel from './AuthPanel';
+import { useGoogleAuth } from '@/lib/hooks/useGoogleAuth';
 
-export type { AuthMode };
-
-/**
- * The sign-in / sign-up screen. One component serves both, because the two
- * differ by a few fields rather than by layout.
- *
- *   AuthHeroPanel   the marketing half (desktop only)
- *   AuthForm        the form itself
- *   useAuthForm     field state, validation, and submit
- */
-export default function UnifiedAuth({ initialMode = 'login' }: { initialMode?: AuthMode }) {
+export default function UnifiedAuth() {
   const { theme, toggleTheme } = useApp();
-  const form = useAuthForm(initialMode);
+  const auth = useGoogleAuth();
 
   // The free plan's name and price are shown in the hero. If the endpoint is
   // down the card falls back to static copy rather than blocking sign-in.
@@ -60,7 +50,7 @@ export default function UnifiedAuth({ initialMode = 'login' }: { initialMode?: A
           </div>
         </div>
 
-        <AuthForm form={form} />
+        <AuthPanel auth={auth} />
 
         <div className="pt-2 text-center text-xs text-muted-foreground border-t border-border/60 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
           <span>Protected by Prepyo 256-bit encryption</span>

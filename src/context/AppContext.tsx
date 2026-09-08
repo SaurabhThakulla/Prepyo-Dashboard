@@ -1,14 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
+import '@/lib/google';
 import { ExamType, NotificationItem, UserProfile } from '@/lib/types';
-
-export interface VerifyOtpInput {
-  phone: string;
-  code: string;
-  name?: string;
-  email?: string;
-  referralCode?: string;
-}
 
 interface AppContextType {
   user: UserProfile | null;
@@ -17,8 +10,7 @@ interface AppContextType {
   /** Resolved session state: false means the session check ran and found nobody. */
   isAuthenticated: boolean;
 
-  requestOtp: (phone: string) => Promise<{ registered: boolean }>;
-  verifyOtp: (input: VerifyOtpInput) => Promise<UserProfile>;
+  signInWithGoogle: (credential: string, referralCode?: string) => Promise<UserProfile>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 
@@ -114,17 +106,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     refreshUser();
   }, [refreshUser]);
 
-  const requestOtp = useCallback(async (phone: string) => {
-    return api.post<{ registered: boolean }>('/auth/otp/request', { phone });
-  }, []);
-
-  const verifyOtp = useCallback(async (input: VerifyOtpInput) => {
-    const data = await api.post<{ user: UserProfile }>('/auth/otp/verify', {
-      phone: input.phone,
-      code: input.code,
-      name: input.name ?? '',
-      email: input.email ?? '',
-      referralCode: input.referralCode ?? '',
+  const signInWithGoogle = useCallback(async (credential: string, referralCode?: string) => {
+    const data = await api.post<{ user: UserProfile }>('/auth/google', {
+      credential,
+      referralCode: referralCode ?? '',
     });
     applyUser(data.user);
     setLoading(false);
@@ -137,6 +122,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       await api.post('/auth/logout');
     } finally {
+      window.google?.accounts?.id?.disableAutoSelect();
       // Clear locally even if the call failed, so the UI cannot show a session
       // the learner has asked to end.
       setUser(null);
@@ -197,8 +183,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         user,
         loading,
         isAuthenticated: user !== null,
-        requestOtp,
-        verifyOtp,
+        signInWithGoogle,
         logout,
         refreshUser,
         notifications,

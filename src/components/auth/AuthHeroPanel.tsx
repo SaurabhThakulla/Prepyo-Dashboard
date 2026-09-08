@@ -67,7 +67,7 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
             title="Privacy & Security"
             badge={<Badge variant="indigo" className="text-[10px] py-0 font-bold uppercase shrink-0">256-Bit</Badge>}
             tickClass="text-primary"
-            points={['Bcrypt Password Hashing', 'Revocable User Sessions', '100% Student Data Safety']}
+            points={['Google OAuth Sign-In', 'Revocable User Sessions', '100% Student Data Safety']}
           />
         </div>
 
