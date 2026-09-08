@@ -12,7 +12,7 @@ export const READING_TYPES = {
   // IELTS
   sentenceCompletion: 'reading-sentence-completion',
   trueFalse: 'reading-true-false',
-  findTheWriter: 'reading-find-the-writer',
+  findTheParagraph: 'reading-find-the-paragraph',
   arrangePassage: 'reading-arrange-passage',
   yesNoNotGiven: 'reading-yes-no-not-given',
   matchingInformation: 'reading-matching-information',
@@ -29,17 +29,18 @@ export const READING_TYPES = {
  * Sidebar task names to server task types, keyed by `typeKey` from
  * `@/lib/syllabus` — which is how the sidebar builds its links.
  *
- * The IELTS syllabus lists eight reading tasks against the server's six types.
- * That is not a mismatch to fix: "Complete the sentences" and "Sentence
- * completions" are the same task appearing twice on a passage, as are the two
- * Yes/No/Not Given sets, so both names resolve to the one type.
+ * Several keys resolve to the same type. A task appears on a passage under
+ * more than one heading, and a heading that has been renamed keeps its old key
+ * so links already in the wild still land on the right task.
  */
 export const TYPE_BY_SYLLABUS_KEY: Record<string, string> = {
   // IELTS
+  fillinblanks: READING_TYPES.sentenceCompletion,
   completesentences: READING_TYPES.sentenceCompletion,
   sentencecompletions: READING_TYPES.sentenceCompletion,
   truefalse: READING_TYPES.trueFalse,
-  findwriter: READING_TYPES.findTheWriter,
+  truefalsenotgiven: READING_TYPES.trueFalse,
+  findparagraph: READING_TYPES.findTheParagraph,
   arrangepassage: READING_TYPES.arrangePassage,
   yesnonotgiven: READING_TYPES.yesNoNotGiven,
   matchinginformation: READING_TYPES.matchingInformation,
@@ -55,6 +56,13 @@ export const TYPE_BY_SYLLABUS_KEY: Record<string, string> = {
 /** Tasks answered by filling gaps in a text the question carries itself. */
 export const isGapFill = (typeId: string): boolean =>
   typeId === READING_TYPES.fillBlanksRW || typeId === READING_TYPES.fillBlanksR;
+
+/**
+ * Tasks answered by naming a paragraph, which only works if the passage is
+ * printed with its [A]-[J] labels showing.
+ */
+export const needsParagraphLabels = (typeId: string): boolean =>
+  typeId === READING_TYPES.matchingInformation || typeId === READING_TYPES.findTheParagraph;
 
 /** Tasks where more than one option may be selected. */
 export const isMultiSelect = (typeId: string): boolean =>

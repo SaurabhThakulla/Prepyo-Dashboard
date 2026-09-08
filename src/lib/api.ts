@@ -179,6 +179,7 @@ const SERVER_WORDED: ReadonlySet<string> = new Set([
   'conflict',
   'limit_reached',
   'ai_unavailable',
+  'not_configured',
 ]);
 
 const GENERIC = 'Something went wrong. Please try again.';

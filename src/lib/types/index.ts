@@ -140,6 +140,11 @@ export interface Question {
   difficulty: 'easy' | 'medium' | 'hard';
   tags: string[];
   points: number;
+  /**
+   * Which exams set this question. It lives on the question, not on its
+   * passage: one passage is shared, and the questions on it are not.
+   */
+  supportedExams?: ExamType[];
 
   // Present only after submission, on review responses.
   correctAnswers?: string[];
@@ -180,18 +185,21 @@ export interface Mock {
 
 /**
  * One labelled block of a passage. The label carries meaning: a Matching
- * Information answer *is* a paragraph label, and Find the Writer answers point
- * at a source label.
+ * Information or Find the Paragraph answer *is* a paragraph label.
  */
 export interface ReadingParagraph {
   label: string;
   text: string;
 }
 
+/**
+ * Reusable reading content. It has no exam: the same text is set by IELTS and by
+ * PTE with different tasks on it, and which exam may deal a task is recorded on
+ * the questions (`Question.supportedExams`).
+ */
 export interface ReadingPassage {
   id: string;
   examVersionId: string;
-  exam: ExamType;
   title: string;
   subtitle?: string;
   paragraphs: ReadingParagraph[];
@@ -221,8 +229,6 @@ export interface ReadingGroup {
    * beside it would give away every gap.
    */
   passageDisplay?: 'full' | 'hidden';
-  /** Which section of a generated paper this group belongs to, 0 if none. */
-  paperSlot?: number;
   timeLimitSeconds?: number;
   questions: Question[];
 }
