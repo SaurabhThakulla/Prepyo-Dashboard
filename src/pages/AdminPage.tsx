@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  CreditCard,
   Zap,
   Activity,
   Sparkles,
@@ -15,6 +16,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import AdminUsersPanel from '@/components/admin/AdminUsersPanel';
+import StatCard, { StatOption } from '@/components/admin/StatCard';
+import { ROLE_LABELS, UserRole } from '@/lib/types';
 
 interface AdminMetrics {
   questions: number;
@@ -31,6 +34,58 @@ interface AdminMetrics {
   medianLatencyMs: number;
 }
 
+/**
+ * Metrics default to zero before the response is merged in.
+ *
+ * The frontend and the API deploy separately, so this page can run against a
+ * backend that predates a field it reads — which is what `totalUsers` did:
+ * calling .toLocaleString() on the missing value threw during render and blanked
+ * the whole page. Merging over these defaults means an older backend costs a
+ * wrong zero, not a white screen.
+ */
+const EMPTY_METRICS: AdminMetrics = {
+  questions: 0,
+  mocks: 0,
+  totalUsers: 0,
+  learners: 0,
+  activeLast7Days: 0,
+  practiceAttempts: 0,
+  mockAttempts: 0,
+  evaluations: 0,
+  evaluationsToday: 0,
+  promptTokens: 0,
+  completionTokens: 0,
+  medianLatencyMs: 0,
+};
+
+interface RoleCount {
+  role: UserRole;
+  plan: string;
+  count: number;
+}
+
+interface ExamQuestionCount {
+  exam: string;
+  count: number;
+}
+
+/** Paid tiers. Suru is the free plan, so it is not a subscription. */
+const PAID_ROLES: UserRole[] = ['abhyas', 'taiyari', 'udaan'];
+
+const ALL = 'all';
+
+/**
+ * Japanese has no questions and no exam type behind it yet, so it is listed
+ * unselectable rather than left out: the dashboard should show what is coming,
+ * without implying it can be filtered to today.
+ */
+const EXAM_OPTIONS: StatOption[] = [
+  { value: ALL, label: 'All exams' },
+  { value: 'PTE', label: 'PTE' },
+  { value: 'IELTS', label: 'IELTS' },
+  { value: 'Japanese', label: 'Japanese (coming soon)', disabled: true },
+];
+
 interface ModelUsage {
   model: string;
   requests: number;
@@ -41,6 +96,10 @@ interface ModelUsage {
 export default function AdminPage() {
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
   const [usageByModel, setUsageByModel] = useState<ModelUsage[]>([]);
+  const [usersByRole, setUsersByRole] = useState<RoleCount[]>([]);
+  const [questionsByExam, setQuestionsByExam] = useState<ExamQuestionCount[]>([]);
+  const [planFilter, setPlanFilter] = useState<string>(ALL);
+  const [examFilter, setExamFilter] = useState<string>(ALL);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
@@ -49,11 +108,18 @@ export default function AdminPage() {
     let cancelled = false;
 
     api
-      .get<{ metrics: AdminMetrics; usageByModel: ModelUsage[] }>('/admin/metrics')
+      .get<{
+        metrics: AdminMetrics;
+        usageByModel: ModelUsage[];
+        usersByRole?: RoleCount[];
+        questionsByExam?: ExamQuestionCount[];
+      }>('/admin/metrics')
       .then(data => {
         if (cancelled) return;
-        setMetrics(data.metrics);
+        setMetrics({ ...EMPTY_METRICS, ...data.metrics });
         setUsageByModel(data.usageByModel ?? []);
+        setUsersByRole(data.usersByRole ?? []);
+        setQuestionsByExam(data.questionsByExam ?? []);
         setError(null);
       })
       .catch(err => {
@@ -97,38 +163,37 @@ export default function AdminPage() {
     );
   }
 
-  const totalTokens = metrics.promptTokens + metrics.completionTokens;
+  // Every figure below is a slice of data already loaded, so the dropdowns
+  // never refetch and cannot show a number from a stale response.
+  const countFor = (role: UserRole) => usersByRole.find(entry => entry.role === role)?.count ?? 0;
+  const paidTotal = PAID_ROLES.reduce((sum, role) => sum + countFor(role), 0);
+  const totalUsers = Math.max(metrics.totalUsers, metrics.learners);
 
-  const cards = [
-    {
-      label: 'Published questions',
-      value: metrics.questions.toLocaleString(),
-      note: `${metrics.mocks} mock exam${metrics.mocks === 1 ? '' : 's'}`,
-      icon: Activity,
-      color: 'text-primary',
-    },
-    {
-      label: 'Total users',
-      value: metrics.totalUsers.toLocaleString(),
-      note: `${metrics.learners.toLocaleString()} learners · ${metrics.activeLast7Days} active in last 7 days`,
-      icon: Users,
-      color: 'text-foreground',
-    },
-    {
-      label: 'AI tokens used',
-      value: totalTokens.toLocaleString(),
-      note: `${metrics.promptTokens.toLocaleString()} prompt / ${metrics.completionTokens.toLocaleString()} completion`,
-      icon: Sparkles,
-      color: 'text-amber-500',
-    },
-    {
-      label: 'Median AI latency',
-      value: `${metrics.medianLatencyMs} ms`,
-      note: `${metrics.evaluations} evaluation${metrics.evaluations === 1 ? '' : 's'} recorded`,
-      icon: Bot,
-      color: 'text-indigo-400',
-    },
+  const subscribedValue = planFilter === ALL ? paidTotal : countFor(planFilter as UserRole);
+  const subscribedNote =
+    planFilter === ALL
+      ? `${PAID_ROLES.map(role => `${ROLE_LABELS[role]} ${countFor(role)}`).join(' · ')}`
+      : planFilter === 'suru'
+        ? 'Free tier — not a subscription'
+        : `${totalUsers > 0 ? Math.round((subscribedValue / totalUsers) * 100) : 0}% of all users`;
+
+  const planOptions: StatOption[] = [
+    { value: ALL, label: 'All paid plans' },
+    { value: 'suru', label: `${ROLE_LABELS.suru} (free)` },
+    ...PAID_ROLES.map(role => ({ value: role, label: ROLE_LABELS[role] })),
   ];
+
+  // An older API sends no breakdown; fall back to the flat published count so
+  // the card still reads true rather than dropping to zero.
+  const examTotal = questionsByExam.reduce((sum, entry) => sum + entry.count, 0);
+  const questionsValue =
+    examFilter === ALL
+      ? examTotal || metrics.questions
+      : (questionsByExam.find(entry => entry.exam === examFilter)?.count ?? 0);
+  const questionsNote =
+    examFilter === ALL
+      ? `${metrics.mocks} mock exam${metrics.mocks === 1 ? '' : 's'}`
+      : `${examFilter} only`;
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
@@ -146,17 +211,52 @@ export default function AdminPage() {
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {cards.map(({ label, value, note, icon: Icon, color }) => (
-          <Card key={label} className="p-5 space-y-2">
-            <div className="flex items-center justify-between text-xs text-muted-foreground font-semibold">
-              <span>{label}</span>
-              <Icon className={`w-4 h-4 ${color}`} />
-            </div>
-            <div className={`font-display text-3xl font-black ${color}`}>{value}</div>
-            <p className="text-[10px] text-muted-foreground">{note}</p>
-          </Card>
-        ))}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatCard
+          label="Total users"
+          value={totalUsers.toLocaleString()}
+          note={`${metrics.activeLast7Days} active in last 7 days`}
+          icon={Users}
+        />
+        <StatCard
+          label="Subscribed users"
+          value={subscribedValue.toLocaleString()}
+          note={subscribedNote}
+          icon={CreditCard}
+          color="text-primary"
+          options={planOptions}
+          selected={planFilter}
+          onSelect={setPlanFilter}
+          selectLabel="Filter subscribed users by plan"
+        />
+        <StatCard
+          label="Total questions"
+          value={questionsValue.toLocaleString()}
+          note={questionsNote}
+          icon={Activity}
+          color="text-indigo-400"
+          options={EXAM_OPTIONS}
+          selected={examFilter}
+          onSelect={setExamFilter}
+          selectLabel="Filter questions by exam"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <StatCard
+          label="AI tokens used"
+          value={(metrics.promptTokens + metrics.completionTokens).toLocaleString()}
+          note={`${metrics.promptTokens.toLocaleString()} prompt / ${metrics.completionTokens.toLocaleString()} completion`}
+          icon={Sparkles}
+          color="text-amber-500"
+        />
+        <StatCard
+          label="Median AI latency"
+          value={`${metrics.medianLatencyMs} ms`}
+          note={`${metrics.evaluations} evaluation${metrics.evaluations === 1 ? '' : 's'} recorded`}
+          icon={Bot}
+          color="text-indigo-400"
+        />
       </div>
 
       <AdminUsersPanel />

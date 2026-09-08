@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
-import { api, errorMessage } from '@/lib/api';
+import { api, ApiError, errorMessage } from '@/lib/api';
 import { formatExamDate } from '@/lib/dates';
 import { ROLE_LABELS, UserRole } from '@/lib/types';
 
@@ -58,6 +58,7 @@ export default function AdminUsersPanel() {
   const [roleFilter, setRoleFilter] = useState<UserRole | ''>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -72,8 +73,17 @@ export default function AdminUsersPanel() {
       setCounts(data.countsByRole ?? []);
       setTotal(data.meta?.total ?? 0);
       setError(null);
+      setUnavailable(false);
     } catch (err) {
-      setError(errorMessage(err));
+      // A 404 here is not a broken page: it is this build talking to an API
+      // deployed before /admin/users existed. Say so, rather than showing the
+      // API's own "No such endpoint".
+      if (err instanceof ApiError && err.status === 404) {
+        setUnavailable(true);
+        setError(null);
+      } else {
+        setError(errorMessage(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -90,7 +100,7 @@ export default function AdminUsersPanel() {
     try {
       const data = await api.patch<{ user: AdminUser }>(`/admin/users/${user.id}/role`, { role });
       setUsers(current => current.map(u => (u.id === user.id ? data.user : u)));
-      toast.success('Role updated', `${data.user.name} is now ${ROLE_LABELS[data.user.role]}.`);
+      toast.success('Role updated', `${data.user.name} is now ${ROLE_LABELS[data.user.role] ?? data.user.role}.`);
       load();
     } catch (err) {
       const message = errorMessage(err);
@@ -110,6 +120,18 @@ export default function AdminUsersPanel() {
     setOffset(0);
     setRoleFilter(role);
   };
+
+  if (unavailable) {
+    return (
+      <Card className="p-6 space-y-2">
+        <CardTitle className="text-base">Users</CardTitle>
+        <CardDescription className="text-xs">
+          The API this page is talking to was deployed before the user directory existed, so there is nothing to
+          list yet. Deploy the current backend and reload.
+        </CardDescription>
+      </Card>
+    );
+  }
 
   const totalUsers = counts.reduce((sum, entry) => sum + entry.count, 0);
   const from = total === 0 ? 0 : offset + 1;
@@ -142,7 +164,7 @@ export default function AdminUsersPanel() {
             }`}
           >
             <span className="text-[10px] font-bold text-muted-foreground uppercase block">
-              {ROLE_LABELS[entry.role]}
+              {ROLE_LABELS[entry.role] ?? entry.role}
             </span>
             <div className="font-display text-2xl font-black text-foreground">{entry.count.toLocaleString()}</div>
             <span className="text-[10px] text-muted-foreground">{entry.plan ?? 'access level'}</span>
@@ -203,8 +225,11 @@ export default function AdminUsersPanel() {
                     <div className="text-[11px] text-muted-foreground">{user.email}</div>
                   </td>
                   <td className="py-2.5 pr-3">
-                    <Badge variant="outline" className={`text-[10px] font-bold ${ROLE_STYLES[user.role]}`}>
-                      {ROLE_LABELS[user.role]}
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] font-bold ${ROLE_STYLES[user.role] ?? ROLE_STYLES.suru}`}
+                    >
+                      {ROLE_LABELS[user.role] ?? user.role}
                     </Badge>
                   </td>
                   <td className="py-2.5 pr-3 text-muted-foreground">
