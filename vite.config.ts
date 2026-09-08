@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
@@ -38,6 +39,13 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       sourcemap: true,
+    },
+    // Component tests run in jsdom because the reading renderers are the kind
+    // of thing that only breaks when something clicks them.
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      include: ['src/**/*.test.{ts,tsx}'],
     },
   };
 });
