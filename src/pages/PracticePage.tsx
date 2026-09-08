@@ -14,6 +14,7 @@ import {
   Quote,
   ChevronLeft,
   ChevronRight,
+  Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,7 @@ import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
 import { typeKey } from '@/lib/syllabus';
 import { isReadingMultipleChoice } from '@/lib/readingTypes';
+import { loadCompleted, saveCompleted, unlockedIndex } from '@/lib/practiceProgress';
 
 const QUESTION_LIMIT = 200;
 import { useToast } from '@/components/ui/toast';
@@ -66,6 +68,7 @@ export default function PracticePage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [startedAt, setStartedAt] = useState<number>(() => Date.now());
+  const [completedIds, setCompletedIds] = useState<string[]>([]);
 
   const grading = GRADING[selectedSkill];
 
@@ -114,13 +117,22 @@ export default function PracticePage() {
           ? all.filter(question => typeKey(question.typeName) === typeParam)
           : all;
         const list = ofType.length > 0 ? ofType : all;
+        const done = loadCompleted(activeExam, selectedSkill, typeParam);
+        const known = done.filter(id => list.some(question => question.id === id));
+        setCompletedIds(known);
         setQuestions(list);
-        setCurrentQuestion(list[0] ?? null);
+        const isFreeNav = Boolean(
+          `${typeParam || ''} ${list[0]?.typeName || ''}`.toLowerCase().match(/agree|disagree|describe/),
+        );
+        setCurrentQuestion(
+          isFreeNav ? list[0] ?? null : list[unlockedIndex(list.map(q => q.id), new Set(known))] ?? null,
+        );
       })
       .catch(err => {
         if (cancelled) return;
         setQuestions([]);
         setCurrentQuestion(null);
+        setCompletedIds([]);
         toast.error('Could not load questions', errorMessage(err));
       })
       .finally(() => !cancelled && setLoading(false));
@@ -131,6 +143,13 @@ export default function PracticePage() {
   }, [activeExam, selectedSkill, isReading, typeParam]);
 
   const wordCount = textAnswer.trim().split(/\s+/).filter(Boolean).length;
+
+  const markComplete = (questionId: string) => {
+    if (completedIds.includes(questionId)) return;
+    const next = [...completedIds, questionId];
+    setCompletedIds(next);
+    saveCompleted(activeExam, selectedSkill, typeParam, next);
+  };
 
   const handleSubmitAnswer = async () => {
     if (!currentQuestion || submitting) return;
@@ -179,6 +198,7 @@ export default function PracticePage() {
         );
         setResult({ attempt: data.attempt, review: data.review, xpAwarded: data.xpAwarded });
       }
+      markComplete(currentQuestion.id);
       await refreshUser();
     } catch (err) {
       if (err instanceof ApiError && err.isAIUnavailable) {
@@ -208,7 +228,29 @@ export default function PracticePage() {
       selectedOptions.length > 0 ||
       Object.values(blankResponses).some(Boolean);
 
+  const isAgreeOrDescribe = Boolean(
+    `${currentQuestion?.typeName || ''} ${typeParam || ''}`.toLowerCase().match(/agree|disagree|describe/),
+  );
+
   const currentIndex = currentQuestion ? questions.findIndex(q => q.id === currentQuestion.id) : -1;
+  const unlocked = unlockedIndex(questions.map(q => q.id), new Set(completedIds));
+  const isLast = currentIndex === questions.length - 1;
+  const canGoNext = isAgreeOrDescribe
+    ? !isLast
+    : currentIndex >= 0 && currentIndex < unlocked && !isLast;
+
+  const goToIndex = (index: number) => {
+    const question = questions[index];
+    if (!question) return;
+    setCurrentQuestion(question);
+    resetAnswer();
+  };
+
+  const restartSet = () => {
+    setCompletedIds([]);
+    saveCompleted(activeExam, selectedSkill, typeParam, []);
+    goToIndex(0);
+  };
 
   return (
     <div className="w-full min-h-[calc(100vh-4rem)] p-0 m-0 flex flex-col bg-background">
@@ -244,13 +286,7 @@ export default function PracticePage() {
                     variant="ghost"
                     size="sm"
                     disabled={currentIndex <= 0}
-                    onClick={() => {
-                      const prev = questions[currentIndex - 1];
-                      if (prev) {
-                        setCurrentQuestion(prev);
-                        resetAnswer();
-                      }
-                    }}
+                    onClick={() => goToIndex(currentIndex - 1)}
                     className="h-7 w-7 p-0 rounded-full text-muted-foreground hover:text-foreground disabled:opacity-30"
                     title="Previous Question"
                   >
@@ -258,22 +294,22 @@ export default function PracticePage() {
                   </Button>
 
                   <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-lg border border-primary/20 font-mono">
-                    Question {currentIndex + 1}
+                    Question {currentIndex + 1} / {questions.length}
                   </span>
 
                   <Button
                     variant="ghost"
                     size="sm"
-                    disabled={currentIndex >= questions.length - 1}
-                    onClick={() => {
-                      const next = questions[currentIndex + 1];
-                      if (next) {
-                        setCurrentQuestion(next);
-                        resetAnswer();
-                      }
-                    }}
+                    disabled={!canGoNext}
+                    onClick={() => goToIndex(currentIndex + 1)}
                     className="h-7 w-7 p-0 rounded-full text-muted-foreground hover:text-foreground disabled:opacity-30"
-                    title="Next Question"
+                    title={
+                      canGoNext
+                        ? 'Next Question'
+                        : isAgreeOrDescribe
+                          ? 'No more questions'
+                          : 'Answer this question to unlock the next one'
+                    }
                   >
                     <ChevronRight className="w-4 h-4" />
                   </Button>
@@ -288,25 +324,39 @@ export default function PracticePage() {
               )}
 
               {/* Question Navigation Pills for quick jump */}
-              {questions.length > 1 && (
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-                  {questions.map((q, idx) => (
-                    <button
-                      key={q.id}
-                      type="button"
-                      onClick={() => {
-                        setCurrentQuestion(q);
-                        resetAnswer();
-                      }}
-                      className={`h-6 min-w-6 px-2 text-[11px] font-mono font-bold rounded-md border transition-colors ${
-                        q.id === currentQuestion.id
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                          : 'bg-card text-muted-foreground hover:text-foreground hover:bg-muted border-border'
-                      }`}
-                    >
-                      {idx + 1}
-                    </button>
-                  ))}
+              {!isAgreeOrDescribe && questions.length > 1 && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                    {questions.map((q, idx) => {
+                      const isCurrent = q.id === currentQuestion.id;
+                      const isDone = completedIds.includes(q.id);
+                      const isLocked = idx > unlocked;
+                      return (
+                        <button
+                          key={q.id}
+                          type="button"
+                          disabled={isLocked}
+                          onClick={() => goToIndex(idx)}
+                          title={isLocked ? 'Answer the earlier questions first' : `Question ${idx + 1}`}
+                          className={`h-6 min-w-6 px-2 text-[11px] font-mono font-bold rounded-md border transition-colors inline-flex items-center justify-center gap-1 ${
+                            isCurrent
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                              : isLocked
+                                ? 'bg-muted/40 text-muted-foreground/50 border-border/60 cursor-not-allowed'
+                                : isDone
+                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                                  : 'bg-card text-muted-foreground hover:text-foreground hover:bg-muted border-border'
+                          }`}
+                        >
+                          {isLocked && <Lock className="w-2.5 h-2.5" />}
+                          {idx + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Questions unlock one at a time — answer this one to move on.
+                  </p>
                 </div>
               )}
 
@@ -544,13 +594,25 @@ export default function PracticePage() {
                 <span>Ask AI Coach</span>
               </Button>
 
-              {result ? (
+              {result && isLast ? (
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="w-4 h-4" />
+                    You have finished every question here
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="default"
+                    onClick={restartSet}
+                    className="font-bold gap-2 text-xs rounded-xl h-10 px-5"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Start over</span>
+                  </Button>
+                </div>
+              ) : result ? (
                 <Button
-                  onClick={() => {
-                    resetAnswer();
-                    const next = questions[currentIndex + 1];
-                    if (next) setCurrentQuestion(next);
-                  }}
+                  onClick={() => goToIndex(currentIndex + 1)}
                   size="default"
                   className="font-bold gap-2 text-xs rounded-xl h-10 px-5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                 >

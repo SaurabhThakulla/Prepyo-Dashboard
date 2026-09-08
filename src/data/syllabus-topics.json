@@ -40,16 +40,16 @@
           "description": "Read long stories/articles and answer questions about them",
           "topics": [
             {
-              "name": "Complete the sentences",
+              "name": "Fill in the Blanks",
               "simpleDescription": "Fill in missing words in sentences using words taken directly from the passage"
             },
             {
-              "name": "True and False",
-              "simpleDescription": "Decide whether statements agree with facts or are false according to the text"
+              "name": "True / False / Not Given",
+              "simpleDescription": "Decide whether statements agree with the passage, contradict it, or are not mentioned at all"
             },
             {
-              "name": "Find the writer",
-              "simpleDescription": "Match opinions, claims, and theories with the specific writers or researchers"
+              "name": "Find the paragraph",
+              "simpleDescription": "Locate which lettered paragraph of the passage contains a given piece of information"
             },
             {
               "name": "Arrange the passage",
