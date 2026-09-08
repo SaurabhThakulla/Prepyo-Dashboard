@@ -4,7 +4,8 @@ import { Card } from '@/components/ui/card';
 import { AnswerSubmission, ReadingGroup } from '@/lib/types';
 import { ReadingAnswerResult } from '@/lib/hooks/useReading';
 import ReadingQuestionRow from '@/components/reading/ReadingQuestionRow';
-import { isGapFill } from '@/lib/readingTypes';
+import ReadingParagraphGroup from '@/components/reading/ReadingParagraphGroup';
+import { READING_TYPES, isGapFill } from '@/lib/readingTypes';
 
 interface ReadingGroupCardProps {
   group: ReadingGroup;
@@ -57,20 +58,35 @@ export default function ReadingGroupCard({
         </div>
       )}
 
-      <div className="space-y-2">
-        {group.questions.map((question, index) => (
-          <ReadingQuestionRow
-            key={question.id}
-            question={question}
-            number={startNumber + index}
-            answer={answers[question.id]}
-            result={results?.[question.id]}
-            disabled={disabled}
-            resources={group.resources}
-            onChange={patch => onAnswer(question.id, patch)}
-          />
-        ))}
-      </div>
+      {/* Sentence completion is printed as running text with numbered gaps, the
+          way the paper does it. Every other task keeps one card per question,
+          because their prompts are separate questions rather than one passage
+          of prose. */}
+      {group.typeId === READING_TYPES.sentenceCompletion ? (
+        <ReadingParagraphGroup
+          group={group}
+          startNumber={startNumber}
+          answers={answers}
+          results={results}
+          disabled={disabled}
+          onAnswer={onAnswer}
+        />
+      ) : (
+        <div className="space-y-2">
+          {group.questions.map((question, index) => (
+            <ReadingQuestionRow
+              key={question.id}
+              question={question}
+              number={startNumber + index}
+              answer={answers[question.id]}
+              result={results?.[question.id]}
+              disabled={disabled}
+              resources={group.resources}
+              onChange={patch => onAnswer(question.id, patch)}
+            />
+          ))}
+        </div>
+      )}
     </Card>
   );
 }
