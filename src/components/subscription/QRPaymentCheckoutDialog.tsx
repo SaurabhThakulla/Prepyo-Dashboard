@@ -21,6 +21,8 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
   const toast = useToast();
 
   const [transactionId, setTransactionId] = useState('');
+  const [proofImage, setProofImage] = useState<string>('');
+  const [proofName, setProofName] = useState('');
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [copiedRef, setCopiedRef] = useState(false);
@@ -41,6 +43,26 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
     }
   };
 
+  const pickProof = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // 4 MB is the server's cap. Rejecting here saves uploading a photo that is
+    // only going to be refused.
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error('That image is too large', 'Please attach a screenshot under 4 MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProofImage(typeof reader.result === 'string' ? reader.result : '');
+      setProofName(file.name);
+    };
+    reader.onerror = () => toast.error('Could not read that file', 'Try another screenshot.');
+    reader.readAsDataURL(file);
+  };
+
   const handleProcessPayment = async () => {
     if (processing) return;
 
@@ -55,8 +77,12 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
         planId: selectedPlan.id,
         paymentGateway: 'QR',
         transactionId: transactionId.trim(),
+        proofImage,
       });
-      setSuccess(data.message || 'Your plan is now active.');
+      // The plan is no longer granted on submit — it waits for an admin to
+      // check the payment — so the message comes from the server rather than
+      // claiming the subscription is live.
+      setSuccess(data.message || 'Payment submitted. We will activate your plan once it is checked.');
       await refreshUser();
       onSuccess?.();
     } catch (err) {
@@ -70,6 +96,8 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
     if (!v) {
       setSuccess(null);
       setTransactionId('');
+      setProofImage('');
+      setProofName('');
     }
     onOpenChange(v);
   };
@@ -173,6 +201,24 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
                       placeholder="e.g. TXN-198421"
                       className="mt-1.5 h-9 text-xs font-mono"
                     />
+                  </div>
+
+                  <div>
+                    <label htmlFor="paymentProof" className="text-[11px] font-bold text-foreground">
+                      Payment screenshot
+                    </label>
+                    <input
+                      id="paymentProof"
+                      type="file"
+                      accept="image/*"
+                      onChange={pickProof}
+                      className="mt-1.5 block w-full text-[11px] file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-[11px] file:font-bold file:text-primary"
+                    />
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      {proofName
+                        ? `Attached: ${proofName}`
+                        : 'Optional, but it gets your plan approved faster.'}
+                    </p>
                   </div>
                 </div>
               </div>

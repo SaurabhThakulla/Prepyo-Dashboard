@@ -13,6 +13,7 @@ import {
   HelpCircle,
   FileText,
   CreditCard,
+  MessageSquareWarning,
   ShieldCheck,
   LucideIcon,
 } from 'lucide-react';
@@ -108,15 +109,36 @@ export function buildSections(
               icon: Home,
               sublabel: 'Target gaps & score breakdown',
             },
-        {
-          href: '/subscription',
-          label: 'Your Current Plan',
-          icon: CreditCard,
-          sublabel: user?.subscription?.planName
-            ? `${user.subscription.planName} · ${user.subscription.isActive ? 'Active' : 'Expired'}`
-            : 'Plan tier, quotas & billing',
-          badge: user?.subscription?.isActive ? 'Active' : 'Free',
-        },
+        // An admin has no plan of their own to look at. The equivalent page for
+        // them is everyone else's purchases waiting to be approved.
+        isAdmin(user ?? null)
+          ? {
+              href: '/admin/payments',
+              label: 'Purchase requests',
+              icon: CreditCard,
+              sublabel: 'Approve payments and grant plans',
+              badge: 'Admin',
+            }
+          : {
+              href: '/subscription',
+              label: 'Your Current Plan',
+              icon: CreditCard,
+              sublabel: user?.subscription?.planName
+                ? `${user.subscription.planName} · ${user.subscription.isActive ? 'Active' : 'Expired'}`
+                : 'Plan tier, quotas & billing',
+              badge: user?.subscription?.isActive ? 'Active' : 'Free',
+            },
+        ...(isAdmin(user ?? null)
+          ? [
+              {
+                href: '/admin/reports',
+                label: 'Issue reports',
+                icon: MessageSquareWarning,
+                sublabel: 'What learners have reported',
+                badge: 'Admin',
+              },
+            ]
+          : []),
         {
           href: '/mistakes',
           label: 'Mistake Bank',
