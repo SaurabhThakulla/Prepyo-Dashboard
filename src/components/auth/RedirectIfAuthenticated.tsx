@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
+import { isAdmin } from '@/lib/types';
 
 /**
  * Keeps signed-in learners off the sign-in screen.
@@ -25,8 +26,12 @@ export default function RedirectIfAuthenticated({ children }: { children: React.
     // Honour `?next=` so a learner who was bounced to /login, then signed in on
     // another tab, still lands where they were originally headed.
     const next = new URLSearchParams(location.search).get('next');
-    const safe = next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
-    return <Navigate to={safe} replace />;
+    if (next && next.startsWith('/') && !next.startsWith('//')) {
+      return <Navigate to={next} replace />;
+    }
+    // The admin account exists to read the admin area, so send it straight
+    // there rather than to a learner dashboard it has no data on.
+    return <Navigate to={isAdmin(user) ? '/admin' : '/dashboard'} replace />;
   }
 
   return <>{children}</>;

@@ -11,6 +11,7 @@ interface AppContextType {
   isAuthenticated: boolean;
 
   signInWithGoogle: (credential: string, referralCode?: string) => Promise<UserProfile>;
+  signInAsAdmin: (email: string, password: string) => Promise<UserProfile>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 
@@ -118,6 +119,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return data.user;
   }, [applyUser, refreshUser]);
 
+  const signInAsAdmin = useCallback(async (email: string, password: string) => {
+    const data = await api.post<{ user: UserProfile }>('/auth/admin-login', { email, password });
+    applyUser(data.user);
+    setLoading(false);
+    refreshUser();
+    return data.user;
+  }, [applyUser, refreshUser]);
+
   const logout = useCallback(async () => {
     try {
       await api.post('/auth/logout');
@@ -184,6 +193,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         loading,
         isAuthenticated: user !== null,
         signInWithGoogle,
+        signInAsAdmin,
         logout,
         refreshUser,
         notifications,

@@ -1,10 +1,94 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Loader2, Lock, ShieldCheck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { GoogleAuthState } from '@/lib/hooks/useGoogleAuth';
+import { useAdminLogin } from '@/lib/hooks/useAdminLogin';
 
 export default function AuthPanel({ auth }: { auth: GoogleAuthState }) {
   const { buttonRef, agreeTerms, setAgreeTerms, loading, error, buttonReady, configured, blockedClick } = auth;
+  const [mode, setMode] = useState<'google' | 'admin'>('google');
+  const admin = useAdminLogin();
+
+  if (mode === 'admin') {
+    return (
+      <div className="w-full max-w-md mx-auto py-6">
+        <div className="space-y-1.5 mb-6">
+          <h1 className="font-display text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+            Admin sign-in
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            For the Prepyo operations account. Learner accounts sign in with Google instead.
+          </p>
+        </div>
+
+        <form onSubmit={admin.submit} className="space-y-3">
+          <div className="space-y-1.5">
+            <label htmlFor="adminEmail" className="text-[11px] font-bold text-foreground">
+              Admin email
+            </label>
+            <Input
+              id="adminEmail"
+              type="email"
+              autoComplete="username"
+              placeholder="admin@prepyo.online"
+              value={admin.email}
+              onChange={e => admin.setEmail(e.target.value)}
+              disabled={admin.loading}
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="adminPassword" className="text-[11px] font-bold text-foreground">
+              Password
+            </label>
+            <Input
+              id="adminPassword"
+              type="password"
+              autoComplete="current-password"
+              placeholder="••••••••••••"
+              value={admin.password}
+              onChange={e => admin.setPassword(e.target.value)}
+              disabled={admin.loading}
+              required
+            />
+          </div>
+
+          {admin.error && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-[11px] font-medium text-rose-600 dark:text-rose-400">
+              {admin.error}
+            </div>
+          )}
+
+          <Button type="submit" disabled={admin.loading} className="w-full rounded-full font-bold text-xs h-11">
+            {admin.loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Signing you in…
+              </>
+            ) : (
+              <>
+                <Lock className="w-3.5 h-3.5 mr-2" />
+                Sign in as admin
+              </>
+            )}
+          </Button>
+        </form>
+
+        <button
+          type="button"
+          onClick={() => setMode('google')}
+          disabled={admin.loading}
+          className="mt-5 mx-auto flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground disabled:opacity-50"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Google sign-in
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md mx-auto py-6">
@@ -91,6 +175,18 @@ export default function AuthPanel({ auth }: { auth: GoogleAuthState }) {
         <ShieldCheck className="w-3.5 h-3.5" />
         <span>We only ever see your name and email address.</span>
       </p>
+
+      <div className="mt-4 pt-4 border-t border-border/60 text-center">
+        <button
+          type="button"
+          onClick={() => setMode('admin')}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground disabled:opacity-50"
+        >
+          <Lock className="w-3.5 h-3.5" />
+          Admin sign-in
+        </button>
+      </div>
     </div>
   );
 }
