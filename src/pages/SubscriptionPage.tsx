@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { SubscriptionPlan } from '@/lib/types';
 import { errorMessage } from '@/lib/api';
+import { formatExamDate } from '@/lib/dates';
 import { useSubscriptionPlans } from '@/lib/hooks/useResources';
 import { formatPlanName } from '@/lib/subscriptions';
 import QRPaymentCheckoutDialog from '@/components/subscription/QRPaymentCheckoutDialog';
@@ -182,8 +183,15 @@ export default function SubscriptionPage() {
                     {user.subscription.isActive ? 'Active' : 'Expired'}
                   </Badge>
                 </div>
-                {user.subscription.validUntil && (
-                  <p className="text-[11px] text-muted-foreground font-medium">Valid until {user.subscription.validUntil}</p>
+                {user.planValidUntil ? (
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    {formatExamDate(user.planStartedAt)} – {formatExamDate(user.planValidUntil)}
+                    {user.paidPlanActive && ` · ${user.daysRemaining} ${user.daysRemaining === 1 ? 'day' : 'days'} left`}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Active since {formatExamDate(user.planStartedAt)}
+                  </p>
                 )}
               </div>
               <div className="border-l border-border/80 pl-4 flex gap-5 text-xs font-semibold">

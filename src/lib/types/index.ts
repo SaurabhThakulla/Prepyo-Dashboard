@@ -9,6 +9,23 @@ export type ExamType = 'PTE' | 'IELTS';
 export type SkillType = 'speaking' | 'writing' | 'reading' | 'listening';
 
 export type SubscriptionTier = 'free' | 'weekly' | 'pro' | 'elite';
+
+export type UserRole = 'admin' | 'suru' | 'abhyas' | 'taiyari' | 'udaan';
+
+export const ROLE_FOR_PLAN: Record<SubscriptionTier, Exclude<UserRole, 'admin'>> = {
+  free: 'suru',
+  weekly: 'abhyas',
+  pro: 'taiyari',
+  elite: 'udaan',
+};
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  admin: 'Admin',
+  suru: 'Suru',
+  abhyas: 'Abhyas',
+  taiyari: 'Taiyari',
+  udaan: 'Udaan',
+};
 /** Tiers that can actually be bought — 'free' is the default, not a purchase. */
 export type PaidTier = Exclude<SubscriptionTier, 'free'>;
 
@@ -60,7 +77,14 @@ export interface UserProfile {
   id: string;
   email: string;
   name: string;
-  role: string;
+  role: UserRole;
+  planId: SubscriptionTier;
+  /** Start of the current plan period, reset on every purchase. */
+  planStartedAt: string;
+  /** Absent on the free plan, which never expires. */
+  planValidUntil?: string;
+  paidPlanActive: boolean;
+  daysRemaining: number;
   targetExam: ExamType;
   targetScore: number | null;
   examDate?: string;
@@ -91,6 +115,10 @@ export interface UserProfile {
 
 export function isAdmin(user: UserProfile | null): boolean {
   return user?.role === 'admin';
+}
+
+export function roleLabel(user: UserProfile | null): string {
+  return user ? ROLE_LABELS[user.role] ?? user.role : '';
 }
 
 // ---------------------------------------------------------------------------
