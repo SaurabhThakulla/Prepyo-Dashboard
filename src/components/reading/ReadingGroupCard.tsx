@@ -28,6 +28,8 @@ export default function ReadingGroupCard({
   onAnswer,
 }: ReadingGroupCardProps) {
   const last = startNumber + group.questions.length - 1;
+  // A gap-fill draws its words from the set. Every other task that carries
+  // resources — the boxes of an ordering task — shows them above the questions.
   const wordBank = isGapFill(group.typeId) ? group.resources : undefined;
 
   return (
@@ -64,7 +66,7 @@ export default function ReadingGroupCard({
             answer={answers[question.id]}
             result={results?.[question.id]}
             disabled={disabled}
-            wordBank={wordBank}
+            resources={group.resources}
             onChange={patch => onAnswer(question.id, patch)}
           />
         ))}

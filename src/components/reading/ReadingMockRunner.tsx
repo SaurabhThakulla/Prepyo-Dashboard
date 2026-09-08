@@ -7,7 +7,7 @@ import { ReadingMockSession } from '@/lib/types';
 import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
 import { useReadingMock } from '@/lib/hooks/useReading';
-import { READING_TYPES } from '@/lib/readingTypes';
+import { needsParagraphLabels } from '@/lib/readingTypes';
 
 interface ReadingMockRunnerProps {
   session: ReadingMockSession;
@@ -125,9 +125,7 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
             <div className="lg:col-span-6">
               <PassageReader
                 passage={activeSet.passage}
-                showSources={activeSet.groups.some(
-                  group => group.typeId === READING_TYPES.findTheWriter,
-                )}
+                showLabels={activeSet.groups.some(group => needsParagraphLabels(group.typeId))}
               />
             </div>
           )}

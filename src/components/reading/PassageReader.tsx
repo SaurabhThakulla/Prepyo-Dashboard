@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { BookOpen, Users, ZoomIn, ZoomOut, Highlighter, Eraser, PenLine, X } from 'lucide-react';
+import { BookOpen, ZoomIn, ZoomOut, Highlighter, Eraser, PenLine, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { ReadingPassage } from '@/lib/types';
 
@@ -7,7 +7,6 @@ interface PassageReaderProps {
   passage: ReadingPassage;
   /** Caps the height and scrolls, so the questions stay beside it on a mock or practice split screen. */
   scroll?: boolean;
-  showSources?: boolean;
   showLabels?: boolean;
   passageNumber?: number;
   questionRange?: string;
@@ -130,7 +129,6 @@ function removeRangeFromHighlights(
 export default function PassageReader({
   passage,
   scroll = true,
-  showSources = false,
   showLabels = false,
   passageNumber = 1,
   questionRange = 'Questions 1–13',
@@ -602,33 +600,6 @@ export default function PassageReader({
           ))}
         </div>
 
-        {/* Commentaries & Sources (if applicable) */}
-        {showSources && passage.sources && passage.sources.length > 0 && (
-          <div className="pt-3 mt-4 border-t border-border/80 space-y-2">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground uppercase tracking-wider font-sans">
-              <Users className="w-3.5 h-3.5 text-primary" />
-              <span>Commentaries &amp; Sources</span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2">
-              {passage.sources.map(source => (
-                <div
-                  key={source.label}
-                  className="p-3 rounded-lg bg-muted/30 dark:bg-white/[0.02] border-l-4 border-l-primary border-y border-r border-border space-y-1 shadow-2xs"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-primary px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 font-sans">
-                      {source.label}
-                    </span>
-                  </div>
-                  <p className={`${fontClass} text-foreground/90 dark:text-zinc-200 font-normal ${currentStyles.body}`}>
-                    {source.text}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Floating IELTS Context Menu: Opens directly at mouse cursor */}

@@ -129,6 +129,10 @@ export function useReadingPractice(exam: ExamType) {
         const submission = answers[question.id];
         const data = await api.post<ReadingAnswerResult & { xpAwarded: number }>('/practice/attempts', {
           questionId: question.id,
+          // The exam the learner is working under. The server records it on the
+          // attempt: a question on a shared passage may be set by both exams,
+          // so the question can no longer say which one this was.
+          exam,
           textResponse: submission.textResponse || undefined,
           selectedOptions: submission.selectedOptions?.length ? submission.selectedOptions : undefined,
           blankResponses: submission.blankResponses,

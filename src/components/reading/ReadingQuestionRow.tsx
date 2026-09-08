@@ -1,10 +1,9 @@
 import React from 'react';
-import { Check, CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, XCircle } from 'lucide-react';
 import { AnswerSubmission, Question, ReadingParagraph } from '@/lib/types';
 import { ReadingAnswerResult } from '@/lib/hooks/useReading';
-import { READING_TYPES, isGapFill, isMultiSelect } from '@/lib/readingTypes';
-import BlankedText from '@/components/reading/BlankedText';
-import ReorderAnswer from '@/components/reading/ReorderAnswer';
+import { READING_TYPES, isGapFill } from '@/lib/readingTypes';
+import { rendererFor } from '@/components/reading/renderers';
 
 interface ReadingQuestionRowProps {
   question: Question;
@@ -12,20 +11,17 @@ interface ReadingQuestionRowProps {
   answer?: AnswerSubmission;
   result?: ReadingAnswerResult;
   disabled?: boolean;
-  /** The group's word bank, for a gap-fill that draws from a shared pool. */
-  wordBank?: ReadingParagraph[];
+  /** The task set's own material: a word bank, the boxes of an ordering task. */
+  resources?: ReadingParagraph[];
   onChange: (patch: Partial<AnswerSubmission>) => void;
 }
 
 /**
- * One question: the number, the prompt, an answer control, and the verdict.
+ * One question: the number, the prompt, its answer control, and the verdict.
  *
- * Which control a question gets is decided by its task type, not by guessing
- * from the fields it happens to carry. Guessing worked while every reading task
- * was a single-answer choice or a typed word, and stopped working the moment
- * three tasks needed the same field to mean different things — `selectedOptions`
- * is one id for a multiple choice, several for a multi-answer set, and an
- * ordering for Re-order Paragraphs.
+ * Which control a question gets is decided by its task type alone — see
+ * `renderers/index.ts`. Nothing here inspects the fields a question happens to
+ * carry, because that is what made six different tasks render identically.
  */
 export default function ReadingQuestionRow({
   question,
@@ -33,10 +29,11 @@ export default function ReadingQuestionRow({
   answer,
   result,
   disabled,
-  wordBank,
+  resources,
   onChange,
 }: ReadingQuestionRowProps) {
   const locked = disabled || Boolean(result);
+  const Renderer = rendererFor(question.typeId);
 
   return (
     <div className="rounded-lg p-3 bg-card/60 dark:bg-white/[0.015] border border-border/70 space-y-2 shadow-2xs hover:border-border transition-colors">
@@ -44,18 +41,22 @@ export default function ReadingQuestionRow({
         <span className="shrink-0 w-5 h-5 rounded-md bg-primary/10 text-primary font-mono font-bold text-xs flex items-center justify-center border border-primary/20">
           {number}
         </span>
-        <p className="text-xs sm:text-sm font-medium text-foreground leading-snug pt-0.5">
-          {question.prompt}
-        </p>
+        {/* Sentence completion prints the prompt inside its own control, with the
+            gap in place, so printing it here as well would say it twice. */}
+        {question.typeId !== READING_TYPES.sentenceCompletion && (
+          <p className="text-xs sm:text-sm font-medium text-foreground leading-snug pt-0.5">
+            {question.prompt}
+          </p>
+        )}
       </div>
 
       <div className="pl-0 sm:pl-7">
-        <AnswerControl
+        <Renderer
           question={question}
           answer={answer}
           result={result}
           locked={locked}
-          wordBank={wordBank}
+          resources={resources}
           onChange={onChange}
         />
       </div>
@@ -90,175 +91,16 @@ export default function ReadingQuestionRow({
   );
 }
 
-interface AnswerControlProps {
-  question: Question;
-  answer?: AnswerSubmission;
-  result?: ReadingAnswerResult;
-  locked: boolean;
-  wordBank?: ReadingParagraph[];
-  onChange: (patch: Partial<AnswerSubmission>) => void;
-}
-
-/** The registry: one task type, one control. */
-function AnswerControl({ question, answer, result, locked, wordBank, onChange }: AnswerControlProps) {
-  if (question.typeId === READING_TYPES.reorderParagraphs) {
-    return (
-      <ReorderAnswer
-        options={question.options ?? []}
-        value={answer?.selectedOptions ?? []}
-        disabled={locked}
-        correctOrder={result?.review.correctAnswers}
-        onChange={order => onChange({ selectedOptions: order })}
-      />
-    );
-  }
-
-  if (isGapFill(question.typeId) && question.contextPassage) {
-    return (
-      <BlankedText
-        text={question.contextPassage}
-        blanks={question.blanks ?? []}
-        value={answer?.blankResponses ?? {}}
-        disabled={locked}
-        wordBank={wordBank}
-        correct={result ? correctByBlank(result.review) : undefined}
-        onChange={responses => onChange({ blankResponses: responses })}
-      />
-    );
-  }
-
-  if (question.options?.length) {
-    return (
-      <OptionGrid
-        question={question}
-        selected={answer?.selectedOptions ?? []}
-        result={result}
-        locked={locked}
-        multiple={isMultiSelect(question.typeId)}
-        onChange={ids => onChange({ selectedOptions: ids })}
-      />
-    );
-  }
-
-  return (
-    <input
-      value={answer?.textResponse ?? ''}
-      disabled={locked}
-      onChange={event => onChange({ textResponse: event.target.value })}
-      placeholder="Type your answer from the passage…"
-      className="w-full bg-background border border-border text-xs sm:text-sm font-medium text-foreground px-3 py-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent disabled:opacity-70 shadow-2xs h-8 sm:h-9"
-    />
-  );
-}
-
-interface OptionGridProps {
-  question: Question;
-  selected: string[];
-  result?: ReadingAnswerResult;
-  locked: boolean;
-  multiple: boolean;
-  onChange: (ids: string[]) => void;
-}
-
 /**
- * The option cards, as radios or checkboxes.
- *
- * A multi-answer set is not a radio group with a looser rule: choosing a second
- * option must add to the answer rather than replace it, and a chosen option must
- * be un-choosable again, neither of which a radio can express.
- */
-function OptionGrid({ question, selected, result, locked, multiple, onChange }: OptionGridProps) {
-  const letterFor = (index: number) => String.fromCharCode(65 + index);
-  const stripLetter = (text: string, letter: string) =>
-    text.replace(new RegExp(`^${letter}[:.]\\s*`, 'i'), '');
-
-  const toggle = (id: string) => {
-    if (!multiple) return onChange([id]);
-    onChange(selected.includes(id) ? selected.filter(value => value !== id) : [...selected, id]);
-  };
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-      {question.options!.map((option, index) => {
-        const letter = letterFor(index);
-        const isSelected = selected.includes(option.id);
-        const isCorrect = result?.review.correctAnswers?.includes(option.id);
-        const isWrongSelection = result && isSelected && !isCorrect;
-
-        let cardClasses =
-          'bg-background border-border text-foreground hover:border-primary/40 hover:bg-muted/40';
-        let badgeClasses = 'bg-muted text-muted-foreground border-border';
-
-        if (result && isCorrect) {
-          cardClasses = 'bg-emerald-600 text-white border-emerald-600 shadow-sm font-semibold';
-          badgeClasses = 'bg-white/20 text-white border-transparent';
-        } else if (isWrongSelection) {
-          cardClasses = 'bg-rose-600 text-white border-rose-600 shadow-sm font-semibold';
-          badgeClasses = 'bg-white/20 text-white border-transparent';
-        } else if (isSelected) {
-          cardClasses = 'bg-primary text-primary-foreground border-primary shadow-sm font-semibold';
-          badgeClasses = 'bg-white/20 text-white border-transparent';
-        } else if (result) {
-          cardClasses = 'opacity-50 bg-background border-border text-muted-foreground';
-        }
-
-        return (
-          <label
-            key={option.id}
-            className={`relative flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg border text-xs sm:text-[13px] transition-all select-none ${
-              locked ? 'cursor-default' : 'cursor-pointer active:scale-[0.99]'
-            } ${cardClasses}`}
-          >
-            <input
-              type={multiple ? 'checkbox' : 'radio'}
-              name={question.id}
-              checked={isSelected}
-              disabled={locked}
-              onChange={() => toggle(option.id)}
-              className="sr-only"
-            />
-
-            <div className="flex items-center gap-2 min-w-0 pr-1">
-              <span
-                className={`w-5 h-5 font-mono font-bold text-xs flex items-center justify-center shrink-0 border ${badgeClasses} ${
-                  multiple ? 'rounded-md' : 'rounded-lg'
-                }`}
-              >
-                {letter}
-              </span>
-              <span className="truncate">{stripLetter(option.text, letter)}</span>
-            </div>
-
-            {result && isCorrect ? (
-              <Check className="w-4 h-4 text-white shrink-0 ml-auto" />
-            ) : isWrongSelection ? (
-              <XCircle className="w-4 h-4 text-white shrink-0 ml-auto" />
-            ) : isSelected ? (
-              <Check className="w-4 h-4 text-white shrink-0 ml-auto" />
-            ) : null}
-          </label>
-        );
-      })}
-    </div>
-  );
-}
-
-/**
- * Gap-fills and Re-order show their answer key inside the control itself — in
- * the gaps, and under the boxes — so repeating it in the verdict banner would
- * say the same thing twice.
+ * Controls that already show the answer key inside themselves — in the gaps,
+ * under the boxes, in the sentence — so the verdict banner would repeat it.
  */
 function showsAnswerInline(typeId: string): boolean {
-  return !isGapFill(typeId) && typeId !== READING_TYPES.reorderParagraphs;
-}
-
-/** The answer key by blank id, which is where BlankedText looks it up. */
-function correctByBlank(review: Question): Record<string, string> {
-  const answers: Record<string, string> = {};
-  for (const blank of review.blanks ?? []) {
-    if (blank.correctAnswer) answers[blank.id] = blank.correctAnswer;
-  }
-  return answers;
+  return (
+    !isGapFill(typeId) &&
+    typeId !== READING_TYPES.reorderParagraphs &&
+    typeId !== READING_TYPES.sentenceCompletion
+  );
 }
 
 /** The answer key as a learner reads it. */

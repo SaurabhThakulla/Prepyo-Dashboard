@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/toast';
 import { useReadingPractice, useReadingTypes } from '@/lib/hooks/useReading';
 import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
-import { READING_TYPES, TYPE_BY_SYLLABUS_KEY, isReadingMultipleChoice } from '@/lib/readingTypes';
+import { READING_TYPES, TYPE_BY_SYLLABUS_KEY, needsParagraphLabels, isReadingMultipleChoice } from '@/lib/readingTypes';
 import { ReadingTaskType } from '@/lib/types';
 import { PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 
@@ -161,8 +161,7 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
                 scroll={true}
                 passageNumber={1}
                 questionRange={`Questions 1–${practice.totalQuestions}`}
-                showSources={set.groups.some(group => group.typeId === READING_TYPES.findTheWriter)}
-                showLabels={set.groups.some(group => group.typeId === READING_TYPES.matchingInformation)}
+                showLabels={set.groups.some(group => needsParagraphLabels(group.typeId))}
               />
             </div>
           )}
