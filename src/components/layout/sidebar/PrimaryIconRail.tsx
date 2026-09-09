@@ -47,10 +47,10 @@ export default function PrimaryIconRail({
         <Link
           to="/dashboard"
           onClick={onLogoClick}
-          className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-indigo-600 to-violet-700 text-white shadow-md shadow-primary/25 font-black text-base hover:scale-105 transition-transform"
+          className="flex h-10 w-10 items-center justify-center rounded-2xl overflow-hidden shadow-md shadow-primary/25 hover:scale-105 transition-transform"
           title="Prepyo — AI Exam Prep"
         >
-          P
+          <img src="/prepyo.webp" alt="Prepyo" className="h-10 w-10 object-contain" />
         </Link>
       </div>
 

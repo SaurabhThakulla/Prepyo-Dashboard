@@ -14,6 +14,7 @@ import { formatExamDate } from '@/lib/dates';
 import { useSubscriptionPlans } from '@/lib/hooks/useResources';
 import { formatPlanName } from '@/lib/subscriptions';
 import QRPaymentCheckoutDialog from '@/components/subscription/QRPaymentCheckoutDialog';
+import QueuedPlansCard from '@/components/subscription/QueuedPlansCard';
 
 interface ComparisonRow {
   label: string;
@@ -211,6 +212,8 @@ export default function SubscriptionPage() {
             </div>
           )}
         </div>
+
+        <QueuedPlansCard />
       </div>
 
       {/* Main Content: Comparison Matrix stretching full width */}

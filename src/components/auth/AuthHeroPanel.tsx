@@ -22,8 +22,8 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
       <div className="relative z-10 space-y-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-indigo-600 to-violet-700 text-white font-black text-lg shadow-lg shadow-primary/30">
-              P
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl overflow-hidden shadow-lg shadow-primary/30">
+              <img src="/prepyo.webp" alt="Prepyo" className="h-11 w-11 object-contain" />
             </div>
             <div className="flex items-center gap-2">
               <span className="font-display text-2xl font-black tracking-tight text-white">
