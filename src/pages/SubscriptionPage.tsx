@@ -216,6 +216,23 @@ export default function SubscriptionPage() {
         <QueuedPlansCard />
       </div>
 
+      {/* Accepted payment methods */}
+      <div className="px-4 sm:px-6 lg:px-8 flex flex-col items-center gap-3">
+        <span className="text-[15px] font-bold uppercase tracking-wider text-muted-foreground">Supported Payment Methods</span>
+        <div className="flex flex-wrap items-center justify-center gap-x-8 sm:gap-x-10 gap-y-4">
+          <img src="/images/esewa-logo.png" alt="eSewa" className="h-8 w-auto dark:hidden" />
+          <img src="/images/esewa-logo-dark.png" alt="eSewa" className="h-8 w-auto hidden dark:block" />
+          <img src="/images/khalti-logo.svg" alt="Khalti" className="h-9 w-auto dark:brightness-125" />
+          <span className="flex items-center gap-1.5 text-[#1B3A6B] dark:text-[#7FA9E6]">
+            <svg viewBox="0 0 32 32" className="h-8 w-8" fill="currentColor" aria-hidden="true"><path d="M16 3 3 10v2.4h26V10L16 3Z" /><rect x="6" y="14.5" width="3" height="9" rx=".6" /><rect x="11.6" y="14.5" width="3" height="9" rx=".6" /><rect x="17.2" y="14.5" width="3" height="9" rx=".6" /><rect x="22.8" y="14.5" width="3" height="9" rx=".6" /><rect x="3" y="25.4" width="26" height="3.2" rx=".8" /></svg>
+            <span className="leading-none">
+              <span className="block font-extrabold text-lg tracking-tight">All Banks</span>
+              <span className="block text-[9px] font-semibold text-muted-foreground -mt-0.5">Supported</span>
+            </span>
+          </span>
+        </div>
+      </div>
+
       {/* Main Content: Comparison Matrix stretching full width */}
       <div className="w-full px-4 sm:px-6 lg:px-8 space-y-6">
         {loadError ? (
