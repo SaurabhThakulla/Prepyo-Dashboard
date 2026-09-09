@@ -34,8 +34,8 @@ export default function NotFound() {
         {/* Brand mark for unauthenticated full-screen views */}
         {!isAuthenticated && (
           <div className="inline-flex items-center gap-2.5 mb-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl overflow-hidden shadow-md shadow-primary/25">
-              <img src="/prepyo.webp" alt="Prepyo" className="h-10 w-10 object-contain" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl overflow-hidden bg-white shadow-md shadow-primary/25">
+              <img src="/prepyo-mark.webp" alt="Prepyo" width={256} height={256} className="h-7 w-7 object-contain" />
             </div>
             <div className="flex flex-col text-left">
               <span className="font-display text-lg font-black tracking-tight text-foreground">

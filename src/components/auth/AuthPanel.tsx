@@ -28,11 +28,14 @@ export default function AuthPanel({ auth }: { auth: GoogleAuthState }) {
             <label htmlFor="adminEmail" className="text-[11px] font-bold text-foreground">
               Admin email
             </label>
+            {/* The placeholder stays generic on purpose: naming the real
+                operations account would hand out half of the credential to
+                anyone who opens this form. */}
             <Input
               id="adminEmail"
               type="email"
               autoComplete="username"
-              placeholder="admin@prepyo.online"
+              placeholder="you@example.com"
               value={admin.email}
               onChange={e => admin.setEmail(e.target.value)}
               disabled={admin.loading}

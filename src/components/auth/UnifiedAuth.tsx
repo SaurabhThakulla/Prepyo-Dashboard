@@ -25,8 +25,8 @@ export default function UnifiedAuth() {
       <div className="w-full lg:w-7/12 xl:w-1/2 h-screen max-h-screen flex flex-col justify-between p-5 sm:p-8 xl:p-10 overflow-y-auto bg-background">
         <div className="flex items-center justify-between pb-1">
           <div className="lg:hidden flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl overflow-hidden shadow-md">
-              <img src="/prepyo.webp" alt="Prepyo" className="h-8 w-8 object-contain" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl overflow-hidden bg-white shadow-md">
+              <img src="/prepyo-mark.webp" alt="Prepyo" width={256} height={256} className="h-6 w-6 object-contain" />
             </div>
             <span className="font-display text-lg font-black text-foreground">
               prep<span className="text-primary">yo</span>
