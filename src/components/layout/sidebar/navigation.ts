@@ -18,6 +18,7 @@ import {
   LucideIcon,
 } from 'lucide-react';
 import { SYLLABUS, typeKey } from '@/lib/syllabus';
+import { typeIdsFor } from '@/lib/readingTypes';
 import { ExamType, isAdmin, SkillType, UserProfile } from '@/lib/types';
 
 /**
@@ -81,6 +82,7 @@ export function buildSections(
   activeExam: ExamType,
   onOpenTutor: () => void,
   user?: UserProfile | null,
+  availableReadingTypes?: string[],
 ): PrimarySectionConfig[] {
   const isPTE = activeExam === 'PTE';
 
@@ -182,7 +184,19 @@ export function buildSections(
           ];
         }
 
-        return (SYLLABUS[activeExam][skill] ?? []).map(name => ({
+        // Reading is the one skill whose bank can be empty behind a heading, so
+        // its links are checked against what the server will actually deal.
+        // Undefined means the answer has not arrived yet: show everything
+        // rather than blink the menu down to nothing and back.
+        const names = SYLLABUS[activeExam][skill] ?? [];
+        const offered =
+          skill === 'reading' && availableReadingTypes
+            ? names.filter(name =>
+                typeIdsFor(typeKey(name)).some(id => availableReadingTypes.includes(id)),
+              )
+            : names;
+
+        return offered.map(name => ({
           href: `/practice?skill=${skill}&type=${typeKey(name)}`,
           label: name,
           icon,

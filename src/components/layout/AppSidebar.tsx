@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
+import { useReadingTypes } from '@/lib/hooks/useReading';
 import ReportIssueDialog from '@/components/support/ReportIssueDialog';
 import PrimaryIconRail from './sidebar/PrimaryIconRail';
 import SecondaryPanel from './sidebar/SecondaryPanel';
@@ -52,7 +53,19 @@ export default function AppSidebar({
     setActiveSection(getSectionFromPathname(pathname));
   }, [pathname]);
 
-  const sections = buildSections(activeExam, () => setIsTutorOpen(true), user);
+  // Reading headings are only worth showing when the bank has something behind
+  // them, so the menu is checked against the same list the practice page deals
+  // from. Left undefined until it arrives, which shows every heading.
+  const readingTypes = useReadingTypes(activeExam, Boolean(user));
+  const availableReadingTypes = useMemo(
+    () =>
+      readingTypes.data
+        ? readingTypes.data.types.filter(type => type.questionCount > 0).map(type => type.typeId)
+        : undefined,
+    [readingTypes.data],
+  );
+
+  const sections = buildSections(activeExam, () => setIsTutorOpen(true), user, availableReadingTypes);
   const currentSection = sections.find(section => section.id === activeSection) ?? sections[0];
 
   const closeMobileSidebar = () => setIsOpen(false);

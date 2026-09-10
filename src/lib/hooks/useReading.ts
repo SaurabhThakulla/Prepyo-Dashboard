@@ -27,7 +27,7 @@ import {
  */
 
 /** The practice menu: which task types exist, and how much is behind each. */
-export function useReadingTypes(exam: ExamType) {
+export function useReadingTypes(exam: ExamType, enabled = true) {
   return useQuery({
     queryKey: queryKeys.readingTypes(exam),
     queryFn: () =>
@@ -36,6 +36,7 @@ export function useReadingTypes(exam: ExamType) {
         mockRequiredTypes: string[];
         mockPassageCount: number;
       }>('/reading/types', { exam }),
+    enabled,
     // Content, not learner data: it changes when someone writes a passage.
     staleTime: 10 * 60_000,
   });
