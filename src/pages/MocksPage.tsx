@@ -74,8 +74,13 @@ export default function MocksPage() {
     if (target) {
       startMock(target);
       navigate('/mocks', { replace: true });
+      return;
     }
-  }, [startParam, exam, loading, mocks, navigate, startMock]);
+    // A link naming a paper this exam does not have would otherwise drop the
+    // learner on the catalogue with no idea why.
+    toast.warning('That mock is not available', `No ${activeExam} mock matches "${startParam}".`);
+    navigate('/mocks', { replace: true });
+  }, [startParam, exam, loading, mocks, navigate, startMock, toast, activeExam]);
 
   const leaveReport = () => {
     exam.exit();
@@ -106,6 +111,14 @@ export default function MocksPage() {
         <ScoreReport attempt={reviewAttempt} onBack={leaveReport} />
       </Suspense>
     );
+  }
+
+  // Composing a reading paper takes a moment: the server picks three unseen
+  // passages and writes the session before it answers. Without this the
+  // catalogue fills the gap, and its start panel offers the full mock — so a
+  // link that starts the reading paper looked like it had opened the wrong exam.
+  if (readingMock.starting) {
+    return <MocksPageSkeleton />;
   }
 
   // ── 3. Live exam ──
