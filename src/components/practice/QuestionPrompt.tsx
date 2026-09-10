@@ -30,16 +30,19 @@ export default function QuestionPrompt({ question }: { question: Question }) {
         </div>
       </div>
 
+      {/* Same 19:11 frame as the practice page, so a figure sits identically
+          whichever screen renders it. */}
       {question.imageUrl && (
-        <div className="p-3 bg-background rounded-xl border border-border flex justify-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={question.imageUrl}
-            alt={question.title}
-            loading="lazy"
-            decoding="async"
-            className="rounded-lg max-h-60 object-cover w-full"
-          />
+        <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-white p-3 ring-1 ring-black/5 sm:p-4">
+          <div className="relative w-full" style={{ aspectRatio: '19 / 11' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={question.imageUrl}
+              alt={question.title}
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-contain"
+            />
+          </div>
         </div>
       )}
 

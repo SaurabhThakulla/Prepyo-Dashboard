@@ -379,14 +379,22 @@ export default function PracticePage() {
                   </div>
                 )}
 
+                {/* Every figure in the bank is drawn on the same 760x440 canvas, so
+                    the frame is cut to that ratio (19:11) and sized from its own
+                    width alone. That gives each question identical geometry rather
+                    than a size that shifts with the window, and it reserves the
+                    figure's footprint before the image loads so nothing below it
+                    jumps. object-contain keeps the axis labels out of a crop. */}
                 {currentQuestion.imageUrl && (
-                  <div className="p-3 bg-background rounded-xl border border-border flex justify-center">
-                    <img
-                      src={currentQuestion.imageUrl}
-                      alt={currentQuestion.title}
-                      loading="lazy"
-                      className="rounded-lg max-h-64 object-cover w-full max-w-xl"
-                    />
+                  <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-white p-3 ring-1 ring-black/5 sm:p-4">
+                    <div className="relative w-full" style={{ aspectRatio: '19 / 11' }}>
+                      <img
+                        src={currentQuestion.imageUrl}
+                        alt={currentQuestion.title}
+                        decoding="async"
+                        className="absolute inset-0 h-full w-full object-contain"
+                      />
+                    </div>
                   </div>
                 )}
 
