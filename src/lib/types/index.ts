@@ -247,6 +247,8 @@ export interface ReadingGroup {
   typeId: string;
   typeName: string;
   instructions: string;
+  /** Heads the box a summary set is printed in, the way a real paper titles one. */
+  boxTitle?: string;
   /** Material belonging to the task, not the passage — the boxes to order. */
   resources?: ReadingParagraph[];
   /**

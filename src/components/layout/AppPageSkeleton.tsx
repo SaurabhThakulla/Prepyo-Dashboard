@@ -1,70 +1,44 @@
 import React from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useLocation, useSearchParams } from 'react-router-dom';
+import PageSkeleton, { PageSkeletonVariant } from '@/components/layout/PageSkeleton';
+import { useApp } from '@/context/AppContext';
+import { isAdmin } from '@/lib/types';
 
 /**
- * Stand-in for an app page while the session check is still in flight.
+ * Stand-in for an app page while its code and session check are still in flight.
  *
- * Shaped after the dashboard — a title, a row of stat cards, then content —
- * because that is the layout most protected pages share. It only has to hold
- * roughly the right amount of space so the page does not jump when the real
- * content arrives; matching any single page exactly is not the point.
+ * It reads the route it is standing in for rather than showing one shape for
+ * everything. A single dashboard-shaped fallback meant every page loaded in two
+ * visibly different steps — stat cards, then the page's own skeleton, then the
+ * page — and reading, whose own skeleton is a two-pane split, showed the jump
+ * most.
  */
+const VARIANT_BY_PATH: Record<string, PageSkeletonVariant> = {
+  '/mocks': 'mocks',
+  '/mistakes': 'mistakes',
+  '/evaluations': 'evaluations',
+  '/leaderboard': 'leaderboard',
+  '/profile': 'profile',
+  '/referrals': 'referrals',
+  '/subscription': 'subscription',
+  '/diagnostic': 'diagnostic',
+  '/admin': 'admin',
+};
+
 export default function AppPageSkeleton() {
-  return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10" role="status">
-      <span className="sr-only">Loading your workspace…</span>
+  const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
+  const { user } = useApp();
 
-      {/* Title row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-56 sm:w-72" />
-          <Skeleton className="h-4 w-40" />
-        </div>
-        <Skeleton className="h-16 w-full sm:w-64 rounded-2xl" />
-      </div>
+  // Reading is its own layout, and which skill practice is showing is in the
+  // query string rather than the path. An admin gets the authoring form there
+  // instead of a paper.
+  if (pathname.startsWith('/practice')) {
+    if (searchParams.get('skill') === 'reading') {
+      return <PageSkeleton variant={isAdmin(user ?? null) ? 'admin' : 'reading'} />;
+    }
+    return <PageSkeleton variant="practice" />;
+  }
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[0, 1, 2].map(i => (
-          <div
-            key={i}
-            className="bg-card dark:bg-[#12161c] border border-border dark:border-white/10 rounded-2xl p-5 space-y-3.5 shadow-sm"
-          >
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-3.5 w-24" />
-              <Skeleton className="h-8 w-8 rounded-lg" />
-            </div>
-            <Skeleton className="h-9 w-20" />
-            <Skeleton className="h-1.5 w-full rounded-full" />
-            <Skeleton className="h-3 w-32" />
-          </div>
-        ))}
-      </div>
-
-      {/* Main content beside a narrower rail, the dashboard's usual split */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-card dark:bg-[#12161c] border border-border dark:border-white/10 rounded-2xl p-5 space-y-4 shadow-sm">
-          <Skeleton className="h-5 w-40" />
-          <div className="space-y-3">
-            {[0, 1, 2, 3].map(i => (
-              <div key={i} className="flex items-center gap-3">
-                <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-3.5 w-1/2" />
-                  <Skeleton className="h-3 w-1/3" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-card dark:bg-[#12161c] border border-border dark:border-white/10 rounded-2xl p-5 space-y-4 shadow-sm">
-          <Skeleton className="h-5 w-28" />
-          {[0, 1, 2].map(i => (
-            <Skeleton key={i} className="h-14 w-full rounded-xl" />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  return <PageSkeleton variant={VARIANT_BY_PATH[pathname] ?? 'dashboard'} />;
 }

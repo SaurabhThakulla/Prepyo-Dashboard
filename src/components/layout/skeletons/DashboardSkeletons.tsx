@@ -202,8 +202,8 @@ export const DiagnosticPageSkeleton = () => (
   </Shell>
 );
 
-export const AdminPageSkeleton = () => (
-  <Shell label="admin metrics">
+export const AdminPageSkeleton = ({ bare = false }: { bare?: boolean } = {}) => (
+  <Shell label="admin metrics" bare={bare}>
     <Header titleW="w-48" actionW="w-32" /><StatGrid count={4} />
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card className="p-5 space-y-4"><Skeleton className="h-5 w-40" /><Skeleton className="h-56 w-full rounded-xl" /></Card>

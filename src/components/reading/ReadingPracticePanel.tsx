@@ -8,13 +8,27 @@ import { useToast } from '@/components/ui/toast';
 import { useReadingPractice, useReadingTypes } from '@/lib/hooks/useReading';
 import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
-import { READING_TYPES, TYPE_BY_SYLLABUS_KEY, needsParagraphLabels, isReadingMultipleChoice } from '@/lib/readingTypes';
+import { READING_TYPES, typeIdsFor, needsParagraphLabels } from '@/lib/readingTypes';
 import { ReadingTaskType } from '@/lib/types';
-import { PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
+import { ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 
 interface ReadingPracticePanelProps {
   /** The `?type=` key the sidebar linked with, if any. */
   initialTypeKey?: string;
+}
+
+/**
+ * The first of a heading's task types the bank actually has questions behind.
+ *
+ * A heading like Multiple Choice covers two server types, and only one of them
+ * may have content, so dealing the first id blindly would show an empty state
+ * beside a menu entry that promised questions.
+ */
+function firstAvailable(typeIds: string[], types: ReadingTaskType[]): string | undefined {
+  const withQuestions = typeIds.find(id =>
+    types.some(type => type.typeId === id && type.questionCount > 0),
+  );
+  return withQuestions ?? typeIds.find(id => types.some(type => type.typeId === id));
 }
 
 function EmptyState({
@@ -82,7 +96,7 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
   // Open on the type the sidebar linked to, or the first one with questions.
   useEffect(() => {
     if (types.length === 0) return;
-    const linked = initialTypeKey ? TYPE_BY_SYLLABUS_KEY[initialTypeKey] : undefined;
+    const linked = firstAvailable(typeIdsFor(initialTypeKey), types);
     const wanted = (linked ? types.find(type => type.typeId === linked) : undefined) ?? (set ? undefined : types[0]);
     if (wanted && wanted.typeId !== currentTypeId) {
       void deal(wanted.typeId);
@@ -102,14 +116,12 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
     setIsTutorOpen(true);
   };
 
-  const linked = initialTypeKey ? TYPE_BY_SYLLABUS_KEY[initialTypeKey] : undefined;
+  const linked = firstAvailable(typeIdsFor(initialTypeKey), types);
   const targetTypeId = linked ?? currentTypeId ?? types[0]?.typeId;
-  const isMCQ =
-    isReadingMultipleChoice(initialTypeKey) ||
-    isReadingMultipleChoice(targetTypeId) ||
-    isReadingMultipleChoice(set?.groups[0]?.typeName);
-
-  const skeleton = isMCQ ? <ReadingPracticeSkeleton /> : <PracticePageSkeleton />;
+  // One skeleton for every reading task: they all load into the passage-left,
+  // questions-right layout below, so choosing by task type only made the page
+  // flash a shape it was never going to settle into.
+  const skeleton = <ReadingPracticeSkeleton />;
 
   if (typesQuery.isPending) {
     return skeleton;
@@ -169,11 +181,16 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
           {/* Right Pane: Questions & Answer Cards (Independent scroll) */}
           <div className={`h-full min-h-0 flex flex-col overflow-hidden ${!hasPassage ? 'lg:col-span-2' : ''}`}>
             <div className="flex-1 overflow-y-auto pl-1 pr-1.5 space-y-2 scrollbar-thin">
-              {set.groups.map(group => (
+              {/* Numbering runs across the paper, not from 1 inside each set:
+                  the paper says "Questions 14–19" and the answer key refers
+                  back by those numbers. */}
+              {set.groups.map((group, index) => (
                 <ReadingGroupCard
                   key={group.id}
                   group={group}
-                  startNumber={1}
+                  startNumber={
+                    set.groups.slice(0, index).reduce((sum, earlier) => sum + earlier.questions.length, 1)
+                  }
                   answers={practice.answers}
                   results={practice.results}
                   disabled={practice.checking}
@@ -186,7 +203,7 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                     <CardTitle className="text-sm">
-                      {practice.correctCount} of {Object.keys(practice.results).length} correct
+                      {practice.partsCorrect} of {practice.partsTotal} correct
                     </CardTitle>
                   </div>
                   <p className="text-[11px] text-muted-foreground">

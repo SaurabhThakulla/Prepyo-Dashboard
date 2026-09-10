@@ -369,7 +369,8 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
           }`}
         />
         <span
-          className={`truncate text-xs ${
+          title={item.label}
+          className={`line-clamp-2 text-xs leading-snug ${
             isActive ? 'font-semibold text-foreground dark:text-white' : 'font-medium text-foreground/85 group-hover:text-foreground'
           }`}
         >

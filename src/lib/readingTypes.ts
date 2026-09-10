@@ -33,25 +33,51 @@ export const READING_TYPES = {
  * more than one heading, and a heading that has been renamed keeps its old key
  * so links already in the wild still land on the right task.
  */
-export const TYPE_BY_SYLLABUS_KEY: Record<string, string> = {
-  // IELTS
+export const TYPE_BY_SYLLABUS_KEY: Record<string, string | string[]> = {
+  // Multiple choice is one task on the dashboard. Whether a question takes one
+  // answer or several is a property of the question, not a separate practice
+  // menu, so the entry covers both server types.
+  multiplechoice: [READING_TYPES.mcqSingle, READING_TYPES.mcqMultiple],
+  multiplechoicesingleanswer: READING_TYPES.mcqSingle,
+  multiplechoicemultipleanswers: READING_TYPES.mcqMultiple,
+
+  // Both paragraph-locating tasks ask the learner the same thing, so they are
+  // one heading. Find the Paragraph is the task behind it; Matching Information
+  // is only reached when that one has nothing to deal.
+  findparagraph: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
+  whichparagraphcontainsfollowinginformation: [
+    READING_TYPES.findTheParagraph,
+    READING_TYPES.matchingInformation,
+  ],
+  matchinginformation: READING_TYPES.matchingInformation,
+
+  truefalse: READING_TYPES.trueFalse,
+  truefalsenotgiven: READING_TYPES.trueFalse,
+  yesnonotgiven: READING_TYPES.yesNoNotGiven,
+
   fillinblanks: READING_TYPES.sentenceCompletion,
   completesentences: READING_TYPES.sentenceCompletion,
   sentencecompletions: READING_TYPES.sentenceCompletion,
-  truefalse: READING_TYPES.trueFalse,
-  truefalsenotgiven: READING_TYPES.trueFalse,
-  findparagraph: READING_TYPES.findTheParagraph,
   arrangepassage: READING_TYPES.arrangePassage,
-  yesnonotgiven: READING_TYPES.yesNoNotGiven,
-  matchinginformation: READING_TYPES.matchingInformation,
 
-  // PTE
   readingwritingfillinblanks: READING_TYPES.fillBlanksRW,
   readingfillinblanks: READING_TYPES.fillBlanksR,
-  multiplechoicesingleanswer: READING_TYPES.mcqSingle,
-  multiplechoicemultipleanswers: READING_TYPES.mcqMultiple,
   reorderparagraphs: READING_TYPES.reorderParagraphs,
 };
+
+/**
+ * The server task types a dashboard entry covers, widest first.
+ *
+ * One heading can stand for more than one server type — multiple choice is one
+ * task to a learner and two to the question bank — so callers ask for the list
+ * and take the first type the server actually has questions behind.
+ */
+export function typeIdsFor(syllabusKey?: string | null): string[] {
+  if (!syllabusKey) return [];
+  const mapped = TYPE_BY_SYLLABUS_KEY[syllabusKey];
+  if (!mapped) return [];
+  return Array.isArray(mapped) ? mapped : [mapped];
+}
 
 /** Tasks answered by filling gaps in a text the question carries itself. */
 export const isGapFill = (typeId: string): boolean =>

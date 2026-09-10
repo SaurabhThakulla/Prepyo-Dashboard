@@ -40,28 +40,24 @@
           "description": "Read long stories/articles and answer questions about them",
           "topics": [
             {
-              "name": "Fill in the Blanks",
-              "simpleDescription": "Fill in missing words in sentences using words taken directly from the passage"
+              "name": "Multiple Choice",
+              "simpleDescription": "Read a text and choose the correct answer — some questions take one, some take several"
             },
             {
               "name": "True / False / Not Given",
               "simpleDescription": "Decide whether statements agree with the passage, contradict it, or are not mentioned at all"
             },
             {
-              "name": "Find the paragraph",
-              "simpleDescription": "Locate which lettered paragraph of the passage contains a given piece of information"
-            },
-            {
-              "name": "Arrange the passage",
-              "simpleDescription": "Organize paragraphs or sentences into their correct logical order"
-            },
-            {
               "name": "Yes / No / Not Given",
               "simpleDescription": "Identify if statements agree with, contradict, or are not mentioned in the writer's views"
             },
             {
-              "name": "Matching information",
-              "simpleDescription": "Match specific information, details, or characteristics to the correct paragraphs"
+              "name": "Find the paragraph",
+              "simpleDescription": "Locate which lettered paragraph of the passage contains a given piece of information"
+            },
+            {
+              "name": "Fill in the Blanks",
+              "simpleDescription": "Fill in missing words in sentences using words taken directly from the passage"
             }
           ]
         },
@@ -134,24 +130,32 @@
           "description": "Read paragraphs and solve word puzzles and questions",
           "topics": [
             {
+              "name": "Multiple Choice",
+              "simpleDescription": "Read a text and choose the correct answer — some questions take one, some take several"
+            },
+            {
+              "name": "True / False / Not Given",
+              "simpleDescription": "Decide whether statements agree with the passage, contradict it, or are not mentioned at all"
+            },
+            {
+              "name": "Yes / No / Not Given",
+              "simpleDescription": "Identify if statements agree with, contradict, or are not mentioned in the writer's views"
+            },
+            {
+              "name": "Find the paragraph",
+              "simpleDescription": "Locate which lettered paragraph of the passage contains a given piece of information"
+            },
+            {
               "name": "Reading & Writing: Fill in the Blanks",
               "simpleDescription": "Pick the best word from drop-down menus to complete sentences"
             },
             {
-              "name": "Multiple Choice, Single Answer",
-              "simpleDescription": "Read a text and choose the single best answer"
-            },
-            {
-              "name": "Multiple Choice, Multiple Answers",
-              "simpleDescription": "Read a text and check all correct answers"
+              "name": "Reading: Fill in the Blanks",
+              "simpleDescription": "Drag words into empty slots inside a paragraph"
             },
             {
               "name": "Re-order Paragraphs",
               "simpleDescription": "Drag and drop shuffled sentences into the right story order"
-            },
-            {
-              "name": "Reading: Fill in the Blanks",
-              "simpleDescription": "Drag words into empty slots inside a paragraph"
             }
           ]
         },

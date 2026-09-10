@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, CircleDot, XCircle } from 'lucide-react';
 import { AnswerSubmission, Question, ReadingParagraph } from '@/lib/types';
 import { ReadingAnswerResult } from '@/lib/hooks/useReading';
 import { READING_TYPES, isGapFill } from '@/lib/readingTypes';
@@ -66,16 +66,25 @@ export default function ReadingQuestionRow({
           className={`p-2.5 rounded-lg border flex items-start gap-2 text-xs ${
             result.attempt.isCorrect
               ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-800 dark:text-emerald-200'
-              : 'bg-rose-500/10 border-rose-500/25 text-rose-800 dark:text-rose-200'
+              : result.attempt.accuracyPercentage > 0
+                ? 'bg-amber-500/10 border-amber-500/25 text-amber-800 dark:text-amber-200'
+                : 'bg-rose-500/10 border-rose-500/25 text-rose-800 dark:text-rose-200'
           }`}
         >
           {result.attempt.isCorrect ? (
             <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+          ) : result.attempt.accuracyPercentage > 0 ? (
+            <CircleDot className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           ) : (
             <XCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
           )}
 
           <div className="space-y-0.5">
+            {/* A task with several parts is rarely all right or all wrong, and
+                the server has already counted them. */}
+            {!result.attempt.isCorrect && result.attempt.accuracyPercentage > 0 && result.attempt.feedback && (
+              <p className="font-bold">{result.attempt.feedback}</p>
+            )}
             {!result.attempt.isCorrect && showsAnswerInline(question.typeId) && (
               <p className="font-bold">
                 Correct answer: <span className="underline">{displayAnswer(result.review)}</span>

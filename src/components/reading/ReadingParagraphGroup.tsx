@@ -51,6 +51,12 @@ export default function ReadingParagraphGroup({
 
   return (
     <div className="rounded-lg p-3.5 bg-card/60 dark:bg-white/[0.015] border border-border/70 space-y-2.5 shadow-2xs">
+      {/* The paper heads a summary box with a title of its own, which tells the
+          learner which stretch of the passage the summary covers. */}
+      {group.boxTitle && (
+        <h4 className="text-center text-xs sm:text-sm font-bold text-foreground">{group.boxTitle}</h4>
+      )}
+
       {/* leading-loose keeps the lines apart enough that inline controls do not
           collide once the text wraps. */}
       <p className="text-xs sm:text-sm text-foreground leading-loose">

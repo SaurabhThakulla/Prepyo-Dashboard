@@ -4,6 +4,7 @@ import { api, ApiError, errorMessage } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { useToast } from '@/components/ui/toast';
 import { useApp } from '@/context/AppContext';
+import { READING_TYPES } from '@/lib/readingTypes';
 import {
   AnswerSubmission,
   ExamType,
@@ -167,6 +168,16 @@ export function useReadingPractice(exam: ExamType) {
   const answeredCount = questions.filter(question => hasAnswer(answers[question.id])).length;
   const correctCount = Object.values(results).filter(result => result.attempt.isCorrect).length;
 
+  // A gap-fill or an ordering task is one question carrying several marks, and
+  // the server grades it that way. Counting whole questions reported a learner
+  // who filled four of five gaps as nothing correct at all.
+  const graded = questions.filter(question => results[question.id]);
+  const partsTotal = graded.reduce((sum, question) => sum + partsOf(question), 0);
+  const partsCorrect = graded.reduce((sum, question) => {
+    const accuracy = results[question.id].attempt.accuracyPercentage;
+    return sum + Math.round((accuracy / 100) * partsOf(question));
+  }, 0);
+
   return {
     set,
     answers,
@@ -180,6 +191,8 @@ export function useReadingPractice(exam: ExamType) {
     totalQuestions: questions.length,
     answeredCount,
     correctCount,
+    partsCorrect,
+    partsTotal,
     /** True once the set has been checked; the inputs then go read-only. */
     checked: Object.keys(results).length > 0,
   };
@@ -282,6 +295,19 @@ export function useReadingMock(exam: ExamType, onGraded?: (attempt: MockAttempt)
     totalQuestions: questions.length,
     answeredCount: questions.filter(question => hasAnswer(answers[question.id])).length,
   };
+}
+
+/**
+ * How many marks a question is worth to a learner counting their own score:
+ * one per gap, one per adjacent pair of boxes, and otherwise one for the
+ * question. Mirrors what scoring.proportional divides by on the server.
+ */
+function partsOf(question: Question): number {
+  if (question.blanks?.length) return question.blanks.length;
+  if (question.typeId === READING_TYPES.reorderParagraphs) {
+    return Math.max((question.options?.length ?? 2) - 1, 1);
+  }
+  return 1;
 }
 
 /** Whether a submission carries anything the server could grade. */

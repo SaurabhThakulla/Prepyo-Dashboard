@@ -13,7 +13,6 @@ import {
   DiagnosticPageSkeleton,
   AdminPageSkeleton,
 } from './skeletons/DashboardSkeletons';
-import { isReadingMultipleChoice } from '@/lib/readingTypes';
 
 export type PageSkeletonVariant =
   | 'dashboard'
@@ -32,17 +31,10 @@ export type PageSkeletonVariant =
 
 export interface PageSkeletonProps {
   variant?: PageSkeletonVariant;
-  type?: string;
-  isMultipleChoice?: boolean;
   bare?: boolean;
 }
 
-export default function PageSkeleton({
-  variant = 'dashboard',
-  type,
-  isMultipleChoice,
-  bare = false,
-}: PageSkeletonProps) {
+export default function PageSkeleton({ variant = 'dashboard', bare = false }: PageSkeletonProps) {
   switch (variant) {
     case 'evaluations':
       return <EvaluationsPageSkeleton />;
@@ -50,14 +42,12 @@ export default function PageSkeleton({
       return <ProfilePageSkeleton />;
     case 'practice':
       return <PracticePageSkeleton bare={bare} />;
+    // Every reading task loads into the same two-pane layout, so they share one
+    // skeleton. Sending the non-MCQ ones to the single-card practice skeleton
+    // made reading flash a different shape depending on the task type.
     case 'reading-mcq':
-      return <ReadingPracticeSkeleton bare={bare} />;
     case 'reading':
-      return isMultipleChoice || isReadingMultipleChoice(type) ? (
-        <ReadingPracticeSkeleton bare={bare} />
-      ) : (
-        <PracticePageSkeleton bare={bare} />
-      );
+      return <ReadingPracticeSkeleton bare={bare} />;
     case 'mocks':
       return <MocksPageSkeleton bare={bare} />;
     case 'mistakes':
@@ -71,7 +61,7 @@ export default function PageSkeleton({
     case 'diagnostic':
       return <DiagnosticPageSkeleton />;
     case 'admin':
-      return <AdminPageSkeleton />;
+      return <AdminPageSkeleton bare={bare} />;
     case 'dashboard':
     default:
       return <DashboardPageSkeleton />;
