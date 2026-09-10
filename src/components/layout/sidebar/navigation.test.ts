@@ -36,6 +36,39 @@ describe('the reading section of the practice menu', () => {
     expect(readingItems('PTE', [])).toEqual([]);
   });
 
+  it('offers the generated paper once the bank can deal one', () => {
+    const items =
+      buildSections('IELTS', () => {}, null, [READING_TYPES.trueFalse], 3).find(
+        s => s.id === 'practice',
+      )?.items ?? [];
+    const mock = items.find(item => item.label === 'Reading Mock Test');
+
+    expect(mock).toBeDefined();
+    expect(mock?.group).toBe('Reading');
+    expect(mock?.badge).toBe('MOCK');
+    expect(mock?.href).toBe('/mocks?start=mock-ielts-reading-gen');
+    expect(mock?.sublabel).toContain('3 full passages');
+  });
+
+  it('points each exam at its own generated paper', () => {
+    const items =
+      buildSections('PTE', () => {}, null, [READING_TYPES.fillBlanksR], 4).find(
+        s => s.id === 'practice',
+      )?.items ?? [];
+    const mock = items.find(item => item.label === 'Reading Mock Test');
+
+    expect(mock?.href).toBe('/mocks?start=mock-pte-reading-gen');
+    expect(mock?.sublabel).toContain('4 full passages');
+  });
+
+  it('hides the paper when there is no blueprint or nothing to build it from', () => {
+    expect(readingItems('IELTS', [READING_TYPES.trueFalse])).not.toContain('Reading Mock Test');
+    expect(
+      (buildSections('IELTS', () => {}, null, [], 3).find(s => s.id === 'practice')?.items ?? [])
+        .map(item => item.label),
+    ).not.toContain('Reading Mock Test');
+  });
+
   it('leaves the other skills alone when reading is empty', () => {
     const items = buildSections('IELTS', () => {}, null, []).find(s => s.id === 'practice')?.items ?? [];
     expect(items.filter(item => item.group === 'Writing').length).toBeGreaterThan(0);

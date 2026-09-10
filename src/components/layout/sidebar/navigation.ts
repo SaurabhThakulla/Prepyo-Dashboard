@@ -83,6 +83,7 @@ export function buildSections(
   onOpenTutor: () => void,
   user?: UserProfile | null,
   availableReadingTypes?: string[],
+  mockPassageCount = 0,
 ): PrimarySectionConfig[] {
   const isPTE = activeExam === 'PTE';
 
@@ -196,7 +197,7 @@ export function buildSections(
               )
             : names;
 
-        return offered.map(name => ({
+        const links: SecondaryNavItem[] = offered.map(name => ({
           href: `/practice?skill=${skill}&type=${typeKey(name)}`,
           label: name,
           icon,
@@ -204,6 +205,23 @@ export function buildSections(
           group: label,
           groupHref: `/practice?skill=${skill}`,
         }));
+
+        // The generated reading paper sits under the same heading as the tasks
+        // it is built from, because a learner works up to it from them. It is
+        // only offered once the bank can actually deal one.
+        if (skill === 'reading' && mockPassageCount > 0 && links.length > 0) {
+          links.push({
+            href: `/mocks?start=mock-${activeExam.toLowerCase()}-reading-gen`,
+            label: 'Reading Mock Test',
+            icon: Award,
+            sublabel: `${mockPassageCount} full passages, timed and graded on the server`,
+            badge: 'MOCK',
+            group: label,
+            groupHref: `/practice?skill=${skill}`,
+          });
+        }
+
+        return links;
       }),
     },
     {

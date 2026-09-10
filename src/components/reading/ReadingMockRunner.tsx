@@ -57,6 +57,16 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
     if (secondsLeft === 0 && !submitting) void finish();
   }, [secondsLeft, submitting, finish]);
 
+  // "Questions 14-26" for the passage on screen, numbered across the whole
+  // paper the way the printed test does it.
+  const rangeFor = (index: number) => {
+    const starts = startNumbers[index] ?? [];
+    const first = starts[0];
+    if (first === undefined) return undefined;
+    const count = (sets[index]?.groups ?? []).reduce((sum, group) => sum + group.questions.length, 0);
+    return count === 1 ? `Question ${first}` : `Questions ${first}–${first + count - 1}`;
+  };
+
   const activeSet = sets[activeIndex];
   const minutes = Math.max(0, Math.floor(secondsLeft / 60));
   const seconds = Math.max(0, secondsLeft % 60);
@@ -125,6 +135,9 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
             <div className="lg:col-span-6">
               <PassageReader
                 passage={activeSet.passage}
+                scroll={true}
+                passageNumber={activeIndex + 1}
+                questionRange={rangeFor(activeIndex)}
                 showLabels={activeSet.groups.some(group => needsParagraphLabels(group.typeId))}
               />
             </div>

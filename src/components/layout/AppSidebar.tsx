@@ -65,7 +65,13 @@ export default function AppSidebar({
     [readingTypes.data],
   );
 
-  const sections = buildSections(activeExam, () => setIsTutorOpen(true), user, availableReadingTypes);
+  const sections = buildSections(
+    activeExam,
+    () => setIsTutorOpen(true),
+    user,
+    availableReadingTypes,
+    readingTypes.data?.mockPassageCount ?? 0,
+  );
   const currentSection = sections.find(section => section.id === activeSection) ?? sections[0];
 
   const closeMobileSidebar = () => setIsOpen(false);
