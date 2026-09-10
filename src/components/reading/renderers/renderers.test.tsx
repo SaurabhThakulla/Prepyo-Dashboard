@@ -242,6 +242,47 @@ describe('the answer each renderer sends', () => {
     expect(patch()).toEqual({ textResponse: 'fermented' });
   });
 
+  // A fixed-width gap turned a seven-gap summary into a column of boxes with
+  // prose scattered between them, so the control is sized to its own words.
+  it('sentence completion sizes the gap to the longest word on offer', () => {
+    const { onChange } = capture();
+    const { rerender } = render(
+      <SentenceCompletion
+        question={question({
+          typeId: READING_TYPES.sentenceCompletion,
+          prompt: 'The colony was ______ in midwinter.',
+          options: [
+            { id: 'cold', text: 'cold' },
+            { id: 'warm', text: 'warm' },
+          ],
+        })}
+        locked={false}
+        onChange={onChange}
+      />,
+    );
+    const narrow = (screen.getByLabelText('Choose the word that fits') as HTMLElement).style.width;
+
+    rerender(
+      <SentenceCompletion
+        question={question({
+          typeId: READING_TYPES.sentenceCompletion,
+          prompt: 'The seeds are described as ______.',
+          options: [
+            { id: 'recalcitrant', text: 'recalcitrant' },
+            { id: 'dormant', text: 'dormant' },
+          ],
+        })}
+        locked={false}
+        onChange={onChange}
+      />,
+    );
+    const wide = (screen.getByLabelText('Choose the word that fits') as HTMLElement).style.width;
+
+    expect(narrow).toMatch(/ch$/);
+    expect(wide).toMatch(/ch$/);
+    expect(parseFloat(wide)).toBeGreaterThan(parseFloat(narrow));
+  });
+
   it('arrange the passage sends the chosen box', () => {
     const { onChange, patch } = capture();
     render(

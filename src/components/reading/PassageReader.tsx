@@ -586,11 +586,16 @@ export default function PassageReader({
           {passage.paragraphs.map((paragraph, index) => (
             <p
               key={paragraph.label || index}
-              className={`${fontClass} font-normal font-[400] text-neutral-800 dark:text-neutral-200 selection:bg-blue-600 selection:text-white text-justify sm:text-left ${currentStyles.body}`}
+              className={`${fontClass} font-normal font-[400] text-neutral-800 dark:text-neutral-200 selection:bg-blue-600 selection:text-white text-justify sm:text-left ${currentStyles.body} ${
+                showLabels && paragraph.label ? 'relative pl-6 sm:pl-7' : ''
+              }`}
             >
               {showLabels && paragraph.label && (
-                <span className="font-semibold mr-1.5 text-primary dark:text-blue-400 font-sans select-none">
-                  [{paragraph.label}]
+                <span
+                  aria-hidden="true"
+                  className="absolute left-0 top-0 w-4 select-none text-right font-mono text-[11px] font-bold leading-7 text-muted-foreground/60"
+                >
+                  {paragraph.label}
                 </span>
               )}
               <span data-paragraph-body={index}>

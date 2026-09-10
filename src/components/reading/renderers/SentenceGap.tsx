@@ -22,6 +22,11 @@ interface SentenceGapProps {
  * Two forms, decided by the item rather than by the type. Items authored with
  * word choices get a chooser; one authored without is typed. The grader takes
  * either, so both submit what they naturally have.
+ *
+ * The control is sized to the words it can hold rather than to a fixed width.
+ * A gap wide enough for the longest answer and no wider keeps the sentence
+ * readable as a sentence; the fixed width it replaced turned a seven-gap
+ * summary into a column of boxes with prose scattered between them.
  */
 export default function SentenceGap({ question, answer, result, locked, onChange }: SentenceGapProps) {
   const options = question.options ?? [];
@@ -31,23 +36,36 @@ export default function SentenceGap({ question, answer, result, locked, onChange
   const chosen = answer?.selectedOptions?.[0] ?? '';
   const typed = answer?.textResponse ?? '';
   const isCorrect = result?.attempt.isCorrect;
+  const filled = Boolean(chosen || typed.trim());
 
-  let fieldClasses = 'border-border bg-background text-foreground focus:ring-primary';
+  // Wide enough for the longest word on offer, with room for the chevron. A
+  // typed gap has nothing to measure, so it gets a middling blank.
+  const widest = options.reduce((longest, option) => Math.max(longest, option.text.length), 0);
+  const width = options.length ? `${Math.min(Math.max(widest + 4, 7), 22)}ch` : '11ch';
+
+  let tone = filled
+    ? 'border-primary/50 bg-primary/5 text-foreground font-semibold'
+    : 'border-dashed border-muted-foreground/50 bg-muted/40 text-muted-foreground';
   if (result) {
-    fieldClasses = isCorrect
+    tone = isCorrect
       ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 font-semibold'
       : 'border-rose-500/60 bg-rose-500/15 text-rose-800 dark:text-rose-200 font-semibold';
   }
+
+  const shared =
+    'inline-block align-baseline mx-1 px-1.5 py-0 h-6 leading-6 rounded-md border text-xs sm:text-sm text-center ' +
+    'focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary disabled:opacity-100 transition-colors';
 
   const field = options.length ? (
     <select
       value={chosen}
       disabled={locked}
+      style={{ width }}
       onChange={event => onChange({ selectedOptions: [event.target.value] })}
       aria-label="Choose the word that fits"
-      className={`inline-block mx-1 px-2 py-0.5 rounded-md border text-xs sm:text-sm text-center align-baseline focus:outline-none focus:ring-1 focus:border-transparent disabled:opacity-90 ${fieldClasses}`}
+      className={`${shared} appearance-none cursor-pointer ${tone}`}
     >
-      <option value="">— select —</option>
+      <option value="">—</option>
       {options.map(option => (
         <option key={option.id} value={option.id}>
           {option.text}
@@ -58,10 +76,10 @@ export default function SentenceGap({ question, answer, result, locked, onChange
     <input
       value={typed}
       disabled={locked}
+      style={{ width }}
       onChange={event => onChange({ textResponse: event.target.value })}
-      placeholder="…"
       aria-label="Your answer"
-      className={`inline-block w-32 sm:w-40 mx-1 px-2 py-0.5 rounded-md border text-xs sm:text-sm text-center align-baseline focus:outline-none focus:ring-1 focus:border-transparent disabled:opacity-90 ${fieldClasses}`}
+      className={`${shared} ${tone}`}
     />
   );
 
