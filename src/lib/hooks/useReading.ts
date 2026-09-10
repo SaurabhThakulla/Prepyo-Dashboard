@@ -4,7 +4,7 @@ import { api, ApiError, errorMessage } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { useToast } from '@/components/ui/toast';
 import { useApp } from '@/context/AppContext';
-import { READING_TYPES } from '@/lib/readingTypes';
+import { READING_TYPES, familyOf } from '@/lib/readingTypes';
 import {
   AnswerSubmission,
   ExamType,
@@ -76,7 +76,12 @@ export function useReadingPractice(exam: ExamType) {
       setDealing(true);
       setDealError(null);
       try {
-        const data = await api.post<{ set: ReadingSet }>('/reading/practice', { exam, typeId });
+        const data = await api.post<{ set: ReadingSet }>('/reading/practice', {
+          exam,
+          typeId,
+          // The whole heading, so a passage hands over every set behind it.
+          typeIds: familyOf(typeId),
+        });
         setSet(data.set);
         setAnswers({});
         setResults({});

@@ -79,6 +79,25 @@ export function typeIdsFor(syllabusKey?: string | null): string[] {
   return Array.isArray(mapped) ? mapped : [mapped];
 }
 
+/**
+ * The task types that share one dashboard heading.
+ *
+ * Practice deals a whole family at once: a learner who picks Multiple Choice
+ * wants every multiple-choice question the passage carries, not whichever of
+ * the two server types happened to be dealt. A mock is the other way round and
+ * asks for one type at a time, which is why this lives here and not in the
+ * request itself.
+ */
+const FAMILIES: string[][] = [
+  [READING_TYPES.mcqSingle, READING_TYPES.mcqMultiple],
+  [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
+];
+
+/** Every type sitting behind the same heading as this one, including itself. */
+export function familyOf(typeId: string): string[] {
+  return FAMILIES.find(family => family.includes(typeId)) ?? [typeId];
+}
+
 /** Tasks answered by filling gaps in a text the question carries itself. */
 export const isGapFill = (typeId: string): boolean =>
   typeId === READING_TYPES.fillBlanksRW || typeId === READING_TYPES.fillBlanksR;

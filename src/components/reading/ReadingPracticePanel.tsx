@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/toast';
 import { useReadingPractice, useReadingTypes } from '@/lib/hooks/useReading';
 import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
-import { READING_TYPES, typeIdsFor, needsParagraphLabels } from '@/lib/readingTypes';
+import { READING_TYPES, typeIdsFor, needsParagraphLabels, familyOf } from '@/lib/readingTypes';
 import { ReadingTaskType } from '@/lib/types';
 import { ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 
@@ -98,7 +98,10 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
     if (types.length === 0) return;
     const linked = firstAvailable(typeIdsFor(initialTypeKey), types);
     const wanted = (linked ? types.find(type => type.typeId === linked) : undefined) ?? (set ? undefined : types[0]);
-    if (wanted && wanted.typeId !== currentTypeId) {
+    // A dealt set covers a whole family, so its first group may be a different
+    // type from the one asked for. Comparing the two directly re-dealt for ever.
+    const dealt = currentTypeId ? familyOf(currentTypeId) : [];
+    if (wanted && !dealt.includes(wanted.typeId)) {
       void deal(wanted.typeId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
