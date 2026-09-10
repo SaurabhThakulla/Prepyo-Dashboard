@@ -134,18 +134,6 @@
               "simpleDescription": "Read a text and choose the correct answer — some questions take one, some take several"
             },
             {
-              "name": "True / False / Not Given",
-              "simpleDescription": "Decide whether statements agree with the passage, contradict it, or are not mentioned at all"
-            },
-            {
-              "name": "Yes / No / Not Given",
-              "simpleDescription": "Identify if statements agree with, contradict, or are not mentioned in the writer's views"
-            },
-            {
-              "name": "Find the paragraph",
-              "simpleDescription": "Locate which lettered paragraph of the passage contains a given piece of information"
-            },
-            {
               "name": "Reading & Writing: Fill in the Blanks",
               "simpleDescription": "Pick the best word from drop-down menus to complete sentences"
             },

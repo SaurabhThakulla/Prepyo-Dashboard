@@ -23,6 +23,25 @@ describe('the admin task catalogue', () => {
     expect(SYLLABUS.IELTS.reading ?? []).not.toContain(arrange?.name);
   });
 
+  it('follows the exam matrix, task by task', () => {
+    const matrix: Record<string, 'both' | 'IELTS' | 'PTE'> = {
+      'reading-mcq-single': 'both',
+      'fill-in-blanks-rw': 'PTE',
+      'fill-in-blanks-r': 'PTE',
+      'reorder-paragraphs': 'PTE',
+      'reading-true-false': 'IELTS',
+      'reading-yes-no-not-given': 'IELTS',
+      'reading-find-the-paragraph': 'IELTS',
+      'reading-arrange-passage': 'IELTS',
+      'reading-sentence-completion': 'IELTS',
+    };
+
+    for (const type of TASK_TYPES) {
+      expect(type.exam, type.id).toBe(matrix[type.id]);
+    }
+    expect(TASK_TYPES.map(type => type.id).sort()).toEqual(Object.keys(matrix).sort());
+  });
+
   it('offers multiple choice once, not split by how many answers it takes', () => {
     expect(TASK_TYPES.filter(type => type.name.toLowerCase().includes('multiple choice'))).toHaveLength(1);
   });

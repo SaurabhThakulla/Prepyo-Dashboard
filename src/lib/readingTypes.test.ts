@@ -33,21 +33,42 @@ describe('the reading dashboard', () => {
       ]);
     });
 
-    it(`offers ${exam} both verdict tasks and the paragraph-locating one`, () => {
-      const names = SYLLABUS[exam].reading ?? [];
-      expect(names).toContain('True / False / Not Given');
-      expect(names).toContain('Yes / No / Not Given');
-      expect(names).toContain('Find the paragraph');
-    });
-
-    // Matching Information asks the same thing, so it sits behind the same
-    // heading — as the fallback, not the first choice.
-    it(`deals ${exam} Find the Paragraph behind the paragraph task`, () => {
-      const ids = typeIdsFor(typeKey('Find the paragraph'));
-      expect(ids[0]).toBe(READING_TYPES.findTheParagraph);
-      expect(ids).toEqual([READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation]);
-    });
   }
+
+  // The verdict tasks and the paragraph-locating ones are IELTS inventions.
+  // PTE Reading sets neither, so a heading for them on the PTE dashboard is a
+  // promise the bank can never keep.
+  it('offers the verdict and paragraph tasks to IELTS only', () => {
+    const ielts = SYLLABUS.IELTS.reading ?? [];
+    const pte = SYLLABUS.PTE.reading ?? [];
+
+    for (const name of ['True / False / Not Given', 'Yes / No / Not Given', 'Find the paragraph']) {
+      expect(ielts, name).toContain(name);
+      expect(pte, name).not.toContain(name);
+    }
+  });
+
+  it('offers the two gap-fills and re-ordering to PTE only', () => {
+    const ielts = SYLLABUS.IELTS.reading ?? [];
+    const pte = SYLLABUS.PTE.reading ?? [];
+
+    for (const name of [
+      'Reading & Writing: Fill in the Blanks',
+      'Reading: Fill in the Blanks',
+      'Re-order Paragraphs',
+    ]) {
+      expect(pte, name).toContain(name);
+      expect(ielts, name).not.toContain(name);
+    }
+  });
+
+  // Matching Information asks the same thing, so it sits behind the same
+  // heading — as the fallback, not the first choice.
+  it('deals Find the Paragraph behind the paragraph task', () => {
+    const ids = typeIdsFor(typeKey('Find the paragraph'));
+    expect(ids[0]).toBe(READING_TYPES.findTheParagraph);
+    expect(ids).toEqual([READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation]);
+  });
 
   // Links already in the wild keep working: the old headings were separate
   // menu entries, and their keys still resolve.

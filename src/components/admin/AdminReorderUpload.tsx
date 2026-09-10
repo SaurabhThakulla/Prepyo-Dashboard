@@ -129,10 +129,10 @@ export default function AdminReorderUpload({
             <select
               value={exam}
               onChange={e => setExam(e.target.value as ExamType)}
-              className="h-9 w-full rounded-xl border border-input bg-card px-3 text-xs"
+              disabled
+              className="h-9 w-full rounded-xl border border-input bg-muted/40 px-3 text-xs"
             >
               <option value="PTE">PTE</option>
-              <option value="IELTS">IELTS</option>
             </select>
           </Field>
           <Field label="Difficulty" error={fieldErrors.difficulty}>
