@@ -31,12 +31,10 @@ export default function AppPageSkeleton() {
   const { user } = useApp();
 
   // Reading is its own layout, and which skill practice is showing is in the
-  // query string rather than the path. An admin gets the authoring form there
-  // instead of a paper.
+  // query string rather than the path.
   if (pathname.startsWith('/practice')) {
-    if (searchParams.get('skill') === 'reading') {
-      return <PageSkeleton variant={isAdmin(user ?? null) ? 'admin' : 'reading'} />;
-    }
+    if (isAdmin(user ?? null)) return <PageSkeleton variant="admin" />;
+    if (searchParams.get('skill') === 'reading') return <PageSkeleton variant="reading" />;
     return <PageSkeleton variant="practice" />;
   }
 

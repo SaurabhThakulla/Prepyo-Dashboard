@@ -209,7 +209,7 @@ function PassageCard({ passage, onOpen }: { passage: PassageSummary; onOpen: () 
   );
 }
 
-function Chips<T extends string>({
+export function Chips<T extends string>({
   value,
   onChange,
   options,

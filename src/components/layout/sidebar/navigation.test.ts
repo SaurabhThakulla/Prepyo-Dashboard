@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildSections, isNavItemActive } from '@/components/layout/sidebar/navigation';
 import { READING_TYPES } from '@/lib/readingTypes';
+import { UserProfile } from '@/lib/types';
 
 const readingItems = (exam: 'IELTS' | 'PTE', available?: string[]) =>
   (buildSections(exam, () => {}, null, available).find(section => section.id === 'practice')?.items ?? [])
@@ -73,6 +74,20 @@ describe('the reading section of the practice menu', () => {
     const items = buildSections('IELTS', () => {}, null, []).find(s => s.id === 'practice')?.items ?? [];
     expect(items.filter(item => item.group === 'Writing').length).toBeGreaterThan(0);
     expect(items.filter(item => item.group === 'Listening').length).toBeGreaterThan(0);
+  });
+});
+
+describe('the practice menu for an admin', () => {
+  const admin = { role: 'admin' } as unknown as UserProfile;
+
+  it('replaces every skill’s task links with its authoring screen', () => {
+    const items = buildSections('IELTS', () => {}, admin).find(s => s.id === 'practice')?.items ?? [];
+    expect(items.map(item => [item.group, item.href, item.badge])).toEqual([
+      ['Speaking', '/practice?skill=speaking', 'Admin'],
+      ['Writing', '/practice?skill=writing', 'Admin'],
+      ['Reading', '/practice?skill=reading', 'Admin'],
+      ['Listening', '/practice?skill=listening', 'Admin'],
+    ]);
   });
 });
 

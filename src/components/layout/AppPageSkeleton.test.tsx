@@ -50,4 +50,11 @@ describe('the route-level skeleton', () => {
     expect(screen.getByText('Loading admin metrics…')).toBeDefined();
     user.current = null;
   });
+
+  it('shows the admin shape when an admin opens any other skill', () => {
+    user.current = { role: 'admin' };
+    at('/practice?skill=listening');
+    expect(screen.getByText('Loading admin metrics…')).toBeDefined();
+    user.current = null;
+  });
 });

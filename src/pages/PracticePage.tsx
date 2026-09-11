@@ -28,6 +28,7 @@ import { Evaluation, isAdmin, PracticeAttempt, Question, SkillType } from '@/lib
 const ReadingPracticePanel = lazy(() => import('@/components/reading/ReadingPracticePanel'));
 const ReadingMockPanel = lazy(() => import('@/components/reading/ReadingMockPanel'));
 const AdminReadingAuthoring = lazy(() => import('@/components/admin/AdminReadingAuthoring'));
+const AdminQuestionAuthoring = lazy(() => import('@/components/admin/AdminQuestionAuthoring'));
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
 import { typeKey } from '@/lib/syllabus';
@@ -90,10 +91,11 @@ export default function PracticePage() {
   }, []);
 
   const isReading = selectedSkill === 'reading';
+  const isAdminUser = isAdmin(user);
   const typeParam = searchParams.get('type');
 
   useEffect(() => {
-    if (isReading) {
+    if (isReading || isAdminUser) {
       setLoading(false);
       return;
     }
@@ -141,7 +143,7 @@ export default function PracticePage() {
     return () => {
       cancelled = true;
     };
-  }, [activeExam, selectedSkill, isReading, typeParam]);
+  }, [activeExam, selectedSkill, isReading, isAdminUser, typeParam]);
 
   const wordCount = textAnswer.trim().split(/\s+/).filter(Boolean).length;
 
@@ -268,6 +270,10 @@ export default function PracticePage() {
       ) : isReading ? (
         <Suspense fallback={<ReadingPracticeSkeleton />}>
           <ReadingPracticePanel initialTypeKey={searchParams.get('type') ?? undefined} />
+        </Suspense>
+      ) : isAdminUser ? (
+        <Suspense fallback={<AdminPageSkeleton />}>
+          <AdminQuestionAuthoring key={selectedSkill} skill={selectedSkill} />
         </Suspense>
       ) : loading ? (
         <PracticePageSkeleton />

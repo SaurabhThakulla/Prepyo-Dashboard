@@ -171,19 +171,19 @@ export function buildSections(
       // own shape, straight from the syllabus, so PTE and IELTS each list their
       // own tasks and a change there needs no edit here.
       items: PRACTICE_SKILLS.flatMap(({ skill, label, icon, sublabel }) => {
-        // The reading section is where an admin adds content rather than sits
-        // it, so the task-type links are replaced by the one thing that page
-        // does for them. Every other skill still lists its tasks.
-        if (skill === 'reading' && isAdmin(user ?? null)) {
+        if (isAdmin(user ?? null)) {
           return [
             {
-              href: '/practice?skill=reading',
-              label: 'Add passage & questions',
+              href: `/practice?skill=${skill}`,
+              label: skill === 'reading' ? 'Add passage & questions' : 'Add questions',
               icon: ShieldCheck,
-              sublabel: 'Author a reading passage and its task sets',
+              sublabel:
+                skill === 'reading'
+                  ? 'Author a reading passage and its task sets'
+                  : `Author ${label.toLowerCase()} questions for every task type`,
               badge: 'Admin',
               group: label,
-              groupHref: '/practice?skill=reading',
+              groupHref: `/practice?skill=${skill}`,
             },
           ];
         }
