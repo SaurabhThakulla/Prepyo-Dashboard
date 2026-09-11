@@ -11,13 +11,12 @@ import { errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { useMocks, useMockAttempts } from '@/lib/hooks/useResources';
 import { useMockExam } from '@/lib/hooks/useMockExam';
-import { useReadingMock } from '@/lib/hooks/useReading';
 import MockStartPanel from '@/components/mocks/MockStartPanel';
 import ScoreReportList from '@/components/mocks/ScoreReportList';
 import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
+import { READING_MOCK_HREF } from '@/components/layout/sidebar/navigation';
 
 const MockExamRunner = lazy(() => import('@/components/mocks/MockExamRunner'));
-const ReadingMockRunner = lazy(() => import('@/components/reading/ReadingMockRunner'));
 const ScoreReport = lazy(() => import('@/components/mocks/ScoreReport'));
 
 export default function MocksPage() {
@@ -52,16 +51,14 @@ export default function MocksPage() {
   );
 
   const exam = useMockExam(addAttempt);
-  const readingMock = useReadingMock(activeExam, addAttempt);
 
   const startMock = useCallback(
-    (mock: Mock) => (mock.isGenerated ? void readingMock.start() : exam.start(mock)),
-    [exam, readingMock],
+    (mock: Mock) => (mock.isGenerated ? navigate(READING_MOCK_HREF) : exam.start(mock)),
+    [exam, navigate],
   );
 
   const startableMock = mocks.find(mock => !mock.isDiagnostic) ?? mocks[0] ?? null;
-  const isStartingMock =
-    readingMock.starting || (startableMock != null && exam.startingMockId === startableMock.id);
+  const isStartingMock = startableMock != null && exam.startingMockId === startableMock.id;
 
   useEffect(() => {
     if (loadError) toast.error('Could not load mock exams', errorMessage(loadError));
@@ -71,8 +68,12 @@ export default function MocksPage() {
   useEffect(() => {
     if (!startParam || exam.activeMock || loading) return;
     const target = mocks.find(mock => mock.id === startParam);
+    if (target?.isGenerated) {
+      navigate(READING_MOCK_HREF, { replace: true });
+      return;
+    }
     if (target) {
-      startMock(target);
+      exam.start(target);
       navigate('/mocks', { replace: true });
       return;
     }
@@ -80,24 +81,13 @@ export default function MocksPage() {
     // learner on the catalogue with no idea why.
     toast.warning('That mock is not available', `No ${activeExam} mock matches "${startParam}".`);
     navigate('/mocks', { replace: true });
-  }, [startParam, exam, loading, mocks, navigate, startMock, toast, activeExam]);
+  }, [startParam, exam, loading, mocks, navigate, toast, activeExam]);
 
   const leaveReport = () => {
     exam.exit();
     setReviewAttempt(null);
   };
 
-  if (readingMock.outcome) {
-    return (
-      <Suspense fallback={<AppPageSkeleton />}>
-        <ScoreReport
-          attempt={readingMock.outcome.attempt}
-          outcome={readingMock.outcome}
-          onBack={readingMock.exit}
-        />
-      </Suspense>
-    );
-  }
   if (exam.outcome) {
     return (
       <Suspense fallback={<AppPageSkeleton />}>
@@ -113,22 +103,7 @@ export default function MocksPage() {
     );
   }
 
-  // Composing a reading paper takes a moment: the server picks three unseen
-  // passages and writes the session before it answers. Without this the
-  // catalogue fills the gap, and its start panel offers the full mock — so a
-  // link that starts the reading paper looked like it had opened the wrong exam.
-  if (readingMock.starting) {
-    return <MocksPageSkeleton />;
-  }
-
   // ── 3. Live exam ──
-  if (readingMock.session) {
-    return (
-      <Suspense fallback={<AppPageSkeleton />}>
-        <ReadingMockRunner session={readingMock.session} mock={readingMock} />
-      </Suspense>
-    );
-  }
   if (exam.activeMock) {
     return (
       <Suspense fallback={<AppPageSkeleton />}>

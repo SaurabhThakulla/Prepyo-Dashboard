@@ -26,6 +26,7 @@ import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from
 import { Evaluation, isAdmin, PracticeAttempt, Question, SkillType } from '@/lib/types';
 
 const ReadingPracticePanel = lazy(() => import('@/components/reading/ReadingPracticePanel'));
+const ReadingMockPanel = lazy(() => import('@/components/reading/ReadingMockPanel'));
 const AdminReadingAuthoring = lazy(() => import('@/components/admin/AdminReadingAuthoring'));
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
@@ -259,6 +260,10 @@ export default function PracticePage() {
       {isReading && isAdmin(user) ? (
         <Suspense fallback={<AdminPageSkeleton />}>
           <AdminReadingAuthoring />
+        </Suspense>
+      ) : isReading && searchParams.get('mock') ? (
+        <Suspense fallback={<ReadingPracticeSkeleton />}>
+          <ReadingMockPanel key={activeExam} />
         </Suspense>
       ) : isReading ? (
         <Suspense fallback={<ReadingPracticeSkeleton />}>

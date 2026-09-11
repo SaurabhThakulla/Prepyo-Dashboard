@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSections } from '@/components/layout/sidebar/navigation';
+import { buildSections, isNavItemActive } from '@/components/layout/sidebar/navigation';
 import { READING_TYPES } from '@/lib/readingTypes';
 
 const readingItems = (exam: 'IELTS' | 'PTE', available?: string[]) =>
@@ -46,18 +46,18 @@ describe('the reading section of the practice menu', () => {
     expect(mock).toBeDefined();
     expect(mock?.group).toBe('Reading');
     expect(mock?.badge).toBe('MOCK');
-    expect(mock?.href).toBe('/mocks?start=mock-ielts-reading-gen');
+    expect(mock?.href).toBe('/practice?skill=reading&mock=1');
     expect(mock?.sublabel).toContain('3 full passages');
   });
 
-  it('points each exam at its own generated paper', () => {
+  it('keeps the paper under reading practice for PTE too', () => {
     const items =
       buildSections('PTE', () => {}, null, [READING_TYPES.fillBlanksR], 4).find(
         s => s.id === 'practice',
       )?.items ?? [];
     const mock = items.find(item => item.label === 'Reading Mock Test');
 
-    expect(mock?.href).toBe('/mocks?start=mock-pte-reading-gen');
+    expect(mock?.href).toBe('/practice?skill=reading&mock=1');
     expect(mock?.sublabel).toContain('4 full passages');
   });
 
@@ -73,5 +73,27 @@ describe('the reading section of the practice menu', () => {
     const items = buildSections('IELTS', () => {}, null, []).find(s => s.id === 'practice')?.items ?? [];
     expect(items.filter(item => item.group === 'Writing').length).toBeGreaterThan(0);
     expect(items.filter(item => item.group === 'Listening').length).toBeGreaterThan(0);
+  });
+});
+
+describe('which menu item is lit', () => {
+  const items = buildSections('IELTS', () => {}, null, [READING_TYPES.trueFalse], 3).flatMap(
+    section => section.items,
+  );
+  const lit = (url: string) => {
+    const { pathname, searchParams } = new URL(url, 'http://localhost');
+    return items.filter(item => isNavItemActive(item, pathname, searchParams)).map(item => item.label);
+  };
+
+  it('lights the reading mock, not the full mock, while the paper is open', () => {
+    expect(lit('/practice?skill=reading&mock=1')).toEqual(['Reading Mock Test']);
+  });
+
+  it('does not light the reading mock on plain reading practice', () => {
+    expect(lit('/practice?skill=reading')).not.toContain('Reading Mock Test');
+  });
+
+  it('still lights the full mock on the catalogue', () => {
+    expect(lit('/mocks')).toEqual(['Full Mock Simulator']);
   });
 });

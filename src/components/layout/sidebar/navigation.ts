@@ -55,6 +55,9 @@ export interface PrimarySectionConfig {
   items: SecondaryNavItem[];
 }
 
+export const READING_PRACTICE_HREF = '/practice?skill=reading';
+export const READING_MOCK_HREF = `${READING_PRACTICE_HREF}&mock=1`;
+
 /** The practice skills, in the order they head the secondary panel. */
 const PRACTICE_SKILLS: { skill: SkillType; label: string; icon: LucideIcon; sublabel: string }[] = [
   { skill: 'speaking', label: 'Speaking', icon: Mic, sublabel: 'Recorded answer, scored from the transcript' },
@@ -211,7 +214,7 @@ export function buildSections(
         // only offered once the bank can actually deal one.
         if (skill === 'reading' && mockPassageCount > 0 && links.length > 0) {
           links.push({
-            href: `/mocks?start=mock-${activeExam.toLowerCase()}-reading-gen`,
+            href: READING_MOCK_HREF,
             label: 'Reading Mock Test',
             icon: Award,
             sublabel: `${mockPassageCount} full passages, timed and graded on the server`,
@@ -304,8 +307,14 @@ export function isNavItemActive(
   if (item.href.includes('skill=')) {
     const itemSkill = item.href.split('skill=')[1]?.split('&')[0];
     const itemType = item.href.split('type=')[1]?.split('&')[0] ?? null;
+    const itemMock = item.href.split('mock=')[1]?.split('&')[0] ?? null;
     const currentSkill = searchParams.get('skill') || (pathname === '/practice' ? 'speaking' : null);
-    return pathname === '/practice' && currentSkill === itemSkill && itemType === searchParams.get('type');
+    return (
+      pathname === '/practice' &&
+      currentSkill === itemSkill &&
+      itemType === searchParams.get('type') &&
+      itemMock === searchParams.get('mock')
+    );
   }
 
   if (item.href.includes('tab=')) {

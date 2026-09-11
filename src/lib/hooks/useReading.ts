@@ -222,7 +222,7 @@ export function useReadingMock(exam: ExamType, onGraded?: (attempt: MockAttempt)
   const [submitting, setSubmitting] = useState(false);
   const [startedAt, setStartedAt] = useState(() => Date.now());
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (): Promise<boolean> => {
     setStarting(true);
     try {
       const data = await api.post<{ session: ReadingMockSession }>('/reading/mocks', { exam });
@@ -236,12 +236,14 @@ export function useReadingMock(exam: ExamType, onGraded?: (attempt: MockAttempt)
           'There are not enough new reading passages in the bank yet, so this paper repeats one.',
         );
       }
+      return true;
     } catch (err) {
       if (err instanceof ApiError && err.isLimitReached) {
         toast.warning('Mock limit reached', errorMessage(err));
       } else {
         toast.error('Could not start the reading mock', errorMessage(err));
       }
+      return false;
     } finally {
       setStarting(false);
     }
