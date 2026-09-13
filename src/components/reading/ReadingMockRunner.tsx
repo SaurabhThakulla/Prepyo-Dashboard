@@ -73,10 +73,10 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
   const lowOnTime = secondsLeft <= 300;
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-5 pb-10">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
+    <div className="w-full h-[calc(100vh-4rem)] p-0 m-0 flex flex-col bg-background overflow-hidden px-3 sm:px-6 lg:px-8 py-2.5 space-y-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-border pb-2.5 shrink-0">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">
+          <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">
             {session.mockTitle ?? 'Reading Mock'}
           </h1>
           <p className="text-xs text-muted-foreground">
@@ -100,7 +100,7 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
       </div>
 
       {session.reusedPassages && (
-        <Card className="p-3 flex items-start gap-2 border-amber-500/40 bg-amber-500/5">
+        <Card className="p-2.5 flex items-start gap-2 border-amber-500/40 bg-amber-500/5 shrink-0">
           <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
           <p className="text-[11px] text-foreground leading-relaxed">
             This paper repeats a passage you have sat before. There are not enough new reading
@@ -109,13 +109,13 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
         </Card>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 shrink-0">
         {sets.map((set, index) => (
           <button
             key={set.passage?.id ?? index}
             type="button"
             onClick={() => setActiveIndex(index)}
-            className={`flex-1 px-3 py-2 rounded-xl border text-xs font-bold transition-colors ${
+            className={`flex-1 px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors ${
               index === activeIndex
                 ? 'border-primary bg-primary/10 text-primary'
                 : 'border-border bg-card text-muted-foreground hover:border-primary/40'
@@ -130,9 +130,9 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
       </div>
 
       {activeSet && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-3 overflow-hidden">
           {activeSet.passage && (
-            <div className="lg:col-span-6">
+            <div className="w-full lg:w-1/2 h-1/2 lg:h-full min-h-0 flex flex-col overflow-hidden">
               <PassageReader
                 passage={activeSet.passage}
                 scroll={true}
@@ -143,22 +143,28 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
             </div>
           )}
 
-          <div className={`space-y-4 ${activeSet.passage ? 'lg:col-span-6' : 'lg:col-span-12'}`}>
-            {activeSet.groups.map((group, groupIndex) => (
-              <ReadingGroupCard
-                key={group.id}
-                group={group}
-                startNumber={startNumbers[activeIndex]?.[groupIndex] ?? 1}
-                answers={mock.answers}
-                disabled={submitting}
-                onAnswer={mock.answer}
-              />
-            ))}
+          <div
+            className={`w-full ${
+              activeSet.passage ? 'lg:w-1/2 h-1/2 lg:h-full' : 'lg:w-full h-full'
+            } min-h-0 flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card/40 p-2.5 sm:p-3.5`}
+          >
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1.5 space-y-4 scrollbar-thin">
+              {activeSet.groups.map((group, groupIndex) => (
+                <ReadingGroupCard
+                  key={group.id}
+                  group={group}
+                  startNumber={startNumbers[activeIndex]?.[groupIndex] ?? 1}
+                  answers={mock.answers}
+                  disabled={submitting}
+                  onAnswer={mock.answer}
+                />
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-3 pt-2 border-t border-border">
+      <div className="flex items-center justify-between gap-3 pt-2 border-t border-border shrink-0">
         <p className="text-[11px] text-muted-foreground">
           Unanswered questions are marked wrong. You can move between passages freely.
         </p>

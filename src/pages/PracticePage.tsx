@@ -256,7 +256,13 @@ export default function PracticePage() {
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-4rem)] p-0 m-0 flex flex-col bg-background">
+    <div
+      className={`w-full ${
+        isReading && !isAdminUser
+          ? 'h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] overflow-hidden'
+          : 'min-h-[calc(100vh-4rem)]'
+      } p-0 m-0 flex flex-col bg-background`}
+    >
       {/* An admin has no reason to sit the paper. The reading section is where
           they add one instead. */}
       {isReading && isAdmin(user) ? (

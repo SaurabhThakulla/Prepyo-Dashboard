@@ -506,7 +506,7 @@ export default function PassageReader({
   const fontClass = fontType === 'reading' ? 'font-reading' : 'font-sans';
 
   return (
-    <Card className="p-3.5 sm:p-4 space-y-2.5 bg-card dark:bg-[#0f141f] border-border/80 border-l-0 rounded-l-none rounded-r-lg shadow-2xs flex flex-col h-full overflow-hidden relative">
+    <Card className="p-3.5 sm:p-4 gap-2.5 bg-card dark:bg-[#0f141f] border-border/80 border-l-0 rounded-l-none rounded-r-lg shadow-2xs flex flex-col h-full overflow-hidden relative">
       {/* Compact IELTS Top Header Bar */}
       <div className="flex items-start justify-between gap-3 border-b border-border/70 pb-2 shrink-0">
         <div className="space-y-0.5">
@@ -563,9 +563,9 @@ export default function PassageReader({
       <div
         ref={containerRef}
         onMouseUp={handleMouseUp}
-        className={`flex-1 ${
+        className={`flex-1 min-h-0 ${
           scroll
-            ? `${currentStyles.line} overflow-y-auto pr-1.5 scrollbar-thin`
+            ? `${currentStyles.line} overflow-y-auto pr-2 scrollbar-thin`
             : currentStyles.line
         }`}
       >

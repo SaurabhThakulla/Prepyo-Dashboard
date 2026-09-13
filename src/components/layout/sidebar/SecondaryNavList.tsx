@@ -356,7 +356,7 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
 
   const className = `group flex items-center justify-between w-full text-left pl-[22px] pr-3.5 py-2 rounded-none text-xs transition-colors duration-150 border ${
     isActive
-      ? 'border-blue-500 dark:border-blue-400 bg-slate-100 dark:bg-white/10 text-foreground dark:text-white font-semibold shadow-xs'
+      ? 'border-transparent bg-slate-100 dark:bg-white/10 text-foreground dark:text-white font-semibold shadow-xs'
       : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-slate-100/60 dark:hover:bg-white/5 font-medium'
   }`;
 

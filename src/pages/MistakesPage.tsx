@@ -7,7 +7,6 @@ import {
   Sparkles,
   Search,
   Tag,
-  TrendingUp,
   AlertTriangle,
   RotateCcw,
   BarChart3,
@@ -15,7 +14,6 @@ import {
   Crown,
   BookOpen,
   ArrowRight,
-  Calendar,
 } from 'lucide-react';
 import {
   BarChart,
@@ -38,7 +36,7 @@ import { Input } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { useMistakes, useMistakeAnalytics } from '@/lib/hooks/useResources';
-import { SkillType } from '@/lib/types';
+import { SkillType, ExamType, Mistake, MistakeAnalytics, isAdmin } from '@/lib/types';
 
 function renderResponseBadges(text: string, isWrong: boolean) {
   if (!text) return <span className="text-muted-foreground italic text-xs">No response</span>;
@@ -91,8 +89,187 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
+const DUMMY_ANALYTICS: Record<ExamType, MistakeAnalytics> = {
+  PTE: {
+    period: 'weekly',
+    total: 24,
+    unresolved: 7,
+    resolved: 17,
+    repeatCount: 4,
+    bySkill: {
+      reading: 10,
+      listening: 8,
+      writing: 4,
+      speaking: 2,
+    },
+    byTag: [
+      { tag: 'Collocation & Prepositions', count: 6 },
+      { tag: 'Fast Speech Plural Drops', count: 5 },
+      { tag: 'Subject-Verb Agreement', count: 4 },
+      { tag: 'Cohesive Linking Transitions', count: 3 },
+      { tag: 'Pronunciation Intonation Trap', count: 2 },
+    ],
+    timeline: [
+      { date: '2026-03-07', label: 'Mon', count: 5, resolved: 3 },
+      { date: '2026-03-08', label: 'Tue', count: 4, resolved: 3 },
+      { date: '2026-03-09', label: 'Wed', count: 6, resolved: 4 },
+      { date: '2026-03-10', label: 'Thu', count: 3, resolved: 2 },
+      { date: '2026-03-11', label: 'Fri', count: 5, resolved: 4 },
+      { date: '2026-03-12', label: 'Sat', count: 2, resolved: 1 },
+      { date: '2026-03-13', label: 'Sun', count: 4, resolved: 3 },
+    ],
+  },
+  IELTS: {
+    period: 'weekly',
+    total: 22,
+    unresolved: 6,
+    resolved: 16,
+    repeatCount: 3,
+    bySkill: {
+      reading: 9,
+      listening: 7,
+      writing: 4,
+      speaking: 2,
+    },
+    byTag: [
+      { tag: 'True/False/Not Given Trap', count: 6 },
+      { tag: 'Paraphrasing Synonyms', count: 5 },
+      { tag: 'Distractor - Changed Numbers', count: 4 },
+      { tag: 'Task 2 Coherence & Cohesion', count: 3 },
+    ],
+    timeline: [
+      { date: '2026-03-07', label: 'Mon', count: 4, resolved: 3 },
+      { date: '2026-03-08', label: 'Tue', count: 3, resolved: 2 },
+      { date: '2026-03-09', label: 'Wed', count: 5, resolved: 4 },
+      { date: '2026-03-10', label: 'Thu', count: 4, resolved: 3 },
+      { date: '2026-03-11', label: 'Fri', count: 4, resolved: 3 },
+      { date: '2026-03-12', label: 'Sat', count: 2, resolved: 1 },
+      { date: '2026-03-13', label: 'Sun', count: 3, resolved: 2 },
+    ],
+  },
+};
+
+const DUMMY_MISTAKES: Record<ExamType, Mistake[]> = {
+  PTE: [
+    {
+      id: 'dummy-pte-1',
+      questionId: 'dummy-q-1',
+      questionTitle: 'Biological Diversity in Montane Forest Ecosystems',
+      exam: 'PTE',
+      skill: 'reading',
+      typeName: 'Fill in the Blanks (Reading)',
+      prompt: 'Forest canopies in high-altitude montane zones harbor intricate microclimates that sustain species richness under varying thermal conditions.',
+      userResponse: 'b1: sustained, b2: vulnerable, b3: variation',
+      correctResponse: 'b1: sustaining, b2: vulnerable, b3: diversity',
+      explanation: 'The present participle "sustaining" functions adjectivally to describe the microclimate mechanism. "Diversity" is required here as a standard academic collocation with "species".',
+      errorTag: 'Collocation & Prepositions',
+      failedCount: 2,
+      resolved: false,
+      lastAttemptedAt: '2026-03-13T09:20:00Z',
+    },
+    {
+      id: 'dummy-pte-2',
+      questionId: 'dummy-q-2',
+      questionTitle: 'Academic Research Methodologies',
+      exam: 'PTE',
+      skill: 'listening',
+      typeName: 'Write from Dictation',
+      prompt: 'Audio recording from a university faculty lecture on experimental data collection and empirical validation.',
+      userResponse: 'The faculty requires all submission to include empirical evidence.',
+      correctResponse: 'The faculty requires all submissions to include empirical evidence.',
+      explanation: 'The quantifier "all" precedes a countable plural noun, requiring "submissions". In connected fast speech, unstressed plural endings are frequently missed.',
+      errorTag: 'Fast Speech Plural Drops',
+      failedCount: 3,
+      resolved: false,
+      lastAttemptedAt: '2026-03-12T14:45:00Z',
+    },
+    {
+      id: 'dummy-pte-3',
+      questionId: 'dummy-q-3',
+      questionTitle: 'The Evolution of Modern Cryptography',
+      exam: 'PTE',
+      skill: 'reading',
+      typeName: 'Re-order Paragraphs',
+      prompt: 'Arrange the historical progression of asymmetric key cryptography algorithms in chronological order.',
+      userResponse: 'Paragraph Order: [B, A, D, C]',
+      correctResponse: 'Paragraph Order: [B, D, A, C]',
+      explanation: 'Paragraph D introduces Diffie-Hellman key exchange, which directly precedes the implementation referenced by the demonstrative pronoun "This innovation" in Paragraph A.',
+      errorTag: 'Cohesive Linking Transitions',
+      failedCount: 1,
+      resolved: true,
+      lastAttemptedAt: '2026-03-11T16:10:00Z',
+    },
+    {
+      id: 'dummy-pte-4',
+      questionId: 'dummy-q-4',
+      questionTitle: 'Renewable Energy Storage Infrastructure',
+      exam: 'PTE',
+      skill: 'writing',
+      typeName: 'Summarize Written Text',
+      prompt: 'Synthesize the passage on lithium-iron phosphate battery grid storage into one single sentence between 5 and 75 words.',
+      userResponse: 'Although battery costs have declined rapidly, grid integration remains difficult, therefore subsidies are still essential.',
+      correctResponse: 'Although battery costs have declined rapidly, grid integration remains challenging; therefore, governmental subsidies remain indispensable.',
+      explanation: 'A comma splice occurred before "therefore". Conjunctive adverbs connecting two independent clauses must be preceded by a semicolon or period to avoid syntactic penalty.',
+      errorTag: 'Subject-Verb Agreement',
+      failedCount: 2,
+      resolved: false,
+      lastAttemptedAt: '2026-03-10T11:05:00Z',
+    },
+  ],
+  IELTS: [
+    {
+      id: 'dummy-ielts-1',
+      questionId: 'dummy-iq-1',
+      questionTitle: 'Early Agricultural Settlements in Mesopotamia',
+      exam: 'IELTS',
+      skill: 'reading',
+      typeName: 'True / False / Not Given',
+      prompt: 'Question: The early irrigation canals were constructed exclusively by seasonal migrant laborers from neighboring valley tribes.',
+      userResponse: 'FALSE',
+      correctResponse: 'NOT GIVEN',
+      explanation: 'The passage confirms canals were dug before the harvest season, but provides no historical evidence about who comprised the labor force. The absolute qualifier "exclusively" cannot be proven false.',
+      errorTag: 'True/False/Not Given Trap',
+      failedCount: 2,
+      resolved: false,
+      lastAttemptedAt: '2026-03-13T09:20:00Z',
+    },
+    {
+      id: 'dummy-ielts-2',
+      questionId: 'dummy-iq-2',
+      questionTitle: 'Student Accommodation Booking Dialogue',
+      exam: 'IELTS',
+      skill: 'listening',
+      typeName: 'Form Completion',
+      prompt: 'Section 1 listening excerpt: international student inquiring about studio flat rental deposit.',
+      userResponse: 'Payment deposit: $450',
+      correctResponse: 'Payment deposit: $415',
+      explanation: 'Distractor trap: the housing officer first quotes the standard $450 deposit, then immediately corrects it after verifying the university bursary discount of $35.',
+      errorTag: 'Distractor - Changed Numbers',
+      failedCount: 1,
+      resolved: true,
+      lastAttemptedAt: '2026-03-12T14:45:00Z',
+    },
+    {
+      id: 'dummy-ielts-3',
+      questionId: 'dummy-iq-3',
+      questionTitle: 'Urban Heat Islands and Microclimate Architecture',
+      exam: 'IELTS',
+      skill: 'reading',
+      typeName: 'Matching Headings',
+      prompt: 'Select the most appropriate heading for Section D concerning reflective materials and albedo indices.',
+      userResponse: 'Heading iv: Economic implications of municipal cooling systems',
+      correctResponse: 'Heading vii: Albedo reflection and passive thermodynamic regulation',
+      explanation: 'Although Section D mentions capital costs briefly in one sentence, the primary focus and topic sentence center on the physical mechanics of solar reflectance and albedo regulation.',
+      errorTag: 'Paraphrasing Synonyms',
+      failedCount: 2,
+      resolved: false,
+      lastAttemptedAt: '2026-03-11T16:10:00Z',
+    },
+  ],
+};
+
 export default function MistakesPage() {
-  const { activeExam } = useApp();
+  const { user, activeExam } = useApp();
   const navigate = useNavigate();
   const toast = useToast();
   const [selectedSkill, setSelectedSkill] = useState<string>('all');
@@ -106,24 +283,34 @@ export default function MistakesPage() {
     period
   );
 
-  const mistakes = data?.mistakes ?? [];
-  const analytics = analyticsData?.analytics;
-  const loading = isPending;
-
-  // Check if forbidden (freemium user)
+  // Check if forbidden (freemium user) or on free 'suru' tier
   const isForbidden =
     (error && 'status' in error && (error as { status: number }).status === 403) ||
     (analyticsError && 'status' in analyticsError && (analyticsError as { status: number }).status === 403);
 
+  const isSuru = Boolean(
+    isForbidden ||
+    (user && !isAdmin(user) && (user.role === 'suru' || !user.paidPlanActive))
+  );
+
+  const rawMistakes = isSuru
+    ? (DUMMY_MISTAKES[activeExam] ?? DUMMY_MISTAKES.PTE)
+    : (data?.mistakes ?? []);
+  const analytics = isSuru
+    ? (DUMMY_ANALYTICS[activeExam] ?? DUMMY_ANALYTICS.PTE)
+    : analyticsData?.analytics;
+  const loading = isSuru ? false : isPending;
+
   useEffect(() => {
-    if (error && !isForbidden) {
+    if (error && !isForbidden && !isSuru) {
       toast.error('Could not load your mistake bank', errorMessage(error));
     }
-  }, [error, isForbidden]);
+  }, [error, isForbidden, isSuru]);
 
   const skillFilters = ['all', 'reading', 'listening', 'writing', 'speaking'];
 
-  const filteredMistakes = mistakes.filter(item => {
+  const filteredMistakes = rawMistakes.filter(item => {
+    if (selectedSkill !== 'all' && item.skill !== selectedSkill) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -147,112 +334,32 @@ export default function MistakesPage() {
   const periodLabel =
     period === 'weekly' ? 'Past 7 Days' : period === 'monthly' ? 'Past 30 Days' : 'All-Time Lifetime';
 
-  // If user is freemium and blocked by middleware:
-  if (isForbidden) {
-    return (
-      <div className="w-full pb-16 space-y-8 max-w-5xl mx-auto px-4 sm:px-6 pt-6">
-        <div className="w-full bg-card border border-border/80 rounded-3xl p-8 sm:p-12 shadow-sm text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 via-transparent to-transparent pointer-events-none" />
-          
-          <div className="max-w-xl mx-auto space-y-6 relative z-10">
-            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center shadow-xs">
-              <Lock className="w-8 h-8" />
-            </div>
-
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-xs font-bold uppercase tracking-wider">
-                <Crown className="w-3.5 h-3.5" />
-                <span>Premium Feature</span>
-              </div>
-              <h1 className="font-display text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-                Unlock Mistake Bank &amp; Recovery Graphs
-              </h1>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                The Mistake Bank tracks every question you miss in practice sessions and mock exams, giving you deep examiner explanations, repeat-error diagnostics, and recovery timelines.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left pt-2">
-              <div className="p-3.5 rounded-xl border border-border/80 bg-background/50 space-y-1">
-                <BarChart3 className="w-4 h-4 text-blue-600" />
-                <h4 className="text-xs font-bold text-foreground">Weekly / Monthly Graphs</h4>
-                <p className="text-[11px] text-muted-foreground">Visual error intake and resolution analytics.</p>
-              </div>
-              <div className="p-3.5 rounded-xl border border-border/80 bg-background/50 space-y-1">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
-                <h4 className="text-xs font-bold text-foreground">Repeat Error Traps</h4>
-                <p className="text-[11px] text-muted-foreground">Catch questions you repeatedly miss.</p>
-              </div>
-              <div className="p-3.5 rounded-xl border border-border/80 bg-background/50 space-y-1">
-                <Sparkles className="w-4 h-4 text-emerald-600" />
-                <h4 className="text-xs font-bold text-foreground">Examiner Explanations</h4>
-                <p className="text-[11px] text-muted-foreground">Detailed step-by-step solution breakdowns.</p>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <Button
-                onClick={() => navigate('/subscription')}
-                className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md flex items-center gap-2 mx-auto"
-              >
-                <span>Upgrade to Premium</span>
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full pb-16 space-y-6">
-      {/* Full width edge-to-edge Header Banner */}
-      <div className="w-full bg-card border-b border-border/80 overflow-hidden">
-        <div className="px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2.5">
-              <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-                Mistake Bank
-              </h1>
-              <Badge variant="outline" className="text-xs font-mono font-bold px-2.5 py-0.5">
-                {activeExam}
-              </Badge>
-            </div>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Review diagnostic trends from your practice sessions and mock tests to analyze correct solutions and examiner explanations.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs font-mono font-bold text-muted-foreground uppercase tracking-wider bg-muted/80 px-3 py-1.5 rounded-xl border border-border shadow-xs flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-primary" />
-              <span>{periodLabel}: {analytics?.total ?? mistakes.length} Mistakes</span>
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="w-full px-4 sm:px-6 lg:px-8 space-y-6">
+    <div className="relative w-full pb-16 overflow-hidden">
+      {/* ======================================================================= */}
+      {/* Full Page Content: Regular for Paid Users, Blurred Out with Dummy Data for Suru */}
+      {/* ======================================================================= */}
+      <div
+        className={`w-full space-y-6 ${
+          isSuru ? 'filter blur-[5px] opacity-60 pointer-events-none select-none transition-all' : ''
+        }`}
+        aria-hidden={isSuru ? 'true' : undefined}
+      >
         {/* ======================================================================= */}
-        {/* Analytics Dashboard Card with shadcn Chart */}
+        {/* Edge-to-edge Analytics Dashboard (no top or side gaps) */}
         {/* ======================================================================= */}
-        <div className="rounded-3xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-6">
+        <div className="w-full bg-card border-b border-border/80 shadow-xs">
+          <div className="px-4 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-6">
           {/* Header row: Title & Timeframe Toggle */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border/60">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                <TrendingUp className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="text-sm sm:text-base font-bold text-foreground">
-                  Mistake Frequency &amp; Recovery Trends
-                </h2>
-                <p className="text-[11px] sm:text-xs text-muted-foreground">
-                  All metrics, graphs, and mistake lists below currently reflect the <span className="font-semibold text-foreground font-mono">{periodLabel}</span> filter.
-                </p>
-              </div>
-            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-foreground">
+              Mistake Frequency &amp; Recovery Trends
+            </h2>
+            <p className="text-[11px] sm:text-xs text-muted-foreground">
+              All metrics, graphs, and mistake lists below currently reflect the <span className="font-semibold text-foreground font-mono">{periodLabel}</span> filter.
+            </p>
+          </div>
 
             {/* Period Switcher Button Group */}
             <div className="flex bg-muted/60 p-1 rounded-xl border border-border/80 self-start sm:self-auto">
@@ -481,7 +588,10 @@ export default function MistakesPage() {
             </div>
           </div>
         </div>
+      </div>
 
+      {/* Main Container for Filter & Mistake List */}
+      <div className="w-full px-4 sm:px-6 lg:px-8 space-y-6">
         {/* ======================================================================= */}
         {/* Filter Tag & Search Bar */}
         {/* ======================================================================= */}
@@ -520,10 +630,10 @@ export default function MistakesPage() {
           <Card className="p-12 text-center space-y-3 rounded-2xl border-border/80">
             <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
             <CardTitle className="text-base font-bold">
-              {mistakes.length === 0 ? `No mistakes recorded in the ${periodLabel.toLowerCase()}` : 'No matching mistakes found'}
+              {rawMistakes.length === 0 ? `No mistakes recorded in the ${periodLabel.toLowerCase()}` : 'No matching mistakes found'}
             </CardTitle>
             <CardDescription className="text-xs max-w-md mx-auto">
-              {mistakes.length === 0
+              {rawMistakes.length === 0
                 ? `Questions you miss during practice and full mock exams within the ${periodLabel.toLowerCase()} will appear here for review.`
                 : 'Try clearing your search query or switching to another skill filter.'}
             </CardDescription>
@@ -625,6 +735,83 @@ export default function MistakesPage() {
           </div>
         )}
       </div>
+      </div>
+
+      {/* ======================================================================= */}
+      {/* Premium Upgrade Modal Overlay for Suru Users (Fixed & Non-movable) */}
+      {/* ======================================================================= */}
+      {isSuru && (
+        <div className="fixed inset-x-0 top-16 bottom-0 z-20 flex justify-center items-start pt-6 sm:pt-10 px-4 pointer-events-none lg:left-[var(--sidebar-offset,384px)] transition-[left] duration-300">
+          <div className="pointer-events-auto w-full max-w-lg bg-card/95 backdrop-blur-md border border-border/90 shadow-2xl rounded-3xl p-5 sm:p-7 text-center space-y-4 overflow-hidden">
+            {/* Ambient radiant glow */}
+            <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-72 bg-gradient-to-br from-amber-500/25 via-blue-500/15 to-transparent rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 space-y-3.5">
+              {/* Crown Icon & Plan Pill */}
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500/20 to-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-xs">
+                  <Crown className="w-6 h-6" />
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 text-[11px] font-bold uppercase tracking-wider">
+                  <Lock className="w-3 h-3" />
+                  <span>Suru Plan Preview</span>
+                </div>
+              </div>
+
+              {/* Title & Description */}
+              <div className="space-y-1">
+                <h2 className="font-display text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                  Unlock Your Mistake Bank
+                </h2>
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-sm mx-auto">
+                  Every question you miss during practice and full mock exams is automatically cataloged with examiner explanations and recovery timelines.
+                </p>
+              </div>
+
+              {/* Primary Upgrade CTA Button - Positioned Higher Up ("upside") */}
+              <div className="pt-1 space-y-1.5">
+                <Button
+                  onClick={() => navigate('/subscription')}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                >
+                  <span>Upgrade to Unlock Full Mistake Bank</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+                <p className="text-[11px] text-muted-foreground font-medium">
+                  Plans start at NPR 499 · Instant access to all premium features
+                </p>
+              </div>
+
+              {/* Value Highlights */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-left pt-2 border-t border-border/60">
+                <div className="p-2.5 rounded-xl border border-border/80 bg-background/80 space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                    <BarChart3 className="w-3.5 h-3.5 shrink-0" />
+                    <p className="text-[11px] font-bold text-foreground">Recovery Graphs</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-tight">Mastery &amp; error timeline analytics</p>
+                </div>
+
+                <div className="p-2.5 rounded-xl border border-border/80 bg-background/80 space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <p className="text-[11px] font-bold text-foreground">Repeat Traps</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-tight">Catch questions missed &gt;1 time</p>
+                </div>
+
+                <div className="p-2.5 rounded-xl border border-border/80 bg-background/80 space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                    <p className="text-[11px] font-bold text-foreground">AI Explanations</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-tight">Deep examiner solution breakdowns</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

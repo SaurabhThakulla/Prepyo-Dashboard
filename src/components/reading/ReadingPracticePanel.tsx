@@ -166,11 +166,11 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
   return (
     <div className="w-full h-[calc(100vh-4rem)] p-0 m-0 flex flex-col bg-background overflow-hidden">
       <div className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
-        {/* Compact IELTS Two-Column Split Screen Layout */}
-        <div className="flex-1 w-full px-0 py-1 grid grid-cols-1 lg:grid-cols-2 gap-[4px] min-h-0 overflow-hidden">
-          {/* Left Pane: Reading Passage (Independent scroll) */}
+        {/* Compact IELTS Two-Column Split Screen Layout with Independent Scrolling */}
+        <div className="flex-1 w-full px-0 py-1 flex flex-col lg:flex-row gap-1.5 min-h-0 overflow-hidden">
+          {/* Left Pane: Reading Passage (Independent scroll only) */}
           {hasPassage && (
-            <div className="h-full min-h-0 flex flex-col overflow-hidden">
+            <div className="w-full lg:w-1/2 h-1/2 lg:h-full min-h-0 flex flex-col overflow-hidden">
               <PassageReader
                 passage={set.passage!}
                 scroll={true}
@@ -181,9 +181,9 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
             </div>
           )}
 
-          {/* Right Pane: Questions & Answer Cards (Independent scroll) */}
-          <div className={`h-full min-h-0 flex flex-col overflow-hidden ${!hasPassage ? 'lg:col-span-2' : ''}`}>
-            <div className="flex-1 overflow-y-auto pl-1 pr-1.5 space-y-2 scrollbar-thin">
+          {/* Right Pane: Questions & Answer Cards (Independent scroll only) */}
+          <div className={`w-full ${hasPassage ? 'lg:w-1/2' : 'lg:w-full'} h-1/2 lg:h-full min-h-0 flex flex-col overflow-hidden`}>
+            <div className="flex-1 min-h-0 overflow-y-auto pl-1 pr-2 space-y-2 scrollbar-thin">
               {/* Numbering runs across the paper, not from 1 inside each set:
                   the paper says "Questions 14–19" and the answer key refers
                   back by those numbers. */}
