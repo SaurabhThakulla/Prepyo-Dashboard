@@ -11,6 +11,7 @@ interface PaymentRequest {
   id: string;
   userName: string;
   userEmail: string;
+  phoneNumber?: string;
   planId: string;
   planName: string;
   gateway: string;
@@ -191,8 +192,9 @@ export default function AdminPaymentsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
               <Detail label="Gateway" value={payment.gateway} />
+              <Detail label="Phone" value={payment.phoneNumber || '—'} mono />
               <Detail label="Transaction" value={payment.transactionId} mono />
               <Detail label="Submitted" value={new Date(payment.createdAt).toLocaleDateString()} />
               <Detail
