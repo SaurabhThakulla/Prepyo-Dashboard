@@ -5,7 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import SecondaryNavList from './SecondaryNavList';
 import { PrimarySectionConfig, SecondaryNavItem } from './navigation';
-import { ExamType, UserProfile } from '@/lib/types';
+import { ExamType, UserProfile, isAdmin } from '@/lib/types';
 
 interface SecondaryPanelProps {
   section: PrimarySectionConfig;
@@ -44,7 +44,7 @@ export default function SecondaryPanel({
             <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{section.description}</p>
           </div>
 
-          <ExamSwitcher activeExam={activeExam} onChange={onExamChange} />
+          {isAdmin(user) && <ExamSwitcher activeExam={activeExam} onChange={onExamChange} />}
         </div>
 
         <SecondaryNavList

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { api, errorMessage, profileImageUrl } from '@/lib/api';
-import { ActivitySummary, ExamType, ProgressSummary, SkillType } from '@/lib/types';
+import { ActivitySummary, ExamType, ProgressSummary, SkillType, isAdmin } from '@/lib/types';
 import { useToast } from '@/components/ui/toast';
 import { BookOpen, Camera, Trash2, Sparkles, Edit3, Loader2, CheckCircle2, X } from 'lucide-react';
 import { ProfilePageSkeleton } from '@/components/layout/PageSkeleton';
@@ -133,8 +133,9 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (form.exam !== activeExam) await setActiveExam(form.exam);
-      await updateProfile({ name: form.name.trim(), targetExam: form.exam, targetScore: form.score.trim() ? Number(form.score) : null, examDate: form.date || undefined, nepalRegion: form.region });
+      const canSwitchExam = isAdmin(user);
+      if (canSwitchExam && form.exam !== activeExam) await setActiveExam(form.exam);
+      await updateProfile({ name: form.name.trim(), ...(canSwitchExam ? { targetExam: form.exam } : {}), targetScore: form.score.trim() ? Number(form.score) : null, examDate: form.date || undefined, nepalRegion: form.region });
       setSaved(true); toast.success('Profile updated'); setTimeout(() => setIsEdit(false), 400);
     } catch (e) { toast.error('Failed to update', errorMessage(e)); } finally { setSaving(false); }
   };
@@ -237,7 +238,7 @@ export default function ProfilePage() {
           {cover && <img src={cover} alt="Cover" loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />}
           <div className="absolute inset-0 bg-black/35 pointer-events-none" />
           <div className="absolute top-4 left-4 sm:left-6 z-20 flex items-center gap-1.5"><button type="button" onClick={() => coverRef.current?.click()} disabled={uploading === 'cover'} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/45 hover:bg-black/70 text-white font-bold text-xs border border-white/20 backdrop-blur-md transition shadow-sm disabled:opacity-60">{uploading === 'cover' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}<span>Change cover</span></button>{cover && <button type="button" onClick={e => onRemove(e, true)} disabled={uploading === 'cover'} className="p-1.5 rounded-xl bg-black/45 hover:bg-rose-600 text-white border border-white/20 backdrop-blur-md transition shadow-sm disabled:opacity-60"><Trash2 className="w-3.5 h-3.5" /></button>}</div>
-          <div className="absolute top-4 right-4 sm:right-6 z-20 flex items-center bg-black/45 backdrop-blur-md rounded-xl p-1 border border-white/20 shadow-md"><span className="text-[10px] font-bold text-white/70 uppercase px-2 hidden sm:inline">Track:</span>{(['IELTS', 'PTE'] as const).map(exam => <button key={exam} type="button" onClick={() => setActiveExam(exam)} className={`px-3 py-1 text-xs font-extrabold rounded-lg transition ${targetExam === exam ? 'bg-white text-blue-900 shadow-sm' : 'text-white/80 hover:text-white'}`}>{exam}</button>)}</div>
+          {isAdmin(user) && <div className="absolute top-4 right-4 sm:right-6 z-20 flex items-center bg-black/45 backdrop-blur-md rounded-xl p-1 border border-white/20 shadow-md"><span className="text-[10px] font-bold text-white/70 uppercase px-2 hidden sm:inline">Track:</span>{(['IELTS', 'PTE'] as const).map(exam => <button key={exam} type="button" onClick={() => setActiveExam(exam)} className={`px-3 py-1 text-xs font-extrabold rounded-lg transition ${targetExam === exam ? 'bg-white text-blue-900 shadow-sm' : 'text-white/80 hover:text-white'}`}>{exam}</button>)}</div>}
         </div>
         <div className="px-5 sm:px-8 pb-7 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div className="space-y-4">
@@ -246,7 +247,7 @@ export default function ProfilePage() {
               <div className="absolute bottom-0 right-0 flex items-center gap-1 z-20"><button type="button" onClick={() => fileRef.current?.click()} disabled={uploading === 'avatar'} className="p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-md border-2 border-card disabled:opacity-60"><Camera className="w-3.5 h-3.5" /></button>{photo && <button type="button" onClick={e => onRemove(e)} disabled={uploading === 'avatar'} className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-full shadow-md border-2 border-card disabled:opacity-60"><Trash2 className="w-3.5 h-3.5" /></button>}</div>
             </div>
             <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">{user?.name}</h1><span className="bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 font-extrabold text-[10px] px-2.5 py-0.5 rounded-md uppercase border border-border">{planId === 'elite' ? <span className="flex items-center gap-1"><Sparkles className="w-3 h-3 text-amber-500" /> ELITE</span> : planId?.toUpperCase() || 'FREE'}</span></div>
+              <div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">{user?.name}</h1><span className="bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 font-extrabold text-[10px] px-2.5 py-0.5 rounded-md uppercase border border-border">{planId === 'elite' ? <span className="flex items-center gap-1"><Sparkles className="w-3 h-3 text-amber-500" /> ELITE</span> : planId?.toUpperCase() || 'FREE'}</span></div>
               <p className="text-xs sm:text-sm font-medium text-foreground/90">{isIELTS ? 'IELTS Academic' : 'PTE Academic'}{target ? ` · ${isIELTS ? 'Target Band' : 'Target Score'} ${target}` : ' · No target set'} · {user?.examDate ? `Exam on ${new Date(user.examDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'No exam date set'}</p>
               <p className="text-xs text-muted-foreground">{user?.nepalRegion}</p>
             </div>
@@ -342,7 +343,7 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between pb-2 border-b border-border"><h3 className="text-sm font-bold text-foreground">Edit Profile &amp; Goals</h3><button onClick={() => setIsEdit(false)} className="p-1 rounded-lg hover:bg-muted text-muted-foreground"><X className="w-4 h-4" /></button></div>
             <div className="space-y-3 text-xs">
               <div><label className="font-bold">Full Name</label><input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full h-8.5 rounded-xl border border-input bg-card px-3 text-xs mt-1" /></div>
-              <div><label className="font-bold">Track</label><div className="grid grid-cols-2 gap-2 mt-1">{(['PTE', 'IELTS'] as const).map(e => <button key={e} type="button" onClick={() => setForm({ ...form, exam: e, score: '' })} className={`py-1.5 rounded-xl border text-xs font-bold transition ${form.exam === e ? 'bg-blue-600 text-white border-blue-600' : 'border-border text-foreground'}`}>{e} Academic</button>)}</div></div>
+              <div><label className="font-bold">Track</label>{isAdmin(user) ? <div className="grid grid-cols-2 gap-2 mt-1">{(['PTE', 'IELTS'] as const).map(e => <button key={e} type="button" onClick={() => setForm({ ...form, exam: e, score: '' })} className={`py-1.5 rounded-xl border text-xs font-bold transition ${form.exam === e ? 'bg-blue-600 text-white border-blue-600' : 'border-border text-foreground'}`}>{e} Academic</button>)}</div> : <div className="mt-1 flex items-center justify-between rounded-xl border border-border bg-muted/40 px-3 py-1.5 text-xs font-bold text-foreground"><span>{form.exam} Academic</span><span className="text-[10px] font-semibold text-muted-foreground">Fixed</span></div>}</div>
               <div className="grid grid-cols-2 gap-2.5"><div><label className="font-bold">{form.exam === 'IELTS' ? 'Band (0-9)' : 'Score (10-90)'}</label><input type="number" step={form.exam === 'PTE' ? '1' : '0.5'} value={form.score} onChange={e => setForm({ ...form, score: e.target.value })} className="w-full h-8.5 rounded-xl border border-input bg-card px-3 text-xs mt-1" /></div><div><label className="font-bold">Test Date</label><input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full h-8.5 rounded-xl border border-input bg-card px-3 text-xs mt-1" /></div></div>
               <div><label className="font-bold">City / Region</label><select value={form.region} onChange={e => setForm({ ...form, region: e.target.value })} className="w-full h-8.5 rounded-xl border border-input bg-card px-3 text-xs mt-1">{REGIONS.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
             </div>
