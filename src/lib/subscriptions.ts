@@ -1,4 +1,4 @@
-import { PaidTier, SubscriptionTier } from './types';
+import { PaidTier, SubscriptionPlan, SubscriptionTier } from './types';
 
 export const SUBSCRIPTION_TIERS: SubscriptionTier[] = ['free', 'weekly', 'pro', 'elite'];
 
@@ -27,3 +27,63 @@ export function formatPlanName(nameOrTier?: string | null): string {
   return nameOrTier;
 }
 
+export const DEFAULT_PLANS: SubscriptionPlan[] = [
+  {
+    id: 'free',
+    name: 'Suru',
+    priceNPR: 0,
+    durationMonths: 0,
+    durationDays: 0,
+    bonusDays: 0,
+    features: ['Core practice tasks', '5 practice sub-tests per day', '1 full mock exam'],
+    subTestsPerDay: 5,
+    mockTestsIncluded: 1,
+    isPopular: false,
+  },
+  {
+    id: 'weekly',
+    name: 'Abhyas',
+    priceNPR: 99,
+    durationMonths: 0,
+    durationDays: 7,
+    bonusDays: 0,
+    features: ['7 days access', '40 practice sub-tests per day', '2 full mock exams'],
+    subTestsPerDay: 40,
+    mockTestsIncluded: 2,
+    isPopular: false,
+  },
+  {
+    id: 'pro',
+    name: 'Taiyari',
+    priceNPR: 299,
+    durationMonths: 1,
+    durationDays: 30,
+    bonusDays: 3,
+    features: ['33 days access', '50 practice sub-tests per day', '5 full mock exams'],
+    subTestsPerDay: 50,
+    mockTestsIncluded: 5,
+    isPopular: true,
+  },
+  {
+    id: 'elite',
+    name: 'Udaan',
+    priceNPR: 999,
+    durationMonths: 3,
+    durationDays: 90,
+    bonusDays: 7,
+    features: ['97 days access', '60 practice sub-tests per day', '10 full mock exams'],
+    subTestsPerDay: 60,
+    mockTestsIncluded: 10,
+    isPopular: false,
+  },
+];
+
+export const PLAN_TAGLINES: Record<SubscriptionTier, string> = {
+  free: 'Start',
+  weekly: 'Practice',
+  pro: 'Preparation',
+  elite: 'Take-off',
+};
+
+export const planAccessDays = (plan: SubscriptionPlan) =>
+  (plan.durationDays || plan.durationMonths * 30) + plan.bonusDays;

@@ -35,6 +35,7 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
 
   const [methodId, setMethodId] = useState<string>(PAYMENT_METHODS[0].id);
   const [transactionId, setTransactionId] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [proofImage, setProofImage] = useState<string>('');
   const [proofName, setProofName] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -107,9 +108,20 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
   const handleProcessPayment = async () => {
     if (processing) return;
 
+    const phone = phoneNumber.trim();
+    if (!phone || phone.length < 7) {
+      toast.error('Phone number required', 'Please enter your contact or wallet phone number.');
+      return;
+    }
+
     const txn = transactionId.trim();
     if (txn.length < 4) {
       toast.error('Transaction ID required', `Paste the ID shown on your ${method.label} receipt.`);
+      return;
+    }
+
+    if (!proofImage) {
+      toast.error('Payment screenshot required', 'Screenshot proof is mandatory. Please attach your payment screenshot.');
       return;
     }
 
@@ -119,6 +131,7 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
         planId: selectedPlan.id,
         paymentGateway: method.gateway,
         transactionId: txn,
+        phoneNumber: phone,
         proofImage,
       });
       setSuccess(data.message || 'Payment submitted. We will activate your plan once it is checked.');
@@ -135,6 +148,7 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
     if (!open) {
       setSuccess(null);
       setTransactionId('');
+      setPhoneNumber('');
       clearProof();
       setProcessing(false);
     }
@@ -158,6 +172,7 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
             <div className="rounded-xl border border-border/70 bg-muted/30 p-3 text-left space-y-1.5">
               <SummaryRow label="Plan" value={`${planTitle} · ${totalDays} days`} />
               <SummaryRow label="Paid with" value={`${method.label} · NPR ${amount}`} />
+              <SummaryRow label="Phone" value={phoneNumber.trim()} />
               <SummaryRow label="Txn ID" value={transactionId.trim()} mono />
             </div>
             <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
@@ -239,58 +254,87 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
                   <p className="text-[11px] text-muted-foreground">{method.hint}</p>
                 </Step>
 
-                <Step n={2} title="Enter your receipt details">
-                  <label htmlFor="txn-input" className="sr-only">
-                    Transaction ID
-                  </label>
-                  <Input
-                    id="txn-input"
-                    value={transactionId}
-                    onChange={e => setTransactionId(e.target.value)}
-                    placeholder="Transaction ID · e.g. TXN-198421"
-                    className="h-9 text-xs font-mono"
-                    autoComplete="off"
-                  />
-
-                  {proofImage ? (
-                    <div className="mt-2 flex items-center gap-2.5 p-2 rounded-xl bg-muted/40 border border-border/70">
-                      <img
-                        src={proofImage}
-                        alt="Payment screenshot preview"
-                        className="w-10 h-10 rounded-lg object-cover border border-border"
-                      />
-                      <span className="flex-1 min-w-0 text-[11px] text-foreground truncate">{proofName}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={clearProof}
-                        className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-foreground"
-                        aria-label="Remove screenshot"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="mt-2">
-                      <label
-                        htmlFor="paymentProof"
-                        className="flex items-center justify-center gap-2 h-9 rounded-xl border border-dashed border-border bg-muted/20 text-[11px] font-bold text-muted-foreground hover:text-foreground hover:border-primary/40 cursor-pointer transition-colors"
-                      >
-                        Attach payment screenshot (optional)
+                <Step n={2} title="Enter your payment details">
+                  <div className="space-y-3">
+                    <div>
+                      <label htmlFor="phone-input" className="block text-[11px] font-bold text-foreground mb-1">
+                        Phone Number <span className="text-rose-500">*</span>
                       </label>
-                      <input
-                        id="paymentProof"
-                        type="file"
-                        accept="image/*"
-                        onChange={pickProof}
-                        className="sr-only"
+                      <Input
+                        id="phone-input"
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={e => setPhoneNumber(e.target.value)}
+                        placeholder="eSewa / Khalti / Contact number · e.g. 98XXXXXXXX"
+                        className="h-9 text-xs"
+                        autoComplete="tel"
                       />
-                      <p className="mt-1 text-[10px] text-muted-foreground">
-                        It gets your plan approved faster. Max 4 MB.
-                      </p>
                     </div>
-                  )}
+
+                    <div>
+                      <label htmlFor="txn-input" className="block text-[11px] font-bold text-foreground mb-1">
+                        Transaction ID <span className="text-rose-500">*</span>
+                      </label>
+                      <Input
+                        id="txn-input"
+                        value={transactionId}
+                        onChange={e => setTransactionId(e.target.value)}
+                        placeholder="Transaction ID · e.g. TXN-198421"
+                        className="h-9 text-xs font-mono"
+                        autoComplete="off"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-bold text-foreground">
+                          Payment Screenshot <span className="text-rose-500">*</span>
+                        </label>
+                        <span className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded">
+                          Required
+                        </span>
+                      </div>
+                      {proofImage ? (
+                        <div className="flex items-center gap-2.5 p-2 rounded-xl bg-muted/40 border border-border/70">
+                          <img
+                            src={proofImage}
+                            alt="Payment screenshot preview"
+                            className="w-10 h-10 rounded-lg object-cover border border-border"
+                          />
+                          <span className="flex-1 min-w-0 text-[11px] text-foreground truncate">{proofName}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearProof}
+                            className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-foreground"
+                            aria-label="Remove screenshot"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div>
+                          <label
+                            htmlFor="paymentProof"
+                            className="flex items-center justify-center gap-2 h-10 rounded-xl border border-dashed border-rose-300 dark:border-rose-800 bg-rose-50/20 dark:bg-rose-950/20 text-[11px] font-bold text-foreground hover:border-primary/50 cursor-pointer transition-colors"
+                          >
+                            Attach payment screenshot (required)
+                          </label>
+                          <input
+                            id="paymentProof"
+                            type="file"
+                            accept="image/*"
+                            onChange={pickProof}
+                            className="sr-only"
+                          />
+                          <p className="mt-1 text-[10px] text-muted-foreground">
+                            Required to verify your payment. Max 4 MB.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </Step>
               </div>
             </div>
@@ -298,8 +342,8 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
             <div className="sticky bottom-0 p-4 sm:p-5 pt-3 border-t border-border/70 bg-card/95 backdrop-blur space-y-2">
               <Button
                 onClick={handleProcessPayment}
-                disabled={processing}
-                className="w-full font-bold text-xs h-10 shadow-md"
+                disabled={processing || !transactionId.trim() || !phoneNumber.trim() || !proofImage}
+                className="w-full font-bold text-xs h-10 shadow-md disabled:opacity-50"
               >
                 {processing ? (
                   <>
