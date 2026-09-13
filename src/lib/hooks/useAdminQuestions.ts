@@ -36,6 +36,33 @@ export interface AuthoredQuestionSummary {
   inMock: boolean;
 }
 
+export interface AuthoredQuestionDetail {
+  id: string;
+  exam: ExamType;
+  skill: SkillType;
+  typeId: string;
+  typeName: string;
+  title: string;
+  prompt: string;
+  contextPassage: string;
+  audioUrl: string;
+  audioTranscript: string;
+  imageUrl: string;
+  figureData: string;
+  options: string[];
+  correctAnswers: string[];
+  blanks: { id: string; options: string[] | null; correctAnswer: string }[];
+  modelAnswer: string;
+  explanation: string;
+  difficulty: string;
+  tags: string[];
+  prepTimeSeconds: number;
+  timeLimitSeconds: number;
+  points: number;
+  isPublished: boolean;
+  inMock: boolean;
+}
+
 export function useQuestionTypes() {
   const [types, setTypes] = useState<QuestionTypeSpec[]>([]);
   const [error, setError] = useState<string | null>(null);

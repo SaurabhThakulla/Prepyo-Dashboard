@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/toast';
 import { useApp } from '@/context/AppContext';
 import { api, errorMessage } from '@/lib/api';
 import { ExamType, SkillType } from '@/lib/types';
-import { QuestionTypeSpec, useQuestionTypes } from '@/lib/hooks/useAdminQuestions';
+import { AuthoredQuestionDetail, QuestionTypeSpec, useQuestionTypes } from '@/lib/hooks/useAdminQuestions';
 
 interface BlankDraft {
   answer: string;
@@ -26,10 +26,12 @@ const splitList = (value: string) =>
 
 export default function AdminQuestionForm({
   skill,
+  questionId,
   onSaved,
   onCancel,
 }: {
   skill: SkillType;
+  questionId?: string;
   onSaved: () => void;
   onCancel: () => void;
 }) {
@@ -60,6 +62,8 @@ export default function AdminQuestionForm({
 
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(Boolean(questionId));
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const available = useMemo(
     () => types.filter(type => type.skill === skill && type.exam === exam),
@@ -79,8 +83,64 @@ export default function AdminQuestionForm({
   };
 
   useEffect(() => {
+    if (!questionId) return;
+
+    let cancelled = false;
+    setLoading(true);
+    api
+      .get<{ question: AuthoredQuestionDetail }>(`/admin/questions/${questionId}`)
+      .then(({ question }) => {
+        if (cancelled) return;
+        setExam(question.exam);
+        setTypeId(question.typeId);
+        setTitle(question.title);
+        setPrompt(question.prompt);
+        setContextPassage(question.contextPassage);
+        setAudioTranscript(question.audioTranscript);
+        setAudioUrl(question.audioUrl);
+        setImageUrl(question.imageUrl);
+        setFigureData(question.figureData);
+        if (question.options.length > 0) setOptions(question.options);
+        setCorrect(
+          question.correctAnswers
+            .map(answer => question.options.indexOf(answer))
+            .filter(index => index >= 0)
+            .sort((a, b) => a - b),
+        );
+        if (question.blanks.length > 0) {
+          setBlanks(
+            question.blanks.map(blank => ({
+              answer: blank.correctAnswer,
+              choices: (blank.options ?? []).join(', '),
+            })),
+          );
+        }
+        setModelAnswer(question.modelAnswer);
+        setExplanation(question.explanation);
+        setDifficulty(question.difficulty);
+        setPrepSeconds(question.prepTimeSeconds);
+        setTimeLimitSeconds(question.timeLimitSeconds);
+        setPoints(question.points);
+        setTags(question.tags.join(', '));
+        setPublish(question.isPublished);
+        setLoadError(null);
+      })
+      .catch(err => {
+        if (!cancelled) setLoadError(errorMessage(err));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [questionId]);
+
+  useEffect(() => {
+    if (loading || available.length === 0) return;
     if (!spec) applyType(available[0]);
-  }, [available]);
+  }, [available, loading]);
 
   const setOption = (index: number, value: string) =>
     setOptions(current => current.map((option, i) => (i === index ? value : option)));
@@ -101,12 +161,12 @@ export default function AdminQuestionForm({
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!spec || saving) return;
+    if (!spec || saving || loading) return;
 
     setSaving(true);
     setFieldErrors({});
     try {
-      await api.post('/admin/questions', {
+      const body = {
         exam,
         typeId: spec.typeId,
         title,
@@ -130,13 +190,21 @@ export default function AdminQuestionForm({
         points,
         tags: splitList(tags),
         publish,
-      });
-      toast.success(publish ? 'Question published' : 'Question saved as a draft', `${spec.typeName} · ${exam}`);
+      };
+      if (questionId) {
+        await api.put(`/admin/questions/${questionId}`, body);
+      } else {
+        await api.post('/admin/questions', body);
+      }
+      toast.success(
+        questionId ? 'Question updated' : publish ? 'Question published' : 'Question saved as a draft',
+        `${spec.typeName} · ${exam}`,
+      );
       onSaved();
     } catch (err) {
       const fields = (err as { body?: { error?: { fields?: Record<string, string> } } })?.body?.error?.fields;
       if (fields) setFieldErrors(fields);
-      toast.error('Could not save the question', errorMessage(err));
+      toast.error(questionId ? 'Could not update the question' : 'Could not save the question', errorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -146,7 +214,9 @@ export default function AdminQuestionForm({
     <form onSubmit={submit} className="space-y-4 pb-16">
       <div className="border-b border-border pb-4 flex items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">New {skill} question</h1>
+          <h1 className="font-display text-2xl font-bold text-foreground">
+            {questionId ? `Edit ${skill} question` : `New ${skill} question`}
+          </h1>
           <CardDescription className="text-xs">
             Learners only see it once it is published.
           </CardDescription>
@@ -160,6 +230,16 @@ export default function AdminQuestionForm({
         <Card className="p-4 text-xs text-rose-600">Could not load the task types: {typesError}</Card>
       )}
 
+      {loadError && (
+        <Card className="p-4 text-xs text-rose-600">Could not load the question: {loadError}</Card>
+      )}
+
+      {loading ? (
+        <Card className="p-10 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Loading the question…
+        </Card>
+      ) : (
       <Card className="p-5 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Field label="Exam" error={fieldErrors.exam}>
@@ -405,10 +485,11 @@ export default function AdminQuestionForm({
           </label>
           <Button type="submit" disabled={saving || !spec} className="font-bold text-xs rounded-full h-9 px-5">
             {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-3.5 h-3.5 mr-2" />}
-            Save question
+            {questionId ? 'Save changes' : 'Save question'}
           </Button>
         </div>
       </Card>
+      )}
     </form>
   );
 }

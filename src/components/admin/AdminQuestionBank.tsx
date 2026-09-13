@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { AlertCircle, ClipboardList, Eye, EyeOff, Loader2, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, ClipboardList, Eye, EyeOff, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription } from '@/components/ui/card';
@@ -23,10 +23,12 @@ const plural = (count: number, word: string) => `${count} ${word}${count === 1 ?
 export default function AdminQuestionBank({
   skill,
   onNew,
+  onEdit,
   reloadKey,
 }: {
   skill: SkillType;
   onNew: () => void;
+  onEdit: (questionId: string) => void;
   reloadKey?: number;
 }) {
   const toast = useToast();
@@ -172,6 +174,7 @@ export default function AdminQuestionBank({
               key={question.id}
               question={question}
               busy={busyId === question.id}
+              onEdit={() => onEdit(question.id)}
               onTogglePublished={() => void togglePublished(question)}
               onDelete={() => void remove(question)}
             />
@@ -185,11 +188,13 @@ export default function AdminQuestionBank({
 function QuestionCard({
   question,
   busy,
+  onEdit,
   onTogglePublished,
   onDelete,
 }: {
   question: AuthoredQuestionSummary;
   busy: boolean;
+  onEdit: () => void;
   onTogglePublished: () => void;
   onDelete: () => void;
 }) {
@@ -224,6 +229,18 @@ function QuestionCard({
           {plural(question.answers, 'answer')}
         </span>
         <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={onEdit}
+            title="Edit question"
+            aria-label={`Edit ${question.title}`}
+            className="h-7 px-2.5 text-[11px] font-bold gap-1"
+          >
+            <Pencil className="w-3 h-3" />
+            Edit
+          </Button>
           <Button
             variant="outline"
             size="sm"
