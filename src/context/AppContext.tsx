@@ -3,6 +3,22 @@ import { api, ApiError } from '@/lib/api';
 import '@/lib/google';
 import { ExamType, NotificationItem, UserProfile } from '@/lib/types';
 
+export type OnboardingAnswers = Partial<
+  Pick<
+    UserProfile,
+    | 'targetExam'
+    | 'targetScore'
+    | 'examDate'
+    | 'nepalRegion'
+    | 'studyGoal'
+    | 'destination'
+    | 'priorAttempt'
+    | 'previousScore'
+    | 'focusSkill'
+    | 'dailyMinutes'
+  >
+>;
+
 interface AppContextType {
   user: UserProfile | null;
   /** True until the first session check finishes. Guards render as "unknown", not "logged out". */
@@ -24,6 +40,7 @@ interface AppContextType {
   activeExam: ExamType;
   setActiveExam: (exam: ExamType) => Promise<void>;
   updateProfile: (updates: Partial<Pick<UserProfile, 'name' | 'targetExam' | 'targetScore' | 'examDate' | 'nepalRegion'>>) => Promise<void>;
+  completeOnboarding: (answers?: OnboardingAnswers) => Promise<void>;
 
   isTutorOpen: boolean;
   setIsTutorOpen: (open: boolean) => void;
@@ -148,6 +165,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [applyUser],
   );
 
+  const completeOnboarding = useCallback(
+    async (answers: OnboardingAnswers = {}) => {
+      const data = await api.patch<{ user: UserProfile }>('/profile', { ...answers, completeOnboarding: true });
+      applyUser(data.user);
+    },
+    [applyUser],
+  );
+
   const setActiveExam = useCallback(
     async (exam: ExamType) => {
       setActiveExamState(exam);
@@ -204,6 +229,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         activeExam,
         setActiveExam,
         updateProfile,
+        completeOnboarding,
         isTutorOpen,
         setIsTutorOpen,
         tutorContextPrompt,

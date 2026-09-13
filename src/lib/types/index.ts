@@ -108,6 +108,15 @@ export interface UserProfile {
   avatarUpdatedAt?: string;
   coverUpdatedAt?: string;
 
+  /** Null until the learner finishes or skips onboarding; absent on servers that predate it. */
+  onboardingCompletedAt?: string | null;
+  studyGoal?: 'university' | 'migration' | 'work' | 'other';
+  destination?: 'australia' | 'uk' | 'canada' | 'usa' | 'new-zealand' | 'other';
+  priorAttempt?: 'first' | 'retake';
+  previousScore?: number | null;
+  focusSkill?: SkillType;
+  dailyMinutes?: number | null;
+
   // Only present on endpoints that ask for them.
   estimate?: ScoreEstimate;
   subscription?: SubscriptionState;
