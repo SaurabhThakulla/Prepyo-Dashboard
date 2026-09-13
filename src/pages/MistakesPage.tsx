@@ -93,7 +93,7 @@ export default function MistakesPage() {
         <div className="px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2.5">
-              <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+              <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
                 Mistake Bank
               </h1>
               <Badge variant="outline" className="text-xs font-mono font-bold px-2.5 py-0.5">

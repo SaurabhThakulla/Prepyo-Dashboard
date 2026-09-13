@@ -1,17 +1,24 @@
 import {
   Home,
-  Zap,
   Mic,
+  MicVocal,
   PenTool,
+  FilePenLine,
+  NotebookPen,
   BookOpen,
+  BookPlus,
+  BookOpenCheck,
   Headphones,
-  Award,
+  AudioLines,
+  Timer,
+  ClipboardCheck,
+  Gauge,
+  ChartColumn,
   Sparkles,
   RotateCcw,
   Trophy,
   Bot,
   HelpCircle,
-  FileText,
   CreditCard,
   MessageSquareWarning,
   ShieldCheck,
@@ -65,6 +72,13 @@ const PRACTICE_SKILLS: { skill: SkillType; label: string; icon: LucideIcon; subl
   { skill: 'reading', label: 'Reading', icon: BookOpen, sublabel: 'Passage questions, graded on the server' },
   { skill: 'listening', label: 'Listening', icon: Headphones, sublabel: 'Audio questions, graded on the server' },
 ];
+
+const ADMIN_AUTHORING_ICONS: Record<SkillType, LucideIcon> = {
+  speaking: MicVocal,
+  writing: NotebookPen,
+  reading: BookPlus,
+  listening: AudioLines,
+};
 
 /** Which primary section a URL belongs to. */
 export function getSectionFromPathname(path: string): PrimarySectionId {
@@ -164,7 +178,7 @@ export function buildSections(
     {
       id: 'practice',
       label: 'Practice',
-      icon: PenTool,
+      icon: FilePenLine,
       title: `${activeExam} Practice Studio`,
       description: 'Official test modules & AI rubric',
       // One heading per skill, one item per task type underneath — the exam's
@@ -176,7 +190,7 @@ export function buildSections(
             {
               href: `/practice?skill=${skill}`,
               label: skill === 'reading' ? 'Add passage & questions' : 'Add questions',
-              icon: ShieldCheck,
+              icon: ADMIN_AUTHORING_ICONS[skill],
               sublabel:
                 skill === 'reading'
                   ? 'Author a reading passage and its task sets'
@@ -216,7 +230,7 @@ export function buildSections(
           links.push({
             href: READING_MOCK_HREF,
             label: 'Reading Mock Test',
-            icon: Award,
+            icon: BookOpenCheck,
             sublabel: `${mockPassageCount} full passages, timed and graded on the server`,
             badge: 'MOCK',
             group: label,
@@ -258,28 +272,28 @@ export function buildSections(
     {
       id: 'mock',
       label: 'Mock Exam',
-      icon: Award,
+      icon: Timer,
       title: 'Mock Exam Simulator',
       description: 'Timed full exams with scorecards',
       items: [
         {
           href: '/mocks',
           label: 'Full Mock Simulator',
-          icon: Award,
+          icon: ClipboardCheck,
           sublabel: isPTE ? '2-Hour scored PTE simulation' : 'Full band IELTS simulation',
           badge: '2h Full',
         },
         {
           href: '/diagnostic',
           label: 'Diagnostic Test',
-          icon: Zap,
+          icon: Gauge,
           sublabel: 'Short initial baseline test',
           badge: '15 Min',
         },
         {
           href: '/mocks?tab=reports',
           label: 'Mock Score Reports',
-          icon: FileText,
+          icon: ChartColumn,
           sublabel: 'Review previous exam scores',
         },
       ],
