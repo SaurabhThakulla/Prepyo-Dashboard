@@ -393,6 +393,29 @@ export interface Mistake {
   lastAttemptedAt: string;
 }
 
+export interface TimelinePoint {
+  label: string;
+  date: string;
+  count: number;
+  resolved: number;
+}
+
+export interface TagStat {
+  tag: string;
+  count: number;
+}
+
+export interface MistakeAnalytics {
+  period: 'weekly' | 'monthly' | 'lifetime';
+  total: number;
+  unresolved: number;
+  resolved: number;
+  repeatCount: number;
+  bySkill: Partial<Record<SkillType, number>>;
+  byTag: TagStat[];
+  timeline: TimelinePoint[];
+}
+
 // ---------------------------------------------------------------------------
 // AI evaluation
 // ---------------------------------------------------------------------------

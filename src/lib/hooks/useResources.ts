@@ -5,6 +5,7 @@ import {
   Evaluation,
   ExamType,
   Mistake,
+  MistakeAnalytics,
   Mock,
   MockAttempt,
   Pagination,
@@ -39,14 +40,31 @@ export function useMockAttempts() {
   });
 }
 
-export function useMistakes(exam: ExamType, skill: string, unresolvedOnly: boolean) {
+export function useMistakeAnalytics(exam: ExamType, period: 'weekly' | 'monthly' | 'lifetime') {
   return useQuery({
-    queryKey: queryKeys.mistakes(exam, skill, unresolvedOnly),
+    queryKey: queryKeys.mistakeAnalytics(exam, period),
+    queryFn: () =>
+      api.get<{ analytics: MistakeAnalytics }>('/mistakes/analytics', {
+        exam,
+        period,
+      }),
+  });
+}
+
+export function useMistakes(
+  exam: ExamType,
+  skill: string,
+  unresolvedOnly: boolean,
+  period?: 'weekly' | 'monthly' | 'lifetime'
+) {
+  return useQuery({
+    queryKey: queryKeys.mistakes(exam, skill, unresolvedOnly, period),
     queryFn: () =>
       api.get<{ mistakes: Mistake[]; pagination: Pagination }>('/mistakes', {
         exam,
         skill: skill === 'all' ? undefined : skill,
         unresolved: unresolvedOnly ? 'true' : undefined,
+        period: period ?? 'weekly',
       }),
   });
 }

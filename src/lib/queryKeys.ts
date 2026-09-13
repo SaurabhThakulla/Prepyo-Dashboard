@@ -22,8 +22,11 @@ export const queryKeys = {
   leaderboard: (exam: ExamType, region?: string, period?: string) =>
     ['leaderboard', exam, region ?? 'all', period ?? 'all-time'] as const,
 
-  mistakes: (exam: ExamType, skill?: string, unresolvedOnly?: boolean) =>
-    ['mistakes', exam, skill ?? 'all', unresolvedOnly ?? false] as const,
+  mistakes: (exam: ExamType, skill?: string, unresolvedOnly?: boolean, period?: string) =>
+    ['mistakes', exam, skill ?? 'all', unresolvedOnly ?? false, period ?? 'weekly'] as const,
+
+  mistakeAnalytics: (exam: ExamType, period: string) =>
+    ['mistakes', 'analytics', exam, period] as const,
 
   /** Just the unresolved count for the dashboard — a cheap limit=1 request. */
   unresolvedMistakeCount: () => ['mistakes', 'unresolved-count'] as const,
