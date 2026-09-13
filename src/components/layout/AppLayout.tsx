@@ -1,11 +1,15 @@
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, lazy, Suspense, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import AppSidebar from './AppSidebar';
 import Header from './Header';
 import RequireAuth from '@/components/auth/RequireAuth';
+import { shouldShowOnboarding } from '@/components/onboarding/onboarding';
+import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
 
 const AITutorDrawer = lazy(() => import('@/components/ai/AITutorDrawer'));
+
+const ONBOARDING_PENDING_KEY = 'prepyo_onboarding_pending';
 
 const PROTECTED_PREFIXES = [
   '/dashboard',
@@ -23,9 +27,10 @@ const PROTECTED_PREFIXES = [
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
-  const { user } = useApp();
+  const { user, loading } = useApp();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSecondaryOpen, setIsSecondaryOpen] = useState(true);
+  const [onboardingClosedFor, setOnboardingClosedFor] = useState<string | null>(null);
 
   const isAuthPage = pathname === '/' || pathname === '/login' || pathname === '/signup';
   const isLegalPage =
@@ -37,11 +42,59 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     prefix => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
 
+  // Synchronize onboarding pending hint in localStorage
+  useEffect(() => {
+    if (user && shouldShowOnboarding(user) && onboardingClosedFor !== user.id) {
+      try {
+        localStorage.setItem(ONBOARDING_PENDING_KEY, '1');
+      } catch {}
+    } else if (user && (!shouldShowOnboarding(user) || onboardingClosedFor === user.id)) {
+      try {
+        localStorage.removeItem(ONBOARDING_PENDING_KEY);
+      } catch {}
+    }
+  }, [user, onboardingClosedFor]);
+
   if (isAuthPage || isLegalPage || (!user && !isProtected)) {
     return (
       <div className="min-h-screen bg-background text-foreground flex flex-col transition-colors duration-200">
         {children}
       </div>
+    );
+  }
+
+  // Check if onboarding is needed for the current user
+  const showOnboarding =
+    isProtected && user !== null && onboardingClosedFor !== user.id && shouldShowOnboarding(user);
+
+  // Check if onboarding was pending in localStorage while initial auth check is loading
+  const onboardingCached =
+    isProtected &&
+    loading &&
+    typeof window !== 'undefined' &&
+    localStorage.getItem(ONBOARDING_PENDING_KEY) === '1';
+
+  // If onboarding is cached as pending, immediately render the clean onboarding backdrop
+  // instead of flashing the main sidebar, header, and dashboard skeleton!
+  if (onboardingCached) {
+    return (
+      <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#fbfcff] text-slate-900" />
+    );
+  }
+
+  // If user requires onboarding, render OnboardingFlow directly without mounting
+  // the main sidebar, header, or dashboard in the background.
+  if (showOnboarding && user) {
+    return (
+      <OnboardingFlow
+        user={user}
+        onDone={() => {
+          setOnboardingClosedFor(user.id);
+          try {
+            localStorage.removeItem(ONBOARDING_PENDING_KEY);
+          } catch {}
+        }}
+      />
     );
   }
 

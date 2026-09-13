@@ -5,6 +5,7 @@ import ExamCountdown from '@/components/dashboard/ExamCountdown';
 import SkillQuestionCard from '@/components/dashboard/SkillQuestionCard';
 import PracticeStudioPanel, { SkillRow } from '@/components/dashboard/PracticeStudioPanel';
 import FocusPanel from '@/components/dashboard/FocusPanel';
+import { planHeadline, skillLabel } from '@/components/onboarding/onboarding';
 import { useDashboardSummary } from '@/lib/hooks/useDashboardSummary';
 import { daysUntilExam, formatExamDate } from '@/lib/dates';
 import { ExamType, ProgressSummary, SkillType } from '@/lib/types';
@@ -46,7 +47,6 @@ export default function DashboardPage() {
     return <DashboardPageSkeleton />;
   }
 
-  const isPTE = activeExam === 'PTE';
   const userName = user?.name?.split(' ')[0] ?? 'there';
   const mistakeCount = unresolvedMistakes ?? 0;
 
@@ -58,11 +58,14 @@ export default function DashboardPage() {
     const weakest = attempted.length
       ? attempted.reduce((worst, row) => (row.accuracy < worst.accuracy ? row : worst))
       : null;
+    const focus = skillLabel(user?.focusSkill)?.toLowerCase();
 
     setTutorContextPrompt(
       weakest
         ? `I am preparing for ${activeExam}. My weakest skill is ${weakest.skill} — ${weakest.accuracy}% accuracy across ${weakest.attempts} recent attempts. What should I work on to improve it?`
-        : `I am preparing for ${activeExam} and have not practised yet. Where should I start?`,
+        : focus
+          ? `I am preparing for ${activeExam} and have not practised yet. I find ${focus} the hardest. Where should I start?`
+          : `I am preparing for ${activeExam} and have not practised yet. Where should I start?`,
     );
     setIsTutorOpen(true);
   };
@@ -77,9 +80,7 @@ export default function DashboardPage() {
             Namaste, {userName}
           </h1>
           <p className="text-xs text-muted-foreground mt-1 font-medium">
-            {isPTE
-              ? 'Aiming for PTE 79+ · Australia, UK, Canada'
-              : 'Aiming for IELTS Band 7.5+ · Australia, UK, Canada'}
+            {user ? planHeadline(user) : `Preparing for ${activeExam}`}
           </p>
         </div>
 
@@ -121,4 +122,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Zap,
@@ -7,14 +7,18 @@ import {
   Bot,
   AlertCircle,
   ShieldAlert,
+  PlayCircle,
 } from 'lucide-react';
 import { AdminPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { api, ApiError, errorMessage } from '@/lib/api';
+import { useApp } from '@/context/AppContext';
 import AdminUsersPanel from '@/components/admin/AdminUsersPanel';
 import StatCard from '@/components/admin/StatCard';
+
+const OnboardingFlow = lazy(() => import('@/components/onboarding/OnboardingFlow'));
 
 interface AdminMetrics {
   questions: number;
@@ -80,6 +84,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
+  const [previewingOnboarding, setPreviewingOnboarding] = useState(false);
+  const { user } = useApp();
 
   useEffect(() => {
     let cancelled = false;
@@ -156,7 +162,22 @@ export default function AdminPage() {
             Live counts straight from the database. Everything here is measured, nothing is estimated.
           </p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="font-bold text-xs shrink-0"
+          onClick={() => setPreviewingOnboarding(true)}
+        >
+          <PlayCircle className="h-4 w-4 mr-1.5" />
+          Preview onboarding
+        </Button>
       </div>
+
+      {previewingOnboarding && user && (
+        <Suspense fallback={null}>
+          <OnboardingFlow user={user} preview onDone={() => setPreviewingOnboarding(false)} />
+        </Suspense>
+      )}
 
       {/* Question bank by exam. Counts live below the users table, which
           already breaks them down by plan, so they are not repeated here. */}
