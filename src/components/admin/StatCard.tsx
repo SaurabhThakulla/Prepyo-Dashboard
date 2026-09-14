@@ -1,5 +1,5 @@
 import React from 'react';
-import { LucideIcon } from 'lucide-react';
+import { ChevronDown, LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 export interface StatOption {
@@ -50,18 +50,21 @@ export default function StatCard({
       <div className={`font-display text-3xl font-black ${color}`}>{value}</div>
 
       {options && onSelect ? (
-        <select
-          aria-label={selectLabel ?? label}
-          value={selected}
-          onChange={e => onSelect(e.target.value)}
-          className="w-full h-8 rounded-lg border border-input bg-card px-2 text-[11px] font-semibold text-foreground"
-        >
-          {options.map(option => (
-            <option key={option.value} value={option.value} disabled={option.disabled}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <div className="relative group">
+          <select
+            aria-label={selectLabel ?? label}
+            value={selected}
+            onChange={e => onSelect(e.target.value)}
+            className="w-full h-8 appearance-none rounded-lg border border-input bg-card pl-2.5 pr-7 text-[11px] font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary shadow-2xs hover:border-primary/50 transition-all cursor-pointer"
+          >
+            {options.map(option => (
+              <option key={option.value} value={option.value} disabled={option.disabled}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground group-hover:text-primary transition-colors" />
+        </div>
       ) : null}
 
       <p className="text-[10px] text-muted-foreground">{note}</p>

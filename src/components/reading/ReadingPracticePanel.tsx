@@ -1,5 +1,7 @@
-import React, { useEffect } from 'react';
-import { AlertCircle, Bot, CheckCircle2, RefreshCw, Send, Shuffle } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { AlertCircle, Bot, CheckCircle2, RefreshCw, Send, Shuffle, Square, Play } from 'lucide-react';
+import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
+import { api, ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 import { useApp } from '@/context/AppContext';
@@ -77,7 +79,7 @@ function EmptyState({
  * Right pane: Question notes completion card with inline inputs and circled numbers.
  */
 export default function ReadingPracticePanel({ initialTypeKey }: ReadingPracticePanelProps) {
-  const { activeExam, setIsTutorOpen, setTutorContextPrompt } = useApp();
+  const { user, activeExam, refreshUser, setIsTutorOpen, setTutorContextPrompt, activeTestSession, setActiveTestSession } = useApp();
   const toast = useToast();
 
   const typesQuery = useReadingTypes(activeExam);
@@ -87,6 +89,71 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
   const { set, deal } = practice;
 
   const currentTypeId = set?.groups[0]?.typeId;
+  const [isSessionActive, setIsSessionActive] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
+
+  const subTestsRemaining = Math.max(
+    0,
+    (user?.subscription?.dailySubTestsLimit ?? 0) - (user?.subscription?.dailySubTestsUsed ?? 0)
+  );
+
+  const handleStop = useCallback(async () => {
+    if (sessionId) {
+      try {
+        setIsStopping(true);
+        await api.post('/practice/stop', { sessionId });
+      } catch (err) {
+        console.error('Failed to stop reading practice session:', err);
+      } finally {
+        setIsStopping(false);
+      }
+    }
+    setIsSessionActive(false);
+    setSessionId(null);
+    setActiveTestSession(null);
+    toast.info('Test stopped', 'Reading session has ended.');
+  }, [sessionId, setActiveTestSession, toast]);
+
+  const handleStart = useCallback(async () => {
+    if (!set || isStarting) return;
+    setIsStarting(true);
+    try {
+      const qId = set.groups[0]?.questions[0]?.id || set.passage?.id || 'reading-task';
+      const data = await api.post<{ sessionId: string; remainingSubTests: number }>('/practice/start', {
+        exam: activeExam,
+        skill: 'reading',
+        questionId: qId,
+      });
+      setSessionId(data.sessionId);
+      setIsSessionActive(true);
+      await refreshUser();
+      setActiveTestSession({
+        isActive: true,
+        title: `READING: ${set.groups[0]?.typeName ?? 'Comprehension'}`,
+        skill: 'reading',
+        onStop: handleStop,
+      });
+      toast.success('Reading test started', '1 sub-test credit applied. Good luck!');
+    } catch (err) {
+      if (err instanceof ApiError && err.isLimitReached) {
+        toast.warning('Daily limit reached', 'You have reached your daily sub-test allowance.');
+      } else {
+        toast.error('Could not start reading test', errorMessage(err));
+      }
+    } finally {
+      setIsStarting(false);
+    }
+  }, [set, isStarting, activeExam, refreshUser, setActiveTestSession, handleStop, toast]);
+
+  const handleCheck = async () => {
+    await practice.check();
+    setIsSessionActive(false);
+    setSessionId(null);
+    setActiveTestSession(null);
+  };
+
 
   useEffect(() => {
     if (typesQuery.error) toast.error('Could not load reading tasks', errorMessage(typesQuery.error));
@@ -102,6 +169,9 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
     // type from the one asked for. Comparing the two directly re-dealt for ever.
     const dealt = currentTypeId ? familyOf(currentTypeId) : [];
     if (wanted && !dealt.includes(wanted.typeId)) {
+      setIsSessionActive(false);
+      setSessionId(null);
+      setActiveTestSession(null);
       void deal(wanted.typeId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,10 +234,22 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
   const hasPassage = Boolean(set.passage && set.groups[0]?.passageDisplay !== 'hidden');
 
   return (
-    <div className="w-full h-[calc(100vh-4rem)] p-0 m-0 flex flex-col bg-background overflow-hidden">
+    <div data-practice-workspace className="relative w-full h-[calc(100vh-4rem)] p-0 m-0 flex flex-col bg-background overflow-hidden">
       <div className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* Compact IELTS Two-Column Split Screen Layout with Independent Scrolling */}
-        <div className="flex-1 w-full px-0 py-1 flex flex-col lg:flex-row gap-1.5 min-h-0 overflow-hidden">
+        {!isSessionActive && !practice.checked && (
+          <PreTestBlurOverlay
+            title={set.passage?.title || set.groups[0]?.typeName || 'Reading Practice'}
+            typeName={set.groups[0]?.typeName || 'Reading Comprehension'}
+            instructions={set.groups[0]?.instructions || 'Read the passage and answer the questions.'}
+            subTestsRemaining={subTestsRemaining}
+            isStarting={isStarting}
+            onStart={handleStart}
+            onPickAnother={() => currentTypeId && void deal(currentTypeId)}
+            skill="reading"
+          />
+        )}
+        <div className={!isSessionActive && !practice.checked ? 'filter blur-[7px] pointer-events-none select-none opacity-25 transition-all duration-300 flex-1 w-full px-0 py-1 flex flex-col lg:flex-row gap-1.5 min-h-0 overflow-hidden' : 'transition-all duration-300 flex-1 w-full px-0 py-1 flex flex-col lg:flex-row gap-1.5 min-h-0 overflow-hidden'}>
           {/* Left Pane: Reading Passage (Independent scroll only) */}
           {hasPassage && (
             <div className="w-full lg:w-1/2 h-1/2 lg:h-full min-h-0 flex flex-col overflow-hidden">
@@ -223,7 +305,38 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
                 <span>Ask AI Coach</span>
               </Button>
 
-              {practice.checked ? (
+              {isSessionActive && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleStop}
+                  disabled={isStopping}
+                  className="font-bold gap-1.5 text-xs rounded-lg h-8 px-3 bg-rose-600 hover:bg-rose-700 text-white shadow-xs"
+                >
+                  <Square className="w-3 h-3 fill-current" />
+                  <span>Stop Practice</span>
+                </Button>
+              )}
+
+              {!isSessionActive && !practice.checked ? (
+                <Button
+                  onClick={handleStart}
+                  disabled={isStarting || subTestsRemaining <= 0}
+                  className="font-bold gap-1.5 text-xs rounded-lg h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
+                >
+                  {isStarting ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Starting…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>Start Practice</span>
+                    </>
+                  )}
+                </Button>
+              ) : practice.checked ? (
                 <Button
                   onClick={() => currentTypeId && void deal(currentTypeId)}
                   className="font-bold gap-1.5 text-xs rounded-lg h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
@@ -233,7 +346,7 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
                 </Button>
               ) : (
                 <Button
-                  onClick={() => void practice.check()}
+                  onClick={() => void handleCheck()}
                   disabled={practice.checking || practice.answeredCount === 0}
                   className="font-bold gap-1.5 text-xs rounded-lg h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
                 >

@@ -126,6 +126,13 @@ export function isAdmin(user: UserProfile | null): boolean {
   return user?.role === 'admin';
 }
 
+export function isPremiumUser(user: UserProfile | null | undefined): boolean {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  const sub = user.subscription;
+  return Boolean(sub?.isActive && sub.planId && sub.planId !== 'free');
+}
+
 export function roleLabel(user: UserProfile | null): string {
   return user ? ROLE_LABELS[user.role] ?? user.role : '';
 }

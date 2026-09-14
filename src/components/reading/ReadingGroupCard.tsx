@@ -28,7 +28,6 @@ export default function ReadingGroupCard({
   disabled,
   onAnswer,
 }: ReadingGroupCardProps) {
-  const last = startNumber + group.questions.length - 1;
   // A gap-fill draws its words from the set. Every other task that carries
   // resources — the boxes of an ordering task — shows them above the questions.
   const wordBank = isGapFill(group.typeId) ? group.resources : undefined;
@@ -40,9 +39,6 @@ export default function ReadingGroupCard({
           <Badge variant="default" className="text-[11px] px-2 py-0.5 font-bold shadow-xs">
             {group.typeName}
           </Badge>
-          <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20 font-mono">
-            {startNumber === last ? `Question ${startNumber}` : `Questions ${startNumber}–${last}`}
-          </span>
         </div>
         <p className="text-xs text-muted-foreground font-medium leading-tight">{group.instructions}</p>
       </div>

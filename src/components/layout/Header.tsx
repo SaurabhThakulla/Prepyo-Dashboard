@@ -21,7 +21,7 @@ interface HeaderProps {
 }
 
 export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps) {
-  const { user, activeExam, unreadCount, setIsTutorOpen, theme, toggleTheme } = useApp();
+  const { user, activeExam, unreadCount, setIsTutorOpen, theme, toggleTheme, activeTestSession } = useApp();
   const { pathname } = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -72,6 +72,18 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
             </Badge>
           </div>
         </div>
+
+        
+        {/* Active Test Session Indicator */}
+        {activeTestSession?.isActive && (
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+            </span>
+            <span>{activeTestSession.title ? `Testing: ${activeTestSession.title}` : 'Test in Progress'}</span>
+          </div>
+        )}
 
         {/* Right Action Icons & Badges */}
         <div className="flex items-center gap-2 sm:gap-3">

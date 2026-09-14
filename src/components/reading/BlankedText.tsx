@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import {
   DndContext,
   DragEndEvent,
@@ -99,20 +100,22 @@ export default function BlankedText({
         // Its own options means the choice is per gap: a dropdown.
         if (blank.options && blank.options.length > 0) {
           return (
-            <select
-              key={index}
-              value={answered}
-              disabled={disabled}
-              onChange={event => place(blank.id, event.target.value)}
-              className={`mx-1 inline-block align-baseline rounded-lg border px-2 py-1 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-70 ${toneOf(verdict)}`}
-            >
-              <option value="">— select —</option>
-              {blank.options.map(option => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+            <span key={index} className="relative inline-flex items-center align-middle mx-1 my-0.5 group">
+              <select
+                value={answered}
+                disabled={disabled}
+                onChange={event => place(blank.id, event.target.value)}
+                className={`h-7 pl-2.5 pr-6 rounded-lg border text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary disabled:opacity-70 cursor-pointer appearance-none shadow-2xs transition-all ${toneOf(verdict)}`}
+              >
+                <option value="">— select —</option>
+                {blank.options.map(option => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground/80 group-hover:text-primary transition-colors" />
+            </span>
           );
         }
 

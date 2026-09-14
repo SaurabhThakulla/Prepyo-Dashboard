@@ -4,7 +4,7 @@ import { useApp } from '@/context/AppContext';
 import { api, errorMessage, profileImageUrl } from '@/lib/api';
 import { ActivitySummary, ExamType, ProgressSummary, SkillType, isAdmin } from '@/lib/types';
 import { useToast } from '@/components/ui/toast';
-import { BookOpen, Camera, Trash2, Sparkles, Edit3, Loader2, CheckCircle2, X } from 'lucide-react';
+import { BookOpen, Camera, Trash2, Sparkles, Edit3, Loader2, CheckCircle2, X, ChevronDown } from 'lucide-react';
 import { ProfilePageSkeleton } from '@/components/layout/PageSkeleton';
 
 const REGIONS = ['Kathmandu', 'Lalitpur', 'Bhaktapur', 'Pokhara', 'Chitwan', 'Butwal', 'Dharan', 'Biratnagar', 'Melbourne', 'Sydney'];
@@ -345,7 +345,21 @@ export default function ProfilePage() {
               <div><label className="font-bold">Full Name</label><input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full h-8.5 rounded-xl border border-input bg-card px-3 text-xs mt-1" /></div>
               <div><label className="font-bold">Track</label>{isAdmin(user) ? <div className="grid grid-cols-2 gap-2 mt-1">{(['PTE', 'IELTS'] as const).map(e => <button key={e} type="button" onClick={() => setForm({ ...form, exam: e, score: '' })} className={`py-1.5 rounded-xl border text-xs font-bold transition ${form.exam === e ? 'bg-blue-600 text-white border-blue-600' : 'border-border text-foreground'}`}>{e} Academic</button>)}</div> : <div className="mt-1 flex items-center justify-between rounded-xl border border-border bg-muted/40 px-3 py-1.5 text-xs font-bold text-foreground"><span>{form.exam} Academic</span><span className="text-[10px] font-semibold text-muted-foreground">Fixed</span></div>}</div>
               <div className="grid grid-cols-2 gap-2.5"><div><label className="font-bold">{form.exam === 'IELTS' ? 'Band (0-9)' : 'Score (10-90)'}</label><input type="number" step={form.exam === 'PTE' ? '1' : '0.5'} value={form.score} onChange={e => setForm({ ...form, score: e.target.value })} className="w-full h-8.5 rounded-xl border border-input bg-card px-3 text-xs mt-1" /></div><div><label className="font-bold">Test Date</label><input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full h-8.5 rounded-xl border border-input bg-card px-3 text-xs mt-1" /></div></div>
-              <div><label className="font-bold">City / Region</label><select value={form.region} onChange={e => setForm({ ...form, region: e.target.value })} className="w-full h-8.5 rounded-xl border border-input bg-card px-3 text-xs mt-1">{REGIONS.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
+              <div>
+                <label className="font-bold">City / Region</label>
+                <div className="relative group mt-1">
+                  <select
+                    value={form.region}
+                    onChange={e => setForm({ ...form, region: e.target.value })}
+                    className="w-full h-8.5 appearance-none rounded-xl border border-input bg-card pl-3 pr-8 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary shadow-2xs hover:border-primary/50 transition-all cursor-pointer"
+                  >
+                    {REGIONS.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+              </div>
             </div>
             <div className="pt-2 border-t border-border flex justify-end gap-2"><button type="button" onClick={() => setIsEdit(false)} className="px-3 py-1.5 text-xs rounded-xl hover:bg-muted font-medium text-muted-foreground">Cancel</button><button type="button" onClick={handleSave} disabled={saving || !form.name.trim()} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1 disabled:opacity-50">{saved ? <span className="flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Saved</span> : saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save Changes'}</button></div>
           </div>

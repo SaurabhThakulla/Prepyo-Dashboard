@@ -6,6 +6,7 @@ import {
   RefreshCw,
   AlertCircle,
   History,
+  ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -141,18 +142,21 @@ export default function EvaluationsPage() {
                   No {activeExam} writing tasks in the question bank yet.
                 </p>
               ) : (
-                <select
-                  value={selectedQuestionId}
-                  onChange={e => {
-                    setSelectedQuestionId(e.target.value);
-                    setResult(null);
-                  }}
-                  className="w-full rounded-xl border border-input bg-card px-3 py-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary font-medium"
-                >
-                  {questions.map(q => (
-                    <option key={q.id} value={q.id}>{q.typeName} — {q.title}</option>
-                  ))}
-                </select>
+                <div className="relative group">
+                  <select
+                    value={selectedQuestionId}
+                    onChange={e => {
+                      setSelectedQuestionId(e.target.value);
+                      setResult(null);
+                    }}
+                    className="w-full appearance-none rounded-xl border border-input bg-card pl-3.5 pr-10 py-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary font-medium hover:border-primary/50 shadow-2xs cursor-pointer transition-all"
+                  >
+                    {questions.map(q => (
+                      <option key={q.id} value={q.id}>{q.typeName} — {q.title}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
               )}
             </div>
 

@@ -17,7 +17,8 @@ import QRPaymentCheckoutDialog from '@/components/subscription/QRPaymentCheckout
 import QueuedPlansCard from '@/components/subscription/QueuedPlansCard';
 
 interface ComparisonRow {
-  label: string;
+  label: string | React.ReactNode;
+  rowKey?: string;
   free: string | React.ReactNode;
   weekly: string | React.ReactNode;
   pro: string | React.ReactNode;
@@ -59,7 +60,7 @@ export default function SubscriptionPage() {
     durationMonths: 0,
     durationDays: 7,
     bonusDays: 0,
-    features: ['7 days access', '40 practice sub-tests per day', '2 full mock exams'],
+    features: ['7 days access', '40 practice sub-tests per day', '10 section mock tests / week', '2 full mock exams'],
     subTestsPerDay: 40,
     mockTestsIncluded: 2,
     isPopular: false,
@@ -72,7 +73,7 @@ export default function SubscriptionPage() {
     durationMonths: 1,
     durationDays: 30,
     bonusDays: 3,
-    features: ['33 days access', '50 practice sub-tests per day', '5 full mock exams'],
+    features: ['33 days access', '50 practice sub-tests per day', '20 section mock tests / month', '5 full mock exams'],
     subTestsPerDay: 50,
     mockTestsIncluded: 5,
     isPopular: true,
@@ -85,7 +86,7 @@ export default function SubscriptionPage() {
     durationMonths: 3,
     durationDays: 90,
     bonusDays: 7,
-    features: ['97 days access', '60 practice sub-tests per day', '10 full mock exams'],
+    features: ['97 days access', '60 practice sub-tests per day', '40 section mock tests / month', '10 full mock exams'],
     subTestsPerDay: 60,
     mockTestsIncluded: 10,
     isPopular: false,
@@ -110,6 +111,13 @@ export default function SubscriptionPage() {
       weekly: String(weeklyPlan.subTestsPerDay),
       pro: String(proPlan.subTestsPerDay),
       elite: String(elitePlan.subTestsPerDay),
+    },
+    {
+      label: 'Section mock tests',
+      free: dashMark,
+      weekly: '10 / week',
+      pro: '20 / calendar month',
+      elite: '40 / calendar month',
     },
     {
       label: 'Full mock exams',
@@ -252,9 +260,9 @@ export default function SubscriptionPage() {
                     Plan Comparison
                   </span>
                 </div>
-                {rows.map((row) => (
+                {rows.map((row, idx) => (
                   <div
-                    key={row.label}
+                    key={row.rowKey ?? (typeof row.label === 'string' ? row.label : String(idx))}
                     className="h-14 flex items-center pl-4 text-xs sm:text-[13px] font-semibold text-foreground/90 border-b border-border/60"
                   >
                     {row.label}
@@ -326,8 +334,8 @@ export default function SubscriptionPage() {
               </div>
 
               {/* Column 4: Taiyari (PREPARATION) - Featured Elevated Adaptive Card */}
-              <div className="flex flex-col text-center bg-card dark:bg-card/90 text-foreground rounded-3xl px-4 py-6 shadow-xl shadow-primary/10 border-2 border-primary dark:border-primary/80 ring-2 ring-primary/20 relative -my-4 z-10 transition-all">
-                <div className="h-44 flex flex-col justify-end pb-5 px-2 border-b border-primary/20 dark:border-slate-800 space-y-1">
+              <div className="flex flex-col text-center bg-card dark:bg-card/90 text-foreground rounded-3xl px-4 py-6 shadow-xl border border-border relative -my-4 z-10 transition-all">
+                <div className="h-44 flex flex-col justify-end pb-5 px-2 border-b border-border/70 space-y-1">
                   <div>
                     <span className="bg-primary text-primary-foreground text-[10px] font-extrabold uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs inline-block">
                       Most popular
@@ -343,7 +351,7 @@ export default function SubscriptionPage() {
                 {rows.map((row, idx) => (
                   <div
                     key={`taiyari-${idx}`}
-                    className="h-14 flex items-center justify-center text-xs sm:text-sm font-semibold text-foreground border-b border-primary/15 dark:border-slate-800"
+                    className="h-14 flex items-center justify-center text-xs sm:text-sm font-semibold text-foreground border-b border-border/60"
                   >
                     {row.pro}
                   </div>

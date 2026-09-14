@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   XCircle,
   Quote,
-  ChevronLeft,
+  ChevronDown,
   ChevronRight,
   Lock,
 } from 'lucide-react';
@@ -23,10 +23,12 @@ import { Textarea } from '@/components/ui/textarea';
 import AudioRecorder from '@/components/practice/AudioRecorder';
 import PromptAudio from '@/components/practice/PromptAudio';
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
-import { Evaluation, isAdmin, PracticeAttempt, Question, SkillType } from '@/lib/types';
+import { Evaluation, isAdmin, isPremiumUser, PracticeAttempt, Question, SkillType } from '@/lib/types';
 
 const ReadingPracticePanel = lazy(() => import('@/components/reading/ReadingPracticePanel'));
 const ReadingMockPanel = lazy(() => import('@/components/reading/ReadingMockPanel'));
+const SkillMockPanel = lazy(() => import('@/components/practice/SkillMockPanel'));
+const PracticeMockPaywall = lazy(() => import('@/components/practice/PracticeMockPaywall'));
 const AdminReadingAuthoring = lazy(() => import('@/components/admin/AdminReadingAuthoring'));
 const AdminQuestionAuthoring = lazy(() => import('@/components/admin/AdminQuestionAuthoring'));
 import { api, ApiError, errorMessage } from '@/lib/api';
@@ -269,9 +271,17 @@ export default function PracticePage() {
         <Suspense fallback={<AdminPageSkeleton />}>
           <AdminReadingAuthoring />
         </Suspense>
+      ) : searchParams.get('mock') && !isPremiumUser(user) ? (
+        <Suspense fallback={<PracticePageSkeleton />}>
+          <PracticeMockPaywall skill={selectedSkill} exam={activeExam} />
+        </Suspense>
       ) : isReading && searchParams.get('mock') ? (
         <Suspense fallback={<ReadingPracticeSkeleton />}>
           <ReadingMockPanel key={activeExam} />
+        </Suspense>
+      ) : searchParams.get('mock') ? (
+        <Suspense fallback={<PracticePageSkeleton />}>
+          <SkillMockPanel key={`${activeExam}-${selectedSkill}`} skill={selectedSkill} exam={activeExam} />
         </Suspense>
       ) : isReading ? (
         <Suspense fallback={<ReadingPracticeSkeleton />}>
@@ -301,41 +311,6 @@ export default function PracticePage() {
                   <span className="bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
                     {currentQuestion.typeName}
                   </span>
-                </div>
-
-                {/* Question switcher */}
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={currentIndex <= 0}
-                    onClick={() => goToIndex(currentIndex - 1)}
-                    className="h-7 w-7 p-0 rounded-full text-muted-foreground hover:text-foreground disabled:opacity-30"
-                    title="Previous Question"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-
-                  <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-lg border border-primary/20 font-mono">
-                    Question {currentIndex + 1} / {questions.length}
-                  </span>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={!canGoNext}
-                    onClick={() => goToIndex(currentIndex + 1)}
-                    className="h-7 w-7 p-0 rounded-full text-muted-foreground hover:text-foreground disabled:opacity-30"
-                    title={
-                      canGoNext
-                        ? 'Next Question'
-                        : isAgreeOrDescribe
-                          ? 'No more questions'
-                          : 'Answer this question to unlock the next one'
-                    }
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
                 </div>
               </div>
 
@@ -499,16 +474,19 @@ export default function PracticePage() {
                       <div key={b.id} className="flex items-center justify-between gap-3 p-3 bg-card rounded-xl border border-border text-xs sm:text-sm">
                         <span className="font-bold text-primary shrink-0">Blank {idx + 1}:</span>
                         {b.options && b.options.length > 0 ? (
-                          <select
-                            value={blankResponses[b.id] || ''}
-                            onChange={e => setBlankResponses({ ...blankResponses, [b.id]: e.target.value })}
-                            className="bg-background border border-border text-xs sm:text-sm font-medium text-foreground px-3 py-1.5 rounded-lg focus:outline-none focus:border-primary"
-                          >
-                            <option value="">— Choose —</option>
-                            {b.options.map(opt => (
-                              <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                          </select>
+                          <div className="relative inline-flex items-center group">
+                            <select
+                              value={blankResponses[b.id] || ''}
+                              onChange={e => setBlankResponses({ ...blankResponses, [b.id]: e.target.value })}
+                              className="appearance-none pr-8 pl-3 py-1.5 rounded-lg border border-input bg-background hover:border-primary/50 text-xs sm:text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary shadow-2xs cursor-pointer transition-all"
+                            >
+                              <option value="">— Select —</option>
+                              {b.options.map(opt => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                            <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 pointer-events-none text-muted-foreground group-hover:text-primary transition-colors" />
+                          </div>
                         ) : (
                           <input
                             value={blankResponses[b.id] || ''}

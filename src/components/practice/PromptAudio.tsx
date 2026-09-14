@@ -20,7 +20,7 @@ interface PromptAudioProps {
  * other will misjudge how ready they are.
  */
 export default function PromptAudio({ audioUrl, audioTranscript, title }: PromptAudioProps) {
-  const [canSpeak, setCanSpeak] = useState(false);
+  const [canSpeak, setCanSpeak] = useState(() => typeof window !== 'undefined' && 'speechSynthesis' in window);
   const [speaking, setSpeaking] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -35,7 +35,11 @@ export default function PromptAudio({ audioUrl, audioTranscript, title }: Prompt
   useEffect(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
-    const check = () => setCanSpeak(window.speechSynthesis.getVoices().length > 0);
+    const check = () => {
+      if ('speechSynthesis' in window) {
+        setCanSpeak(true);
+      }
+    };
     check();
     window.speechSynthesis.addEventListener('voiceschanged', check);
     return () => window.speechSynthesis.removeEventListener('voiceschanged', check);

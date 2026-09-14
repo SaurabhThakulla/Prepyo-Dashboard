@@ -64,6 +64,9 @@ export interface PrimarySectionConfig {
 
 export const READING_PRACTICE_HREF = '/practice?skill=reading';
 export const READING_MOCK_HREF = `${READING_PRACTICE_HREF}&mock=1`;
+export const SPEAKING_MOCK_HREF = '/practice?skill=speaking&mock=1';
+export const WRITING_MOCK_HREF = '/practice?skill=writing&mock=1';
+export const LISTENING_MOCK_HREF = '/practice?skill=listening&mock=1';
 
 /** The practice skills, in the order they head the secondary panel. */
 const PRACTICE_SKILLS: { skill: SkillType; label: string; icon: LucideIcon; sublabel: string }[] = [
@@ -223,15 +226,43 @@ export function buildSections(
           groupHref: `/practice?skill=${skill}`,
         }));
 
-        // The generated reading paper sits under the same heading as the tasks
-        // it is built from, because a learner works up to it from them. It is
-        // only offered once the bank can actually deal one.
+        // Mock tests sit under the same heading as the practice tasks for each skill.
         if (skill === 'reading' && mockPassageCount > 0 && links.length > 0) {
           links.push({
             href: READING_MOCK_HREF,
             label: 'Reading Mock Test',
             icon: BookOpenCheck,
             sublabel: `${mockPassageCount} full passages, timed and graded on the server`,
+            badge: 'MOCK',
+            group: label,
+            groupHref: `/practice?skill=${skill}`,
+          });
+        } else if (skill === 'speaking' && links.length > 0) {
+          links.push({
+            href: SPEAKING_MOCK_HREF,
+            label: 'Speaking Mock Test',
+            icon: BookOpenCheck,
+            sublabel: 'Full speaking section, timed and evaluated',
+            badge: 'MOCK',
+            group: label,
+            groupHref: `/practice?skill=${skill}`,
+          });
+        } else if (skill === 'writing' && links.length > 0) {
+          links.push({
+            href: WRITING_MOCK_HREF,
+            label: 'Writing Mock Test',
+            icon: BookOpenCheck,
+            sublabel: 'Full writing tasks, timed and evaluated',
+            badge: 'MOCK',
+            group: label,
+            groupHref: `/practice?skill=${skill}`,
+          });
+        } else if (skill === 'listening' && links.length > 0) {
+          links.push({
+            href: LISTENING_MOCK_HREF,
+            label: 'Listening Mock Test',
+            icon: BookOpenCheck,
+            sublabel: 'Full listening section, timed and graded',
             badge: 'MOCK',
             group: label,
             groupHref: `/practice?skill=${skill}`,

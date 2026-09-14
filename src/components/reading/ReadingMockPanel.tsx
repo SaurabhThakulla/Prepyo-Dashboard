@@ -8,13 +8,19 @@ import { ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
 import { READING_PRACTICE_HREF } from '@/components/layout/sidebar/navigation';
 import ReadingMockRunner from '@/components/reading/ReadingMockRunner';
+import { isPremiumUser } from '@/lib/types';
+import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 
 const ScoreReport = lazy(() => import('@/components/mocks/ScoreReport'));
 
 export default function ReadingMockPanel() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { activeExam } = useApp();
+  const { user, activeExam } = useApp();
+
+  if (!isPremiumUser(user)) {
+    return <PracticeMockPaywall skill="reading" exam={activeExam} />;
+  }
 
   const mock = useReadingMock(activeExam, () => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.mockAttempts() });

@@ -104,11 +104,49 @@ describe('which menu item is lit', () => {
     expect(lit('/practice?skill=reading&mock=1')).toEqual(['Reading Mock Test']);
   });
 
+  it('lights the speaking mock while the speaking mock is open', () => {
+    expect(lit('/practice?skill=speaking&mock=1')).toEqual(['Speaking Mock Test']);
+  });
+
+  it('lights the writing mock while the writing mock is open', () => {
+    expect(lit('/practice?skill=writing&mock=1')).toEqual(['Writing Mock Test']);
+  });
+
+  it('lights the listening mock while the listening mock is open', () => {
+    expect(lit('/practice?skill=listening&mock=1')).toEqual(['Listening Mock Test']);
+  });
+
   it('does not light the reading mock on plain reading practice', () => {
     expect(lit('/practice?skill=reading')).not.toContain('Reading Mock Test');
   });
 
   it('still lights the full mock on the catalogue', () => {
     expect(lit('/mocks')).toEqual(['Full Mock Simulator']);
+  });
+});
+
+describe('mock tests for all practice skills', () => {
+  it('offers speaking, writing, and listening mock tests alongside syllabus task items', () => {
+    const items = buildSections('IELTS', () => {}, null, [READING_TYPES.trueFalse], 3).find(
+      s => s.id === 'practice',
+    )?.items ?? [];
+
+    const speakingMock = items.find(item => item.label === 'Speaking Mock Test');
+    expect(speakingMock).toBeDefined();
+    expect(speakingMock?.group).toBe('Speaking');
+    expect(speakingMock?.badge).toBe('MOCK');
+    expect(speakingMock?.href).toBe('/practice?skill=speaking&mock=1');
+
+    const writingMock = items.find(item => item.label === 'Writing Mock Test');
+    expect(writingMock).toBeDefined();
+    expect(writingMock?.group).toBe('Writing');
+    expect(writingMock?.badge).toBe('MOCK');
+    expect(writingMock?.href).toBe('/practice?skill=writing&mock=1');
+
+    const listeningMock = items.find(item => item.label === 'Listening Mock Test');
+    expect(listeningMock).toBeDefined();
+    expect(listeningMock?.group).toBe('Listening');
+    expect(listeningMock?.badge).toBe('MOCK');
+    expect(listeningMock?.href).toBe('/practice?skill=listening&mock=1');
   });
 });

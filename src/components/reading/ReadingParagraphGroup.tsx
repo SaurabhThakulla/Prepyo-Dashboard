@@ -60,11 +60,8 @@ export default function ReadingParagraphGroup({
       {/* leading-loose keeps the lines apart enough that inline controls do not
           collide once the text wraps. */}
       <p className="text-xs sm:text-sm text-foreground leading-loose">
-        {group.questions.map((question, index) => (
+        {group.questions.map(question => (
           <React.Fragment key={question.id}>
-            <sup className="mr-0.5 font-mono font-bold text-[10px] text-primary select-none">
-              {startNumber + index}
-            </sup>
             <SentenceGap
               question={question}
               answer={answers[question.id]}

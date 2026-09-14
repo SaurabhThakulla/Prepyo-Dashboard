@@ -3,6 +3,13 @@ import { api, ApiError } from '@/lib/api';
 import '@/lib/google';
 import { ExamType, NotificationItem, UserProfile } from '@/lib/types';
 
+export interface ActiveTestSession {
+  isActive: boolean;
+  title?: string;
+  skill?: string;
+  onStop?: () => Promise<void> | void;
+}
+
 export type OnboardingAnswers = Partial<
   Pick<
     UserProfile,
@@ -47,6 +54,8 @@ interface AppContextType {
   tutorContextPrompt: string;
   setTutorContextPrompt: (prompt: string) => void;
 
+  activeTestSession: ActiveTestSession | null;
+  setActiveTestSession: (session: ActiveTestSession | null) => void;
   theme: 'light' | 'dark';
   setTheme: (theme: 'light' | 'dark') => void;
   toggleTheme: () => void;
@@ -62,6 +71,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isTutorOpen, setIsTutorOpen] = useState(false);
   const [tutorContextPrompt, setTutorContextPrompt] = useState('');
   const [theme, setThemeState] = useState<'light' | 'dark'>('light');
+  const [activeTestSession, setActiveTestSession] = useState<ActiveTestSession | null>(null);
+
+  // Warn user if closing tab / refreshing during an ongoing test
+  useEffect(() => {
+    if (!activeTestSession?.isActive) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [activeTestSession?.isActive]);
+
 
   // Theme is the one piece of state that legitimately lives in the browser: it
   // is a display preference, not account data.
@@ -237,6 +260,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         theme,
         setTheme,
         toggleTheme,
+        activeTestSession,
+        setActiveTestSession,
       }}
     >
       {children}

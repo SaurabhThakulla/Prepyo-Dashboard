@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, RefreshCw, Send } from 'lucide-react';
+import { Bot, ChevronDown, RefreshCw, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -102,16 +102,19 @@ export default function PracticeAnswerForm({
               >
                 <span className="font-bold text-primary shrink-0">Blank {index + 1}:</span>
                 {blank.options && blank.options.length > 0 ? (
-                  <select
-                    value={session.blankResponses[blank.id] || ''}
-                    onChange={event => setBlank(event.target.value)}
-                    className="bg-card border border-border text-xs font-medium text-foreground px-3 py-1.5 rounded-lg focus:outline-none focus:border-primary"
-                  >
-                    <option value="">— Choose —</option>
-                    {blank.options.map(option => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
+                  <div className="relative inline-flex items-center group">
+                    <select
+                      value={session.blankResponses[blank.id] || ''}
+                      onChange={event => setBlank(event.target.value)}
+                      className="appearance-none pr-8 pl-3 py-1.5 rounded-lg border border-input bg-card hover:border-primary/50 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary shadow-2xs cursor-pointer transition-all"
+                    >
+                      <option value="">— Select —</option>
+                      {blank.options.map(option => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 pointer-events-none text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
                 ) : (
                   <input
                     value={session.blankResponses[blank.id] || ''}
