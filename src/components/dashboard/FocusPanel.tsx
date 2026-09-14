@@ -1,6 +1,5 @@
 import React from 'react';
 import { StudyPlanData, UserProfile } from '@/lib/types';
-import StudyPlanCalendar from '@/components/dashboard/StudyPlanCalendar';
 import CurrentPlanCard from '@/components/dashboard/CurrentPlanCard';
 
 interface FocusPanelProps {
@@ -10,16 +9,12 @@ interface FocusPanelProps {
 }
 
 /**
- * Right column: Your Current Plan & Study plan calendar.
+ * FocusPanel displaying the user's current plan and quota stats.
  */
-export default function FocusPanel({ studyPlan, user }: FocusPanelProps) {
+export default function FocusPanel({ user }: FocusPanelProps) {
   return (
-    <div className="lg:col-span-5 space-y-5">
-      {/* Learner's Subscription Plan Widget */}
+    <div className="w-full">
       <CurrentPlanCard user={user} />
-
-      {/* Study Plan Calendar Widget */}
-      <StudyPlanCalendar studyPlan={studyPlan} />
     </div>
   );
 }

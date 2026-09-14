@@ -4,8 +4,8 @@ import ExamDateDialog from '@/components/dashboard/ExamDateDialog';
 import ExamCountdown from '@/components/dashboard/ExamCountdown';
 import SkillQuestionCard from '@/components/dashboard/SkillQuestionCard';
 import PracticeStudioPanel, { SkillRow } from '@/components/dashboard/PracticeStudioPanel';
-import FocusPanel from '@/components/dashboard/FocusPanel';
-import { planHeadline, skillLabel } from '@/components/onboarding/onboarding';
+import CurrentPlanCard from '@/components/dashboard/CurrentPlanCard';
+import { planHeadline } from '@/components/onboarding/onboarding';
 import { useDashboardSummary } from '@/lib/hooks/useDashboardSummary';
 import { daysUntilExam, formatExamDate } from '@/lib/dates';
 import { ExamType, ProgressSummary, SkillType } from '@/lib/types';
@@ -39,11 +39,11 @@ function buildSkillRows(exam: ExamType, progress: ProgressSummary | null): Skill
 }
 
 export default function DashboardPage() {
-  const { user, activeExam, setIsTutorOpen, setTutorContextPrompt } = useApp();
+  const { user, activeExam } = useApp();
   const [isExamDateOpen, setIsExamDateOpen] = useState(false);
   const { progress, unresolvedMistakes, isLoading } = useDashboardSummary(activeExam);
 
-  if (isLoading && !progress) {
+  if (isLoading) {
     return <DashboardPageSkeleton />;
   }
 
@@ -53,30 +53,13 @@ export default function DashboardPage() {
   const examDate = user?.examDate ? formatExamDate(user.examDate) : null;
   const daysLeft = user?.examDate ? daysUntilExam(user.examDate) : null;
 
-  const handleAskCoach = () => {
-    const attempted = (progress?.skills ?? []).filter(row => row.attempts > 0);
-    const weakest = attempted.length
-      ? attempted.reduce((worst, row) => (row.accuracy < worst.accuracy ? row : worst))
-      : null;
-    const focus = skillLabel(user?.focusSkill)?.toLowerCase();
-
-    setTutorContextPrompt(
-      weakest
-        ? `I am preparing for ${activeExam}. My weakest skill is ${weakest.skill} — ${weakest.accuracy}% accuracy across ${weakest.attempts} recent attempts. What should I work on to improve it?`
-        : focus
-          ? `I am preparing for ${activeExam} and have not practised yet. I find ${focus} the hardest. Where should I start?`
-          : `I am preparing for ${activeExam} and have not practised yet. Where should I start?`,
-    );
-    setIsTutorOpen(true);
-  };
-
   const skillProgress = new Map((progress?.skills ?? []).map(row => [row.skill, row]));
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+          <h1 className="font-display text-2xl sm:text-3xl font-black text-foreground tracking-tight">
             Namaste, {userName}
           </h1>
           <p className="text-xs text-muted-foreground mt-1 font-medium">
@@ -107,16 +90,14 @@ export default function DashboardPage() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        <PracticeStudioPanel
-          skills={buildSkillRows(activeExam, progress)}
-          mistakeCount={mistakeCount}
-        />
-        <FocusPanel
-          onAskCoach={handleAskCoach}
-          user={user}
-        />
-      </div>
+      {/* Full-width Current Plan Banner */}
+      <CurrentPlanCard user={user} />
+
+      {/* Full-width Practice Studio below Current Plan */}
+      <PracticeStudioPanel
+        skills={buildSkillRows(activeExam, progress)}
+        mistakeCount={mistakeCount}
+      />
 
       <ExamDateDialog open={isExamDateOpen} onOpenChange={setIsExamDateOpen} />
     </div>

@@ -778,7 +778,7 @@ export default function MistakesPage() {
                   <ArrowRight className="w-4 h-4" />
                 </Button>
                 <p className="text-[11px] text-muted-foreground font-medium">
-                  Plans start at NPR 499 · Instant access to all premium features
+                  Plans start at NPR 99 · Instant access to all premium features
                 </p>
               </div>
 

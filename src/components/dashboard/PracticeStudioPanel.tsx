@@ -19,7 +19,7 @@ const ACTION_LINK_CLASS =
 
 export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeStudioPanelProps) {
   return (
-    <div className="lg:col-span-7 bg-card dark:bg-[#12161c] border border-border dark:border-white/10 rounded-2xl p-6 space-y-5 shadow-sm">
+    <div className="w-full bg-card dark:bg-[#12161c] border border-border dark:border-white/10 rounded-2xl p-5 sm:p-6 space-y-5 shadow-sm">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-bold text-foreground">Practice studio</h2>
         <Link
