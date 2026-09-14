@@ -333,8 +333,8 @@ export default function SubscriptionPage() {
                 </div>
               </div>
 
-              {/* Column 4: Taiyari (PREPARATION) - Featured Elevated Adaptive Card */}
-              <div className="flex flex-col text-center bg-card dark:bg-card/90 text-foreground rounded-3xl px-4 py-6 shadow-xl border border-border relative -my-4 z-10 transition-all">
+              {/* Column 4: Taiyari (PREPARATION) */}
+              <div className="flex flex-col text-center">
                 <div className="h-44 flex flex-col justify-end pb-5 px-2 border-b border-border/70 space-y-1">
                   <div>
                     <span className="bg-primary text-primary-foreground text-[10px] font-extrabold uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs inline-block">
@@ -356,15 +356,15 @@ export default function SubscriptionPage() {
                     {row.pro}
                   </div>
                 ))}
-                <div className="h-20 flex items-center justify-center pt-2">
+                <div className="h-20 flex items-center justify-center">
                   <button
                     type="button"
                     disabled={currentPlanId === 'pro'}
                     onClick={() => handleOpenCheckout(proPlan)}
-                    className="w-full bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs sm:text-sm py-2.5 px-4 rounded-xl shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-1.5"
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-default"
                   >
                     <span>{currentPlanId === 'pro' ? 'Current Plan' : 'Get Started'}</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
