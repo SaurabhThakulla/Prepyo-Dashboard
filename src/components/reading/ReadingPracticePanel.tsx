@@ -73,6 +73,25 @@ function EmptyState({
   );
 }
 
+function labelForTypeKey(key?: string) {
+  if (!key) return 'Reading Practice';
+  const labels: Record<string, string> = {
+    matchinginformation: 'Matching Information',
+    findparagraph: 'Find the Paragraph',
+    whichparagraphcontainsfollowinginformation: 'Find the Paragraph',
+    truefalse: 'True / False / Not Given',
+    truefalsenotgiven: 'True / False / Not Given',
+    yesnonotgiven: 'Yes / No / Not Given',
+    fillinblanks: 'Sentence Completion',
+    completesentences: 'Sentence Completion',
+    sentencecompletions: 'Sentence Completion',
+    arrangepassage: 'Arrange the Passage',
+  };
+  if (labels[key.toLowerCase()]) return labels[key.toLowerCase()];
+  const words = key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[-_]+/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+  return words;
+}
+
 /**
  * Reading practice: IELTS-style split-pane screen.
  * Left pane: Reading passage with centered title and continuous natural paragraphs.
@@ -86,7 +105,7 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
   const types = typesQuery.data?.types ?? [];
 
   const practice = useReadingPractice(activeExam);
-  const { set, deal } = practice;
+  const { set, deal, dealing } = practice;
 
   const currentTypeId = set?.groups[0]?.typeId;
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -117,10 +136,28 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
   }, [sessionId, setActiveTestSession, toast]);
 
   const handleStart = useCallback(async () => {
-    if (!set || isStarting) return;
+    if (isStarting || isSessionActive) return;
     setIsStarting(true);
     try {
-      const qId = set.groups[0]?.questions[0]?.id || set.passage?.id || 'reading-task';
+      let availableTypes = types;
+      if (availableTypes.length === 0) {
+        const res = await typesQuery.refetch();
+        availableTypes = res.data?.types ?? [];
+      }
+      const linked = firstAvailable(typeIdsFor(initialTypeKey), availableTypes);
+      const targetId = linked ?? currentTypeId ?? availableTypes[0]?.typeId;
+
+      if (!targetId) {
+        toast.error('No tasks available', 'Please select another skill or exam.');
+        return;
+      }
+
+      const dealtSet = await deal(targetId);
+      if (!dealtSet) {
+        return;
+      }
+
+      const qId = dealtSet.groups[0]?.questions[0]?.id || dealtSet.passage?.id || 'reading-task';
       const data = await api.post<{ sessionId: string; remainingSubTests: number }>('/practice/start', {
         exam: activeExam,
         skill: 'reading',
@@ -131,7 +168,7 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
       await refreshUser();
       setActiveTestSession({
         isActive: true,
-        title: `READING: ${set.groups[0]?.typeName ?? 'Comprehension'}`,
+        title: `READING: ${dealtSet.groups[0]?.typeName ?? 'Comprehension'}`,
         skill: 'reading',
         onStop: handleStop,
       });
@@ -145,7 +182,7 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
     } finally {
       setIsStarting(false);
     }
-  }, [set, isStarting, activeExam, refreshUser, setActiveTestSession, handleStop, toast]);
+  }, [isStarting, isSessionActive, types, typesQuery, initialTypeKey, currentTypeId, deal, activeExam, refreshUser, setActiveTestSession, handleStop, toast]);
 
   const handleCheck = async () => {
     await practice.check();
@@ -154,28 +191,16 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
     setActiveTestSession(null);
   };
 
-
   useEffect(() => {
     if (typesQuery.error) toast.error('Could not load reading tasks', errorMessage(typesQuery.error));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typesQuery.error]);
 
-  // Open on the type the sidebar linked to, or the first one with questions.
+  // When task or exam changes in navigation, reset session so learner confirms before starting new task
   useEffect(() => {
-    if (types.length === 0) return;
-    const linked = firstAvailable(typeIdsFor(initialTypeKey), types);
-    const wanted = (linked ? types.find(type => type.typeId === linked) : undefined) ?? (set ? undefined : types[0]);
-    // A dealt set covers a whole family, so its first group may be a different
-    // type from the one asked for. Comparing the two directly re-dealt for ever.
-    const dealt = currentTypeId ? familyOf(currentTypeId) : [];
-    if (wanted && !dealt.includes(wanted.typeId)) {
-      setIsSessionActive(false);
-      setSessionId(null);
-      setActiveTestSession(null);
-      void deal(wanted.typeId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [types, initialTypeKey, activeExam]);
+    setIsSessionActive(false);
+    setSessionId(null);
+    setActiveTestSession(null);
+  }, [initialTypeKey, activeExam]);
 
   const askTutor = () => {
     if (!set) return;
@@ -191,42 +216,42 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
 
   const linked = firstAvailable(typeIdsFor(initialTypeKey), types);
   const targetTypeId = linked ?? currentTypeId ?? types[0]?.typeId;
-  // One skeleton for every reading task: they all load into the passage-left,
-  // questions-right layout below, so choosing by task type only made the page
-  // flash a shape it was never going to settle into.
-  const skeleton = <ReadingPracticeSkeleton />;
 
-  if (typesQuery.isPending) {
-    return skeleton;
-  }
+  // Confirmation / Protection screen: Shown prior to starting.
+  // Absolutely no database load or passage dealt until Start is clicked.
+  if (!isSessionActive && !practice.checked) {
+    if (isStarting || practice.dealing) {
+      return <ReadingPracticeSkeleton />;
+    }
 
-  if (types.length === 0) {
     return (
-      <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-8 text-center space-y-3 bg-card/20">
-        <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
-        <h3 className="text-sm font-bold text-foreground">No {activeExam} reading passages yet</h3>
-        <p className="text-xs text-muted-foreground">Switch exam, or try another skill.</p>
+      <div className="relative w-full h-[calc(100vh-4rem)] overflow-hidden bg-background">
+        <PreTestBlurOverlay
+          title={labelForTypeKey(initialTypeKey)}
+          instructions="The passage and questions will appear after you start."
+          subTestsRemaining={subTestsRemaining}
+          isStarting={isStarting}
+          onStart={handleStart}
+        />
       </div>
     );
   }
 
-  if (practice.dealing) {
-    return skeleton;
+  // Once started, while backend is dealing the set or starting session:
+  if (practice.dealing || isStarting) {
+    return <ReadingPracticeSkeleton />;
   }
 
   if (!set) {
-    // A failed deal is usually a 404 on a type with nothing behind it, so
-    // retrying that same type just fails again. Offer the ones that do have
-    // questions instead.
     const alternatives = types.filter(
       type => type.questionCount > 0 && type.typeId !== targetTypeId,
     );
     return (
       <EmptyState
         message={practice.dealError ?? 'Pick a task type to begin'}
-        onRetry={targetTypeId ? () => void deal(targetTypeId) : undefined}
+        onRetry={targetTypeId ? () => void handleStart() : undefined}
         types={alternatives}
-        onPick={typeId => void deal(typeId)}
+        onPick={() => void handleStart()}
       />
     );
   }
@@ -236,20 +261,7 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
   return (
     <div data-practice-workspace className="relative w-full h-[calc(100vh-4rem)] p-0 m-0 flex flex-col bg-background overflow-hidden">
       <div className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
-        {/* Compact IELTS Two-Column Split Screen Layout with Independent Scrolling */}
-        {!isSessionActive && !practice.checked && (
-          <PreTestBlurOverlay
-            title={set.passage?.title || set.groups[0]?.typeName || 'Reading Practice'}
-            typeName={set.groups[0]?.typeName || 'Reading Comprehension'}
-            instructions={set.groups[0]?.instructions || 'Read the passage and answer the questions.'}
-            subTestsRemaining={subTestsRemaining}
-            isStarting={isStarting}
-            onStart={handleStart}
-            onPickAnother={() => currentTypeId && void deal(currentTypeId)}
-            skill="reading"
-          />
-        )}
-        <div className={!isSessionActive && !practice.checked ? 'filter blur-[7px] pointer-events-none select-none opacity-25 transition-all duration-300 flex-1 w-full px-0 py-1 flex flex-col lg:flex-row gap-1.5 min-h-0 overflow-hidden' : 'transition-all duration-300 flex-1 w-full px-0 py-1 flex flex-col lg:flex-row gap-1.5 min-h-0 overflow-hidden'}>
+        <div className="transition-all duration-300 flex-1 w-full px-0 py-1 flex flex-col lg:flex-row gap-1.5 min-h-0 overflow-hidden">
           {/* Left Pane: Reading Passage (Independent scroll only) */}
           {hasPassage && (
             <div className="w-full lg:w-1/2 h-1/2 lg:h-full min-h-0 flex flex-col overflow-hidden">
@@ -266,9 +278,6 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
           {/* Right Pane: Questions & Answer Cards (Independent scroll only) */}
           <div className={`w-full ${hasPassage ? 'lg:w-1/2' : 'lg:w-full'} h-1/2 lg:h-full min-h-0 flex flex-col overflow-hidden`}>
             <div className="flex-1 min-h-0 overflow-y-auto pl-1 pr-2 space-y-2 scrollbar-thin">
-              {/* Numbering runs across the paper, not from 1 inside each set:
-                  the paper says "Questions 14–19" and the answer key refers
-                  back by those numbers. */}
               {set.groups.map((group, index) => (
                 <ReadingGroupCard
                   key={group.id}
@@ -318,27 +327,9 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
                 </Button>
               )}
 
-              {!isSessionActive && !practice.checked ? (
+              {practice.checked ? (
                 <Button
                   onClick={handleStart}
-                  disabled={isStarting || subTestsRemaining <= 0}
-                  className="font-bold gap-1.5 text-xs rounded-lg h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
-                >
-                  {isStarting ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Starting…</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      <span>Start Practice</span>
-                    </>
-                  )}
-                </Button>
-              ) : practice.checked ? (
-                <Button
-                  onClick={() => currentTypeId && void deal(currentTypeId)}
                   className="font-bold gap-1.5 text-xs rounded-lg h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
                 >
                   <Shuffle className="w-3.5 h-3.5" />

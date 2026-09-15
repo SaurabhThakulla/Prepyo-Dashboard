@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { BookOpen, ZoomIn, ZoomOut, Highlighter, Eraser, PenLine, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { Card } from '@/components/ui/card';
 import { ReadingPassage } from '@/lib/types';
 
@@ -46,16 +47,13 @@ function getCharacterOffset(bodyEl: HTMLElement, targetNode: Node, targetOffset:
   let actualNode = targetNode;
   let actualOffset = targetOffset;
 
-  if (targetNode.nodeType === Node.ELEMENT_NODE) {
-    const el = targetNode as Element;
-    if (el.childNodes.length > 0) {
-      if (targetOffset < el.childNodes.length) {
-        actualNode = el.childNodes[targetOffset];
-        actualOffset = 0;
-      } else {
-        actualNode = el.childNodes[el.childNodes.length - 1];
-        actualOffset = actualNode.textContent?.length || 0;
-      }
+  while (actualNode.nodeType === Node.ELEMENT_NODE && actualNode.childNodes.length > 0) {
+    if (actualOffset < actualNode.childNodes.length) {
+      actualNode = actualNode.childNodes[actualOffset];
+      actualOffset = 0;
+    } else {
+      actualNode = actualNode.childNodes[actualNode.childNodes.length - 1];
+      actualOffset = actualNode.textContent?.length || 0;
     }
   }
 
@@ -63,7 +61,7 @@ function getCharacterOffset(bodyEl: HTMLElement, targetNode: Node, targetOffset:
   const walker = document.createTreeWalker(bodyEl, NodeFilter.SHOW_TEXT, null);
   let node = walker.nextNode();
   while (node) {
-    if (node === actualNode || node.contains(actualNode) || actualNode.contains(node)) {
+    if (node === actualNode) {
       return offset + actualOffset;
     }
     offset += node.textContent?.length || 0;
@@ -187,7 +185,7 @@ export default function PassageReader({
 
   // Handle user mouse selection inside passage - opens menu AT THE MOUSE CURSOR
   const handleMouseUp = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent | MouseEvent) => {
       // If user clicked inside the menu itself, do nothing
       if (menuRef.current && menuRef.current.contains(e.target as Node)) {
         return;
@@ -200,9 +198,16 @@ export default function PassageReader({
       const selectedText = selection.toString().trim();
       if (!selectedText) return;
 
-      if (!containerRef.current?.contains(range.commonAncestorContainer)) return;
+      if (!containerRef.current) return;
+      const container = containerRef.current;
 
-      const bodyElements = containerRef.current.querySelectorAll<HTMLElement>('[data-paragraph-body]');
+      // Must be within or intersecting the passage container
+      const isInside =
+        container.contains(range.commonAncestorContainer) ||
+        (Boolean(range.intersectsNode) && range.intersectsNode(container));
+      if (!isInside) return;
+
+      const bodyElements = container.querySelectorAll<HTMLElement>('[data-paragraph-body]');
       if (!bodyElements.length) return;
 
       let startPIndex = -1;
@@ -259,14 +264,28 @@ export default function PassageReader({
 
       if (selectedRanges.length === 0) return;
 
-      // Position context menu directly at the mouse cursor position!
-      const mouseX = e.clientX;
-      const mouseY = e.clientY;
+      // Position context menu directly at the exact position where user released the mouse!
+      let mouseX = e.clientX;
+      let mouseY = e.clientY;
+
+      if (!mouseX && !mouseY && selection.rangeCount > 0) {
+        const rect = range.getBoundingClientRect();
+        mouseX = rect.right;
+        mouseY = rect.bottom;
+      }
 
       const menuWidth = 140;
       const menuHeight = 110;
-      const x = Math.min(Math.max(10, mouseX + 8), window.innerWidth - menuWidth - 10);
-      const y = Math.min(Math.max(10, mouseY + 8), window.innerHeight - menuHeight - 10);
+      let x = mouseX + 8;
+      let y = mouseY + 8;
+
+      // Flip if overflowing screen edge so it never hides
+      if (x + menuWidth > window.innerWidth - 12) {
+        x = Math.max(10, mouseX - menuWidth - 8);
+      }
+      if (y + menuHeight > window.innerHeight - 12) {
+        y = Math.max(10, mouseY - menuHeight - 8);
+      }
 
       setMenuState({
         x,
@@ -278,6 +297,17 @@ export default function PassageReader({
     },
     [highlights, passage.paragraphs]
   );
+
+  useEffect(() => {
+    const handleGlobalMouseUp = (e: MouseEvent) => {
+      handleMouseUp(e);
+    };
+
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [handleMouseUp]);
 
   // Handle right-click directly on an existing highlight section - opens menu AT THE MOUSE CURSOR
   const handleHighlightContextMenu = useCallback((e: React.MouseEvent, highlight: TextHighlight) => {
@@ -608,11 +638,11 @@ export default function PassageReader({
       </div>
 
       {/* Floating IELTS Context Menu: Opens directly at mouse cursor */}
-      {menuState && (
+      {menuState && typeof document !== 'undefined' && createPortal(
         <div
           ref={menuRef}
           style={{ left: menuState.x, top: menuState.y }}
-          className="fixed z-50 bg-[#1c2026] text-white border border-neutral-700/80 shadow-2xl rounded-xl py-1 px-1 min-w-[130px] space-y-0.5 animate-in fade-in zoom-in-95 duration-100 select-none text-xs"
+          className="fixed z-[9999] bg-[#1c2026] text-white border border-neutral-700/80 shadow-2xl rounded-xl py-1 px-1 min-w-[130px] space-y-0.5 animate-in fade-in zoom-in-95 duration-100 select-none text-xs"
         >
           {menuState.canHighlight && (
             <button
@@ -644,7 +674,8 @@ export default function PassageReader({
             <PenLine className="w-3.5 h-3.5 text-blue-400" />
             <span className="font-medium">Notes</span>
           </button>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Notes Modal / Popover */}

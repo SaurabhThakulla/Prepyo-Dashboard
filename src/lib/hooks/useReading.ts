@@ -72,7 +72,7 @@ export function useReadingPractice(exam: ExamType) {
   const [startedAt, setStartedAt] = useState(() => Date.now());
 
   const deal = useCallback(
-    async (typeId: string) => {
+    async (typeId: string): Promise<ReadingSet | null> => {
       setDealing(true);
       setDealError(null);
       try {
@@ -86,6 +86,7 @@ export function useReadingPractice(exam: ExamType) {
         setAnswers({});
         setResults({});
         setStartedAt(Date.now());
+        return data.set;
       } catch (err) {
         setSet(null);
         setDealError(errorMessage(err));
@@ -94,6 +95,7 @@ export function useReadingPractice(exam: ExamType) {
         } else {
           toast.error('Could not load a passage', errorMessage(err));
         }
+        return null;
       } finally {
         setDealing(false);
       }

@@ -1,19 +1,19 @@
 import React from 'react';
 import { Play, RefreshCw, AlertCircle, Sparkles, ShieldAlert, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
 
 interface PreTestBlurOverlayProps {
   title: string;
-  typeName: string;
+  typeName?: string;
   instructions?: string;
   subTestsRemaining: number;
   isStarting: boolean;
   onStart: () => void;
   onPickAnother?: () => void;
   skill?: string;
+  loading?: boolean;
 }
 
 /**
@@ -22,30 +22,18 @@ interface PreTestBlurOverlayProps {
  */
 export default function PreTestBlurOverlay({
   title,
-  typeName,
   instructions,
   subTestsRemaining,
   isStarting,
   onStart,
   onPickAnother,
-  skill,
+  loading = false,
 }: PreTestBlurOverlayProps) {
   const hasCredits = subTestsRemaining > 0;
 
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center p-4 bg-background/60 backdrop-blur-[2px] animate-in fade-in duration-200">
       <Card className="w-full max-w-lg p-6 sm:p-8 text-center space-y-5 bg-card/95 border-border/90 shadow-2xl rounded-2xl backdrop-blur-xl">
-        <div className="flex items-center justify-center gap-2">
-          {skill && (
-            <Badge variant="indigo" className="text-[10px] uppercase font-extrabold tracking-wider px-2.5 py-0.5">
-              {skill}
-            </Badge>
-          )}
-          <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 border-blue-500/40 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30">
-            {typeName}
-          </Badge>
-        </div>
-
         <div className="space-y-2">
           <CardTitle className="text-xl sm:text-2xl font-black text-foreground">
             {title}
@@ -79,11 +67,16 @@ export default function PreTestBlurOverlay({
           {hasCredits ? (
             <Button
               onClick={onStart}
-              disabled={isStarting}
+              disabled={isStarting || loading}
               size="lg"
               className="w-full h-12 text-sm font-extrabold gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25 transition-all active:scale-[0.99]"
             >
-              {isStarting ? (
+              {loading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Preparing test…</span>
+                </>
+              ) : isStarting ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
                   <span>Starting test…</span>
