@@ -37,6 +37,8 @@ export default function AdminQuestionBank({
   const [status, setStatus] = useState<'all' | 'published' | 'draft'>('all');
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [questionToDelete, setQuestionToDelete] = useState<AuthoredQuestionSummary | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [lastKey, setLastKey] = useState(reloadKey);
   if (reloadKey !== lastKey) {
@@ -74,20 +76,18 @@ export default function AdminQuestionBank({
     }
   };
 
-  const remove = async (question: AuthoredQuestionSummary) => {
-    const answers =
-      question.answers > 0 ? ` ${plural(question.answers, 'learner answer')} to it will be deleted too.` : '';
-    if (!window.confirm(`Delete "${question.title}"?${answers}`)) return;
-
-    setBusyId(question.id);
+  const handleDelete = async () => {
+    if (!questionToDelete) return;
+    setDeleting(true);
     try {
-      await api.delete(`/admin/questions/${question.id}`);
-      toast.success('Question deleted', question.title);
+      await api.delete(`/admin/questions/${questionToDelete.id}`);
+      toast.success('Question deleted', questionToDelete.title);
+      setQuestionToDelete(null);
       await reload();
     } catch (err) {
       toast.error('Could not delete the question', errorMessage(err));
     } finally {
-      setBusyId(null);
+      setDeleting(false);
     }
   };
 
@@ -173,12 +173,97 @@ export default function AdminQuestionBank({
             <QuestionCard
               key={question.id}
               question={question}
-              busy={busyId === question.id}
+              busy={busyId === question.id || (deleting && questionToDelete?.id === question.id)}
               onEdit={() => onEdit(question.id)}
               onTogglePublished={() => void togglePublished(question)}
-              onDelete={() => void remove(question)}
+              onDelete={() => setQuestionToDelete(question)}
             />
           ))}
+        </div>
+      )}
+
+      {questionToDelete && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs animate-in fade-in-0 duration-200"
+          onClick={() => !deleting && setQuestionToDelete(null)}
+        >
+          <div
+            className="bg-card border border-border rounded-2xl shadow-2xl max-w-md w-full p-5 sm:p-6 space-y-4 animate-in zoom-in-95 duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="space-y-1 min-w-0 flex-1">
+                <h3 className="font-display text-lg font-bold text-foreground">Delete Question</h3>
+                <p className="text-xs text-muted-foreground">
+                  Are you sure you want to permanently delete this question?
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-muted/60 border border-border/60 space-y-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge variant="outline" className="text-[10px]">
+                  {questionToDelete.exam}
+                </Badge>
+                <Badge variant="secondary" className="text-[10px]">
+                  {questionToDelete.typeName}
+                </Badge>
+              </div>
+              <p className="text-sm font-semibold text-foreground line-clamp-2">{questionToDelete.title}</p>
+              <p className="text-xs text-muted-foreground line-clamp-2">{questionToDelete.prompt}</p>
+            </div>
+
+            {(questionToDelete.answers > 0 || questionToDelete.inMock) && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 text-xs space-y-1">
+                {questionToDelete.answers > 0 && (
+                  <p className="font-medium">
+                    • {plural(questionToDelete.answers, 'learner answer')} associated with this question will also be deleted.
+                  </p>
+                )}
+                {questionToDelete.inMock && (
+                  <p className="font-medium">
+                    • This question is linked to mock exams and will be removed from them.
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={deleting}
+                onClick={() => setQuestionToDelete(null)}
+                className="font-bold text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={deleting}
+                onClick={() => void handleDelete()}
+                className="font-bold text-xs gap-1.5"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete Question
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -260,11 +345,11 @@ function QuestionCard({
           <Button
             variant="ghost"
             size="sm"
-            disabled={busy || question.inMock}
+            disabled={busy}
             onClick={onDelete}
-            title={question.inMock ? 'Part of a mock exam. Unpublish it instead.' : 'Delete question'}
+            title="Delete question"
             aria-label={`Delete ${question.title}`}
-            className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-600"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </Button>
