@@ -18,9 +18,10 @@ describe('the admin task catalogue', () => {
   }
 
   it('keeps mock-only tasks authorable without putting them on the dashboard', () => {
-    const arrange = TASK_TYPES.find(type => type.id === 'reading-arrange-passage');
-    expect(arrange?.mockOnly).toBe(true);
-    expect(SYLLABUS.IELTS.reading ?? []).not.toContain(arrange?.name);
+    const matchHeading = TASK_TYPES.find(type => type.id === 'reading-arrange-passage');
+    expect(matchHeading?.mockOnly).toBe(true);
+    expect(matchHeading?.name).toBe('Match the Heading');
+    expect(SYLLABUS.IELTS.reading ?? []).not.toContain(matchHeading?.name);
   });
 
   it('follows the exam matrix, task by task', () => {

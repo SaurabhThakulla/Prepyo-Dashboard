@@ -283,7 +283,7 @@ describe('the answer each renderer sends', () => {
     expect(parseFloat(wide)).toBeGreaterThan(parseFloat(narrow));
   });
 
-  it('arrange the passage sends the chosen box', () => {
+  it('match the heading sends the chosen box', () => {
     const { onChange, patch } = capture();
     render(
       <OrderedChoice

@@ -85,7 +85,12 @@ function labelForTypeKey(key?: string) {
     fillinblanks: 'Sentence Completion',
     completesentences: 'Sentence Completion',
     sentencecompletions: 'Sentence Completion',
-    arrangepassage: 'Arrange the Passage',
+    arrangepassage: 'Match the Heading',
+    matchheading: 'Match the Heading',
+    matchtheheading: 'Match the Heading',
+    matchheadings: 'Match the Heading',
+    matchingheadings: 'Match the Heading',
+    matchingheading: 'Match the Heading',
   };
   if (labels[key.toLowerCase()]) return labels[key.toLowerCase()];
   const words = key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[-_]+/g, ' ').replace(/\b\w/g, char => char.toUpperCase());

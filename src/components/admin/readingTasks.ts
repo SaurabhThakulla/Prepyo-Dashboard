@@ -110,7 +110,7 @@ export const TASK_TYPES: TaskType[] = [
   },
   {
     id: 'reading-arrange-passage',
-    name: 'Arrange the Passage',
+    name: 'Match the Heading',
     style: 'boxes',
     exam: 'IELTS',
     mockOnly: true,

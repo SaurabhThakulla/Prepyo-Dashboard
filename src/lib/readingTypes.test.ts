@@ -80,6 +80,9 @@ describe('the reading dashboard', () => {
       READING_TYPES.matchingInformation,
     ]);
     expect(typeIdsFor('matchinginformation')).toEqual([READING_TYPES.matchingInformation]);
+    expect(typeIdsFor('arrangepassage')).toEqual([READING_TYPES.arrangePassage]);
+    expect(typeIdsFor('matchheading')).toEqual([READING_TYPES.arrangePassage]);
+    expect(typeIdsFor('matchtheheading')).toEqual([READING_TYPES.arrangePassage]);
   });
 
   it('resolves nothing for an unknown key rather than guessing', () => {

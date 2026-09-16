@@ -3,7 +3,7 @@ import { Check, X } from 'lucide-react';
 import { AnswerProps, correctIds } from './types';
 
 /**
- * Arrange the Passage: the boxes are printed out of order and each question asks
+ * Match the Heading: the boxes are printed out of order and each question asks
  * which one belongs at this position.
  *
  * It looks like a multiple choice and is not one. The options are the same four

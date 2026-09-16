@@ -14,6 +14,7 @@ export const READING_TYPES = {
   trueFalse: 'reading-true-false',
   findTheParagraph: 'reading-find-the-paragraph',
   arrangePassage: 'reading-arrange-passage',
+  matchHeading: 'reading-arrange-passage',
   yesNoNotGiven: 'reading-yes-no-not-given',
   matchingInformation: 'reading-matching-information',
 
@@ -59,6 +60,11 @@ export const TYPE_BY_SYLLABUS_KEY: Record<string, string | string[]> = {
   completesentences: READING_TYPES.sentenceCompletion,
   sentencecompletions: READING_TYPES.sentenceCompletion,
   arrangepassage: READING_TYPES.arrangePassage,
+  matchheading: READING_TYPES.arrangePassage,
+  matchtheheading: READING_TYPES.arrangePassage,
+  matchheadings: READING_TYPES.arrangePassage,
+  matchingheadings: READING_TYPES.arrangePassage,
+  matchingheading: READING_TYPES.arrangePassage,
 
   readingwritingfillinblanks: READING_TYPES.fillBlanksRW,
   readingfillinblanks: READING_TYPES.fillBlanksR,

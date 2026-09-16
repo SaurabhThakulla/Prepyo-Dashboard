@@ -61,7 +61,7 @@ function getSubtopicIcon(label: string, fallbackIcon: LucideIcon): LucideIcon {
   if (norm.includes('complete the sentence') || norm.includes('sentence completion')) return AlignLeft;
   if (norm.includes('true and false') || norm.includes('true/false')) return CheckSquare2;
   if (norm.includes('find the writer')) return Search;
-  if (norm.includes('arrange the passage') || norm.includes('re-order') || norm.includes('reorder')) return ArrowUpDown;
+  if (norm.includes('match the heading') || norm.includes('arrange the passage') || norm.includes('re-order') || norm.includes('reorder')) return ArrowUpDown;
   if (norm.includes('yes / no') || norm.includes('yes/no')) return HelpCircle;
   if (norm.includes('matching') || norm.includes('match')) return Layers;
   if (norm.includes('multiple choice') || norm.includes('single answer')) return CheckCircle2;
