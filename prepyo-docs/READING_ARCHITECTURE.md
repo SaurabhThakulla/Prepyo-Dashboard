@@ -151,7 +151,7 @@ migrations.**
 
 11. **The renderer is only half type-driven.** `AnswerControl` handles reorder
     and gap-fill by type, then falls through to `if (question.options?.length)`.
-    So TFNG, YNNG, Matching Information, Find the Paragraph, MCQ-single and
+    So TFNG, YNNG, Matching Information, Match The Heading, MCQ-single and
     MCQ-multiple all render as the same two-column option grid. There is no
     matching interface, no in-sentence blank for sentence completion, no
     heading drag. This is the gap against the JumpInto-style presentation the
@@ -458,7 +458,7 @@ Presentation rules from the brief, made concrete:
 
 - The learner always sees the **real question text**. Matching Information reads
   "Which paragraph contains the following information?" with the actual
-  statements and A–J options — never a placeholder like "Find the paragraph".
+  statements and A–J options — never a placeholder like "Match The Heading".
 - `needsParagraphLabels(typeId)` already forces `PassageReader` to print `[A]`…
   `[J]`; that stays and extends to the whole matching family.
 - Gap-fills keep the passage hidden. Their gapped text is a genuine rewrite

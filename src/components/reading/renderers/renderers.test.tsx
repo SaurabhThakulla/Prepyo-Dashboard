@@ -52,7 +52,7 @@ describe('the renderer registry', () => {
   });
 
   // True/False and Yes/No/Not Given are the same interaction over different
-  // words, and Matching Information and Find the Paragraph are the same task
+  // words, and Matching Information and Match The Heading are the same task
   // over different prompts. Sharing a renderer there is intended; sharing one
   // with a multiple choice is not.
   it('separates the verdict, matching and choice families', () => {

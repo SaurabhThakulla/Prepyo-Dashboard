@@ -43,7 +43,7 @@ export const TYPE_BY_SYLLABUS_KEY: Record<string, string | string[]> = {
   multiplechoicemultipleanswers: READING_TYPES.mcqMultiple,
 
   // Both paragraph-locating tasks ask the learner the same thing, so they are
-  // one heading. Find the Paragraph is the task behind it; Matching Information
+  // one heading. Match The Heading is the task behind it; Matching Information
   // is only reached when that one has nothing to deal.
   findparagraph: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
   whichparagraphcontainsfollowinginformation: [

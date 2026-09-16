@@ -4,7 +4,7 @@ import { READING_TYPES } from '@/lib/readingTypes';
 import { UserProfile } from '@/lib/types';
 
 const readingItems = (exam: 'IELTS' | 'PTE', available?: string[]) =>
-  (buildSections(exam, () => {}, null, available).find(section => section.id === 'practice')?.items ?? [])
+  (buildSections(exam, () => { }, null, available).find(section => section.id === 'practice')?.items ?? [])
     .filter(item => item.group === 'Reading')
     .map(item => item.label);
 
@@ -16,7 +16,7 @@ describe('the reading section of the practice menu', () => {
       'Multiple Choice',
       'True / False / Not Given',
       'Yes / No / Not Given',
-      'Find the paragraph',
+      'Match The Heading',
       'Fill in the Blanks',
     ]);
   });
@@ -29,7 +29,7 @@ describe('the reading section of the practice menu', () => {
   });
 
   it('keeps a heading when any one of the types behind it has questions', () => {
-    expect(readingItems('IELTS', [READING_TYPES.matchingInformation])).toEqual(['Find the paragraph']);
+    expect(readingItems('IELTS', [READING_TYPES.matchingInformation])).toEqual(['Match The Heading']);
   });
 
   it('shows nothing when the bank is empty, rather than five dead links', () => {
@@ -39,7 +39,7 @@ describe('the reading section of the practice menu', () => {
 
   it('offers the generated paper once the bank can deal one', () => {
     const items =
-      buildSections('IELTS', () => {}, null, [READING_TYPES.trueFalse], 3).find(
+      buildSections('IELTS', () => { }, null, [READING_TYPES.trueFalse], 3).find(
         s => s.id === 'practice',
       )?.items ?? [];
     const mock = items.find(item => item.label === 'Reading Mock Test');
@@ -53,7 +53,7 @@ describe('the reading section of the practice menu', () => {
 
   it('keeps the paper under reading practice for PTE too', () => {
     const items =
-      buildSections('PTE', () => {}, null, [READING_TYPES.fillBlanksR], 4).find(
+      buildSections('PTE', () => { }, null, [READING_TYPES.fillBlanksR], 4).find(
         s => s.id === 'practice',
       )?.items ?? [];
     const mock = items.find(item => item.label === 'Reading Mock Test');
@@ -65,13 +65,13 @@ describe('the reading section of the practice menu', () => {
   it('hides the paper when there is no blueprint or nothing to build it from', () => {
     expect(readingItems('IELTS', [READING_TYPES.trueFalse])).not.toContain('Reading Mock Test');
     expect(
-      (buildSections('IELTS', () => {}, null, [], 3).find(s => s.id === 'practice')?.items ?? [])
+      (buildSections('IELTS', () => { }, null, [], 3).find(s => s.id === 'practice')?.items ?? [])
         .map(item => item.label),
     ).not.toContain('Reading Mock Test');
   });
 
   it('leaves the other skills alone when reading is empty', () => {
-    const items = buildSections('IELTS', () => {}, null, []).find(s => s.id === 'practice')?.items ?? [];
+    const items = buildSections('IELTS', () => { }, null, []).find(s => s.id === 'practice')?.items ?? [];
     expect(items.filter(item => item.group === 'Writing').length).toBeGreaterThan(0);
     expect(items.filter(item => item.group === 'Listening').length).toBeGreaterThan(0);
   });
@@ -81,7 +81,7 @@ describe('the practice menu for an admin', () => {
   const admin = { role: 'admin' } as unknown as UserProfile;
 
   it('replaces every skill’s task links with its authoring screen', () => {
-    const items = buildSections('IELTS', () => {}, admin).find(s => s.id === 'practice')?.items ?? [];
+    const items = buildSections('IELTS', () => { }, admin).find(s => s.id === 'practice')?.items ?? [];
     expect(items.map(item => [item.group, item.href, item.badge])).toEqual([
       ['Speaking', '/practice?skill=speaking', 'Admin'],
       ['Writing', '/practice?skill=writing', 'Admin'],
@@ -92,7 +92,7 @@ describe('the practice menu for an admin', () => {
 });
 
 describe('which menu item is lit', () => {
-  const items = buildSections('IELTS', () => {}, null, [READING_TYPES.trueFalse], 3).flatMap(
+  const items = buildSections('IELTS', () => { }, null, [READING_TYPES.trueFalse], 3).flatMap(
     section => section.items,
   );
   const lit = (url: string) => {
@@ -127,7 +127,7 @@ describe('which menu item is lit', () => {
 
 describe('mock tests for all practice skills', () => {
   it('offers speaking, writing, and listening mock tests alongside syllabus task items', () => {
-    const items = buildSections('IELTS', () => {}, null, [READING_TYPES.trueFalse], 3).find(
+    const items = buildSections('IELTS', () => { }, null, [READING_TYPES.trueFalse], 3).find(
       s => s.id === 'practice',
     )?.items ?? [];
 

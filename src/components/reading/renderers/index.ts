@@ -18,7 +18,7 @@ import UnsupportedType from './UnsupportedType';
  *
  * It is keyed on `typeId` and nothing else. The previous version dispatched on
  * two types and then fell through to `if (question.options?.length)`, which
- * meant True/False, Yes/No/Not Given, Matching Information, Find the Paragraph,
+ * meant True/False, Yes/No/Not Given, Matching Information, Match The Heading,
  * Match the Heading and both multiple choices all rendered as the same
  * two-column grid of cards — six different tasks wearing one interface, because
  * they happen to arrive with an options array.

@@ -77,7 +77,7 @@ export const TASK_TYPES: TaskType[] = [
   },
   {
     id: 'reading-find-the-paragraph',
-    name: 'Find the paragraph',
+    name: 'Match The Heading',
     style: 'paragraph',
     exam: 'IELTS',
     instructionsHint: 'The passage has seven paragraphs, A-G. Which paragraph contains the following information?',
@@ -205,7 +205,7 @@ export const labelFor = (index: number) =>
 export const groupPayload = (group: DraftGroup) => ({
   typeId:
     group.typeId === 'reading-mcq-single' &&
-    group.questions.some(question => question.correctAnswers.filter(Boolean).length > 1)
+      group.questions.some(question => question.correctAnswers.filter(Boolean).length > 1)
       ? 'reading-mcq-multiple'
       : group.typeId,
   instructions: group.instructions,

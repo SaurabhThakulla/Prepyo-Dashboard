@@ -77,8 +77,8 @@ function labelForTypeKey(key?: string) {
   if (!key) return 'Reading Practice';
   const labels: Record<string, string> = {
     matchinginformation: 'Matching Information',
-    findparagraph: 'Find the Paragraph',
-    whichparagraphcontainsfollowinginformation: 'Find the Paragraph',
+    findparagraph: 'Match The Heading',
+    whichparagraphcontainsfollowinginformation: 'Match The Heading',
     truefalse: 'True / False / Not Given',
     truefalsenotgiven: 'True / False / Not Given',
     yesnonotgiven: 'Yes / No / Not Given',

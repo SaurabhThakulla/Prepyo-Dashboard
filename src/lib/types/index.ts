@@ -229,7 +229,7 @@ export interface Mock {
 
 /**
  * One labelled block of a passage. The label carries meaning: a Matching
- * Information or Find the Paragraph answer *is* a paragraph label.
+ * Information or Match The Heading answer *is* a paragraph label.
  */
 export interface ReadingParagraph {
   label: string;

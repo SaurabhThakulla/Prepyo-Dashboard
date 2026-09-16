@@ -2,7 +2,7 @@ import React from 'react';
 import { AnswerProps, correctIds } from './types';
 
 /**
- * Matching Information and Find the Paragraph.
+ * Matching Information and Match The Heading.
  *
  * The question is a piece of information; the answer is the letter of the
  * paragraph that contains it. So the control is a row of letters, not a stack of
@@ -53,9 +53,8 @@ export default function ParagraphMatcher({ question, answer, result, locked, onC
             aria-label={option.text}
             title={option.text}
             onClick={() => onChange({ selectedOptions: [option.id] })}
-            className={`w-9 h-9 rounded-lg border font-mono font-bold text-sm flex items-center justify-center transition-all ${
-              locked ? 'cursor-default' : 'cursor-pointer active:scale-95'
-            } ${classes}`}
+            className={`w-9 h-9 rounded-lg border font-mono font-bold text-sm flex items-center justify-center transition-all ${locked ? 'cursor-default' : 'cursor-pointer active:scale-95'
+              } ${classes}`}
           >
             {letterOf(option.text, option.id)}
           </button>

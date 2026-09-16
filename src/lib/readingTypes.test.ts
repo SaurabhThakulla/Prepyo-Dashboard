@@ -42,7 +42,7 @@ describe('the reading dashboard', () => {
     const ielts = SYLLABUS.IELTS.reading ?? [];
     const pte = SYLLABUS.PTE.reading ?? [];
 
-    for (const name of ['True / False / Not Given', 'Yes / No / Not Given', 'Find the paragraph']) {
+    for (const name of ['True / False / Not Given', 'Yes / No / Not Given', 'Match The Heading']) {
       expect(ielts, name).toContain(name);
       expect(pte, name).not.toContain(name);
     }
@@ -64,8 +64,8 @@ describe('the reading dashboard', () => {
 
   // Matching Information asks the same thing, so it sits behind the same
   // heading — as the fallback, not the first choice.
-  it('deals Find the Paragraph behind the paragraph task', () => {
-    const ids = typeIdsFor(typeKey('Find the paragraph'));
+  it('deals Match The Heading behind the paragraph task', () => {
+    const ids = typeIdsFor(typeKey('Match The Heading'));
     expect(ids[0]).toBe(READING_TYPES.findTheParagraph);
     expect(ids).toEqual([READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation]);
   });
