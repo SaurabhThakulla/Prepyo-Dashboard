@@ -233,3 +233,70 @@ export const groupPayload = (group: DraftGroup) => ({
     };
   }),
 });
+
+export interface PassageSlotTemplate {
+  slot: 'A' | 'B' | 'C';
+  label: string;
+  totalQuestions: number;
+  description: string;
+  groups: {
+    typeId: string;
+    typeName: string;
+    questionCount: number;
+  }[];
+}
+
+export const PASSAGE_SLOT_TEMPLATES: Record<'A' | 'B' | 'C', PassageSlotTemplate> = {
+  A: {
+    slot: 'A',
+    label: 'Passage A (Part 1)',
+    totalQuestions: 13,
+    description: 'Sentence Completion (7) + True / False / Not Given (6)',
+    groups: [
+      { typeId: 'reading-sentence-completion', typeName: 'Sentence Completion', questionCount: 7 },
+      { typeId: 'reading-true-false', typeName: 'True / False / Not Given', questionCount: 6 },
+    ],
+  },
+  B: {
+    slot: 'B',
+    label: 'Passage B (Part 2)',
+    totalQuestions: 13,
+    description: "Find the Writer's View (6) + Match the Heading (4) + Yes / No / Not Given (3)",
+    groups: [
+      { typeId: 'reading-find-the-paragraph', typeName: "Find the Writer's View", questionCount: 6 },
+      { typeId: 'reading-arrange-passage', typeName: 'Match the Heading', questionCount: 4 },
+      { typeId: 'reading-yes-no-not-given', typeName: 'Yes / No / Not Given', questionCount: 3 },
+    ],
+  },
+  C: {
+    slot: 'C',
+    label: 'Passage C (Part 3)',
+    totalQuestions: 14,
+    description: 'Sentence Completion (6) + Matching Information (4) + Yes / No / Not Given (4)',
+    groups: [
+      { typeId: 'reading-sentence-completion', typeName: 'Sentence Completion', questionCount: 6 },
+      { typeId: 'reading-find-the-paragraph', typeName: 'Matching Information', questionCount: 4 },
+      { typeId: 'reading-yes-no-not-given', typeName: 'Yes / No / Not Given', questionCount: 4 },
+    ],
+  },
+};
+
+export const createGroupsFromSlotTemplate = (slot: 'A' | 'B' | 'C'): DraftGroup[] => {
+  const template = PASSAGE_SLOT_TEMPLATES[slot];
+  if (!template) return [];
+  return template.groups.map(g => {
+    const type = TASK_TYPES.find(entry => entry.id === g.typeId);
+    const instructions = type?.instructionsHint ?? '';
+    const questions = Array.from({ length: g.questionCount }, () => emptyQuestion());
+    return {
+      typeId: g.typeId,
+      instructions,
+      boxTitle: '',
+      questions,
+      wordBank: [],
+      exams: ['IELTS'],
+      boxes: g.typeId === 'reading-arrange-passage' ? ['', '', '', ''] : ['', ''],
+    };
+  });
+};
+

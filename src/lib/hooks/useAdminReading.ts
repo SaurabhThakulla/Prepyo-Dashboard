@@ -24,6 +24,7 @@ export interface PassageSummary {
   questions: number;
   taskTypes: string[];
   isPublished: boolean;
+  passageSlot?: 'A' | 'B' | 'C' | 'custom';
   createdAt: string;
 }
 

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { SYLLABUS } from '@/lib/syllabus';
-import { TASK_TYPES, emptyGroup, emptyQuestion, groupPayload } from '@/components/admin/readingTasks';
+import {
+  TASK_TYPES,
+  emptyGroup,
+  emptyQuestion,
+  groupPayload,
+  PASSAGE_SLOT_TEMPLATES,
+  createGroupsFromSlotTemplate,
+} from '@/components/admin/readingTasks';
 
 // The admin authors what learners practise. A task offered in one list and not
 // the other is either a dead end in the dashboard or content nobody can find,
@@ -93,5 +100,41 @@ describe('the payload a set is saved as', () => {
     const arrange = emptyGroup('reading-arrange-passage');
     arrange.boxes = [' first ', '', 'second'];
     expect(groupPayload(arrange).boxes).toEqual(['first', 'second']);
+  });
+});
+
+describe('Passage A / B / C slot templates', () => {
+  it('defines 13 questions for Passage A (7 Sentence Completion + 6 True/False)', () => {
+    expect(PASSAGE_SLOT_TEMPLATES.A.totalQuestions).toBe(13);
+    const groups = createGroupsFromSlotTemplate('A');
+    expect(groups).toHaveLength(2);
+    expect(groups[0].questions).toHaveLength(7);
+    expect(groups[1].questions).toHaveLength(6);
+  });
+
+  it('defines 13 questions for Passage B (6 Writer/Paragraph + 4 Match Heading + 3 Yes/No/NG)', () => {
+    expect(PASSAGE_SLOT_TEMPLATES.B.totalQuestions).toBe(13);
+    const groups = createGroupsFromSlotTemplate('B');
+    expect(groups).toHaveLength(3);
+    expect(groups[0].questions).toHaveLength(6);
+    expect(groups[1].questions).toHaveLength(4);
+    expect(groups[2].questions).toHaveLength(3);
+  });
+
+  it('defines 14 questions for Passage C (6 Sentence Completion + 4 Matching Info + 4 Yes/No/NG)', () => {
+    expect(PASSAGE_SLOT_TEMPLATES.C.totalQuestions).toBe(14);
+    const groups = createGroupsFromSlotTemplate('C');
+    expect(groups).toHaveLength(3);
+    expect(groups[0].questions).toHaveLength(6);
+    expect(groups[1].questions).toHaveLength(4);
+    expect(groups[2].questions).toHaveLength(4);
+  });
+
+  it('totals exactly 40 questions across Passage A + B + C', () => {
+    const total =
+      PASSAGE_SLOT_TEMPLATES.A.totalQuestions +
+      PASSAGE_SLOT_TEMPLATES.B.totalQuestions +
+      PASSAGE_SLOT_TEMPLATES.C.totalQuestions;
+    expect(total).toBe(40);
   });
 });

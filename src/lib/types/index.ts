@@ -253,6 +253,7 @@ export interface ReadingPassage {
   difficulty: 'easy' | 'medium' | 'hard';
   topic?: string;
   tags: string[];
+  passageSlot?: 'A' | 'B' | 'C' | 'custom';
 }
 
 /** One task set on a passage: a type, its instruction line, its questions. */

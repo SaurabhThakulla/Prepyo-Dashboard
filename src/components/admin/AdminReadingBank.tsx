@@ -160,6 +160,11 @@ function PassageCard({ passage, onOpen }: { passage: PassageSummary; onOpen: () 
                 {entry}
               </Badge>
             ))}
+            {passage.passageSlot && passage.passageSlot !== 'custom' && (
+              <Badge variant="secondary" className="text-[9px] font-bold bg-primary/10 text-primary border-primary/25">
+                Passage {passage.passageSlot}
+              </Badge>
+            )}
             {passage.isPublished ? (
               <Badge className="text-[9px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
                 Published

@@ -15,6 +15,8 @@ import {
   emptyGroup,
   groupPayload,
   labelFor,
+  PASSAGE_SLOT_TEMPLATES,
+  createGroupsFromSlotTemplate,
 } from '@/components/admin/readingTasks';
 
 /**
@@ -35,6 +37,7 @@ export default function AdminPassageUpload({
   const toast = useToast();
 
   const [exam, setExam] = useState<ExamType>('IELTS');
+  const [passageSlot, setPassageSlot] = useState<'A' | 'B' | 'C' | 'custom'>('A');
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [topic, setTopic] = useState('');
@@ -74,6 +77,7 @@ export default function AdminPassageUpload({
         '/admin/reading/passages',
         {
           exam,
+          passageSlot: exam === 'IELTS' ? passageSlot : 'custom',
           title,
           subtitle,
           topic,
@@ -163,6 +167,20 @@ export default function AdminPassageUpload({
               <option value="PTE">PTE</option>
             </select>
           </Field>
+          {exam === 'IELTS' && (
+            <Field label="Passage Pattern (Role)">
+              <select
+                value={passageSlot}
+                onChange={e => setPassageSlot(e.target.value as 'A' | 'B' | 'C' | 'custom')}
+                className="h-9 w-full rounded-xl border border-input bg-card px-3 text-xs font-medium"
+              >
+                <option value="A">Passage A (Part 1 — 13 Qs)</option>
+                <option value="B">Passage B (Part 2 — 13 Qs)</option>
+                <option value="C">Passage C (Part 3 — 14 Qs)</option>
+                <option value="custom">Custom (Manual Sets)</option>
+              </select>
+            </Field>
+          )}
           <Field label="Difficulty">
             <select
               value={difficulty}
@@ -220,6 +238,31 @@ export default function AdminPassageUpload({
           </div>
         )}
       </Card>
+
+      {exam === 'IELTS' && passageSlot !== 'custom' && (
+        <Card className="p-4 bg-primary/5 border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Badge className="font-bold text-xs">{PASSAGE_SLOT_TEMPLATES[passageSlot].label}</Badge>
+              <span className="text-xs font-bold text-foreground">
+                {PASSAGE_SLOT_TEMPLATES[passageSlot].totalQuestions} Questions Target
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {PASSAGE_SLOT_TEMPLATES[passageSlot].description}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={() => setGroups(createGroupsFromSlotTemplate(passageSlot))}
+            className="font-bold text-xs shrink-0"
+          >
+            Apply Passage {passageSlot} Template ({PASSAGE_SLOT_TEMPLATES[passageSlot].totalQuestions} Qs)
+          </Button>
+        </Card>
+      )}
 
       <div className="space-y-4">
         {groups.map((group, gi) => (
