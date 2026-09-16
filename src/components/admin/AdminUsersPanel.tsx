@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { formatExamDate } from '@/lib/dates';
-import { ROLE_LABELS, UserRole } from '@/lib/types';
+import { ExamType, ROLE_LABELS, UserRole } from '@/lib/types';
 
 interface AdminUser {
   id: string;
@@ -105,6 +105,21 @@ export default function AdminUsersPanel() {
     } catch (err) {
       const message = errorMessage(err);
       toast.error('Could not change that role', message);
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const changeExam = async (user: AdminUser, targetExam: ExamType) => {
+    if (targetExam === user.targetExam) return;
+
+    setSavingId(user.id);
+    try {
+      const data = await api.patch<{ user: AdminUser }>(`/admin/users/${user.id}/exam`, { targetExam });
+      setUsers(current => current.map(u => (u.id === user.id ? data.user : u)));
+      toast.success('Exam updated', `${data.user.name} is now preparing for ${data.user.targetExam}. Their target scores were cleared because the exam scales differ.`);
+    } catch (err) {
+      toast.error('Could not change that exam', errorMessage(err));
     } finally {
       setSavingId(null);
     }
@@ -212,7 +227,7 @@ export default function AdminUsersPanel() {
                 <th className="py-2 pr-3">Role</th>
                 <th className="py-2 pr-3">Started</th>
                 <th className="py-2 pr-3">Expires</th>
-                <th className="py-2 pr-3">Exam</th>
+                <th className="py-2 pr-3 w-32">Exam</th>
                 <th className="py-2 pr-3 text-right">XP</th>
                 <th className="py-2 pr-3">Joined</th>
                 <th className="py-2 w-36">Change role</th>
@@ -239,7 +254,18 @@ export default function AdminUsersPanel() {
                   <td className="py-2.5 pr-3">
                     <ExpiryCell validUntil={user.planValidUntil} />
                   </td>
-                  <td className="py-2.5 pr-3 text-muted-foreground">{user.targetExam}</td>
+                  <td className="py-2.5 pr-3">
+                    <select
+                      aria-label={`Change ${user.name}'s exam`}
+                      value={user.targetExam}
+                      disabled={savingId === user.id}
+                      onChange={e => changeExam(user, e.target.value as ExamType)}
+                      className="h-8 rounded-lg border border-input bg-card px-2 text-xs font-semibold text-foreground disabled:opacity-50"
+                    >
+                      <option value="PTE">PTE</option>
+                      <option value="IELTS">IELTS</option>
+                    </select>
+                  </td>
                   <td className="py-2.5 pr-3 text-right font-semibold text-foreground">
                     {user.xp.toLocaleString()}
                   </td>
