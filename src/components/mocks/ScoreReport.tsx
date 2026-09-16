@@ -40,8 +40,12 @@ export default function ScoreReport({ attempt, outcome, onBack }: ScoreReportPro
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-background p-5 text-center space-y-1">
-          <span className="text-xs font-bold text-muted-foreground uppercase">Estimated Overall</span>
-          <div className="font-display text-4xl font-black text-foreground">{attempt.userScore}</div>
+          <span className="text-xs font-bold text-muted-foreground uppercase">
+            {attempt.exam === 'IELTS' ? 'Estimated Band' : 'Estimated Overall'}
+          </span>
+          <div className="font-display text-4xl font-black text-foreground">
+            {attempt.exam === 'IELTS' ? attempt.userScore.toFixed(1) : Math.round(attempt.userScore)}
+          </div>
           <Badge variant="default">Practice estimate</Badge>
         </Card>
 
@@ -84,7 +88,9 @@ export default function ScoreReport({ attempt, outcome, onBack }: ScoreReportPro
             {skillScores.map(([skill, score]) => (
               <div key={skill} className="p-3.5 rounded-xl bg-card border border-border text-center space-y-1">
                 <span className="text-xs font-bold text-muted-foreground uppercase capitalize">{skill}</span>
-                <div className="font-display text-xl font-black text-foreground">{score}</div>
+                <div className="font-display text-xl font-black text-foreground">
+                  {attempt.exam === 'IELTS' ? score.toFixed(1) : Math.round(score)}
+                </div>
               </div>
             ))}
           </div>

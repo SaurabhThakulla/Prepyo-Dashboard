@@ -50,6 +50,11 @@ export const TYPE_BY_SYLLABUS_KEY: Record<string, string | string[]> = {
     READING_TYPES.findTheParagraph,
     READING_TYPES.matchingInformation,
   ],
+  matchheading: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
+  matchtheheading: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
+  matchheadings: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
+  matchingheadings: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
+  matchingheading: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
   matchinginformation: READING_TYPES.matchingInformation,
 
   truefalse: READING_TYPES.trueFalse,
@@ -60,11 +65,7 @@ export const TYPE_BY_SYLLABUS_KEY: Record<string, string | string[]> = {
   completesentences: READING_TYPES.sentenceCompletion,
   sentencecompletions: READING_TYPES.sentenceCompletion,
   arrangepassage: READING_TYPES.arrangePassage,
-  matchheading: READING_TYPES.arrangePassage,
-  matchtheheading: READING_TYPES.arrangePassage,
-  matchheadings: READING_TYPES.arrangePassage,
-  matchingheadings: READING_TYPES.arrangePassage,
-  matchingheading: READING_TYPES.arrangePassage,
+
 
   readingwritingfillinblanks: READING_TYPES.fillBlanksRW,
   readingfillinblanks: READING_TYPES.fillBlanksR,

@@ -64,9 +64,14 @@ export default function ScoreReportList({
 
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <div className="text-[11px] font-bold text-muted-foreground uppercase">Score</div>
-              <div className="font-display text-2xl font-black text-foreground">{attempt.userScore}</div>
+              <div className="text-[11px] font-bold text-muted-foreground uppercase">
+                {attempt.exam === 'IELTS' ? 'Band' : 'Score'}
+              </div>
+              <div className="font-display text-2xl font-black text-foreground">
+                {attempt.exam === 'IELTS' ? attempt.userScore.toFixed(1) : Math.round(attempt.userScore)}
+              </div>
             </div>
+
             <Button onClick={() => onReview(attempt)} size="sm" className="font-bold text-xs gap-1.5 shadow-sm">
               <span>Review</span>
               <ChevronRight className="w-3.5 h-3.5" />
