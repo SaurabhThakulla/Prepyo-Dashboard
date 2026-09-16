@@ -23,7 +23,7 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
       <div className="flex items-center justify-between">
         <h2 className="text-base font-bold text-foreground">Practice studio</h2>
         <Link
-          to="/practice"
+          to="/practice?hub=1"
           className="text-xs font-semibold text-primary hover:underline transition-all"
         >
           View all tasks

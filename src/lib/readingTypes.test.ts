@@ -22,17 +22,26 @@ describe('the reading dashboard', () => {
       }
     });
 
-    it(`offers ${exam} one multiple-choice task, covering single and multiple answers`, () => {
-      const names = SYLLABUS[exam].reading ?? [];
-      const choices = names.filter(name => name.toLowerCase().includes('multiple choice'));
-      expect(choices).toEqual(['Multiple Choice']);
+    if (exam === 'IELTS') {
+      it(`offers ${exam} one multiple-choice task, covering single and multiple answers`, () => {
+        const names = SYLLABUS[exam].reading ?? [];
+        const choices = names.filter(name => name.toLowerCase().includes('multiple choice'));
+        expect(choices).toEqual(['Multiple Choice']);
 
-      expect(typeIdsFor(typeKey('Multiple Choice'))).toEqual([
-        READING_TYPES.mcqSingle,
-        READING_TYPES.mcqMultiple,
-      ]);
-    });
-
+        expect(typeIdsFor(typeKey('Multiple Choice'))).toEqual([
+          READING_TYPES.mcqSingle,
+          READING_TYPES.mcqMultiple,
+        ]);
+      });
+    } else {
+      it('offers PTE separate single and multiple answer choice tasks', () => {
+        const names = SYLLABUS[exam].reading ?? [];
+        expect(names).toContain('Multiple Type Single Answer');
+        expect(names).toContain('Multiple Type Multiple Answer');
+        expect(typeIdsFor(typeKey('Multiple Type Single Answer'))).toEqual([READING_TYPES.mcqSingle]);
+        expect(typeIdsFor(typeKey('Multiple Type Multiple Answer'))).toEqual([READING_TYPES.mcqMultiple]);
+      });
+    }
   }
 
   // The verdict tasks and the paragraph-locating ones are IELTS inventions.
@@ -53,14 +62,15 @@ describe('the reading dashboard', () => {
     const pte = SYLLABUS.PTE.reading ?? [];
 
     for (const name of [
-      'Reading & Writing: Fill in the Blanks',
-      'Reading: Fill in the Blanks',
-      'Re-order Paragraphs',
+      'Fill in the Blanks Reading & Writing',
+      'Reading Fill in the Blanks',
+      'Reorder Paragraph',
     ]) {
       expect(pte, name).toContain(name);
       expect(ielts, name).not.toContain(name);
     }
   });
+
 
   // Matching Information asks the same thing, so it sits behind the same
   // heading — as the fallback, not the first choice.

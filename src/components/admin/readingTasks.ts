@@ -55,7 +55,7 @@ export const TASK_TYPES: TaskType[] = [
     id: 'reading-mcq-single',
     name: 'Multiple Choice',
     style: 'multi',
-    exam: 'both',
+    exam: 'IELTS',
     hint: 'Tick every correct option. A question with one ticked is a single-answer question; with several, a multiple-answer one.',
     instructionsHint: 'Choose the correct letter, A, B, C or D.',
   },
@@ -93,20 +93,42 @@ export const TASK_TYPES: TaskType[] = [
   },
   {
     id: 'fill-in-blanks-rw',
-    name: 'Reading & Writing: Fill in the Blanks',
+    name: 'Fill in the Blanks Reading & Writing',
     style: 'blanks',
     exam: 'PTE',
     hint: 'Rewrite a part of the passage with gaps, each written [[b1]], [[b2]] … Every gap gets its own dropdown choices.',
     instructionsHint: 'Below is a text with blanks. Select the appropriate answer choice for each blank.',
   },
   {
+    id: 'reading-mcq-multiple',
+    name: 'Multiple Type Multiple Answer',
+    style: 'multi',
+    exam: 'PTE',
+    hint: 'Select all correct response options that apply.',
+    instructionsHint: 'Read the text and answer the question by selecting all the correct responses. More than one response is correct.',
+  },
+  {
+    id: 'reorder-paragraphs',
+    name: 'Reorder Paragraph',
+    style: 'reorder',
+    exam: 'PTE',
+  },
+  {
     id: 'fill-in-blanks-r',
-    name: 'Reading: Fill in the Blanks',
+    name: 'Reading Fill in the Blanks',
     style: 'blanks',
     exam: 'PTE',
     wordBank: true,
     hint: 'Gaps are filled by dragging from one word list. List more words than gaps — the extras are the distractors.',
     instructionsHint: 'Drag words from the box below to the appropriate place in the text.',
+  },
+  {
+    id: 'reading-mcq-single-pte',
+    name: 'Multiple Type Single Answer',
+    style: 'multi',
+    exam: 'PTE',
+    hint: 'Choose the single best answer option from four choices.',
+    instructionsHint: 'Read the text and answer the multiple-choice question by selecting the correct response.',
   },
   {
     id: 'reading-arrange-passage',
@@ -116,14 +138,6 @@ export const TASK_TYPES: TaskType[] = [
     mockOnly: true,
     hint: 'Write each box as its own line. The questions name the positions in order, and each one is answered with the box that belongs there.',
     instructionsHint: 'The boxes below summarise stages in the passage but are printed out of order.',
-  },
-  {
-    // Not a set on a passage: an item carries its own boxes, so this opens the
-    // re-order form instead of the set editor.
-    id: 'reorder-paragraphs',
-    name: 'Re-order Paragraphs',
-    style: 'reorder',
-    exam: 'PTE',
   },
 ];
 
@@ -204,10 +218,13 @@ export const labelFor = (index: number) =>
  */
 export const groupPayload = (group: DraftGroup) => ({
   typeId:
-    group.typeId === 'reading-mcq-single' &&
-      group.questions.some(question => question.correctAnswers.filter(Boolean).length > 1)
-      ? 'reading-mcq-multiple'
-      : group.typeId,
+    group.typeId === 'reading-mcq-single-pte'
+      ? 'reading-mcq-single'
+      : group.typeId === 'reading-mcq-single' &&
+        group.questions.some(question => question.correctAnswers.filter(Boolean).length > 1)
+        ? 'reading-mcq-multiple'
+        : group.typeId,
+
   instructions: group.instructions,
   boxTitle: group.boxTitle,
   exams: group.exams,

@@ -33,15 +33,17 @@ describe('the admin task catalogue', () => {
 
   it('follows the exam matrix, task by task', () => {
     const matrix: Record<string, 'both' | 'IELTS' | 'PTE'> = {
-      'reading-mcq-single': 'both',
-      'fill-in-blanks-rw': 'PTE',
-      'fill-in-blanks-r': 'PTE',
-      'reorder-paragraphs': 'PTE',
+      'reading-mcq-single': 'IELTS',
       'reading-true-false': 'IELTS',
       'reading-yes-no-not-given': 'IELTS',
       'reading-find-the-paragraph': 'IELTS',
-      'reading-arrange-passage': 'IELTS',
       'reading-sentence-completion': 'IELTS',
+      'reading-arrange-passage': 'IELTS',
+      'fill-in-blanks-rw': 'PTE',
+      'reading-mcq-multiple': 'PTE',
+      'reorder-paragraphs': 'PTE',
+      'fill-in-blanks-r': 'PTE',
+      'reading-mcq-single-pte': 'PTE',
     };
 
     for (const type of TASK_TYPES) {
@@ -50,10 +52,13 @@ describe('the admin task catalogue', () => {
     expect(TASK_TYPES.map(type => type.id).sort()).toEqual(Object.keys(matrix).sort());
   });
 
-  it('offers multiple choice once, not split by how many answers it takes', () => {
-    expect(TASK_TYPES.filter(type => type.name.toLowerCase().includes('multiple choice'))).toHaveLength(1);
+  it('offers multiple choice once per exam in authoring', () => {
+    expect(
+      TASK_TYPES.filter(type => type.exam === 'IELTS' && type.name.toLowerCase().includes('multiple choice')),
+    ).toHaveLength(1);
   });
 });
+
 
 // Which server type a multiple-choice set is stored as follows from its answer
 // key, so the author never has to decide it twice.
@@ -83,7 +88,8 @@ describe('the payload a set is saved as', () => {
   });
 
   it('names the exams the set is written for', () => {
-    expect(groupPayload(emptyGroup('reading-mcq-single')).exams).toEqual(['PTE', 'IELTS']);
+    expect(groupPayload(emptyGroup('reading-mcq-single')).exams).toEqual(['IELTS']);
+    expect(groupPayload(emptyGroup('reading-mcq-single-pte')).exams).toEqual(['PTE']);
     expect(groupPayload(emptyGroup('fill-in-blanks-rw')).exams).toEqual(['PTE']);
     expect(groupPayload(emptyGroup('reading-sentence-completion')).exams).toEqual(['IELTS']);
   });

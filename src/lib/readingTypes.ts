@@ -67,10 +67,18 @@ export const TYPE_BY_SYLLABUS_KEY: Record<string, string | string[]> = {
   arrangepassage: READING_TYPES.arrangePassage,
 
 
+  // PTE Reading tasks
+  fillblanksreadingwriting: READING_TYPES.fillBlanksRW,
+  fillinblanksreadingwriting: READING_TYPES.fillBlanksRW,
   readingwritingfillinblanks: READING_TYPES.fillBlanksRW,
-  readingfillinblanks: READING_TYPES.fillBlanksR,
+  multipletypemultipleanswer: READING_TYPES.mcqMultiple,
+  reorderparagraph: READING_TYPES.reorderParagraphs,
   reorderparagraphs: READING_TYPES.reorderParagraphs,
+  readingfillblanks: READING_TYPES.fillBlanksR,
+  readingfillinblanks: READING_TYPES.fillBlanksR,
+  multipletypesingleanswer: READING_TYPES.mcqSingle,
 };
+
 
 /**
  * The server task types a dashboard entry covers, widest first.

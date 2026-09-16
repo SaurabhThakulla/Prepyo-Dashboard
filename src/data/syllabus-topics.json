@@ -87,93 +87,128 @@
       "skills": {
         "speaking": {
           "title": "Speaking",
-          "description": "Speak into the computer microphone to test pronunciation and fluency",
+          "description": "Speak into the computer microphone to test pronunciation, oral fluency, and comprehension",
           "topics": [
             {
               "name": "Read Aloud",
-              "simpleDescription": "Read a short paragraph shown on screen out loud clearly"
+              "simpleDescription": "Read a short paragraph shown on screen out loud naturally and clearly",
+              "isAi": true
             },
             {
               "name": "Repeat Sentence",
-              "simpleDescription": "Listen to a sentence and repeat it word for word"
+              "simpleDescription": "Listen to a sentence and repeat it word for word accurately",
+              "isAi": true
             },
             {
               "name": "Describe Image",
-              "simpleDescription": "Look at a picture or chart and talk about it for 40 seconds"
+              "simpleDescription": "Look at a picture, chart, or graph and talk about it in detail for 40 seconds",
+              "isAi": true
             },
             {
               "name": "Re-tell Lecture",
-              "simpleDescription": "Listen to a talk and summarize it in your own words"
+              "simpleDescription": "Listen to a talk or lecture and summarize what you heard in your own words",
+              "isAi": true
             },
             {
-              "name": "Answer Short Question",
-              "simpleDescription": "Listen to a simple question and give a one-word answer"
+              "name": "Answer Short Questions",
+              "simpleDescription": "Listen to a simple question and give a direct one or few-word answer",
+              "isAi": true
+            },
+            {
+              "name": "Summarise Group Discussion",
+              "simpleDescription": "Listen to multiple speakers discussing a topic and summarize the conversation",
+              "isAi": true
+            },
+            {
+              "name": "Respond to Situation",
+              "simpleDescription": "Listen to a real-life scenario and give an appropriate spoken response",
+              "isAi": true
             }
           ]
         },
         "writing": {
           "title": "Writing",
-          "description": "Write summaries and essays on the computer",
+          "description": "Write summaries and essays assessed on content, grammar, vocabulary, and structure",
           "topics": [
             {
-              "name": "Summarize Written Text",
-              "simpleDescription": "Read a passage and write a one-sentence summary"
+              "name": "Summarise Written Text",
+              "simpleDescription": "Read a passage and write a one-sentence summary of 5 to 75 words",
+              "isAi": true
             },
             {
               "name": "Write Essay",
-              "simpleDescription": "Write a 200-300 word essay about a given question"
+              "simpleDescription": "Write a 200–300 word argumentative essay on a given topic",
+              "isAi": true
+            },
+            {
+              "name": "Repeated Essay Questions",
+              "simpleDescription": "Practice high-frequency and repeated PTE exam essay prompts with AI feedback",
+              "isAi": true
             }
           ]
         },
         "reading": {
           "title": "Reading",
-          "description": "Read paragraphs and solve word puzzles and questions",
+          "description": "Read paragraphs, choose multiple choices, and solve sentence re-ordering and fill-in-blanks",
           "topics": [
             {
-              "name": "Multiple Choice",
-              "simpleDescription": "Read a text and choose the correct answer — some questions take one, some take several"
+              "name": "Fill in the Blanks Reading & Writing",
+              "simpleDescription": "Select the best word from drop-down menus to complete sentences in a reading text"
             },
             {
-              "name": "Reading & Writing: Fill in the Blanks",
-              "simpleDescription": "Pick the best word from drop-down menus to complete sentences"
+              "name": "Multiple Type Multiple Answer",
+              "simpleDescription": "Read a passage and select all correct options that answer the question"
             },
             {
-              "name": "Reading: Fill in the Blanks",
-              "simpleDescription": "Drag words into empty slots inside a paragraph"
+              "name": "Reorder Paragraph",
+              "simpleDescription": "Drag and drop shuffled sentences or paragraphs into the correct logical order"
             },
             {
-              "name": "Re-order Paragraphs",
-              "simpleDescription": "Drag and drop shuffled sentences into the right story order"
+              "name": "Reading Fill in the Blanks",
+              "simpleDescription": "Drag words from a word pool into empty slots inside a reading paragraph"
+            },
+            {
+              "name": "Multiple Type Single Answer",
+              "simpleDescription": "Read a passage and choose the single best answer option"
             }
           ]
         },
         "listening": {
           "title": "Listening",
-          "description": "Listen to audio clips and complete various listening tasks",
+          "description": "Listen to authentic audio recordings and complete comprehension, dictation, and summary tasks",
           "topics": [
             {
-              "name": "Summarize Spoken Text",
-              "simpleDescription": "Listen to a talk and write a 50-70 word summary"
+              "name": "Summarize Spoken text",
+              "simpleDescription": "Listen to a short lecture or dialogue and write a 50–70 word summary",
+              "isAi": true
             },
             {
-              "name": "Multiple Choice, Multiple Answers",
-              "simpleDescription": "Listen to a talk and select all correct choices"
+              "name": "MCQ Multiple Answer",
+              "simpleDescription": "Listen to a recording and choose all correct options that apply"
             },
             {
-              "name": "Fill in the Blanks",
-              "simpleDescription": "Type the missing words into sentences while listening"
+              "name": "Listening Fill in the Blanks",
+              "simpleDescription": "Type the missing words into text blanks as you listen to the audio"
             },
             {
               "name": "Highlight Correct Summary",
-              "simpleDescription": "Choose the summary paragraph that best matches the audio"
+              "simpleDescription": "Listen to an audio recording and choose the paragraph that best summarizes it"
+            },
+            {
+              "name": "MCQ Single Answer",
+              "simpleDescription": "Listen to a recording and choose the single correct answer option"
             },
             {
               "name": "Select Missing Word",
-              "simpleDescription": "Guess the beeped-out final word of a spoken sentence"
+              "simpleDescription": "Listen to a recording where the final word is replaced with a beep and select the missing word"
+            },
+            {
+              "name": "Highlight Incorrect Word",
+              "simpleDescription": "Listen to the recording while reading a transcript and click the words that differ"
             },
             {
               "name": "Write from Dictation",
-              "simpleDescription": "Listen to a sentence and type every word you heard accurately"
+              "simpleDescription": "Listen to a sentence and type every word you hear accurately"
             }
           ]
         }
