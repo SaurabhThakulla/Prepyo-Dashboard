@@ -113,6 +113,50 @@ describe('PTE listening answer controls', () => {
   });
 });
 
+describe('writing minimum on the routed page', () => {
+  it.each([
+    ['PTE', 'summarize-written-text', 5],
+    ['PTE', 'pte-write-essay', 20],
+    ['IELTS', 'ielts-writing-task2-opinion', 20],
+  ])('enforces %s %s minimum of %i words', async (exam, typeId, minimum) => {
+    mocks.activeExam = exam;
+    vi.mocked(api.get).mockResolvedValue({ questions: [{
+      id: 'writing-1', exam, skill: 'writing', typeId, typeName: 'Writing task',
+      title: 'Writing task', prompt: 'Write your answer', timeLimitSeconds: 600,
+    }] });
+    vi.mocked(api.post).mockImplementation(async path => {
+      if (path === '/practice/start') return { sessionId: 'session-1', remainingSubTests: 0 };
+      throw new Error('Retry later');
+    });
+    render(<MemoryRouter initialEntries={['/practice?skill=writing']}><PracticePage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Start Practice (1 Credit)' }));
+    const input = await screen.findByPlaceholderText('Write your response here…');
+    const submit = screen.getByRole('button', { name: 'Submit Answer' }) as HTMLButtonElement;
+    for (const count of [0, minimum - 1]) {
+      fireEvent.change(input, { target: { value: Array(count).fill('word').join(' ') } });
+      expect(submit.disabled).toBe(true);
+      fireEvent.click(submit);
+      expect(api.post).toHaveBeenCalledTimes(1);
+    }
+    expect(screen.getByText(minimum === 5
+      ? /Write one sentence of 5–75 words/
+      : /At least 20 words for feedback/)).toBeDefined();
+    const text = Array(minimum).fill('word').join(' ');
+    fireEvent.change(input, { target: { value: text } });
+    expect(submit.disabled).toBe(false);
+    expect(screen.getByText(`${minimum} words`)).toBeDefined();
+    fireEvent.click(submit);
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/evaluations/writing', {
+      questionId: 'writing-1', text,
+    }));
+    if (minimum === 5) {
+      await waitFor(() => expect(submit.disabled).toBe(false));
+      fireEvent.change(input, { target: { value: Array(76).fill('word').join(' ') } });
+      expect(submit.disabled).toBe(false);
+    }
+  });
+});
+
 describe('practice credit lifecycle', () => {
   it.each([
     ['writing', '/evaluations/writing'],
@@ -226,7 +270,7 @@ describe('practice credit lifecycle', () => {
     // Submit Task 1
     const textarea = await screen.findByPlaceholderText('Write your response here…');
     fireEvent.change(textarea, {
-      target: { value: 'This is a long enough answer to satisfy the minimum word count requirement for writing evaluation.' },
+      target: { value: 'This is a long enough answer to satisfy the minimum word count requirement for writing evaluation with several supporting examples included.' },
     });
     const submit = screen.getByRole('button', { name: 'Submit Answer' });
     fireEvent.click(submit);

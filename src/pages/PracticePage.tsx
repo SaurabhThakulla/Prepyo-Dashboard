@@ -25,6 +25,7 @@ import AudioRecorder from '@/components/practice/AudioRecorder';
 import PromptAudio from '@/components/practice/PromptAudio';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import { isWordHighlightTask } from '@/lib/listening';
+import { minimumWritingWords, writingWordCount } from '@/lib/writing';
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 import { Evaluation, isAdmin, isPremiumUser, PracticeAttempt, Question, SkillType } from '@/lib/types';
 
@@ -182,7 +183,8 @@ export default function PracticePage() {
     };
   }, [activeExam, selectedSkill, isReading, isAdminUser, typeParam, resetAnswer, toast]);
 
-  const wordCount = textAnswer.trim().split(/\s+/).filter(Boolean).length;
+  const wordCount = writingWordCount(textAnswer);
+  const minWords = currentQuestion ? minimumWritingWords(currentQuestion) : 20;
 
   const markComplete = (questionId: string) => {
     if (completedIds.includes(questionId)) return;
@@ -192,7 +194,7 @@ export default function PracticePage() {
   };
 
   const handleSubmitAnswer = async () => {
-    if (!currentQuestion || !hasStarted || submitting) return;
+    if (!currentQuestion || !hasStarted || submitting || !canSubmit) return;
     setSubmitting(true);
 
     const timeSpentSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
@@ -265,9 +267,11 @@ export default function PracticePage() {
   const canSubmit =
     grading === 'speech'
       ? recording !== null
-      : textAnswer.trim().length > 0 ||
-      selectedOptions.length > 0 ||
-      Object.values(blankResponses).some(Boolean);
+      : grading === 'ai'
+        ? wordCount >= minWords
+        : textAnswer.trim().length > 0 ||
+          selectedOptions.length > 0 ||
+          Object.values(blankResponses).some(Boolean);
 
   const isAgreeOrDescribe = Boolean(
     `${currentQuestion?.typeName || ''} ${typeParam || ''}`.toLowerCase().match(/agree|disagree|describe/),
@@ -483,7 +487,7 @@ export default function PracticePage() {
                   <div className="space-y-3 pt-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-bold text-foreground">Your response</span>
-                      <Badge variant={wordCount >= 20 ? 'success' : 'warning'}>{wordCount} words</Badge>
+                      <Badge variant={wordCount >= minWords ? 'success' : 'warning'}>{wordCount} words</Badge>
                     </div>
                     <Textarea
                       rows={8}
@@ -493,7 +497,9 @@ export default function PracticePage() {
                       className="text-sm leading-relaxed"
                     />
                     <p className="text-[11px] text-muted-foreground">
-                      At least 20 words so the evaluator has something to work with.
+                      {minWords === 5
+                        ? 'Write one sentence of 5–75 words. Responses outside the task limits can still receive feedback.'
+                        : 'At least 20 words for feedback. Follow the prompt for the exam word requirement.'}
                     </p>
                   </div>
                 )}
