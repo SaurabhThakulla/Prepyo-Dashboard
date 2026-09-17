@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Bot, Send, X, Sparkles, RefreshCw, Zap, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { api, ApiError, errorMessage } from '@/lib/api';
 
 interface ChatMessage {
@@ -121,9 +120,6 @@ export default function AITutorDrawer() {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-display font-black text-sm text-foreground">Prepyo AI Coach</h3>
-                <Badge variant="indigo" className="text-[9px] px-1.5 py-0 font-bold uppercase">
-                  {activeExam} Engine
-                </Badge>
               </div>
               <p className="text-[11px] text-muted-foreground">24/7 Contextual exam tutor & scoring mentor</p>
             </div>

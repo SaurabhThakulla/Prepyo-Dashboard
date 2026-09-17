@@ -588,6 +588,7 @@ export interface ReferralMilestones {
 }
 
 export interface ReferralStats {
+  totalBonusDaysEarned: number;
   totalInvited: number;
   pending: number;
   completed: number;
@@ -595,6 +596,8 @@ export interface ReferralStats {
 }
 
 export interface RecentReferralItem {
+  rewardDays: number;
+  paymentStatus?: string;
   id: string;
   friendName: string;
   status: 'pending' | 'completed' | 'cancelled' | string;
@@ -606,7 +609,8 @@ export interface ReferralOverview {
   referralCode: string;
   shareLink: string;
   stats: ReferralStats;
-  milestones: ReferralMilestones;
+  myReferralStatus: string;
+  canRedeem: boolean;
   recentReferrals: RecentReferralItem[];
 }
 

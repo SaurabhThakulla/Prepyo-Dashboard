@@ -118,11 +118,6 @@
               "name": "Summarise Group Discussion",
               "simpleDescription": "Listen to multiple speakers discussing a topic and summarize the conversation",
               "isAi": true
-            },
-            {
-              "name": "Respond to Situation",
-              "simpleDescription": "Listen to a real-life scenario and give an appropriate spoken response",
-              "isAi": true
             }
           ]
         },

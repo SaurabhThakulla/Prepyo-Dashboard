@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
+import ReferralRedeem from './ReferralRedeem';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -202,6 +203,7 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
             </div>
 
             <div className="p-4 sm:p-5 space-y-4">
+              <ReferralRedeem />
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
                   Pay with

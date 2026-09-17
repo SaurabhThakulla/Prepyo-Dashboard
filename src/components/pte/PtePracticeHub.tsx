@@ -58,7 +58,6 @@ export const PTE_SECTIONS: PteSection[] = [
       { name: 'Re-tell Lecture', isAi: true },
       { name: 'Answer Short Questions', isAi: true },
       { name: 'Summarise Group Discussion', isAi: true },
-      { name: 'Respond to Situation', isAi: true },
     ],
   },
   {
@@ -109,8 +108,7 @@ interface PtePracticeHubProps {
 }
 
 /**
- * PtePracticeHub displays the complete 23-task PTE practice matrix matching
- * the authentic Pearson PTE task interface.
+ * PtePracticeHub displays the supported PTE practice tasks grouped by skill.
  */
 export default function PtePracticeHub({ onSelectTask, activeTypeKey }: PtePracticeHubProps) {
   const navigate = useNavigate();

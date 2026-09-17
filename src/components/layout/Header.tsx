@@ -4,7 +4,7 @@ import { useApp } from '@/context/AppContext';
 import {
   Sparkles,
   Bell,
-  Bot,
+  Gift,
   ShieldCheck,
   ChevronRight,
   Sun,
@@ -12,7 +12,6 @@ import {
   PanelLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import NotificationDrawer from './NotificationDrawer';
 
 interface HeaderProps {
@@ -21,7 +20,7 @@ interface HeaderProps {
 }
 
 export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps) {
-  const { user, activeExam, unreadCount, setIsTutorOpen, theme, toggleTheme, activeTestSession } = useApp();
+  const { user, unreadCount, setIsTutorOpen, theme, toggleTheme, activeTestSession } = useApp();
   const { pathname } = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -34,6 +33,7 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
     if (path === '/mistakes') return 'Mistake Bank';
     if (path === '/leaderboard') return 'Nepal Leaderboard';
     if (path === '/subscription' || path === '/account') return 'Subscriptions (NPR)';
+    if (path === '/referrals') return 'Earn Rewards';
     if (path === '/profile') return 'Profile & Goals';
     if (path === '/admin') return 'Admin Observability';
     return 'Prepyo';
@@ -67,9 +67,6 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
             <span className="text-muted-foreground hidden sm:inline font-medium">Prepyo</span>
             <ChevronRight className="w-3.5 h-3.5 text-muted-foreground hidden sm:inline" />
             <span className="font-bold text-foreground text-sm">{title}</span>
-            <Badge variant="indigo" className="hidden md:inline-flex text-[9px] px-1.5 py-0">
-              {activeExam} 2026 Engine
-            </Badge>
           </div>
         </div>
 
@@ -87,6 +84,9 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
 
         {/* Right Action Icons & Badges */}
         <div className="flex items-center gap-2 sm:gap-3">
+          <Button asChild size="sm" className="text-xs font-bold gap-1 px-2 sm:px-3">
+            <Link to="/referrals"><Gift className="w-4 h-4" /><span>Earn Rewards</span></Link>
+          </Button>
           {/* XP Badge */}
           <div className="hidden sm:flex items-center gap-1 bg-primary/10 border border-primary/30 px-2.5 py-1.5 rounded-xl text-xs font-bold text-primary" title="XP Points">
             <Sparkles className="w-3.5 h-3.5 text-primary" />

@@ -24,6 +24,7 @@ import { ReferralOverview } from '@/lib/types';
 import { api, errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { ReferralsPageSkeleton } from '@/components/layout/PageSkeleton';
+import ReferralRedeem from '@/components/subscription/ReferralRedeem';
 
 export default function ReferralsPage() {
   const { user } = useApp();
@@ -52,21 +53,30 @@ export default function ReferralsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(shareLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(referralCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch (err) {
+      toast.error('Could not copy code', errorMessage(err));
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      await navigator.share({ title: 'Prepyo referral', text: `Join Prepyo with my referral code ${referralCode}. When your eligible subscription payment is confirmed, I earn 3 bonus membership days.`, url: shareLink });
+    } catch (err) {
+      if (!(err instanceof DOMException && err.name === 'AbortError')) toast.error('Could not share', errorMessage(err));
+    }
   };
 
   const shareText = encodeURIComponent(
-    `Hey! I'm preparing for my PTE/IELTS with Prepyo AI. Use my link to get +100 bonus XP and a Free Full AI Mock Test:\n${shareLink}`
+    `Join me on Prepyo with code ${referralCode}. When your eligible subscription payment is confirmed, I earn 3 bonus membership days.\n${shareLink}`
   );
 
-  const stats = data?.stats || { totalInvited: 0, pending: 0, completed: 0, totalXpEarned: 0 };
-  const milestones = data?.milestones || {
-    threeReferrals: { required: 3, current: 0, completed: false },
-    fiveReferrals: { required: 5, current: 0, completed: false },
-  };
+  const stats = data?.stats || { totalInvited: 0, pending: 0, completed: 0, totalXpEarned: 0, totalBonusDaysEarned: 0 };
+
 
   if (loading && !data) {
     return <ReferralsPageSkeleton />;
@@ -82,13 +92,13 @@ export default function ReferralsPage() {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
               <Gift className="w-3.5 h-3.5 text-primary" />
-              <span>Give +100 XP • Get +200 XP</span>
+              <span>Earn 3 bonus membership days</span>
             </div>
             <h1 className="font-display text-3xl sm:text-4xl font-black text-foreground tracking-tight">
-              Invite Friends. <span className="text-primary">Earn Rewards.</span>
+              Refer a Friend &amp; <span className="text-primary">Earn 3 Days</span>
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
-              Help your friends prepare better for PTE/IELTS. Earn XP, unlocked full mock tests, and Pro subscription days as they practice.
+              Invite a friend. When they purchase an eligible subscription using your referral code, you earn 3 bonus membership days.
             </p>
           </div>
 
@@ -115,11 +125,12 @@ export default function ReferralsPage() {
                 className="rounded-xl font-bold text-xs shrink-0 flex items-center gap-1.5 h-10"
               >
                 {copied ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
-                <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+                <span>{copied ? 'Copied!' : 'Copy code'}</span>
               </Button>
             </div>
           </div>
 
+          {typeof navigator.share === 'function' && <Button onClick={handleShare} disabled={!shareLink} className="md:col-span-12 gap-2"><Share2 className="w-4 h-4" />Share invitation</Button>}
           {/* Social Share Buttons */}
           <div className="md:col-span-5 space-y-2">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
@@ -175,7 +186,7 @@ export default function ReferralsPage() {
         <Card className="p-4 bg-card/80 border-border space-y-1">
           <div className="text-xs text-muted-foreground flex items-center gap-1.5 font-bold">
             <Clock className="w-3.5 h-3.5 text-amber-500" />
-            <span>Pending Activity</span>
+            <span>Pending Purchase</span>
           </div>
           <div className="font-display text-2xl font-black text-amber-500">
             {stats.pending}
@@ -195,100 +206,15 @@ export default function ReferralsPage() {
         <Card className="p-4 bg-card/80 border-border space-y-1">
           <div className="text-xs text-muted-foreground flex items-center gap-1.5 font-bold">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <span>Total XP Earned</span>
+            <span>Total Bonus Days Earned</span>
           </div>
           <div className="font-display text-2xl font-black text-primary">
-            +{stats.totalXpEarned} XP
+            +{stats.totalBonusDaysEarned} days
           </div>
         </Card>
       </div>
 
-      {/* Milestone Progress Cards */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-lg font-black text-foreground flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-amber-500" />
-            <span>Referral Milestone Rewards</span>
-          </h2>
-          <span className="text-xs text-muted-foreground">Automatic unlocks at each tier</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          
-          {/* Milestone 1: 3 Referrals */}
-          <div className={`p-5 rounded-2xl border transition-all ${
-            milestones.threeReferrals.completed
-              ? 'bg-primary/10 border-primary/30'
-              : 'bg-card border-border'
-          }`}>
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Tier 1 Milestone
-                </div>
-                <div className="font-display text-base font-black text-foreground flex items-center gap-2">
-                  <span>3 Qualified Referrals</span>
-                  {milestones.threeReferrals.completed && (
-                    <Badge variant="success" className="text-[10px] py-0">Unlocked 🎉</Badge>
-                  )}
-                </div>
-              </div>
-              <div className="text-xs font-mono font-bold text-primary bg-primary/10 px-2 py-1 rounded-lg">
-                {Math.min(milestones.threeReferrals.current, 3)} / 3
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              <div className="w-full bg-background rounded-full h-2 overflow-hidden border border-border">
-                <div
-                  className="bg-primary h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min((milestones.threeReferrals.current / 3) * 100, 100)}%` }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Reward unlocked: <strong className="text-foreground">+1 Free AI Mock Exam</strong> (All 4 Sections)
-              </p>
-            </div>
-          </div>
-
-          {/* Milestone 2: 5 Referrals */}
-          <div className={`p-5 rounded-2xl border transition-all ${
-            milestones.fiveReferrals.completed
-              ? 'bg-primary/10 border-primary/30'
-              : 'bg-card border-border'
-          }`}>
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Tier 2 Milestone
-                </div>
-                <div className="font-display text-base font-black text-foreground flex items-center gap-2">
-                  <span>5 Qualified Referrals</span>
-                  {milestones.fiveReferrals.completed && (
-                    <Badge variant="success" className="text-[10px] py-0">Unlocked 🎉</Badge>
-                  )}
-                </div>
-              </div>
-              <div className="text-xs font-mono font-bold text-primary bg-primary/10 px-2 py-1 rounded-lg">
-                {Math.min(milestones.fiveReferrals.current, 5)} / 5
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              <div className="w-full bg-background rounded-full h-2 overflow-hidden border border-border">
-                <div
-                  className="bg-primary h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min((milestones.fiveReferrals.current / 5) * 100, 100)}%` }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Reward unlocked: <strong className="text-foreground">+3 Bonus Pro Subscription Days</strong> (30 AI evaluations/day)
-              </p>
-            </div>
-          </div>
-
-        </div>
-      </div>
+      <ReferralRedeem />
 
       {/* Referral Activity Table */}
       <Card className="border-border">
@@ -296,7 +222,7 @@ export default function ReferralsPage() {
           <CardTitle className="text-base flex items-center justify-between">
             <span>Referral Activity</span>
             <span className="text-xs text-muted-foreground font-normal">
-              Rewards activate after 1 diagnostic or 10 practice drills
+              3 days per friend, only after confirmed payment
             </span>
           </CardTitle>
         </CardHeader>
@@ -316,12 +242,12 @@ export default function ReferralsPage() {
                     {item.status === 'completed' ? (
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
                         <CheckCircle2 className="w-3 h-3 text-primary" />
-                        Qualified (+200 XP)
+                        Rewarded (+{item.rewardDays} days){item.paymentStatus === 'refunded' ? ' · Payment refunded' : ''}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
                         <Clock className="w-3 h-3 text-amber-400" />
-                        Pending Activity
+                        {item.status === 'cancelled' ? 'Cancelled' : item.status === 'legacy' ? 'Legacy reward · awaiting purchase' : 'Pending confirmed purchase'}
                       </span>
                     )}
                   </div>
@@ -332,7 +258,7 @@ export default function ReferralsPage() {
             <div className="text-center py-10 space-y-2">
               <Users className="w-8 h-8 text-muted-foreground mx-auto opacity-50" />
               <p className="text-xs text-muted-foreground">
-                No referrals yet. Share your unique link with classmates to earn XP and free mock tests!
+                No referrals yet. Share your code with friends to earn 3 membership days for each eligible confirmed purchase!
               </p>
             </div>
           )}
