@@ -49,6 +49,8 @@ export default function QuestionPrompt({ question }: { question: Question }) {
       {/* Real audio when the question has a file, otherwise the script read
           aloud by the browser and labelled as synthesised. */}
       <PromptAudio
+        key={question.id}
+        questionId={question.id}
         audioUrl={question.audioUrl}
         audioTranscript={question.audioTranscript}
         title={question.title}

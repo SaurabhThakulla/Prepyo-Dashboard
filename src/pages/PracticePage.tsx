@@ -464,6 +464,8 @@ export default function PracticePage() {
                 )}
 
                 <PromptAudio
+                  key={currentQuestion.id}
+                  questionId={currentQuestion.id}
                   audioUrl={currentQuestion.audioUrl}
                   audioTranscript={currentQuestion.audioTranscript}
                   title={currentQuestion.title}

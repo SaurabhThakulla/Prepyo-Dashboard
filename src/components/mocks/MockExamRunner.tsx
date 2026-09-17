@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import MockAnswerInput from '@/components/mocks/MockAnswerInput';
+import PromptAudio from '@/components/practice/PromptAudio';
 import { AnswerSubmission, Mock, Question } from '@/lib/types';
 
 /** Seconds as mm:ss, zero-padded, for the exam countdown. */
@@ -114,11 +115,14 @@ export default function MockExamRunner({
                 </div>
               )}
 
-              {currentQuestion.audioTranscript && !currentQuestion.audioUrl && (
-                <div className="p-3 rounded-xl bg-background border border-border text-[11px] text-muted-foreground italic">
-                  Transcript (no audio file yet): &ldquo;{currentQuestion.audioTranscript}&rdquo;
-                </div>
-              )}
+              <PromptAudio
+                key={currentQuestion.id}
+                questionId={currentQuestion.id}
+                audioUrl={currentQuestion.audioUrl}
+                audioTranscript={currentQuestion.audioTranscript}
+                title={currentQuestion.title}
+                allowTranscript={false}
+              />
 
               <MockAnswerInput
                 question={currentQuestion}

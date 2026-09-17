@@ -8,6 +8,9 @@ interface PromptAudioProps {
   /** The script. Used for synthesis and, on request, shown as text. */
   audioTranscript?: string;
   title: string;
+  /** Reset playback even when consecutive questions share the same script. */
+  questionId?: string;
+  allowTranscript?: boolean;
 }
 
 /**
@@ -19,11 +22,14 @@ interface PromptAudioProps {
  * background noise a real recording has, and a learner who mistakes one for the
  * other will misjudge how ready they are.
  */
-export default function PromptAudio({ audioUrl, audioTranscript, title }: PromptAudioProps) {
+export default function PromptAudio({ audioUrl, audioTranscript, title, questionId, allowTranscript = true }: PromptAudioProps) {
   const [canSpeak, setCanSpeak] = useState(() => typeof window !== 'undefined' && 'speechSynthesis' in window);
   const [speaking, setSpeaking] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const contextRef = useRef<AudioContext | null>(null);
+  const generation = useRef(0);
+  const [error, setError] = useState<string | null>(null);
 
   const script = audioTranscript?.trim();
 
@@ -45,44 +51,102 @@ export default function PromptAudio({ audioUrl, audioTranscript, title }: Prompt
     return () => window.speechSynthesis.removeEventListener('voiceschanged', check);
   }, []);
 
-  // Synthesis is global to the tab, so leaving the page mid-sentence would keep
-  // talking over whatever the learner opened next.
-  useEffect(() => {
-    return () => {
-      if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
-    };
+  const cancelPlayback = useCallback(() => {
+    generation.current += 1;
+    if (utteranceRef.current) {
+      utteranceRef.current.onend = null;
+      utteranceRef.current.onerror = null;
+      utteranceRef.current = null;
+      window.speechSynthesis?.cancel();
+    }
+    const context = contextRef.current;
+    contextRef.current = null;
+    if (context && context.state !== 'closed') void context.close().catch(() => {});
   }, []);
+
+  useEffect(() => {
+    cancelPlayback();
+    setSpeaking(false);
+    setShowTranscript(false);
+    setError(null);
+    return cancelPlayback;
+  }, [questionId, script, audioUrl, cancelPlayback]);
 
   const stop = useCallback(() => {
-    window.speechSynthesis.cancel();
+    cancelPlayback();
     setSpeaking(false);
-  }, []);
+  }, [cancelPlayback]);
 
-  const speak = useCallback(() => {
-    if (!script) return;
+  const speak = useCallback(async () => {
+    if (!script || !window.speechSynthesis) return;
+    cancelPlayback();
     window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(script);
-    // Exam audio is English; picking the voice explicitly stops a browser set to
-    // another UI language from reading the passage in that accent.
-    const english = window.speechSynthesis
-      .getVoices()
-      .find(voice => voice.lang.startsWith('en-GB')) ??
-      window.speechSynthesis.getVoices().find(voice => voice.lang.startsWith('en'));
-    if (english) utterance.voice = english;
-    utterance.lang = english?.lang ?? 'en-GB';
-    // Slightly under natural pace: exam recordings are deliberate, and the
-    // default rate runs fast for a listener working in a second language.
-    utterance.rate = 0.95;
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-
-    // Held deliberately. Chrome and Safari collect an utterance that nothing
-    // references, which cuts long passages off part-way through with no error.
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
+    const run = generation.current;
+    setError(null);
     setSpeaking(true);
-  }, [script]);
+    // Split markers rather than asking the voice to pronounce "beep". Preserve
+    // all other text; changing the script would change what the learner hears.
+    const segments = script.split(/(\[beep\])/gi).filter(part => part.trim());
+    const fail = () => {
+      if (run !== generation.current) return;
+      cancelPlayback();
+      setSpeaking(false);
+      setError('Audio playback failed. Check your browser audio settings and try again.');
+    };
+    try {
+      if (segments.some(part => /^\[beep\]$/i.test(part))) {
+        // Create/resume on the Play gesture, not later inside a speech callback.
+        const context = new AudioContext();
+        contextRef.current = context;
+        await context.resume();
+        if (run !== generation.current) return;
+      }
+      const next = (index: number) => {
+        if (run !== generation.current) return;
+        const segment = segments[index];
+        if (!segment) {
+          cancelPlayback();
+          setSpeaking(false);
+          return;
+        }
+        try {
+          if (/^\[beep\]$/i.test(segment)) {
+            const context = contextRef.current;
+            if (!context || context.state !== 'running') { fail(); return; }
+            const tone = context.createOscillator();
+            const gain = context.createGain();
+            tone.frequency.value = 1000;
+            gain.gain.setValueAtTime(0, context.currentTime);
+            gain.gain.linearRampToValueAtTime(0.12, context.currentTime + 0.01);
+            gain.gain.setValueAtTime(0.12, context.currentTime + 0.3);
+            gain.gain.linearRampToValueAtTime(0, context.currentTime + 0.35);
+            tone.connect(gain);
+            gain.connect(context.destination);
+            tone.onended = () => {
+              tone.disconnect();
+              gain.disconnect();
+              next(index + 1);
+            };
+            tone.start();
+            tone.stop(context.currentTime + 0.35);
+            return;
+          }
+          const utterance = new SpeechSynthesisUtterance(segment.trim());
+          const voices = window.speechSynthesis.getVoices();
+          const english = voices.find(voice => voice.lang.startsWith('en-GB')) ??
+            voices.find(voice => voice.lang.startsWith('en'));
+          if (english) utterance.voice = english;
+          utterance.lang = english?.lang ?? 'en-GB';
+          utterance.rate = 0.95;
+          utterance.onend = () => next(index + 1);
+          utterance.onerror = fail;
+          utteranceRef.current = utterance;
+          window.speechSynthesis.speak(utterance);
+        } catch { fail(); }
+      };
+      next(0);
+    } catch { fail(); }
+  }, [script, cancelPlayback]);
 
   if (audioUrl) {
     return (
@@ -99,8 +163,7 @@ export default function PromptAudio({ audioUrl, audioTranscript, title }: Prompt
 
   if (!script) return null;
 
-  // No voices installed — a headless browser, or a stripped Linux build. The
-  // script is all there is, so it is shown as it was before.
+  // A missing speech API is different from voices still loading.
   if (!canSpeak) {
     return (
       <div className="p-4 rounded-xl bg-background border border-border space-y-1.5">
@@ -108,10 +171,9 @@ export default function PromptAudio({ audioUrl, audioTranscript, title }: Prompt
           <Volume2 className="w-4 h-4 text-muted-foreground" /> Transcript
         </span>
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          There is no recording for this question and your browser has no voices installed,
-          so the script is shown instead.
+          Your browser does not support text-to-speech. Try a browser with speech playback enabled.
         </p>
-        <p className="text-xs text-foreground italic leading-relaxed">&ldquo;{script}&rdquo;</p>
+        {allowTranscript && <p className="text-xs text-foreground italic leading-relaxed">&ldquo;{script}&rdquo;</p>}
       </div>
     );
   }
@@ -129,6 +191,7 @@ export default function PromptAudio({ audioUrl, audioTranscript, title }: Prompt
 
       <div className="flex flex-wrap items-center gap-2">
         <Button
+          type="button"
           onClick={speaking ? stop : speak}
           size="sm"
           variant={speaking ? 'destructive' : 'default'}
@@ -139,7 +202,8 @@ export default function PromptAudio({ audioUrl, audioTranscript, title }: Prompt
           <span>{speaking ? 'Stop' : 'Play audio'}</span>
         </Button>
 
-        <Button
+        {allowTranscript && <Button
+          type="button"
           onClick={() => setShowTranscript(open => !open)}
           size="sm"
           variant="ghost"
@@ -147,7 +211,7 @@ export default function PromptAudio({ audioUrl, audioTranscript, title }: Prompt
         >
           {showTranscript ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           <span>{showTranscript ? 'Hide transcript' : 'Show transcript'}</span>
-        </Button>
+        </Button>}
       </div>
 
       <p className="text-[11px] text-muted-foreground leading-relaxed">
@@ -158,7 +222,8 @@ export default function PromptAudio({ audioUrl, audioTranscript, title }: Prompt
 
       {/* Collapsed by default: reading along while it plays turns a listening
           task into a reading one. */}
-      {showTranscript && (
+      {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+      {allowTranscript && showTranscript && (
         <p className="text-xs text-foreground italic leading-relaxed border-t border-border pt-2">
           &ldquo;{script}&rdquo;
         </p>
