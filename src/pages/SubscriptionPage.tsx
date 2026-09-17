@@ -183,7 +183,7 @@ export default function SubscriptionPage() {
           </div>
 
           {user?.subscription && (
-            <div className="flex items-center gap-4 bg-muted/40 border border-border/80 rounded-2xl p-3.5 sm:px-4 shrink-0 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-muted/40 border border-border/80 rounded-2xl p-3.5 sm:px-4 shrink-0 shadow-xs">
               <div className="space-y-0.5">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Your plan</span>
                 <div className="flex items-center gap-2">
@@ -203,7 +203,7 @@ export default function SubscriptionPage() {
                   </p>
                 )}
               </div>
-              <div className="border-l border-border/80 pl-4 flex gap-5 text-xs font-semibold">
+              <div className="sm:border-l border-border/80 sm:pl-4 flex gap-5 text-xs font-semibold">
                 <div>
                   <span className="text-[10px] text-muted-foreground block uppercase font-bold">Sub-tests today</span>
                   <span className="font-extrabold text-foreground text-sm">
@@ -251,7 +251,37 @@ export default function SubscriptionPage() {
           </Card>
         ) : (
           /* Comparison Table Matrix matching requested full-width design */
-          <div className="w-full overflow-x-auto pb-8 pt-4 no-scrollbar">
+          <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden" aria-label="Subscription plans">
+            {[freePlan, weeklyPlan, proPlan, elitePlan].map(plan => (
+              <Card key={plan.id} className="p-4 space-y-4">
+                <div>
+                  <h2 className="font-bold text-lg">{formatPlanName(plan.name)}</h2>
+                  <p className="text-2xl font-black text-primary">NPR {plan.priceNPR}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {plan.id === 'free' ? 'Free forever' : `One-time · ${plan.durationDays + plan.bonusDays} days`}
+                  </p>
+                </div>
+                <dl className="space-y-3">
+                  {rows.map((row, index) => (
+                    <div key={row.rowKey ?? index} className="flex justify-between gap-4 border-b border-border/60 pb-2 text-xs">
+                      <dt className="flex-1 text-muted-foreground">{row.label}</dt>
+                      <dd className="max-w-[50%] text-right font-semibold">{row[plan.id]}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <button
+                  type="button"
+                  disabled={currentPlanId === plan.id || (plan.id === 'free' && !currentPlanId)}
+                  onClick={() => handleOpenCheckout(plan)}
+                  className="w-full rounded-xl bg-primary px-4 py-3 font-bold text-sm text-primary-foreground disabled:opacity-50"
+                >
+                  {currentPlanId === plan.id ? 'Current Plan' : plan.id === 'free' && !currentPlanId ? 'Default Plan' : `Choose ${formatPlanName(plan.name)}`}
+                </button>
+              </Card>
+            ))}
+          </div>
+          <div className="hidden lg:block w-full overflow-x-auto pb-8 pt-4" tabIndex={0} role="region" aria-label="Plan comparison, scroll horizontally">
             <div className="min-w-[860px] w-full grid grid-cols-5 items-stretch">
               {/* Column 1: Feature Labels */}
               <div className="flex flex-col">
@@ -401,6 +431,7 @@ export default function SubscriptionPage() {
               </div>
             </div>
           </div>
+          </>
         )}
       </div>
 

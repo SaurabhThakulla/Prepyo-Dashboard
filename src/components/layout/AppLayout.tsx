@@ -162,7 +162,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div
         style={{ '--sidebar-offset': isSecondaryOpen ? '384px' : '64px' } as React.CSSProperties}
         className={`${isSecondaryOpen ? 'lg:pl-[384px]' : 'lg:pl-16'
-          } flex flex-col min-h-screen transition-[padding] duration-300 ease-in-out`}
+          } flex w-full min-w-0 flex-col min-h-screen transition-[padding] duration-300 ease-in-out`}
       >
         <Header
           isSecondaryOpen={isSecondaryOpen}
@@ -176,7 +176,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           }}
         />
 
-        <main className="flex-1 w-full p-0 flex flex-col min-h-0">
+        <main className="flex-1 w-full min-w-0 p-0 flex flex-col min-h-0">
           {isProtected ? <RequireAuth>{children}</RequireAuth> : children}
         </main>
       </div>

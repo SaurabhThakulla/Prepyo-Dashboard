@@ -75,8 +75,9 @@ body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  overflow-x: hidden;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow-wrap: anywhere;
 }
 
 h1,
@@ -96,6 +97,39 @@ select option {
   background-color: hsl(var(--card));
   color: hsl(var(--card-foreground));
   font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Intrinsic sizing: grid/flex children must be allowed to fit their columns.
+   Wide data tables retain their own explicit, locally scrollable minimum width. */
+@layer base {
+  :where(.flex, .inline-flex, .grid) > * {
+    min-width: 0;
+  }
+
+  :where(input, textarea, select, audio, video, canvas) {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 639px) {
+  /* Keep form fields readable without triggering iOS focus zoom. */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  button:not([role='checkbox']):not([role='radio']),
+  a[role='button'],
+  [role='tab'],
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select {
+    min-height: 44px;
+  }
+
+  button:has(> svg:only-child) {
+    min-width: 44px;
+  }
 }
 
 /* Custom Scrollbar */

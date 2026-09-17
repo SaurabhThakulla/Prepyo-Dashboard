@@ -538,7 +538,7 @@ export default function PassageReader({
   return (
     <Card className="p-3.5 sm:p-4 gap-2.5 bg-card dark:bg-[#0f141f] border-border/80 border-l-0 rounded-l-none rounded-r-lg shadow-2xs flex flex-col h-full overflow-hidden relative">
       {/* Compact IELTS Top Header Bar */}
-      <div className="flex items-start justify-between gap-3 border-b border-border/70 pb-2 shrink-0">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/70 pb-2 shrink-0">
         <div className="space-y-0.5">
           <h2 className="font-sans font-bold text-sm sm:text-base text-foreground tracking-wide uppercase">
             PASSAGE {passageNumber}
@@ -595,7 +595,7 @@ export default function PassageReader({
         onMouseUp={handleMouseUp}
         className={`flex-1 min-h-0 ${
           scroll
-            ? `${currentStyles.line} overflow-y-auto pr-2 scrollbar-thin`
+            ? `${currentStyles.line} lg:overflow-y-auto pr-2 scrollbar-thin`
             : currentStyles.line
         }`}
       >

@@ -33,11 +33,11 @@ export default function SecondaryPanel({
     <aside
       className={`shrink-0 border-r border-border bg-sidebar text-sidebar-foreground flex flex-col justify-between transition-all duration-300 ease-in-out overflow-hidden ${
         isOpen
-          ? 'w-80 opacity-100 pointer-events-auto shadow-xl lg:shadow-none'
+          ? 'w-[min(20rem,calc(100vw-5rem))] lg:w-80 opacity-100 pointer-events-auto shadow-xl lg:shadow-none'
           : 'w-0 opacity-0 pointer-events-none border-none'
       }`}
     >
-      <div className="w-80 flex flex-col justify-between h-full">
+      <div className="w-[min(20rem,calc(100vw-5rem))] lg:w-80 min-h-0 flex flex-col justify-between h-full">
         <div className="p-4 space-y-3 border-b border-border/80 bg-sidebar/50">
           <div>
             <h3 className="font-display text-sm font-bold text-foreground truncate">{section.title}</h3>

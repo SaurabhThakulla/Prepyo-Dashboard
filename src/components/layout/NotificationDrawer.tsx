@@ -18,7 +18,7 @@ export default function NotificationDrawer({ open, onClose }: Props) {
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
 
-      <div className="fixed inset-y-0 right-0 max-w-sm w-full bg-card border-l border-border shadow-2xl p-5 flex flex-col z-50 animate-in slide-in-from-right duration-200">
+      <div className="fixed top-0 right-0 h-dvh max-w-sm w-full bg-card border-l border-border shadow-2xl p-5 flex flex-col z-50 animate-in slide-in-from-right duration-200">
         
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-border">

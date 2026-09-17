@@ -38,7 +38,7 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
 
         <div className="space-y-3.5">
           {skills.map(skill => (
-            <div key={skill.name} className="flex items-center justify-between py-1 group gap-3">
+            <div key={skill.name} className="flex flex-col sm:flex-row sm:items-center justify-between py-1 group gap-3">
               <div className="space-y-0.5 min-w-0 flex-1">
                 <div className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
                   {skill.name}
@@ -46,9 +46,9 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
                 <div className="text-[11px] text-muted-foreground font-normal truncate">{skill.sub}</div>
               </div>
 
-              <div className="flex items-center gap-3 sm:gap-6 shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-28 sm:w-48 md:w-60 lg:w-72 h-1.5 bg-slate-100 dark:bg-zinc-800/90 rounded-full overflow-hidden">
+              <div className="flex w-full min-w-0 sm:w-1/2 items-center gap-3 sm:gap-6">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className="min-w-0 flex-1 h-1.5 bg-slate-100 dark:bg-zinc-800/90 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-primary rounded-full transition-all duration-300"
                       style={{ width: `${skill.percent}%` }}

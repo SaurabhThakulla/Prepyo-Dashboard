@@ -103,7 +103,7 @@ export default function AITutorDrawer() {
 
       {/* Slide-in Drawer Container */}
       <div
-        className={`fixed inset-y-0 right-0 max-w-lg w-full bg-card/95 backdrop-blur-2xl border-l border-border shadow-2xl flex flex-col z-50 transition-transform duration-300 ease-out ${
+        className={`fixed top-0 right-0 h-dvh max-w-lg w-full bg-card/95 backdrop-blur-2xl border-l border-border shadow-2xl flex flex-col z-50 transition-transform duration-300 ease-out ${
           isTutorOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >

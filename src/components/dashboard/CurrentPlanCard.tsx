@@ -35,9 +35,9 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
       <div className="absolute top-0 right-0 -mt-12 -mr-12 w-64 h-64 bg-gradient-to-br from-primary/10 via-indigo-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-1/4 -mb-12 w-48 h-48 bg-gradient-to-tr from-blue-500/5 to-transparent rounded-full blur-2xl pointer-events-none" />
 
-      <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      <div className="relative z-10 flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-6">
         {/* Left: Plan details */}
-        <div className="flex items-start sm:items-center gap-3.5 min-w-[240px] shrink-0">
+        <div className="flex items-start sm:items-center gap-3.5 min-w-0 shrink-0">
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/15 to-indigo-500/15 dark:from-primary/25 dark:to-indigo-500/25 border border-primary/25 flex items-center justify-center text-primary shrink-0 shadow-xs">
             <Sparkles className="w-5 h-5" />
           </div>
@@ -76,7 +76,7 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
         </div>
 
         {/* Middle: Quota Progress Meters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1 lg:max-w-xl xl:max-w-2xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0 flex-1">
           {/* Sub-test Meter Card */}
           <div className="p-3.5 rounded-xl bg-muted/40 dark:bg-zinc-900/50 border border-border/70 space-y-2">
             <div className="flex items-center justify-between text-xs">
@@ -149,7 +149,7 @@ function CurrentPlanCardSkeleton() {
   return (
     <div className="w-full relative overflow-hidden bg-card dark:bg-[#12161c] border border-border/80 dark:border-white/10 rounded-2xl p-5 sm:p-6 shadow-xs animate-pulse">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div className="flex items-center gap-3.5 min-w-[240px]">
+        <div className="flex items-center gap-3.5 min-w-0">
           <div className="w-11 h-11 rounded-2xl bg-muted" />
           <div className="space-y-2">
             <div className="h-2.5 w-24 rounded bg-muted" />

@@ -74,7 +74,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4">
         {(['speaking', 'writing', 'reading', 'listening'] as SkillType[]).map(skill => {
           const row = skillProgress.get(skill);
           return (

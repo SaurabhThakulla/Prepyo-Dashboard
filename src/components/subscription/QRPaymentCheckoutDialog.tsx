@@ -185,7 +185,7 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
             </Button>
           </div>
         ) : (
-          <div className="flex flex-col max-h-[90vh] overflow-y-auto">
+          <div className="flex flex-col max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="p-4 sm:p-5 pr-14 sm:pr-16 border-b border-border/70 bg-muted/20">
               <DialogTitle className="text-base sm:text-lg font-black tracking-tight font-display">
                 Complete your payment

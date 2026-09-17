@@ -73,7 +73,7 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
   const lowOnTime = secondsLeft <= 300;
 
   return (
-    <div className="w-full h-[calc(100vh-4rem)] p-0 m-0 flex flex-col bg-background overflow-hidden px-3 sm:px-6 lg:px-8 py-2.5 space-y-2.5">
+    <div className="w-full min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] p-0 m-0 flex flex-col bg-background lg:overflow-hidden px-3 sm:px-6 lg:px-8 py-2.5 space-y-2.5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-border pb-2.5 shrink-0">
         <div>
           <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">
@@ -132,7 +132,7 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
       {activeSet && (
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-3 overflow-hidden">
           {activeSet.passage && (
-            <div className="w-full lg:w-1/2 h-1/2 lg:h-full min-h-0 flex flex-col overflow-hidden">
+            <div className="w-full lg:w-1/2 lg:h-full min-h-0 flex flex-col lg:overflow-hidden">
               <PassageReader
                 passage={activeSet.passage}
                 scroll={true}
@@ -145,10 +145,10 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
 
           <div
             className={`w-full ${
-              activeSet.passage ? 'lg:w-1/2 h-1/2 lg:h-full' : 'lg:w-full h-full'
+              activeSet.passage ? 'lg:w-1/2 lg:h-full' : 'lg:w-full lg:h-full'
             } min-h-0 flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card/40 p-2.5 sm:p-3.5`}
           >
-            <div className="flex-1 min-h-0 overflow-y-auto pr-1.5 space-y-4 scrollbar-thin">
+            <div className="flex-1 min-h-0 lg:overflow-y-auto pr-1.5 space-y-4 scrollbar-thin">
               {activeSet.groups.map((group, groupIndex) => (
                 <ReadingGroupCard
                   key={group.id}
@@ -164,7 +164,7 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-3 pt-2 border-t border-border shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-border shrink-0">
         <p className="text-[11px] text-muted-foreground">
           Unanswered questions are marked wrong. You can move between passages freely.
         </p>

@@ -235,7 +235,7 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
     }
 
     return (
-      <div className="relative w-full h-[calc(100vh-4rem)] overflow-hidden bg-background">
+      <div className="relative w-full min-h-[calc(100dvh-4rem)] bg-background">
         <PreTestBlurOverlay
           title={labelForTypeKey(initialTypeKey)}
           instructions="The passage and questions will appear after you start."
@@ -269,12 +269,12 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
   const hasPassage = Boolean(set.passage && set.groups[0]?.passageDisplay !== 'hidden');
 
   return (
-    <div data-practice-workspace className="relative w-full h-[calc(100vh-4rem)] p-0 m-0 flex flex-col bg-background overflow-hidden">
+    <div data-practice-workspace className="relative w-full min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] p-0 m-0 flex flex-col bg-background lg:overflow-hidden">
       <div className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
         <div className="transition-all duration-300 flex-1 w-full px-0 py-1 flex flex-col lg:flex-row gap-1.5 min-h-0 overflow-hidden">
           {/* Left Pane: Reading Passage (Independent scroll only) */}
           {hasPassage && (
-            <div className="w-full lg:w-1/2 h-1/2 lg:h-full min-h-0 flex flex-col overflow-hidden">
+            <div className="w-full lg:w-1/2 lg:h-full min-h-0 flex flex-col lg:overflow-hidden">
               <PassageReader
                 passage={set.passage!}
                 scroll={true}
@@ -286,8 +286,8 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
           )}
 
           {/* Right Pane: Questions & Answer Cards (Independent scroll only) */}
-          <div className={`w-full ${hasPassage ? 'lg:w-1/2' : 'lg:w-full'} h-1/2 lg:h-full min-h-0 flex flex-col overflow-hidden`}>
-            <div className="flex-1 min-h-0 overflow-y-auto pl-1 pr-2 space-y-2 scrollbar-thin">
+          <div className={`w-full ${hasPassage ? 'lg:w-1/2' : 'lg:w-full'} lg:h-full min-h-0 flex flex-col lg:overflow-hidden`}>
+            <div className="flex-1 min-h-0 lg:overflow-y-auto px-3 lg:pl-1 lg:pr-2 space-y-2 scrollbar-thin">
               {set.groups.map((group, index) => (
                 <ReadingGroupCard
                   key={group.id}

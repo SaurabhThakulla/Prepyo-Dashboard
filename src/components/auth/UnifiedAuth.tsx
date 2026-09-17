@@ -19,10 +19,10 @@ export default function UnifiedAuth() {
   const freePlan = plansData?.plans.find(plan => plan.id === 'free') ?? null;
 
   return (
-    <div className="h-screen max-h-screen w-full flex flex-col lg:flex-row bg-background overflow-hidden">
+    <div className="min-h-dvh lg:h-dvh w-full flex flex-col lg:flex-row bg-background lg:overflow-hidden">
       <AuthHeroPanel freePlan={freePlan} />
 
-      <div className="w-full lg:w-7/12 xl:w-1/2 h-screen max-h-screen flex flex-col justify-between p-5 sm:p-8 xl:p-10 overflow-y-auto bg-background">
+      <div className="w-full lg:w-7/12 xl:w-1/2 min-h-dvh lg:h-dvh flex flex-col justify-between gap-4 p-5 sm:p-8 xl:p-10 overflow-y-auto bg-background">
         <div className="flex items-center justify-between pb-1">
           <div className="lg:hidden flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl overflow-hidden bg-white shadow-md">

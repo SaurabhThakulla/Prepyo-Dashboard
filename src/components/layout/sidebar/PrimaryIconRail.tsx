@@ -42,7 +42,7 @@ export default function PrimaryIconRail({
   onSignOut,
 }: PrimaryIconRailProps) {
   return (
-    <aside className="w-16 shrink-0 border-r border-border bg-card flex flex-col justify-between items-center py-4 px-2.5 z-20 select-none">
+    <aside className="w-16 shrink-0 border-r border-border bg-card flex flex-col overflow-y-auto overscroll-contain justify-between items-center py-4 px-2.5 z-20 select-none">
       <div className="flex flex-col items-center w-full pb-3 mb-2 border-b border-border/50">
         <Link
           to="/dashboard"
@@ -66,6 +66,7 @@ export default function PrimaryIconRail({
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => onSectionClick(section.id)}
+                    aria-label={section.label}
                     className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${
                       isIndicatorActive
                         ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25 scale-105'

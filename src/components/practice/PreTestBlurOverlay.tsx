@@ -32,7 +32,7 @@ export default function PreTestBlurOverlay({
   const hasCredits = subTestsRemaining > 0;
 
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center p-4 bg-background/60 backdrop-blur-[2px] animate-in fade-in duration-200">
+    <div className="relative z-20 flex min-h-[calc(100dvh-4rem)] items-center justify-center p-4 bg-background/60 backdrop-blur-[2px] animate-in fade-in duration-200">
       <Card className="w-full max-w-lg p-6 sm:p-8 text-center space-y-5 bg-card/95 border-border/90 shadow-2xl rounded-2xl backdrop-blur-xl">
         <div className="space-y-2">
           <CardTitle className="text-xl sm:text-2xl font-black text-foreground">
@@ -44,7 +44,7 @@ export default function PreTestBlurOverlay({
         </div>
 
         {/* Credit Information Box */}
-        <div className="p-3.5 rounded-xl bg-muted/60 border border-border/80 flex items-center justify-between text-xs">
+        <div className="p-3.5 rounded-xl bg-muted/60 border border-border/80 flex flex-wrap gap-3 items-center justify-between text-xs">
           <div className="flex items-center gap-2 text-left">
             <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
             <span className="text-foreground font-semibold">1 sub-test credit</span>

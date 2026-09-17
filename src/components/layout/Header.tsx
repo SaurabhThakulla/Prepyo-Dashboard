@@ -44,15 +44,15 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border bg-card/80 px-4 sm:px-6 backdrop-blur-xl transition-colors">
+      <header className="sticky top-0 z-30 flex h-16 w-full min-w-0 items-center justify-between gap-2 border-b border-border bg-card/80 px-2 sm:px-6 backdrop-blur-xl transition-colors">
 
         {/* Left: Sidebar Toggle & Breadcrumb */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
-            className={`h-8 w-8 rounded-lg border transition-all duration-150 active:scale-95 flex items-center justify-center ${
+            className={`h-8 w-8 shrink-0 rounded-lg border transition-all duration-150 active:scale-95 flex items-center justify-center ${
               isSecondaryOpen
                 ? 'border-border/80 bg-muted/70 text-foreground shadow-2xs'
                 : 'border-border/50 bg-background/50 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
@@ -63,29 +63,29 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
             <PanelLeft className="w-4 h-4" strokeWidth={1.8} />
           </Button>
 
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex min-w-0 items-center gap-2 text-xs">
             <span className="text-muted-foreground hidden sm:inline font-medium">Prepyo</span>
             <ChevronRight className="w-3.5 h-3.5 text-muted-foreground hidden sm:inline" />
-            <span className="font-bold text-foreground text-sm">{title}</span>
+            <span className="truncate font-bold text-foreground text-sm" title={title}>{title}</span>
           </div>
         </div>
 
         
         {/* Active Test Session Indicator */}
         {activeTestSession?.isActive && (
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold">
+          <div role="status" title={activeTestSession.title || 'Test in Progress'} className="flex shrink-0 min-w-0 xl:max-w-xs items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
             </span>
-            <span>{activeTestSession.title ? `Testing: ${activeTestSession.title}` : 'Test in Progress'}</span>
+            <span className="sr-only xl:not-sr-only xl:truncate">{activeTestSession.title ? `Testing: ${activeTestSession.title}` : 'Test in Progress'}</span>
           </div>
         )}
 
         {/* Right Action Icons & Badges */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <Button asChild size="sm" className="text-xs font-bold gap-1 px-2 sm:px-3">
-            <Link to="/referrals"><Gift className="w-4 h-4" /><span>Earn Rewards</span></Link>
+        <div className="flex shrink-0 items-center gap-0 sm:gap-2">
+          <Button asChild size="sm" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 text-xs font-bold gap-1 px-2 sm:px-3">
+            <Link to="/referrals" aria-label="Earn Rewards"><Gift className="w-4 h-4" /><span className="hidden sm:inline">Earn Rewards</span></Link>
           </Button>
           {/* XP Badge */}
           <div className="hidden sm:flex items-center gap-1 bg-primary/10 border border-primary/30 px-2.5 py-1.5 rounded-xl text-xs font-bold text-primary" title="XP Points">
@@ -122,6 +122,7 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
             variant="ghost"
             size="icon"
             onClick={() => setShowNotifications(!showNotifications)}
+            aria-label="Notifications"
             className="relative h-9 w-9 text-muted-foreground hover:text-foreground"
           >
             <Bell className="w-4 h-4" />

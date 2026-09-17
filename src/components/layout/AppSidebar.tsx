@@ -74,6 +74,15 @@ export default function AppSidebar({
   );
   const currentSection = sections.find(section => section.id === activeSection) ?? sections[0];
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isOpen, setIsOpen]);
+
   const closeMobileSidebar = () => setIsOpen(false);
 
   const handleSectionClick = (sectionId: PrimarySectionId) => {
@@ -115,7 +124,7 @@ export default function AppSidebar({
       )}
 
       <div
-        className={`fixed top-0 bottom-0 left-0 z-40 flex transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 h-dvh left-0 z-40 flex transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -129,6 +138,7 @@ export default function AppSidebar({
           onLogoClick={() => {
             setActiveSection('home');
             setIsSecondaryOpen(true);
+            closeMobileSidebar();
           }}
           onReportIssue={() => {
             setIsReportOpen(true);

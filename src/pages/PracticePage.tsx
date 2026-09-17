@@ -303,7 +303,7 @@ export default function PracticePage() {
     <div
       className={`w-full ${
         isReading && !isAdminUser
-          ? 'h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] overflow-hidden'
+          ? 'min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] lg:overflow-hidden'
           : 'min-h-[calc(100vh-4rem)]'
       } p-0 m-0 flex flex-col bg-background`}
     >
@@ -683,7 +683,7 @@ export default function PracticePage() {
               </Button>
 
               {result && isLast ? (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 className="w-4 h-4" />
                     You have finished every question here

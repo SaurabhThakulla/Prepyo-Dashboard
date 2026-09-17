@@ -111,7 +111,7 @@ export function ToastProvider({ children, position = 'top-right' }: ToastProvide
       {/* Global Toast Container */}
       <div
         aria-live="polite"
-        className={cn('fixed z-[9999] flex flex-col gap-3 max-w-md w-full pointer-events-none px-4 sm:px-0', positionClasses[position] || positionClasses['top-right'])}
+        className={cn('fixed z-[9999] flex flex-col gap-3 max-w-md w-[calc(100%-2rem)] sm:w-full pointer-events-none', positionClasses[position] || positionClasses['top-right'])}
       >
         {toasts.map((t) => {
           const isError = t.type === 'error';
