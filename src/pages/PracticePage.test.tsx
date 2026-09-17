@@ -157,6 +157,46 @@ describe('writing minimum on the routed page', () => {
   });
 });
 
+describe('practice bank indicators', () => {
+  it.each([
+    ['IELTS', 'listening'], ['IELTS', 'writing'], ['IELTS', 'speaking'],
+    ['PTE', 'listening'], ['PTE', 'writing'], ['PTE', 'speaking'],
+  ])('hides numbered bank navigation for %s %s and preserves progression', async (exam, skill) => {
+    mocks.activeExam = exam;
+    vi.mocked(api.get).mockResolvedValue({ questions: ['First task', 'Second task', 'Third task'].map((title, index) => ({
+      id: `task-${index}`, exam, skill, title, typeName: 'Practice task',
+      prompt: 'Answer this task', timeLimitSeconds: 600,
+      options: skill === 'listening' ? [{ id: 'a', text: 'Answer A' }] : [],
+    })) });
+    vi.mocked(api.post).mockImplementation(async path => {
+      if (path === '/practice/start') return { sessionId: 'session-1', remainingSubTests: 0 };
+      return { evaluation: { summary: 'Feedback ready', criteria: [] }, xpAwarded: 10 };
+    });
+    render(<MemoryRouter initialEntries={[`/practice?skill=${skill}`]}><PracticePage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Start Practice (1 Credit)' }));
+    const submit = await screen.findByRole('button', { name: skill === 'speaking' ? 'Submit recording' : 'Submit Answer' });
+    expect(screen.queryByText(/Questions unlock one at a time/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /^\d+$/ })).toBeNull();
+    expect(screen.queryByTitle('Answer the earlier questions first')).toBeNull();
+    if (skill === 'writing') {
+      fireEvent.change(screen.getByPlaceholderText('Write your response here…'), {
+        target: { value: Array(20).fill('word').join(' ') },
+      });
+    } else if (skill === 'speaking') {
+      fireEvent.click(screen.getByRole('button', { name: 'Record test audio' }));
+    } else {
+      fireEvent.click(screen.getByText('Answer A'));
+    }
+    fireEvent.click(submit);
+    fireEvent.click(await screen.findByRole('button', { name: 'Next question' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Start Practice (1 Credit)' }));
+    expect(await screen.findByText('Second task')).toBeDefined();
+    expect(api.post).toHaveBeenLastCalledWith('/practice/start', {
+      exam, skill, questionId: 'task-1',
+    });
+  });
+});
+
 describe('practice credit lifecycle', () => {
   it.each([
     ['writing', '/evaluations/writing'],

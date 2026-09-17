@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+
 import { Card, CardTitle } from '@/components/ui/card';
 import { Question } from '@/lib/types';
 
@@ -38,9 +38,6 @@ export default function QuestionNavigator({
     <Card className="p-5 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <CardTitle className="text-sm uppercase">{skill}</CardTitle>
-        <Badge variant="outline">
-          {groups.length} type{groups.length === 1 ? '' : 's'} • {questions.length}
-        </Badge>
       </div>
 
       <div className="space-y-1.5 max-h-[26rem] overflow-y-auto pr-1">
@@ -53,13 +50,12 @@ export default function QuestionNavigator({
             <summary className="flex cursor-pointer items-center justify-between gap-2 p-2.5 text-xs font-bold text-foreground list-none [&::-webkit-details-marker]:hidden">
               <span className="truncate">{group.name}</span>
               <span className="flex items-center gap-1.5 shrink-0 text-[10px] font-bold text-muted-foreground">
-                {group.questions.length}
                 <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
               </span>
             </summary>
 
             <div className="grid grid-cols-2 gap-2 p-2.5 pt-0">
-              {group.questions.map((question, idx) => (
+              {group.questions.map(question => (
                 <button
                   key={question.id}
                   onClick={() => onSelect(question)}
@@ -68,7 +64,7 @@ export default function QuestionNavigator({
                     : 'bg-card border-border text-muted-foreground hover:text-foreground'
                     }`}
                 >
-                  <div className="font-bold truncate">{idx + 1}. {question.title}</div>
+                  <div className="font-bold truncate">{question.title}</div>
                   <div className="text-[10px] opacity-75 truncate">{question.difficulty}</div>
                 </button>
               ))}

@@ -47,15 +47,15 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
               </div>
 
               <div className="flex w-full min-w-0 sm:w-1/2 items-center gap-3 sm:gap-6">
-                <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <div className="min-w-0 flex-1 h-1.5 bg-slate-100 dark:bg-zinc-800/90 rounded-full overflow-hidden">
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <div className="w-full h-1.5 bg-slate-100 dark:bg-zinc-800/90 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-primary rounded-full transition-all duration-300"
                       style={{ width: `${skill.percent}%` }}
                     />
                   </div>
                   {skill.scoreText ? (
-                    <span className="text-xs font-mono text-muted-foreground font-medium w-11 sm:w-12 text-right shrink-0">
+                    <span className="text-xs font-mono text-muted-foreground font-medium self-end text-right whitespace-nowrap">
                       {skill.scoreText}
                     </span>
                   ) : null}

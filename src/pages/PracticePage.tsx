@@ -15,7 +15,6 @@ import {
   Quote,
   ChevronDown,
   ChevronRight,
-  Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -274,17 +273,10 @@ export default function PracticePage() {
           selectedOptions.length > 0 ||
           Object.values(blankResponses).some(Boolean);
 
-  const isAgreeOrDescribe = Boolean(
-    `${currentQuestion?.typeName || ''} ${typeParam || ''}`.toLowerCase().match(/agree|disagree|describe/),
-  );
   const isPteListening = activeExam === 'PTE' && selectedSkill === 'listening';
 
   const currentIndex = currentQuestion ? questions.findIndex(q => q.id === currentQuestion.id) : -1;
-  const unlocked = unlockedIndex(questions.map(q => q.id), new Set(completedIds));
   const isLast = currentIndex === questions.length - 1;
-  const canGoNext = isAgreeOrDescribe
-    ? !isLast
-    : currentIndex >= 0 && currentIndex < unlocked && !isLast;
 
   const goToIndex = (index: number) => {
     const question = questions[index];
@@ -378,43 +370,6 @@ export default function PracticePage() {
                 <p className="text-xs sm:text-[13px] text-muted-foreground font-medium leading-relaxed">
                   {currentQuestion.prompt}
                 </p>
-              )}
-
-              {/* Question Navigation Pills for quick jump */}
-              {!isAgreeOrDescribe && !isPteListening && questions.length > 1 && (
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-                    {questions.map((q, idx) => {
-                      const isCurrent = q.id === currentQuestion.id;
-                      const isDone = completedIds.includes(q.id);
-                      const isLocked = idx > unlocked;
-                      return (
-                        <button
-                          key={q.id}
-                          type="button"
-                          disabled={isLocked}
-                          onClick={() => goToIndex(idx)}
-                          title={isLocked ? 'Answer the earlier questions first' : `Question ${idx + 1}`}
-                          className={`h-6 min-w-6 px-2 text-[11px] font-mono font-bold rounded-md border transition-colors inline-flex items-center justify-center gap-1 ${
-                            isCurrent
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                              : isLocked
-                                ? 'bg-muted/40 text-muted-foreground/50 border-border/60 cursor-not-allowed'
-                                : isDone
-                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                                  : 'bg-card text-muted-foreground hover:text-foreground hover:bg-muted border-border'
-                          }`}
-                        >
-                          {isLocked && <Lock className="w-2.5 h-2.5" />}
-                          {idx + 1}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Questions unlock one at a time — answer this one to move on.
-                  </p>
-                </div>
               )}
 
               {/* Inner Question & Interaction Container */}

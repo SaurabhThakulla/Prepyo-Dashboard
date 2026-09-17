@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
+import MistakeRetry from '@/components/mistakes/MistakeRetry';
 import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle2,
@@ -695,41 +696,11 @@ export default function MistakesPage() {
                   )}
                 </div>
 
-                {/* Response Comparison Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 rounded-xl border border-border/80 divide-y sm:divide-y-0 sm:divide-x divide-border/80 bg-muted/15 overflow-hidden">
-                  {/* Your Response */}
-                  <div className="p-4 space-y-2.5 bg-background/50">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400">
-                      <XCircle className="w-4 h-4 shrink-0" />
-                      <span>Your Response</span>
-                    </div>
-                    <div>{renderResponseBadges(item.userResponse, true)}</div>
-                  </div>
-
-                  {/* Correct Solution */}
-                  <div className="p-4 space-y-2.5 bg-background/80">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      <CheckCircle2 className="w-4 h-4 shrink-0" />
-                      <span>Correct Solution</span>
-                    </div>
-                    <div>{renderResponseBadges(item.correctResponse, false)}</div>
-                  </div>
+                <div className="rounded-xl border border-border p-4 space-y-2">
+                  <p className="text-xs font-bold text-muted-foreground">Previous response</p>
+                  {renderResponseBadges(item.userResponse, true)}
                 </div>
-
-                {/* Examiner Explanation Callout */}
-                {item.explanation && (
-                  <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/30 text-xs sm:text-[13px]">
-                    <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                    <div className="space-y-0.5">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300 block">
-                        Examiner Explanation
-                      </span>
-                      <p className="text-foreground/90 leading-relaxed font-normal">
-                        {item.explanation}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                {!isSuru && <MistakeRetry key={`${item.id}-${activeExam}`} mistake={item} />}
               </div>
             ))}
           </div>
