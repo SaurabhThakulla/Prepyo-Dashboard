@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import AudioRecorder from '@/components/practice/AudioRecorder';
 import { Question } from '@/lib/types';
+import { minimumWritingWords, writingWordCount } from '@/lib/writing';
 import { usePracticeSession } from '@/lib/hooks/usePracticeSession';
 
 interface PracticeAnswerFormProps {
@@ -25,7 +26,8 @@ export default function PracticeAnswerForm({
   onAskAITutor,
 }: PracticeAnswerFormProps) {
   const { grading, submitting, result, canSubmit } = session;
-  const wordCount = session.textAnswer.trim().split(/\s+/).filter(Boolean).length;
+  const wordCount = writingWordCount(session.textAnswer);
+  const minWords = minimumWritingWords(question);
 
   return (
     <Card className="p-6 space-y-4">
@@ -45,7 +47,7 @@ export default function PracticeAnswerForm({
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-foreground">Your response</span>
-            <Badge variant={wordCount >= 20 ? 'success' : 'warning'}>{wordCount} words</Badge>
+            <Badge variant={wordCount >= minWords ? 'success' : 'warning'}>{wordCount} words</Badge>
           </div>
           <Textarea
             rows={8}
@@ -54,7 +56,9 @@ export default function PracticeAnswerForm({
             placeholder="Write your response here…"
           />
           <p className="text-[11px] text-muted-foreground">
-            At least 20 words so the evaluator has something to work with.
+            {minWords === 5
+              ? 'Write one sentence of 5–75 words. Responses outside the task limits can still receive feedback.'
+              : 'At least 20 words for feedback. Follow the prompt for the exam word requirement.'}
           </p>
         </div>
       )}

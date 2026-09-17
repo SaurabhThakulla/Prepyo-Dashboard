@@ -32,7 +32,6 @@ const SkillMockPanel = lazy(() => import('@/components/practice/SkillMockPanel')
 const PracticeMockPaywall = lazy(() => import('@/components/practice/PracticeMockPaywall'));
 const AdminReadingAuthoring = lazy(() => import('@/components/admin/AdminReadingAuthoring'));
 const AdminQuestionAuthoring = lazy(() => import('@/components/admin/AdminQuestionAuthoring'));
-const PtePracticeHub = lazy(() => import('@/components/pte/PtePracticeHub'));
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
 import { typeKey } from '@/lib/syllabus';
@@ -331,20 +330,6 @@ export default function PracticePage() {
         </Suspense>
       ) : loading ? (
         <PracticePageSkeleton />
-      ) : activeExam === 'PTE' && (searchParams.get('hub') === '1' || !currentQuestion) ? (
-        <Suspense fallback={<PracticePageSkeleton />}>
-          <div className="w-full px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
-              <div>
-                <h1 className="text-2xl font-black font-display text-foreground">PTE Academic Practice Matrix</h1>
-                <p className="text-xs text-muted-foreground mt-0.5 font-medium">
-                  Official 23 task types across Speaking, Writing, Reading, and Listening with instant AI scoring.
-                </p>
-              </div>
-            </div>
-            <PtePracticeHub activeTypeKey={typeParam} />
-          </div>
-        </Suspense>
       ) : !currentQuestion ? (
         <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-8 text-center space-y-3 bg-card/20">
           <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
@@ -373,17 +358,6 @@ export default function PracticePage() {
                   <span className="bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
                     {currentQuestion.typeName}
                   </span>
-                  {activeExam === 'PTE' && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSearchParams({ hub: '1' })}
-                      className="text-xs font-bold text-muted-foreground hover:text-foreground h-6 px-2"
-                    >
-                      <span>All PTE Tasks</span>
-                      <ChevronRight className="w-3 h-3 ml-1" />
-                    </Button>
-                  )}
                 </div>
               </div>
 

@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/toast';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
 import { typeKey } from '@/lib/syllabus';
+import { minimumWritingWords, writingWordCount } from '@/lib/writing';
 import { useQuestions } from '@/lib/hooks/useResources';
 import { Evaluation, PracticeAttempt, Question, SkillType } from '@/lib/types';
 
@@ -196,7 +197,9 @@ export function usePracticeSession() {
   const canSubmit =
     grading === 'speech'
       ? recording !== null
-      : textAnswer.trim().length > 0 ||
+      : grading === 'ai'
+        ? currentQuestion !== null && writingWordCount(textAnswer) >= minimumWritingWords(currentQuestion)
+        : textAnswer.trim().length > 0 ||
         selectedOptions.length > 0 ||
         Object.values(blankResponses).some(Boolean);
 
