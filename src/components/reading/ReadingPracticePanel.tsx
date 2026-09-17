@@ -110,7 +110,7 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
   const types = typesQuery.data?.types ?? [];
 
   const practice = useReadingPractice(activeExam);
-  const { set, deal, dealing } = practice;
+  const { set, deal, dealing, reset } = practice;
 
   const currentTypeId = set?.groups[0]?.typeId;
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -190,22 +190,26 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
   }, [isStarting, isSessionActive, types, typesQuery, initialTypeKey, currentTypeId, deal, activeExam, refreshUser, setActiveTestSession, handleStop, toast]);
 
   const handleCheck = async () => {
-    await practice.check();
-    setIsSessionActive(false);
-    setSessionId(null);
-    setActiveTestSession(null);
+    try {
+      await practice.check();
+    } finally {
+      setIsSessionActive(false);
+      setSessionId(null);
+      setActiveTestSession(null);
+    }
   };
 
   useEffect(() => {
     if (typesQuery.error) toast.error('Could not load reading tasks', errorMessage(typesQuery.error));
   }, [typesQuery.error]);
 
-  // When task or exam changes in navigation, reset session so learner confirms before starting new task
+  // When task or exam changes in navigation, reset session and practice state so learner can start new task
   useEffect(() => {
     setIsSessionActive(false);
     setSessionId(null);
     setActiveTestSession(null);
-  }, [initialTypeKey, activeExam]);
+    reset();
+  }, [initialTypeKey, activeExam, reset]);
 
   const askTutor = () => {
     if (!set) return;

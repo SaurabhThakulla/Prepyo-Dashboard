@@ -186,6 +186,16 @@ export function useReadingPractice(exam: ExamType) {
     return sum + Math.round((accuracy / 100) * partsOf(question));
   }, 0);
 
+  const reset = useCallback(() => {
+    setSet(null);
+    setAnswers({});
+    setResults({});
+    setDealing(false);
+    setDealError(null);
+    setChecking(false);
+    setStartedAt(Date.now());
+  }, []);
+
   return {
     set,
     answers,
@@ -196,6 +206,7 @@ export function useReadingPractice(exam: ExamType) {
     deal,
     answer,
     check,
+    reset,
     totalQuestions: questions.length,
     answeredCount,
     correctCount,

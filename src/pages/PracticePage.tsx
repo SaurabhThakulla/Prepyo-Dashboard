@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
 import { useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import {
@@ -59,9 +60,12 @@ export default function PracticePage() {
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [selectedSkill, setSelectedSkill] = useState<SkillType>(
-    (searchParams.get('skill') as SkillType) || 'reading',
-  );
+  const skillParam = searchParams.get('skill') as SkillType | null;
+  const selectedSkill: SkillType =
+    skillParam && ['speaking', 'writing', 'reading', 'listening'].includes(skillParam)
+      ? skillParam
+      : 'reading';
+
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,16 +79,46 @@ export default function PracticePage() {
   const [startedAt, setStartedAt] = useState<number>(() => Date.now());
   const [completedIds, setCompletedIds] = useState<string[]>([]);
 
+  const [startedTask, setStartedTask] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
+  const startPending = useRef(false);
+  const taskKey = currentQuestion ? `${activeExam}:${selectedSkill}:${currentQuestion.id}` : null;
+  const latestTaskKey = useRef(taskKey);
+  latestTaskKey.current = taskKey;
+  const hasStarted = taskKey !== null && startedTask === taskKey;
+  const subTestsRemaining = Math.max(0,
+    (user?.subscription?.dailySubTestsLimit ?? 0) - (user?.subscription?.dailySubTestsUsed ?? 0),
+  );
+
+  const handleStart = async () => {
+    if (!currentQuestion || !taskKey || hasStarted || startPending.current) return;
+    startPending.current = true;
+    setIsStarting(true);
+    const startingKey = taskKey;
+    try {
+      await api.post('/practice/start', {
+        exam: activeExam,
+        skill: selectedSkill,
+        questionId: currentQuestion.id,
+      });
+      // A response for a task left during the request must not unlock another task.
+      if (latestTaskKey.current === startingKey) {
+        setStartedTask(startingKey);
+        setStartedAt(Date.now());
+      }
+      await refreshUser();
+    } catch (err) {
+      toast.error('Could not start practice', errorMessage(err));
+    } finally {
+      startPending.current = false;
+      setIsStarting(false);
+    }
+  };
+
   const grading = GRADING[selectedSkill];
 
-  useEffect(() => {
-    const skillParam = searchParams.get('skill') as SkillType;
-    if (skillParam && ['speaking', 'writing', 'reading', 'listening'].includes(skillParam)) {
-      setSelectedSkill(skillParam);
-    }
-  }, [searchParams]);
-
   const resetAnswer = useCallback(() => {
+    setStartedTask(null);
     setResult(null);
     setTextAnswer('');
     setBlankResponses({});
@@ -117,12 +151,11 @@ export default function PracticePage() {
         if (cancelled) return;
         const all = data.questions ?? [];
         // A skill's bank holds every task type. The sidebar links to one type,
-        // so the list has to be narrowed to it: otherwise Describe the figure
-        // opens on an essay and the navigator walks into the opinion questions.
-        const ofType = typeParam
+        // so the list has to be narrowed to it: when a subtask type is requested,
+        // only show questions belonging to that subtask.
+        const list = typeParam
           ? all.filter(question => typeKey(question.typeName) === typeParam)
           : all;
-        const list = ofType.length > 0 ? ofType : all;
         const done = loadCompleted(activeExam, selectedSkill, typeParam);
         const known = done.filter(id => list.some(question => question.id === id));
         setCompletedIds(known);
@@ -146,7 +179,7 @@ export default function PracticePage() {
     return () => {
       cancelled = true;
     };
-  }, [activeExam, selectedSkill, isReading, isAdminUser, typeParam]);
+  }, [activeExam, selectedSkill, isReading, isAdminUser, typeParam, resetAnswer, toast]);
 
   const wordCount = textAnswer.trim().split(/\s+/).filter(Boolean).length;
 
@@ -158,7 +191,7 @@ export default function PracticePage() {
   };
 
   const handleSubmitAnswer = async () => {
-    if (!currentQuestion || submitting) return;
+    if (!currentQuestion || !hasStarted || submitting) return;
     setSubmitting(true);
 
     const timeSpentSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
@@ -196,6 +229,7 @@ export default function PracticePage() {
           '/practice/attempts',
           {
             questionId: currentQuestion.id,
+            exam: activeExam,
             textResponse: textAnswer || undefined,
             selectedOptions: selectedOptions.length ? selectedOptions : undefined,
             blankResponses: Object.keys(blankResponses).length ? blankResponses : undefined,
@@ -286,7 +320,10 @@ export default function PracticePage() {
         </Suspense>
       ) : isReading ? (
         <Suspense fallback={<ReadingPracticeSkeleton />}>
-          <ReadingPracticePanel initialTypeKey={searchParams.get('type') ?? undefined} />
+          <ReadingPracticePanel
+            key={`${activeExam}-${selectedSkill}-${typeParam || 'default'}`}
+            initialTypeKey={typeParam ?? undefined}
+          />
         </Suspense>
       ) : isAdminUser ? (
         <Suspense fallback={<AdminPageSkeleton />}>
@@ -313,6 +350,16 @@ export default function PracticePage() {
           <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
           <h3 className="text-sm font-bold text-foreground">No {selectedSkill} questions for {activeExam} yet</h3>
           <p className="text-xs text-muted-foreground">Try another skill or switch exam.</p>
+        </div>
+      ) : !hasStarted ? (
+        <div className="relative w-full min-h-[calc(100vh-4rem)]">
+          <PreTestBlurOverlay
+            title={currentQuestion.title}
+            instructions="Starting uses 1 credit. Submitting your answer and retrying scoring use no additional credits."
+            subTestsRemaining={subTestsRemaining}
+            isStarting={isStarting}
+            onStart={handleStart}
+          />
         </div>
       ) : (
         <div className="w-full flex flex-col flex-1">
