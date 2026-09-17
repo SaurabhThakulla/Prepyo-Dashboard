@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { AnswerSubmission, Question } from '@/lib/types';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import { isWordHighlightTask } from '@/lib/listening';
+import { allowsMultipleChoices } from '@/lib/choices';
 
 interface MockAnswerInputProps {
   question: Question;
@@ -38,13 +39,14 @@ export default function MockAnswerInput({ question, answer, onChange }: MockAnsw
                   }`}
               >
                 <input
-                  type="checkbox"
+                  type={allowsMultipleChoices(question) ? 'checkbox' : 'radio'}
+                  name={`answer-${question.id}`}
                   checked={checked}
                   onChange={event =>
                     onChange({
-                      selectedOptions: event.target.checked
-                        ? [...selectedOptions, option.id]
-                        : selectedOptions.filter(id => id !== option.id),
+                      selectedOptions: allowsMultipleChoices(question)
+                        ? (event.target.checked ? [...selectedOptions, option.id] : selectedOptions.filter(id => id !== option.id))
+                        : [option.id],
                     })
                   }
                   className="mt-0.5 rounded border-input text-primary focus:ring-primary h-3.5 w-3.5"
@@ -104,8 +106,8 @@ export default function MockAnswerInput({ question, answer, onChange }: MockAnsw
             placeholder="Type your response…"
           />
           <p className="text-[11px] text-muted-foreground">
-            Recorded with your attempt. {question.skill === 'speaking' ? 'Speaking' : 'Writing'} answers
-            are not auto-scored, so they are excluded from the overall estimate.
+            This legacy mock control does not evaluate writing or record speech.
+            Use individual practice for AI feedback. This is not a full exam estimate.
           </p>
         </div>
       )}

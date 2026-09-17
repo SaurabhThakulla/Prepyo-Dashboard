@@ -16,7 +16,7 @@ describe('the reading section of the practice menu', () => {
       'Multiple Choice',
       'True / False / Not Given',
       'Yes / No / Not Given',
-      'Match The Heading',
+      'Matching Information',
       'Fill in the Blanks',
     ]);
   });
@@ -29,7 +29,7 @@ describe('the reading section of the practice menu', () => {
   });
 
   it('keeps a heading when any one of the types behind it has questions', () => {
-    expect(readingItems('IELTS', [READING_TYPES.matchingInformation])).toEqual(['Match The Heading']);
+    expect(readingItems('IELTS', [READING_TYPES.matchingInformation])).toEqual(['Matching Information']);
   });
 
   it('shows nothing when the bank is empty, rather than five dead links', () => {

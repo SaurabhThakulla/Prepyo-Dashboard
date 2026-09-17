@@ -77,15 +77,15 @@ function labelForTypeKey(key?: string) {
   if (!key) return 'Reading Practice';
   const labels: Record<string, string> = {
     matchinginformation: 'Matching Information',
-    findparagraph: 'Match The Heading',
-    whichparagraphcontainsfollowinginformation: 'Match The Heading',
+    findparagraph: 'Matching Information',
+    whichparagraphcontainsfollowinginformation: 'Matching Information',
     truefalse: 'True / False / Not Given',
     truefalsenotgiven: 'True / False / Not Given',
     yesnonotgiven: 'Yes / No / Not Given',
     fillinblanks: 'Sentence Completion',
     completesentences: 'Sentence Completion',
     sentencecompletions: 'Sentence Completion',
-    arrangepassage: 'Match the Heading',
+    arrangepassage: 'Sequence the Summary (legacy practice)',
     matchheading: 'Match the Heading',
     matchtheheading: 'Match the Heading',
     matchheadings: 'Match the Heading',
@@ -150,7 +150,8 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
         availableTypes = res.data?.types ?? [];
       }
       const linked = firstAvailable(typeIdsFor(initialTypeKey), availableTypes);
-      const targetId = linked ?? currentTypeId ?? availableTypes[0]?.typeId;
+      // An explicit unsupported/empty task must not silently become another task.
+      const targetId = initialTypeKey ? linked : (currentTypeId ?? availableTypes[0]?.typeId);
 
       if (!targetId) {
         toast.error('No tasks available', 'Please select another skill or exam.');

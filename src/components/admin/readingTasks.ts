@@ -77,7 +77,7 @@ export const TASK_TYPES: TaskType[] = [
   },
   {
     id: 'reading-find-the-paragraph',
-    name: 'Match The Heading',
+    name: 'Matching Information',
     style: 'paragraph',
     exam: 'IELTS',
     instructionsHint: 'The passage has seven paragraphs, A-G. Which paragraph contains the following information?',
@@ -132,7 +132,7 @@ export const TASK_TYPES: TaskType[] = [
   },
   {
     id: 'reading-arrange-passage',
-    name: 'Match the Heading',
+    name: 'Sequence the Summary (legacy practice)',
     style: 'boxes',
     exam: 'IELTS',
     mockOnly: true,

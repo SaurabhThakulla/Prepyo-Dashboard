@@ -51,7 +51,7 @@ describe('the reading dashboard', () => {
     const ielts = SYLLABUS.IELTS.reading ?? [];
     const pte = SYLLABUS.PTE.reading ?? [];
 
-    for (const name of ['True / False / Not Given', 'Yes / No / Not Given', 'Match The Heading']) {
+    for (const name of ['True / False / Not Given', 'Yes / No / Not Given', 'Matching Information']) {
       expect(ielts, name).toContain(name);
       expect(pte, name).not.toContain(name);
     }
@@ -72,12 +72,11 @@ describe('the reading dashboard', () => {
   });
 
 
-  // Matching Information asks the same thing, so it sits behind the same
-  // heading — as the fallback, not the first choice.
-  it('deals Match The Heading behind the paragraph task', () => {
-    const ids = typeIdsFor(typeKey('Match The Heading'));
-    expect(ids[0]).toBe(READING_TYPES.findTheParagraph);
-    expect(ids).toEqual([READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation]);
+  it('never substitutes information or sequencing for heading matching', () => {
+    expect(typeIdsFor(typeKey('Match The Heading'))).toEqual([]);
+    expect(typeIdsFor(typeKey('Matching Information'))).toEqual([
+      READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation,
+    ]);
   });
 
   // Links already in the wild keep working: the old headings were separate
@@ -89,7 +88,7 @@ describe('the reading dashboard', () => {
       READING_TYPES.findTheParagraph,
       READING_TYPES.matchingInformation,
     ]);
-    expect(typeIdsFor('matchinginformation')).toEqual([READING_TYPES.matchingInformation]);
+    expect(typeIdsFor('matchinginformation')).toEqual([READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation]);
     expect(typeIdsFor('arrangepassage')).toEqual([READING_TYPES.arrangePassage]);
   });
 

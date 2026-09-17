@@ -27,7 +27,7 @@ describe('the admin task catalogue', () => {
   it('keeps mock-only tasks authorable without putting them on the dashboard', () => {
     const matchHeading = TASK_TYPES.find(type => type.id === 'reading-arrange-passage');
     expect(matchHeading?.mockOnly).toBe(true);
-    expect(matchHeading?.name).toBe('Match the Heading');
+    expect(matchHeading?.name).toBe('Sequence the Summary (legacy practice)');
     expect(SYLLABUS.IELTS.reading ?? []).not.toContain(matchHeading?.name);
   });
 

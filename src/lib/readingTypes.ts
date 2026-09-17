@@ -42,20 +42,20 @@ export const TYPE_BY_SYLLABUS_KEY: Record<string, string | string[]> = {
   multiplechoicesingleanswer: READING_TYPES.mcqSingle,
   multiplechoicemultipleanswers: READING_TYPES.mcqMultiple,
 
-  // Both paragraph-locating tasks ask the learner the same thing, so they are
-  // one heading. Match The Heading is the task behind it; Matching Information
-  // is only reached when that one has nothing to deal.
+  // Both historical paragraph-location IDs are matching information, not headings.
   findparagraph: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
   whichparagraphcontainsfollowinginformation: [
     READING_TYPES.findTheParagraph,
     READING_TYPES.matchingInformation,
   ],
-  matchheading: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
-  matchtheheading: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
-  matchheadings: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
-  matchingheadings: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
-  matchingheading: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
-  matchinginformation: READING_TYPES.matchingInformation,
+  // No genuine heading-matching bank exists yet. Never deal information or
+  // sequencing questions through these links just because their names are similar.
+  matchheading: [],
+  matchtheheading: [],
+  matchheadings: [],
+  matchingheadings: [],
+  matchingheading: [],
+  matchinginformation: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
 
   truefalse: READING_TYPES.trueFalse,
   truefalsenotgiven: READING_TYPES.trueFalse,

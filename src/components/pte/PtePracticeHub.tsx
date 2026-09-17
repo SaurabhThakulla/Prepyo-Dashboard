@@ -58,6 +58,7 @@ export const PTE_SECTIONS: PteSection[] = [
       { name: 'Re-tell Lecture', isAi: true },
       { name: 'Answer Short Questions', isAi: true },
       { name: 'Summarise Group Discussion', isAi: true },
+      { name: 'Respond to a Situation', isAi: true },
     ],
   },
   {
@@ -66,7 +67,7 @@ export const PTE_SECTIONS: PteSection[] = [
     buttonClass:
       'bg-[#008736] hover:bg-[#00742f] text-white shadow-sm hover:shadow active:scale-[0.98]',
     tasks: [
-      { name: 'Summarise Written Text', isAi: true },
+      { name: 'Summarize Written Text', isAi: true },
       { name: 'Write Essay', isAi: true },
       { name: 'Repeated Essay Questions', isAi: true },
     ],

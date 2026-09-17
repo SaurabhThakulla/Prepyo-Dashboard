@@ -21,9 +21,11 @@ describe('SkillMockPanel', () => {
     expect(screen.queryByText(/score report/i)).toBeNull();
   });
 
-  it('keeps the premium paywall for free users', () => {
+  it('discloses unavailability to free users without an upgrade gate', () => {
     mockUser.current = { id: 'free-user', role: 'suru', subscription: { planId: 'free', isActive: true } };
     render(<MemoryRouter><SkillMockPanel skill="writing" exam="IELTS" /></MemoryRouter>);
-    expect(screen.getByText(/Premium Exclusive Feature writing/i)).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'IELTS Writing mock unavailable' })).toBeDefined();
+    expect(screen.getByText(/Upgrading does not unlock it/)).toBeDefined();
+    expect(screen.queryByText(/Premium Exclusive Feature/i)).toBeNull();
   });
 });

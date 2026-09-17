@@ -17,7 +17,11 @@
             },
             {
               "name": "Speaking Part 2 (Cue Card)",
-              "simpleDescription": "Speak for 2 minutes on a given topic after 1 minute of preparation"
+              "simpleDescription": "Speak for 1–2 minutes on a given topic after 1 minute of preparation"
+            },
+            {
+              "name": "Speaking Part 3 (Discussion)",
+              "simpleDescription": "Practise explaining and comparing ideas on broader issues related to a topic; the full examiner-led discussion lasts 4–5 minutes"
             }
           ]
         },
@@ -52,8 +56,8 @@
               "simpleDescription": "Identify if statements agree with, contradict, or are not mentioned in the writer's views"
             },
             {
-              "name": "Match The Heading",
-              "simpleDescription": "Locate which lettered paragraph of the passage contains a given piece of information"
+              "name": "Matching Information",
+              "simpleDescription": "Locate which lettered paragraph contains specific information; this is not matching headings"
             },
             {
               "name": "Fill in the Blanks",
@@ -117,6 +121,11 @@
             {
               "name": "Summarise Group Discussion",
               "simpleDescription": "Listen to multiple speakers discussing a topic and summarize the conversation",
+              "isAi": true
+            },
+            {
+              "name": "Respond to a Situation",
+              "simpleDescription": "Read and listen to a situation, prepare for 10 seconds, then respond appropriately for up to 40 seconds",
               "isAi": true
             }
           ]

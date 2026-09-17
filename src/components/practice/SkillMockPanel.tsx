@@ -1,11 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowRight } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ExamType, isPremiumUser, SkillType } from '@/lib/types';
-import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
+import { ExamType, SkillType } from '@/lib/types';
 
 interface SkillMockPanelProps {
   skill: SkillType;
@@ -19,11 +17,6 @@ interface SkillMockPanelProps {
  */
 export default function SkillMockPanel({ skill, exam }: SkillMockPanelProps) {
   const navigate = useNavigate();
-  const { user } = useApp();
-
-  if (!isPremiumUser(user)) {
-    return <PracticeMockPaywall skill={skill} exam={exam} />;
-  }
 
   const skillLabel = skill.charAt(0).toUpperCase() + skill.slice(1);
   return (
@@ -35,9 +28,9 @@ export default function SkillMockPanel({ skill, exam }: SkillMockPanelProps) {
             {exam} {skillLabel} mock unavailable
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            A server-composed, persisted mock for this section is not available yet.
-            Use the official mock center or individual practice tasks so every result is
-            scored and saved by the backend.
+            A full mock for this section is not available yet, on any plan.
+            Upgrading does not unlock it. You can use individual practice tasks instead;
+            practice feedback is not an official exam result.
           </p>
         </div>
         <Button onClick={() => navigate('/practice')} className="gap-2">

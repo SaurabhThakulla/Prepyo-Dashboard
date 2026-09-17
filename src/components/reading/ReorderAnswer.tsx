@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -38,7 +38,7 @@ interface ReorderAnswerProps {
  * one, which is what the real test does too.
  *
  * Reordering works by keyboard as well as pointer — dnd-kit's keyboard sensor
- * makes the handles focusable and moves a box with the arrow keys — because a
+ * makes the whole cards focusable and moves a box with the arrow keys — because a
  * drag-only control would put this task out of reach for anyone not using a
  * mouse.
  */
@@ -127,26 +127,24 @@ function SortableBox({ id, position, text, disabled, pairCorrect, reviewing }: S
   return (
     <div
       ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      tabIndex={disabled ? -1 : 0}
+      aria-label={`Move box ${position}: ${text}`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`flex items-start gap-3 p-3.5 rounded-xl border transition-colors ${tone} ${
-        isDragging ? 'opacity-60 shadow-lg' : ''
-      }`}
+      className={`flex items-start gap-3 p-3.5 rounded-xl border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${tone} ${
+        disabled ? 'cursor-default' : 'cursor-grab active:cursor-grabbing touch-none select-none'
+      } ${isDragging ? 'opacity-60 shadow-lg' : ''}`}
     >
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        disabled={disabled}
-        aria-label={`Move box ${position}`}
-        className={`shrink-0 flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary ${
-          disabled ? 'cursor-default opacity-50' : 'cursor-grab active:cursor-grabbing hover:text-foreground'
-        }`}
+      <span
+        aria-hidden="true"
+        className={`shrink-0 flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-muted-foreground ${disabled ? 'opacity-50' : ''}`}
       >
         <GripVertical className="w-4 h-4" />
         <span className="w-5 h-5 rounded-md bg-primary/10 text-primary font-mono font-bold text-[11px] flex items-center justify-center border border-primary/20">
           {position}
         </span>
-      </button>
+      </span>
 
       <p className="text-sm text-foreground leading-relaxed pt-0.5">{text}</p>
     </div>

@@ -25,6 +25,7 @@ import AudioRecorder from '@/components/practice/AudioRecorder';
 import PromptAudio from '@/components/practice/PromptAudio';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import { isWordHighlightTask } from '@/lib/listening';
+import { allowsMultipleChoices } from '@/lib/choices';
 import { minimumWritingWords, writingWordCount } from '@/lib/writing';
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 import { Evaluation, isAdmin, isPremiumUser, PracticeAttempt, Question, SkillType } from '@/lib/types';
@@ -312,7 +313,7 @@ export default function PracticePage() {
         <Suspense fallback={<AdminPageSkeleton />}>
           <AdminReadingAuthoring />
         </Suspense>
-      ) : searchParams.get('mock') && !isPremiumUser(user) ? (
+      ) : isReading && searchParams.get('mock') && !isPremiumUser(user) ? (
         <Suspense fallback={<PracticePageSkeleton />}>
           <PracticeMockPaywall skill={selectedSkill} exam={activeExam} />
         </Suspense>
@@ -526,11 +527,14 @@ export default function PracticePage() {
                           }`}
                         >
                           <input
-                            type="checkbox"
+                            type={allowsMultipleChoices(currentQuestion) ? 'checkbox' : 'radio'}
+                            name={`answer-${currentQuestion.id}`}
                             checked={checked}
+                            disabled={submitting || result !== null}
                             onChange={e =>
-                              setSelectedOptions(prev =>
-                                e.target.checked ? [...prev, opt.id] : prev.filter(id => id !== opt.id),
+                              setSelectedOptions(prev => allowsMultipleChoices(currentQuestion)
+                                ? (e.target.checked ? [...prev, opt.id] : prev.filter(id => id !== opt.id))
+                                : [opt.id],
                               )
                             }
                             className="mt-0.5 rounded border-input text-primary focus:ring-primary h-4 w-4"
