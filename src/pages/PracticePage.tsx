@@ -270,6 +270,7 @@ export default function PracticePage() {
   const isAgreeOrDescribe = Boolean(
     `${currentQuestion?.typeName || ''} ${typeParam || ''}`.toLowerCase().match(/agree|disagree|describe/),
   );
+  const isPteListening = activeExam === 'PTE' && selectedSkill === 'listening';
 
   const currentIndex = currentQuestion ? questions.findIndex(q => q.id === currentQuestion.id) : -1;
   const unlocked = unlockedIndex(questions.map(q => q.id), new Set(completedIds));
@@ -339,7 +340,11 @@ export default function PracticePage() {
       ) : !hasStarted ? (
         <div className="relative w-full min-h-[calc(100vh-4rem)]">
           <PreTestBlurOverlay
-            title={currentQuestion.title}
+            title={
+              isPteListening || /^question\s*\d+/i.test(currentQuestion.title)
+                ? currentQuestion.typeName || currentQuestion.title
+                : currentQuestion.title
+            }
             instructions="Starting uses 1 credit. Submitting your answer and retrying scoring use no additional credits."
             subTestsRemaining={subTestsRemaining}
             isStarting={isStarting}
@@ -369,7 +374,7 @@ export default function PracticePage() {
               )}
 
               {/* Question Navigation Pills for quick jump */}
-              {!isAgreeOrDescribe && questions.length > 1 && (
+              {!isAgreeOrDescribe && !isPteListening && questions.length > 1 && (
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
                     {questions.map((q, idx) => {
@@ -407,13 +412,17 @@ export default function PracticePage() {
 
               {/* Inner Question & Interaction Container */}
               <div className="rounded-2xl p-5 sm:p-6 bg-card dark:bg-card/40 border border-border/80 space-y-4 shadow-xs">
-                {currentQuestion.title && (
+                {currentQuestion.title && (!isPteListening || !/^question\s*\d+$/i.test(currentQuestion.title.trim())) && (
                   <div className="flex items-start gap-3">
-                    <span className="shrink-0 w-7 h-7 rounded-xl bg-primary/10 text-primary font-mono font-bold text-xs flex items-center justify-center border border-primary/20">
-                      {currentIndex + 1}
-                    </span>
+                    {!isPteListening && (
+                      <span className="shrink-0 w-7 h-7 rounded-xl bg-primary/10 text-primary font-mono font-bold text-xs flex items-center justify-center border border-primary/20">
+                        {currentIndex + 1}
+                      </span>
+                    )}
                     <h3 className="text-sm sm:text-base font-bold text-foreground leading-relaxed pt-0.5">
-                      {currentQuestion.title}
+                      {isPteListening && /^question\s*\d+/i.test(currentQuestion.title)
+                        ? currentQuestion.title.replace(/^question\s*\d+[:\s-]*/i, '')
+                        : currentQuestion.title}
                     </h3>
                   </div>
                 )}
