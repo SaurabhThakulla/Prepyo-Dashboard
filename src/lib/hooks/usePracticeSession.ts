@@ -4,7 +4,7 @@ import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/ui/toast';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
-import { typeKey } from '@/lib/syllabus';
+import { matchesTypeKey } from '@/lib/syllabus';
 import { minimumWritingWords, writingWordCount } from '@/lib/writing';
 import { useQuestions } from '@/lib/hooks/useResources';
 import { Evaluation, PracticeAttempt, Question, SkillType } from '@/lib/types';
@@ -93,7 +93,7 @@ export function usePracticeSession() {
   const questions = useMemo(() => {
     const all = questionsQuery.data?.questions ?? [];
     if (!typeParam) return all;
-    const ofType = all.filter(question => typeKey(question.typeName) === typeParam);
+    const ofType = all.filter(question => matchesTypeKey(question.typeName, typeParam));
     return ofType.length > 0 ? ofType : all;
   }, [questionsQuery.data, typeParam]);
 

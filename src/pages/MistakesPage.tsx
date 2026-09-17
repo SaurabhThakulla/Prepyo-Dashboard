@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import MistakeRetry from '@/components/mistakes/MistakeRetry';
+import MistakePracticeLink from '@/components/mistakes/MistakePracticeLink';
 import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle2,
@@ -700,7 +700,7 @@ export default function MistakesPage() {
                   <p className="text-xs font-bold text-muted-foreground">Previous response</p>
                   {renderResponseBadges(item.userResponse, true)}
                 </div>
-                {!isSuru && <MistakeRetry key={`${item.id}-${activeExam}`} mistake={item} />}
+                {!isSuru && <MistakePracticeLink mistake={item} />}
               </div>
             ))}
           </div>

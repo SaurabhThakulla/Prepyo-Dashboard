@@ -11,12 +11,15 @@ import { useReadingPractice, useReadingTypes } from '@/lib/hooks/useReading';
 import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
 import { READING_TYPES, typeIdsFor, needsParagraphLabels, familyOf } from '@/lib/readingTypes';
-import { ReadingTaskType } from '@/lib/types';
+import { ExamType, ReadingTaskType } from '@/lib/types';
+import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
 import { ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 
 interface ReadingPracticePanelProps {
   /** The `?type=` key the sidebar linked with, if any. */
   initialTypeKey?: string;
+  mistakeId?: string;
+  exam?: ExamType;
 }
 
 /**
@@ -102,8 +105,10 @@ function labelForTypeKey(key?: string) {
  * Left pane: Reading passage with centered title and continuous natural paragraphs.
  * Right pane: Question notes completion card with inline inputs and circled numbers.
  */
-export default function ReadingPracticePanel({ initialTypeKey }: ReadingPracticePanelProps) {
-  const { user, activeExam, refreshUser, setIsTutorOpen, setTutorContextPrompt, activeTestSession, setActiveTestSession } = useApp();
+export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam }: ReadingPracticePanelProps) {
+  const { user, activeExam: contextExam, refreshUser, setIsTutorOpen, setTutorContextPrompt, activeTestSession, setActiveTestSession } = useApp();
+  const activeExam = exam ?? contextExam;
+  const resolution = useMistakeResolution(mistakeId);
   const toast = useToast();
 
   const typesQuery = useReadingTypes(activeExam);
@@ -145,7 +150,7 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
     setIsStarting(true);
     try {
       let availableTypes = types;
-      if (availableTypes.length === 0) {
+      if (!mistakeId && availableTypes.length === 0) {
         const res = await typesQuery.refetch();
         availableTypes = res.data?.types ?? [];
       }
@@ -153,12 +158,12 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
       // An explicit unsupported/empty task must not silently become another task.
       const targetId = initialTypeKey ? linked : (currentTypeId ?? availableTypes[0]?.typeId);
 
-      if (!targetId) {
+      if (!targetId && !mistakeId) {
         toast.error('No tasks available', 'Please select another skill or exam.');
         return;
       }
 
-      const dealtSet = await deal(targetId);
+      const dealtSet = await deal(targetId ?? '', mistakeId);
       if (!dealtSet) {
         return;
       }
@@ -188,11 +193,15 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
     } finally {
       setIsStarting(false);
     }
-  }, [isStarting, isSessionActive, types, typesQuery, initialTypeKey, currentTypeId, deal, activeExam, refreshUser, setActiveTestSession, handleStop, toast]);
+  }, [isStarting, isSessionActive, types, typesQuery, initialTypeKey, currentTypeId, deal, activeExam, refreshUser, setActiveTestSession, handleStop, toast, mistakeId]);
 
   const handleCheck = async () => {
     try {
-      await practice.check();
+      const graded = await practice.check();
+      if (mistakeId && graded) {
+        const outcome = Object.values(graded)[0];
+        if (outcome) await resolution.finish(outcome.attempt.isCorrect);
+      }
     } finally {
       setIsSessionActive(false);
       setSessionId(null);
@@ -311,7 +320,7 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
                     </CardTitle>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Anything you got wrong is in your Mistakes bank with the explanation.
+                    {resolution.resolved ? 'Mistake resolved' : 'Anything you got wrong stays in your Mistake Bank.'}
                   </p>
                 </Card>
               )}
@@ -337,13 +346,15 @@ export default function ReadingPracticePanel({ initialTypeKey }: ReadingPractice
                 </Button>
               )}
 
-              {practice.checked ? (
+              {practice.checked && mistakeId && practice.correctCount > 0 && !resolution.resolved ? (
+                <Button disabled={resolution.saving} onClick={() => void resolution.finish(true)}>Retry saving resolution</Button>
+              ) : practice.checked ? (
                 <Button
                   onClick={handleStart}
                   className="font-bold gap-1.5 text-xs rounded-lg h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
                 >
                   <Shuffle className="w-3.5 h-3.5" />
-                  <span>Another passage</span>
+                  <span>{mistakeId ? 'Try again' : 'Another passage'}</span>
                 </Button>
               ) : (
                 <Button

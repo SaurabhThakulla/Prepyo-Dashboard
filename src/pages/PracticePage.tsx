@@ -37,7 +37,9 @@ const AdminReadingAuthoring = lazy(() => import('@/components/admin/AdminReading
 const AdminQuestionAuthoring = lazy(() => import('@/components/admin/AdminQuestionAuthoring'));
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
-import { typeKey } from '@/lib/syllabus';
+import { matchesTypeKey } from '@/lib/syllabus';
+import { loadMistakeTask } from '@/lib/mistakePractice';
+import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
 import { loadCompleted, saveCompleted, unlockedIndex } from '@/lib/practiceProgress';
 
 const QUESTION_LIMIT = 200;
@@ -58,9 +60,18 @@ interface SubmitResult {
 }
 
 export default function PracticePage() {
-  const { user, activeExam, refreshUser, setIsTutorOpen, setTutorContextPrompt } = useApp();
+  const [params] = useSearchParams();
+  return <PracticePageContent key={`${params.get('mistake') ?? ''}-${params.get('exam') ?? ''}-${params.get('skill') ?? ''}`} />;
+}
+
+function PracticePageContent() {
+  const { user, activeExam: contextExam, refreshUser, setIsTutorOpen, setTutorContextPrompt } = useApp();
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
+  const mistakeId = searchParams.get('mistake') || undefined;
+  const linkedExam = searchParams.get('exam');
+  const activeExam = mistakeId && (linkedExam === 'IELTS' || linkedExam === 'PTE') ? linkedExam : contextExam;
+  const resolution = useMistakeResolution(mistakeId);
 
   const skillParam = searchParams.get('skill') as SkillType | null;
   const selectedSkill: SkillType =
@@ -143,20 +154,20 @@ export default function PracticePage() {
     setLoading(true);
     resetAnswer();
 
-    api
-      .get<{ questions: Question[] }>('/questions', {
-        exam: activeExam,
-        skill: selectedSkill,
-        limit: QUESTION_LIMIT,
-      })
+    const request = mistakeId
+      ? loadMistakeTask(mistakeId, activeExam, selectedSkill).then(task => ({ questions: [task.question] }))
+      : api.get<{ questions: Question[] }>('/questions', {
+          exam: activeExam, skill: selectedSkill, limit: QUESTION_LIMIT,
+        });
+    request
       .then(data => {
         if (cancelled) return;
         const all = data.questions ?? [];
         // A skill's bank holds every task type. The sidebar links to one type,
         // so the list has to be narrowed to it: when a subtask type is requested,
         // only show questions belonging to that subtask.
-        const list = typeParam
-          ? all.filter(question => typeKey(question.typeName) === typeParam)
+        const list = typeParam && !mistakeId
+          ? all.filter(question => matchesTypeKey(question.typeName, typeParam))
           : all;
         const done = loadCompleted(activeExam, selectedSkill, typeParam);
         const known = done.filter(id => list.some(question => question.id === id));
@@ -181,7 +192,7 @@ export default function PracticePage() {
     return () => {
       cancelled = true;
     };
-  }, [activeExam, selectedSkill, isReading, isAdminUser, typeParam, resetAnswer, toast]);
+  }, [activeExam, selectedSkill, isReading, isAdminUser, typeParam, mistakeId, resetAnswer, toast]);
 
   const wordCount = writingWordCount(textAnswer);
   const minWords = currentQuestion ? minimumWritingWords(currentQuestion) : 20;
@@ -240,8 +251,10 @@ export default function PracticePage() {
           },
         );
         setResult({ attempt: data.attempt, review: data.review, xpAwarded: data.xpAwarded });
+        await resolution.finish(data.attempt.isCorrect);
       }
-      markComplete(currentQuestion.id);
+      // A targeted retry must not overwrite the normal subtask's saved progression.
+      if (!mistakeId) markComplete(currentQuestion.id);
       await refreshUser();
     } catch (err) {
       if (err instanceof ApiError && err.isAIUnavailable) {
@@ -322,6 +335,8 @@ export default function PracticePage() {
           <ReadingPracticePanel
             key={`${activeExam}-${selectedSkill}-${typeParam || 'default'}`}
             initialTypeKey={typeParam ?? undefined}
+            mistakeId={mistakeId}
+            exam={activeExam}
           />
         </Suspense>
       ) : isAdminUser ? (
@@ -637,7 +652,16 @@ export default function PracticePage() {
                 <span>Ask AI Coach</span>
               </Button>
 
-              {result && isLast ? (
+              {result && mistakeId ? (
+                <div className="flex items-center gap-3">
+                  {resolution.resolved && <span role="status">Mistake resolved</span>}
+                  {result.attempt?.isCorrect && !resolution.resolved ? (
+                    <Button disabled={resolution.saving} onClick={() => void resolution.finish(true)}>Retry saving resolution</Button>
+                  ) : (
+                    <Button onClick={() => { resetAnswer(); }}>Try again</Button>
+                  )}
+                </div>
+              ) : result && isLast ? (
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 className="w-4 h-4" />

@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
+import { loadMistakeTask, mistakeReadingSet } from '@/lib/mistakePractice';
 import { useToast } from '@/components/ui/toast';
 import { useApp } from '@/context/AppContext';
 import { READING_TYPES, familyOf } from '@/lib/readingTypes';
@@ -72,11 +73,13 @@ export function useReadingPractice(exam: ExamType) {
   const [startedAt, setStartedAt] = useState(() => Date.now());
 
   const deal = useCallback(
-    async (typeId: string): Promise<ReadingSet | null> => {
+    async (typeId: string, mistakeId?: string): Promise<ReadingSet | null> => {
       setDealing(true);
       setDealError(null);
       try {
-        const data = await api.post<{ set: ReadingSet }>('/reading/practice', {
+        const data = mistakeId
+          ? { set: mistakeReadingSet(await loadMistakeTask(mistakeId, exam, 'reading')) }
+          : await api.post<{ set: ReadingSet }>('/reading/practice', {
           exam,
           typeId,
           // The whole heading, so a passage hands over every set behind it.
@@ -153,7 +156,9 @@ export function useReadingPractice(exam: ExamType) {
 
       // XP, streak and mission progress all moved server-side.
       await refreshUser();
+      return graded;
     } catch (err) {
+      setResults(graded);
       // Answering the first question of a set now spends a sub-test, so this
       // call can be refused where it never could before. Anything already
       // graded above stays on screen — the learner keeps the marks they earned.

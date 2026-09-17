@@ -1,6 +1,8 @@
 import React from 'react';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render as renderUI, screen, waitFor } from '@testing-library/react';
+import QueryProvider from '@/context/QueryProvider';
+const render = (ui: React.ReactNode) => renderUI(<QueryProvider>{ui}</QueryProvider>);
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import PracticePage from './PracticePage';
 import { api } from '@/lib/api';
@@ -155,6 +157,39 @@ describe('writing minimum on the routed page', () => {
       expect(submit.disabled).toBe(false);
     }
   });
+});
+
+describe('summary task links', () => {
+  it.each(['summarisewrittentext', 'summarizewrittentext'])(
+    'opens and submits only the summary task for ?type=%s', async key => {
+      mocks.activeExam = 'PTE';
+      vi.mocked(api.get).mockResolvedValue({ questions: [
+        { id: 'essay-1', exam: 'PTE', skill: 'writing', typeId: 'write-essay',
+          typeName: 'Write Essay', title: 'Unrelated essay', prompt: 'Write an essay', timeLimitSeconds: 600 },
+        { id: 'summary-1', exam: 'PTE', skill: 'writing', typeId: 'summarize-written-text',
+          typeName: 'Summarize Written Text', title: 'Summary task', prompt: 'Write one sentence', timeLimitSeconds: 600 },
+      ] });
+      vi.mocked(api.post).mockImplementation(async path => {
+        if (path === '/practice/start') return { sessionId: 'session-1', remainingSubTests: 0 };
+        throw new Error('Retry later');
+      });
+      render(<MemoryRouter initialEntries={[`/practice?skill=writing&type=${key}`]}><PracticePage /></MemoryRouter>);
+      fireEvent.click(await screen.findByRole('button', { name: 'Start Practice (1 Credit)' }));
+      const submit = await screen.findByRole('button', { name: 'Submit Answer' });
+      expect(screen.getByText('Summary task')).toBeDefined();
+      expect(screen.queryByText('Unrelated essay')).toBeNull();
+      expect(api.post).toHaveBeenCalledWith('/practice/start', {
+        exam: 'PTE', skill: 'writing', questionId: 'summary-1',
+      });
+      fireEvent.change(screen.getByPlaceholderText('Write your response here…'), {
+        target: { value: 'This sentence contains five words.' },
+      });
+      fireEvent.click(submit);
+      await waitFor(() => expect(api.post).toHaveBeenCalledWith('/evaluations/writing', {
+        questionId: 'summary-1', text: 'This sentence contains five words.',
+      }));
+    },
+  );
 });
 
 describe('practice bank indicators', () => {

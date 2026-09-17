@@ -22,6 +22,12 @@ export const typeKey = (name: string) =>
     .replace(/\b(and|or|the)\b/g, '')
     .replace(/[^a-z0-9]/g, '');
 
+/** Compare display names and existing URL keys without changing generated links. */
+export const matchesTypeKey = (name: string, key: string) => {
+  const normalize = (value: string) => typeKey(value).replace(/^summarise/, 'summarize');
+  return normalize(name) === normalize(key);
+};
+
 /** The syllabus name behind a `?type=` key, for headings and empty states. */
 export const typeLabel = (exam: ExamType, skill: SkillType, key: string) =>
-  (SYLLABUS[exam]?.[skill] ?? []).find(name => typeKey(name) === key);
+  (SYLLABUS[exam]?.[skill] ?? []).find(name => matchesTypeKey(name, key));
