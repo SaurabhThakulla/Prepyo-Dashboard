@@ -23,6 +23,8 @@ import { Card, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import AudioRecorder from '@/components/practice/AudioRecorder';
 import PromptAudio from '@/components/practice/PromptAudio';
+import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
+import { isWordHighlightTask } from '@/lib/listening';
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 import { Evaluation, isAdmin, isPremiumUser, PracticeAttempt, Question, SkillType } from '@/lib/types';
 
@@ -454,7 +456,7 @@ export default function PracticePage() {
                   title={currentQuestion.title}
                 />
 
-                {currentQuestion.contextPassage && (
+                {currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && (
                   <div className="p-4 rounded-xl bg-background border border-border text-xs sm:text-sm text-foreground leading-relaxed max-h-60 overflow-y-auto">
                     {currentQuestion.contextPassage}
                   </div>
@@ -496,7 +498,16 @@ export default function PracticePage() {
                   </div>
                 )}
 
-                {currentQuestion.options && currentQuestion.options.length > 0 && (
+                <ListeningAnswerInput
+                  question={currentQuestion}
+                  textAnswer={textAnswer}
+                  onTextChange={setTextAnswer}
+                  selectedOptions={selectedOptions}
+                  onSelectionChange={setSelectedOptions}
+                  disabled={submitting || result !== null}
+                />
+
+                {!isWordHighlightTask(currentQuestion) && currentQuestion.options && currentQuestion.options.length > 0 && (
                   <div className="space-y-2.5 pt-2">
                     <h4 className="text-xs font-bold text-foreground">Choose your answer:</h4>
                     {currentQuestion.options.map(opt => {

@@ -6,6 +6,7 @@ import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import MockAnswerInput from '@/components/mocks/MockAnswerInput';
 import PromptAudio from '@/components/practice/PromptAudio';
 import { AnswerSubmission, Mock, Question } from '@/lib/types';
+import { isWordHighlightTask } from '@/lib/listening';
 
 /** Seconds as mm:ss, zero-padded, for the exam countdown. */
 function formatCountdown(totalSeconds: number): string {
@@ -109,7 +110,7 @@ export default function MockExamRunner({
                 {currentQuestion.prompt}
               </div>
 
-              {currentQuestion.contextPassage && (
+              {currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && (
                 <div className="p-4 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed max-h-56 overflow-y-auto">
                   {currentQuestion.contextPassage}
                 </div>

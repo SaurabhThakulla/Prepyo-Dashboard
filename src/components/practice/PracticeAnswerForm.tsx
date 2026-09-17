@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import AudioRecorder from '@/components/practice/AudioRecorder';
+import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
+import { isWordHighlightTask } from '@/lib/listening';
 import { Question } from '@/lib/types';
 import { minimumWritingWords, writingWordCount } from '@/lib/writing';
 import { usePracticeSession } from '@/lib/hooks/usePracticeSession';
@@ -63,7 +65,16 @@ export default function PracticeAnswerForm({
         </div>
       )}
 
-      {question.options && question.options.length > 0 && (
+      <ListeningAnswerInput
+        question={question}
+        textAnswer={session.textAnswer}
+        onTextChange={session.setTextAnswer}
+        selectedOptions={session.selectedOptions}
+        onSelectionChange={session.setSelectedOptions}
+        disabled={submitting || result !== null}
+      />
+
+      {!isWordHighlightTask(question) && question.options && question.options.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-xs font-bold text-foreground">Choose your answer:</h4>
           {question.options.map(option => {

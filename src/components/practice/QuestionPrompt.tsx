@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import PromptAudio from '@/components/practice/PromptAudio';
 import { Question } from '@/lib/types';
+import { isWordHighlightTask } from '@/lib/listening';
 
 /** The question being answered: title, prompt, and any media that comes with it. */
 export default function QuestionPrompt({ question }: { question: Question }) {
@@ -58,7 +59,7 @@ export default function QuestionPrompt({ question }: { question: Question }) {
 
       {/* Read Aloud puts the words to say in here, so the passage stays on
           screen while the recorder runs below it. */}
-      {question.contextPassage && (
+      {question.contextPassage && !isWordHighlightTask(question) && (
         <div className="p-4 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed max-h-56 overflow-y-auto">
           {question.contextPassage}
         </div>

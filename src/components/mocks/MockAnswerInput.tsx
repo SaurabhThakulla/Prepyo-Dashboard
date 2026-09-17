@@ -4,6 +4,8 @@ import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { AnswerSubmission, Question } from '@/lib/types';
+import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
+import { isWordHighlightTask } from '@/lib/listening';
 
 interface MockAnswerInputProps {
   question: Question;
@@ -18,7 +20,14 @@ export default function MockAnswerInput({ question, answer, onChange }: MockAnsw
 
   return (
     <>
-      {question.options && question.options.length > 0 && (
+      <ListeningAnswerInput
+        question={question}
+        textAnswer={answer?.textResponse ?? ''}
+        onTextChange={textResponse => onChange({ textResponse })}
+        selectedOptions={selectedOptions}
+        onSelectionChange={values => onChange({ selectedOptions: values })}
+      />
+      {!isWordHighlightTask(question) && question.options && question.options.length > 0 && (
         <div className="space-y-2">
           {question.options.map(option => {
             const checked = selectedOptions.includes(option.id);

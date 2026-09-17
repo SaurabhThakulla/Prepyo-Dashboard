@@ -9,10 +9,11 @@ const mocks = vi.hoisted(() => ({
   refreshUser: vi.fn(),
   toast: { error: vi.fn(), warning: vi.fn(), success: vi.fn() },
   subscription: { dailySubTestsLimit: 1, dailySubTestsUsed: 0 },
+  activeExam: 'IELTS',
 }));
 vi.mock('@/context/AppContext', () => ({
   useApp: () => ({
-    activeExam: 'IELTS',
+    activeExam: mocks.activeExam,
     user: { id: 'learner', role: 'suru', subscription: mocks.subscription },
     refreshUser: mocks.refreshUser,
   }),
@@ -34,6 +35,7 @@ vi.mock('@/components/practice/AudioRecorder', () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
+  mocks.activeExam = 'IELTS';
   mocks.subscription.dailySubTestsUsed = 0;
   mocks.refreshUser.mockResolvedValue(undefined);
 });
@@ -48,6 +50,68 @@ async function openPractice(skill: string) {
   render(<MemoryRouter initialEntries={[`/practice?skill=${skill}`]}><PracticePage /></MemoryRouter>);
   return screen.findByRole('button', { name: 'Start Practice (1 Credit)' });
 }
+
+describe('PTE listening answer controls', () => {
+  async function startListening(typeId: string, typeName: string, extra = {}) {
+    mocks.activeExam = 'PTE';
+    vi.mocked(api.get).mockResolvedValue({ questions: [{
+      id: 'listening-1', exam: 'PTE', skill: 'listening', typeId, typeName,
+      title: 'Listening task', prompt: 'Listen and answer', timeLimitSeconds: 600, ...extra,
+    }] });
+    vi.mocked(api.post).mockImplementation(async path => {
+      if (path === '/practice/start') return { sessionId: 'session-1', remainingSubTests: 0 };
+      throw new Error('Retry later');
+    });
+    render(<MemoryRouter initialEntries={['/practice?skill=listening']}><PracticePage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Start Practice (1 Credit)' }));
+    return screen.findByRole('button', { name: 'Submit Answer' });
+  }
+
+  it.each([
+    ['summarize-spoken-text', 'Summarize Spoken Text', 'Your summary'],
+    ['write-from-dictation', 'Write from Dictation', 'Your dictation'],
+  ])('accepts and submits text for %s', async (typeId, typeName, label) => {
+    const submit = await startListening(typeId, typeName);
+    expect((submit as HTMLButtonElement).disabled).toBe(true);
+    const input = screen.getByRole('textbox', { name: label });
+    fireEvent.change(input, { target: { value: '   ' } });
+    expect((submit as HTMLButtonElement).disabled).toBe(true);
+    const text = 'Students learn through regular practice.';
+    fireEvent.change(input, { target: { value: text } });
+    expect(screen.getByText('5 words')).toBeDefined();
+    expect((submit as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(submit);
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/practice/attempts', expect.objectContaining({
+      questionId: 'listening-1', textResponse: text,
+    })));
+    await waitFor(() => expect(mocks.toast.error).toHaveBeenCalled());
+    expect((input as HTMLTextAreaElement).value).toBe(text);
+  });
+
+  it('submits positional word IDs without rendering a checkbox list or duplicate passage', async () => {
+    const submit = await startListening('pte-highlight-incorrect-word', 'Highlight Incorrect Word', {
+      contextPassage: 'The same word appears twice.',
+      options: [{ id: 'w1', text: 'same' }, { id: 'w2', text: 'same' }, { id: 'w3', text: 'word.' }],
+    });
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.queryByText('The same word appears twice.')).toBeNull();
+    const first = screen.getByRole('button', { name: 'same (word 1)' });
+    const second = screen.getByRole('button', { name: 'same (word 2)' });
+    fireEvent.click(second);
+    expect(first.getAttribute('aria-pressed')).toBe('false');
+    expect(second.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(second);
+    expect((submit as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(first);
+    fireEvent.click(screen.getByRole('button', { name: 'Clear selection' }));
+    expect(screen.getByText('0 selected')).toBeDefined();
+    fireEvent.click(second);
+    fireEvent.click(submit);
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/practice/attempts', expect.objectContaining({
+      selectedOptions: ['w2'],
+    })));
+  });
+});
 
 describe('practice credit lifecycle', () => {
   it.each([
