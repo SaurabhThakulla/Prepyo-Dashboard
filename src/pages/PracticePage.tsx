@@ -27,7 +27,7 @@ import { isWordHighlightTask } from '@/lib/listening';
 import { allowsMultipleChoices } from '@/lib/choices';
 import { minimumWritingWords, writingWordCount } from '@/lib/writing';
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
-import { Evaluation, isAdmin, isPremiumUser, PracticeAttempt, Question, SkillType } from '@/lib/types';
+import { Evaluation, ExamType, isAdmin, isPremiumUser, PracticeAttempt, Question, SkillType } from '@/lib/types';
 
 const ReadingPracticePanel = lazy(() => import('@/components/reading/ReadingPracticePanel'));
 const ReadingMockPanel = lazy(() => import('@/components/reading/ReadingMockPanel'));
@@ -37,10 +37,24 @@ const AdminReadingAuthoring = lazy(() => import('@/components/admin/AdminReading
 const AdminQuestionAuthoring = lazy(() => import('@/components/admin/AdminQuestionAuthoring'));
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
-import { matchesTypeKey } from '@/lib/syllabus';
+import { matchesTypeKey, typeLabel } from '@/lib/syllabus';
 import { loadMistakeTask } from '@/lib/mistakePractice';
 import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
 import { loadCompleted, saveCompleted, unlockedIndex } from '@/lib/practiceProgress';
+
+function getSubtaskTitle(exam: ExamType, skill: SkillType, typeKey?: string | null, mistakeId?: string): string {
+  if (mistakeId) return 'Targeted Mistake Practice';
+  if (typeKey) {
+    const label = typeLabel(exam, skill, typeKey);
+    if (label) return label;
+    return typeKey
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/[-_]+/g, ' ')
+      .replace(/\b\w/g, char => char.toUpperCase());
+  }
+  const skillName = skill.charAt(0).toUpperCase() + skill.slice(1);
+  return `${exam} ${skillName} Practice`;
+}
 
 const QUESTION_LIMIT = 200;
 import { useToast } from '@/components/ui/toast';
@@ -81,7 +95,7 @@ function PracticePageContent() {
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const [textAnswer, setTextAnswer] = useState('');
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
@@ -104,24 +118,75 @@ function PracticePageContent() {
   );
 
   const handleStart = async () => {
-    if (!currentQuestion || !taskKey || hasStarted || startPending.current) return;
+    if (hasStarted || startPending.current || isStarting) return;
     startPending.current = true;
     setIsStarting(true);
-    const startingKey = taskKey;
+
     try {
+      let qList = questions;
+      let targetQuestion = currentQuestion;
+
+      // Lazy load questions only when user explicitly clicks Start Practice
+      if (!targetQuestion || qList.length === 0) {
+        const data = mistakeId
+          ? await loadMistakeTask(mistakeId, activeExam, selectedSkill).then(task => ({ questions: [task.question] }))
+          : await api.get<{ questions: Question[] }>('/questions', {
+              exam: activeExam,
+              skill: selectedSkill,
+              limit: QUESTION_LIMIT,
+            });
+
+        const all = data.questions ?? [];
+        const list = typeParam && !mistakeId
+          ? all.filter(question => matchesTypeKey(question.typeName, typeParam))
+          : all;
+
+        if (list.length === 0) {
+          toast.error('No questions available', `No ${selectedSkill} questions found for this task.`);
+          return;
+        }
+
+        const done = loadCompleted(activeExam, selectedSkill, typeParam);
+        const known = done.filter(id => list.some(question => question.id === id));
+        setCompletedIds(known);
+        setQuestions(list);
+        qList = list;
+
+        const isFreeNav = Boolean(
+          `${typeParam || ''} ${list[0]?.typeName || ''}`.toLowerCase().match(/agree|disagree|describe/),
+        );
+        targetQuestion = isFreeNav
+          ? list[0] ?? null
+          : list[unlockedIndex(list.map(q => q.id), new Set(known))] ?? null;
+
+        if (!targetQuestion) {
+          targetQuestion = list[0] ?? null;
+        }
+        setCurrentQuestion(targetQuestion);
+      }
+
+      if (!targetQuestion) {
+        toast.error('No questions available', `No ${selectedSkill} questions found.`);
+        return;
+      }
+
+      const startingKey = `${activeExam}:${selectedSkill}:${targetQuestion.id}`;
       await api.post('/practice/start', {
         exam: activeExam,
         skill: selectedSkill,
-        questionId: currentQuestion.id,
+        questionId: targetQuestion.id,
       });
-      // A response for a task left during the request must not unlock another task.
-      if (latestTaskKey.current === startingKey) {
-        setStartedTask(startingKey);
-        setStartedAt(Date.now());
-      }
+
+      setStartedTask(startingKey);
+      setStartedAt(Date.now());
       await refreshUser();
+      toast.success('Practice started', '1 sub-test credit applied. Good luck!');
     } catch (err) {
-      toast.error('Could not start practice', errorMessage(err));
+      if (err instanceof ApiError && err.isLimitReached) {
+        toast.warning('Daily limit reached', 'You have reached your daily sub-test allowance.');
+      } else {
+        toast.error('Could not start practice', errorMessage(err));
+      }
     } finally {
       startPending.current = false;
       setIsStarting(false);
@@ -144,55 +209,13 @@ function PracticePageContent() {
   const isAdminUser = isAdmin(user);
   const typeParam = searchParams.get('type');
 
+  // When switching exam, skill, subtask, or mistake, reset state cleanly without querying backend/database.
   useEffect(() => {
-    if (isReading || isAdminUser) {
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
     resetAnswer();
-
-    const request = mistakeId
-      ? loadMistakeTask(mistakeId, activeExam, selectedSkill).then(task => ({ questions: [task.question] }))
-      : api.get<{ questions: Question[] }>('/questions', {
-          exam: activeExam, skill: selectedSkill, limit: QUESTION_LIMIT,
-        });
-    request
-      .then(data => {
-        if (cancelled) return;
-        const all = data.questions ?? [];
-        // A skill's bank holds every task type. The sidebar links to one type,
-        // so the list has to be narrowed to it: when a subtask type is requested,
-        // only show questions belonging to that subtask.
-        const list = typeParam && !mistakeId
-          ? all.filter(question => matchesTypeKey(question.typeName, typeParam))
-          : all;
-        const done = loadCompleted(activeExam, selectedSkill, typeParam);
-        const known = done.filter(id => list.some(question => question.id === id));
-        setCompletedIds(known);
-        setQuestions(list);
-        const isFreeNav = Boolean(
-          `${typeParam || ''} ${list[0]?.typeName || ''}`.toLowerCase().match(/agree|disagree|describe/),
-        );
-        setCurrentQuestion(
-          isFreeNav ? list[0] ?? null : list[unlockedIndex(list.map(q => q.id), new Set(known))] ?? null,
-        );
-      })
-      .catch(err => {
-        if (cancelled) return;
-        setQuestions([]);
-        setCurrentQuestion(null);
-        setCompletedIds([]);
-        toast.error('Could not load questions', errorMessage(err));
-      })
-      .finally(() => !cancelled && setLoading(false));
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeExam, selectedSkill, isReading, isAdminUser, typeParam, mistakeId, resetAnswer, toast]);
+    setQuestions([]);
+    setCurrentQuestion(null);
+    setLoading(false);
+  }, [activeExam, selectedSkill, typeParam, mistakeId, resetAnswer]);
 
   const wordCount = writingWordCount(textAnswer);
   const minWords = currentQuestion ? minimumWritingWords(currentQuestion) : 20;
@@ -343,27 +366,29 @@ function PracticePageContent() {
         <Suspense fallback={<AdminPageSkeleton />}>
           <AdminQuestionAuthoring key={selectedSkill} skill={selectedSkill} />
         </Suspense>
-      ) : loading ? (
+      ) : isStarting ? (
         <PracticePageSkeleton />
+      ) : !hasStarted ? (
+        <div className="relative w-full min-h-[calc(100vh-4rem)]">
+          <PreTestBlurOverlay
+            title={
+              currentQuestion
+                ? (isPteListening || /^question\s*\d+/i.test(currentQuestion.title)
+                    ? currentQuestion.typeName || currentQuestion.title
+                    : currentQuestion.title)
+                : getSubtaskTitle(activeExam, selectedSkill, typeParam, mistakeId)
+            }
+            instructions="The questions will appear after you start."
+            subTestsRemaining={subTestsRemaining}
+            isStarting={isStarting}
+            onStart={handleStart}
+          />
+        </div>
       ) : !currentQuestion ? (
         <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-8 text-center space-y-3 bg-card/20">
           <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
           <h3 className="text-sm font-bold text-foreground">No {selectedSkill} questions for {activeExam} yet</h3>
           <p className="text-xs text-muted-foreground">Try another skill or switch exam.</p>
-        </div>
-      ) : !hasStarted ? (
-        <div className="relative w-full min-h-[calc(100vh-4rem)]">
-          <PreTestBlurOverlay
-            title={
-              isPteListening || /^question\s*\d+/i.test(currentQuestion.title)
-                ? currentQuestion.typeName || currentQuestion.title
-                : currentQuestion.title
-            }
-            instructions="Starting uses 1 credit. Submitting your answer and retrying scoring use no additional credits."
-            subTestsRemaining={subTestsRemaining}
-            isStarting={isStarting}
-            onStart={handleStart}
-          />
         </div>
       ) : (
         <div className="w-full flex flex-col flex-1">

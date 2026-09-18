@@ -278,7 +278,7 @@ describe('practice credit lifecycle', () => {
     const start = await openPractice('writing');
     fireEvent.click(start);
     fireEvent.click(start);
-    expect(api.post).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
     expect(screen.queryByPlaceholderText('Write your response here…')).toBeNull();
     finishStart({ sessionId: 'session-1', remainingSubTests: 0 });
     expect(await screen.findByPlaceholderText('Write your response here…')).toBeDefined();
@@ -337,10 +337,11 @@ describe('practice credit lifecycle', () => {
       </MemoryRouter>,
     );
 
-    // Start Task 1
+    // Start Task 1 - no DB fetch prior to click
     const start1 = await screen.findByRole('button', { name: 'Start Practice (1 Credit)' });
-    expect(screen.getByText('Task 1 Title')).toBeDefined();
+    expect(api.get).not.toHaveBeenCalled();
     fireEvent.click(start1);
+    expect(await screen.findByText('Task 1 Title')).toBeDefined();
 
     // Submit Task 1
     const textarea = await screen.findByPlaceholderText('Write your response here…');
@@ -358,9 +359,10 @@ describe('practice credit lifecycle', () => {
       navigateFn('/practice?skill=writing&type=tasktwo');
     });
 
-    // Verify Task 2 is presented and ready with its own Start overlay
-    expect(await screen.findByText('Task 2 Title')).toBeDefined();
+    // Verify Task 2 is presented and ready with its own Start overlay without loading from DB yet
+    const start2 = await screen.findByRole('button', { name: 'Start Practice (1 Credit)' });
     expect(screen.queryByText('Good job')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Start Practice (1 Credit)' })).toBeDefined();
+    fireEvent.click(start2);
+    expect(await screen.findByText('Task 2 Title')).toBeDefined();
   });
 });
