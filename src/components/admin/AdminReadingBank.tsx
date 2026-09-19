@@ -8,27 +8,48 @@ import { ExamType } from '@/lib/types';
 import { PassageSummary, examsOf, usePassageBank } from '@/lib/hooks/useAdminReading';
 import { AdminPageSkeleton } from '@/components/layout/PageSkeleton';
 
+import { typeKey, typeLabel } from '@/lib/syllabus';
+
 /**
  * The reading bank: every passage, drafts included, with what is on each one.
- *
- * The admin screen used to open straight into an empty form, which said nothing
- * about what already existed and gave no way back to it. A passage is a thing
- * you return to — to add a set, to publish it, to check what it holds — so the
- * bank is the front door and the form is one step inside it.
  */
 export default function AdminReadingBank({
+  initialTypeKey,
+  initialExam,
   onOpen,
   onNew,
+  onNewReorder,
   reloadKey,
 }: {
+  initialTypeKey?: string;
+  initialExam?: ExamType;
   onOpen: (passageId: string) => void;
   onNew: () => void;
+  onNewReorder?: () => void;
   reloadKey?: number;
 }) {
   const { passages, loading, error, reload } = usePassageBank();
-  const [exam, setExam] = useState<ExamType | 'all'>('all');
+  const [exam, setExam] = useState<ExamType | 'all'>(initialExam ?? 'all');
   const [status, setStatus] = useState<'all' | 'published' | 'draft'>('all');
   const [query, setQuery] = useState('');
+
+  const isReorder = Boolean(
+    initialTypeKey &&
+      (typeKey(initialTypeKey) === 'reorderparagraphs' ||
+        typeKey(initialTypeKey) === 'reorderparagraph'),
+  );
+
+  const taskTitle = useMemo(() => {
+    if (!initialTypeKey) return null;
+    if (exam !== 'all') {
+      const label = typeLabel(exam, 'reading', initialTypeKey);
+      if (label) return label;
+    }
+    return initialTypeKey
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/[-_]+/g, ' ')
+      .replace(/\b\w/g, char => char.toUpperCase());
+  }, [initialTypeKey, exam]);
 
   const [lastKey, setLastKey] = useState(reloadKey);
   if (reloadKey !== lastKey) {
@@ -60,9 +81,16 @@ export default function AdminReadingBank({
     <div className="space-y-5 pb-16">
       <div className="border-b border-border pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-display text-2xl font-bold text-foreground">Reading bank</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="font-display text-2xl font-bold text-foreground">
+              {taskTitle ? `${taskTitle} questions` : 'Reading bank'}
+            </h1>
             <Badge variant="destructive">Admin</Badge>
+            {exam !== 'all' && (
+              <Badge variant="outline" className="font-semibold text-xs">
+                {exam}
+              </Badge>
+            )}
           </div>
           <CardDescription className="text-xs">
             {passages.length} passage{passages.length === 1 ? '' : 's'} · {published} published ·{' '}
@@ -70,10 +98,22 @@ export default function AdminReadingBank({
             {questions === 1 ? '' : 's'}
           </CardDescription>
         </div>
-        <Button onClick={onNew} className="font-bold text-xs rounded-full h-9 px-4 shrink-0">
-          <Plus className="w-3.5 h-3.5 mr-1.5" />
-          New passage
-        </Button>
+        <div className="flex items-center gap-2">
+          {isReorder ? (
+            <Button
+              onClick={onNewReorder ?? onNew}
+              className="font-bold text-xs rounded-full h-9 px-4 shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              Add Re-order Paragraph question
+            </Button>
+          ) : (
+            <Button onClick={onNew} className="font-bold text-xs rounded-full h-9 px-4 shrink-0">
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              {taskTitle ? `Add passage for ${taskTitle}` : 'New passage'}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center">

@@ -75,7 +75,11 @@ interface SubmitResult {
 
 export default function PracticePage() {
   const [params] = useSearchParams();
-  return <PracticePageContent key={`${params.get('mistake') ?? ''}-${params.get('exam') ?? ''}-${params.get('skill') ?? ''}`} />;
+  return (
+    <PracticePageContent
+      key={`${params.get('mistake') ?? ''}-${params.get('exam') ?? ''}-${params.get('skill') ?? ''}-${params.get('type') ?? ''}`}
+    />
+  );
 }
 
 function PracticePageContent() {
@@ -335,11 +339,14 @@ function PracticePageContent() {
           : 'min-h-[calc(100vh-4rem)]'
       } p-0 m-0 flex flex-col bg-background`}
     >
-      {/* An admin has no reason to sit the paper. The reading section is where
-          they add one instead. */}
+      {/* An admin has no reason to sit the paper. They add questions/passages instead. */}
       {isReading && isAdmin(user) ? (
         <Suspense fallback={<AdminPageSkeleton />}>
-          <AdminReadingAuthoring />
+          <AdminReadingAuthoring
+            key={`admin-reading-${activeExam}-${typeParam || 'all'}`}
+            initialTypeKey={typeParam ?? undefined}
+            exam={activeExam}
+          />
         </Suspense>
       ) : isReading && searchParams.get('mock') && !isPremiumUser(user) ? (
         <Suspense fallback={<PracticePageSkeleton />}>
@@ -364,7 +371,12 @@ function PracticePageContent() {
         </Suspense>
       ) : isAdminUser ? (
         <Suspense fallback={<AdminPageSkeleton />}>
-          <AdminQuestionAuthoring key={selectedSkill} skill={selectedSkill} />
+          <AdminQuestionAuthoring
+            key={`admin-${selectedSkill}-${activeExam}-${typeParam || 'all'}`}
+            skill={selectedSkill}
+            initialTypeKey={typeParam ?? undefined}
+            exam={activeExam}
+          />
         </Suspense>
       ) : isStarting ? (
         <PracticePageSkeleton />

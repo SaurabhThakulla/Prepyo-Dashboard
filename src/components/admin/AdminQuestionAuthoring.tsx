@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
-import { SkillType } from '@/lib/types';
+import { ExamType, SkillType } from '@/lib/types';
 import AdminQuestionBank from '@/components/admin/AdminQuestionBank';
 import AdminQuestionForm from '@/components/admin/AdminQuestionForm';
 
-export default function AdminQuestionAuthoring({ skill }: { skill: SkillType }) {
-  const [editing, setEditing] = useState<{ id?: string } | null>(null);
+export default function AdminQuestionAuthoring({
+  skill,
+  initialTypeKey,
+  exam = 'PTE',
+}: {
+  skill: SkillType;
+  initialTypeKey?: string;
+  exam?: ExamType;
+}) {
+  const [editing, setEditing] = useState<{ id?: string; initialTypeId?: string } | null>(null);
   const [bankVersion, setBankVersion] = useState(0);
 
   return (
@@ -12,15 +20,20 @@ export default function AdminQuestionAuthoring({ skill }: { skill: SkillType }) 
       {editing === null ? (
         <AdminQuestionBank
           skill={skill}
+          initialTypeKey={initialTypeKey}
+          exam={exam}
           reloadKey={bankVersion}
-          onNew={() => setEditing({})}
+          onNew={(preselectedTypeId?: string) => setEditing({ initialTypeId: preselectedTypeId })}
           onEdit={id => setEditing({ id })}
         />
       ) : (
         <AdminQuestionForm
-          key={editing.id ?? 'new'}
+          key={editing.id ?? editing.initialTypeId ?? 'new'}
           skill={skill}
           questionId={editing.id}
+          initialTypeId={editing.initialTypeId}
+          initialTypeKey={initialTypeKey}
+          initialExam={exam}
           onCancel={() => setEditing(null)}
           onSaved={() => {
             setBankVersion(version => version + 1);

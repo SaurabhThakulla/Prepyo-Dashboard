@@ -28,15 +28,19 @@ import {
  * it.
  */
 export default function AdminPassageUpload({
+  initialExam = 'IELTS',
+  initialTypeKey,
   onSaved,
   onCancel,
 }: {
+  initialExam?: ExamType;
+  initialTypeKey?: string;
   onSaved?: (passageId: string) => void;
   onCancel?: () => void;
 }) {
   const toast = useToast();
 
-  const [exam, setExam] = useState<ExamType>('IELTS');
+  const [exam, setExam] = useState<ExamType>(initialExam);
   const [passageSlot, setPassageSlot] = useState<'A' | 'B' | 'C' | 'custom'>('A');
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');

@@ -80,14 +80,42 @@ describe('the reading section of the practice menu', () => {
 describe('the practice menu for an admin', () => {
   const admin = { role: 'admin' } as unknown as UserProfile;
 
-  it('replaces every skill’s task links with its authoring screen', () => {
-    const items = buildSections('IELTS', () => { }, admin).find(s => s.id === 'practice')?.items ?? [];
-    expect(items.map(item => [item.group, item.href, item.badge])).toEqual([
-      ['Speaking', '/practice?skill=speaking', 'Admin'],
-      ['Writing', '/practice?skill=writing', 'Admin'],
-      ['Reading', '/practice?skill=reading', 'Admin'],
-      ['Listening', '/practice?skill=listening', 'Admin'],
+  it('lists syllabus subtasks for the selected exam so admin can author questions for each task', () => {
+    const ieltsItems = buildSections('IELTS', () => { }, admin).find(s => s.id === 'practice')?.items ?? [];
+    expect(ieltsItems.filter(item => item.group === 'Speaking').map(i => i.label)).toEqual([
+      'Introduction',
+      'Speaking Part 2 (Cue Card)',
+      'Speaking Part 3 (Discussion)',
     ]);
+    expect(ieltsItems.filter(item => item.group === 'Writing').map(i => i.label)).toEqual([
+      'Describe the figure',
+      'Opinion / Agree or Disagree',
+    ]);
+    // Reading shows all syllabus topics for admin even when no available reading types are passed
+    expect(ieltsItems.filter(item => item.group === 'Reading').map(i => i.label)).toEqual([
+      'Multiple Choice',
+      'True / False / Not Given',
+      'Yes / No / Not Given',
+      'Matching Information',
+      'Fill in the Blanks',
+    ]);
+
+    const pteItems = buildSections('PTE', () => { }, admin).find(s => s.id === 'practice')?.items ?? [];
+    expect(pteItems.filter(item => item.group === 'Speaking').map(i => i.label)).toEqual([
+      'Read Aloud',
+      'Repeat Sentence',
+      'Describe Image',
+      'Re-tell Lecture',
+      'Answer Short Questions',
+      'Summarise Group Discussion',
+      'Respond to a Situation',
+    ]);
+    expect(pteItems.filter(item => item.group === 'Writing').map(i => i.label)).toEqual([
+      'Summarise Written Text',
+      'Write Essay',
+      'Repeated Essay Questions',
+    ]);
+    expect(pteItems.find(i => i.label === 'Read Aloud')?.href).toBe('/practice?skill=speaking&type=readaloud');
   });
 });
 

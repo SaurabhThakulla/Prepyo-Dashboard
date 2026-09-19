@@ -1,15 +1,11 @@
 import {
   Home,
   Mic,
-  MicVocal,
   PenTool,
   FilePenLine,
-  NotebookPen,
   BookOpen,
-  BookPlus,
   BookOpenCheck,
   Headphones,
-  AudioLines,
   Timer,
   ClipboardCheck,
   Gauge,
@@ -75,13 +71,6 @@ const PRACTICE_SKILLS: { skill: SkillType; label: string; icon: LucideIcon; subl
   { skill: 'reading', label: 'Reading', icon: BookOpen, sublabel: 'Passage questions, graded on the server' },
   { skill: 'listening', label: 'Listening', icon: Headphones, sublabel: 'Audio questions, graded on the server' },
 ];
-
-const ADMIN_AUTHORING_ICONS: Record<SkillType, LucideIcon> = {
-  speaking: MicVocal,
-  writing: NotebookPen,
-  reading: BookPlus,
-  listening: AudioLines,
-};
 
 /** Which primary section a URL belongs to. */
 export function getSectionFromPathname(path: string): PrimarySectionId {
@@ -188,28 +177,23 @@ export function buildSections(
       // own shape, straight from the syllabus, so PTE and IELTS each list their
       // own tasks and a change there needs no edit here.
       items: PRACTICE_SKILLS.flatMap(({ skill, label, icon, sublabel }) => {
+        const names = SYLLABUS[activeExam][skill] ?? [];
+
         if (isAdmin(user ?? null)) {
-          return [
-            {
-              href: `/practice?skill=${skill}`,
-              label: skill === 'reading' ? 'Add passage & questions' : 'Add questions',
-              icon: ADMIN_AUTHORING_ICONS[skill],
-              sublabel:
-                skill === 'reading'
-                  ? 'Author a reading passage and its task sets'
-                  : `Author ${label.toLowerCase()} questions for every task type`,
-              badge: 'Admin',
-              group: label,
-              groupHref: `/practice?skill=${skill}`,
-            },
-          ];
+          return names.map(name => ({
+            href: `/practice?skill=${skill}&type=${typeKey(name)}`,
+            label: name,
+            icon,
+            sublabel: `Author questions for ${name}`,
+            group: label,
+            groupHref: `/practice?skill=${skill}`,
+          }));
         }
 
         // Reading is the one skill whose bank can be empty behind a heading, so
         // its links are checked against what the server will actually deal.
         // Undefined means the answer has not arrived yet: show everything
         // rather than blink the menu down to nothing and back.
-        const names = SYLLABUS[activeExam][skill] ?? [];
         const offered =
           skill === 'reading' && availableReadingTypes
             ? names.filter(name =>

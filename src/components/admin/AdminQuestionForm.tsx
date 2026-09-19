@@ -10,6 +10,7 @@ import { useApp } from '@/context/AppContext';
 import { api, errorMessage } from '@/lib/api';
 import { ExamType, SkillType } from '@/lib/types';
 import { AuthoredQuestionDetail, QuestionTypeSpec, useQuestionTypes } from '@/lib/hooks/useAdminQuestions';
+import { matchesTypeKey } from '@/lib/syllabus';
 
 interface BlankDraft {
   answer: string;
@@ -28,11 +29,17 @@ const splitList = (value: string) =>
 export default function AdminQuestionForm({
   skill,
   questionId,
+  initialTypeId,
+  initialTypeKey,
+  initialExam,
   onSaved,
   onCancel,
 }: {
   skill: SkillType;
   questionId?: string;
+  initialTypeId?: string;
+  initialTypeKey?: string;
+  initialExam?: ExamType;
   onSaved: () => void;
   onCancel: () => void;
 }) {
@@ -40,8 +47,8 @@ export default function AdminQuestionForm({
   const { activeExam } = useApp();
   const { types, error: typesError } = useQuestionTypes();
 
-  const [exam, setExam] = useState<ExamType>(activeExam);
-  const [typeId, setTypeId] = useState('');
+  const [exam, setExam] = useState<ExamType>(initialExam ?? activeExam);
+  const [typeId, setTypeId] = useState(initialTypeId ?? '');
   const [title, setTitle] = useState('');
   const [prompt, setPrompt] = useState('');
   const [contextPassage, setContextPassage] = useState('');
@@ -187,8 +194,19 @@ export default function AdminQuestionForm({
 
   useEffect(() => {
     if (loading || available.length === 0) return;
-    if (!spec) applyType(available[0]);
-  }, [available, loading]);
+    if (spec) return;
+
+    let target = initialTypeId ? available.find(t => t.typeId === initialTypeId) : undefined;
+    if (!target && initialTypeKey) {
+      target = available.find(
+        t => matchesTypeKey(t.typeName, initialTypeKey) || matchesTypeKey(t.typeId, initialTypeKey),
+      );
+    }
+    if (!target) {
+      target = available[0];
+    }
+    applyType(target);
+  }, [available, loading, initialTypeId, initialTypeKey]);
 
   const setOption = (index: number, value: string) =>
     setOptions(current => current.map((option, i) => (i === index ? value : option)));
@@ -263,10 +281,12 @@ export default function AdminQuestionForm({
       <div className="border-b border-border pb-4 flex items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">
-            {questionId ? `Edit ${skill} question` : `New ${skill} question`}
+            {questionId
+              ? `Edit ${spec?.typeName || skill} question`
+              : `New ${spec?.typeName || skill} question`}
           </h1>
           <CardDescription className="text-xs">
-            Learners only see it once it is published.
+            {exam} · {spec?.typeName || skill} · Learners only see it once it is published.
           </CardDescription>
         </div>
         <Button type="button" variant="ghost" size="sm" onClick={onCancel} className="font-bold text-xs h-8">

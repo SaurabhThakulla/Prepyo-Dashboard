@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { api, errorMessage } from '@/lib/api';
 import { ExamType, SkillType } from '@/lib/types';
-import { AuthoredQuestionSummary, useQuestionBank } from '@/lib/hooks/useAdminQuestions';
+import { AuthoredQuestionSummary, useQuestionBank, useQuestionTypes } from '@/lib/hooks/useAdminQuestions';
 import { AdminPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Chips } from '@/components/admin/AdminReadingBank';
+import { matchesTypeKey, typeLabel } from '@/lib/syllabus';
 
 const SKILL_TITLE: Record<SkillType, string> = {
   speaking: 'Speaking',
@@ -22,23 +23,55 @@ const plural = (count: number, word: string) => `${count} ${word}${count === 1 ?
 
 export default function AdminQuestionBank({
   skill,
+  initialTypeKey,
+  exam: propExam,
   onNew,
   onEdit,
   reloadKey,
 }: {
   skill: SkillType;
-  onNew: () => void;
+  initialTypeKey?: string;
+  exam?: ExamType;
+  onNew: (preselectedTypeId?: string) => void;
   onEdit: (questionId: string) => void;
   reloadKey?: number;
 }) {
   const toast = useToast();
   const { questions, loading, error, reload } = useQuestionBank(skill);
-  const [exam, setExam] = useState<ExamType | 'all'>('all');
+  const { types } = useQuestionTypes();
+
+  const [exam, setExam] = useState<ExamType | 'all'>(propExam ?? 'all');
+  const [typeKeyFilter, setTypeKeyFilter] = useState<string | 'all'>(initialTypeKey ?? 'all');
   const [status, setStatus] = useState<'all' | 'published' | 'draft'>('all');
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [questionToDelete, setQuestionToDelete] = useState<AuthoredQuestionSummary | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const availableTypes = useMemo(
+    () => types.filter(t => t.skill === skill && (exam === 'all' || t.exam === exam)),
+    [types, skill, exam],
+  );
+
+  const matchingType = useMemo(() => {
+    if (typeKeyFilter === 'all') return undefined;
+    return availableTypes.find(
+      t => matchesTypeKey(t.typeName, typeKeyFilter) || matchesTypeKey(t.typeId, typeKeyFilter),
+    );
+  }, [availableTypes, typeKeyFilter]);
+
+  const taskTitle = useMemo(() => {
+    if (typeKeyFilter === 'all') return null;
+    if (matchingType) return matchingType.typeName;
+    if (exam !== 'all') {
+      const label = typeLabel(exam, skill, typeKeyFilter);
+      if (label) return label;
+    }
+    return typeKeyFilter
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/[-_]+/g, ' ')
+      .replace(/\b\w/g, char => char.toUpperCase());
+  }, [typeKeyFilter, matchingType, exam, skill]);
 
   const [lastKey, setLastKey] = useState(reloadKey);
   if (reloadKey !== lastKey) {
@@ -52,13 +85,19 @@ export default function AdminQuestionBank({
         if (exam !== 'all' && question.exam !== exam) return false;
         if (status === 'published' && !question.isPublished) return false;
         if (status === 'draft' && question.isPublished) return false;
+        if (typeKeyFilter !== 'all') {
+          const match =
+            matchesTypeKey(question.typeName, typeKeyFilter) ||
+            matchesTypeKey(question.typeId, typeKeyFilter);
+          if (!match) return false;
+        }
         const needle = query.trim().toLowerCase();
         if (!needle) return true;
         return [question.title, question.typeName, question.prompt].some(text =>
           text.toLowerCase().includes(needle),
         );
       }),
-    [questions, exam, status, query],
+    [questions, exam, status, typeKeyFilter, query],
   );
 
   const published = questions.filter(question => question.isPublished).length;
@@ -95,17 +134,36 @@ export default function AdminQuestionBank({
     <div className="space-y-5 pb-16">
       <div className="border-b border-border pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-display text-2xl font-bold text-foreground">{SKILL_TITLE[skill]} bank</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="font-display text-2xl font-bold text-foreground">
+              {taskTitle ? `${taskTitle} questions` : `${SKILL_TITLE[skill]} bank`}
+            </h1>
             <Badge variant="destructive">Admin</Badge>
+            {exam !== 'all' && (
+              <Badge variant="outline" className="font-semibold text-xs">
+                {exam}
+              </Badge>
+            )}
+            {taskTitle && typeKeyFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setTypeKeyFilter('all')}
+                className="text-[11px] font-medium text-primary hover:underline ml-1"
+              >
+                View all {SKILL_TITLE[skill]}
+              </button>
+            )}
           </div>
           <CardDescription className="text-xs">
-            {plural(questions.length, 'question')} · {published} published · {plural(questions.length - published, 'draft')}
+            {plural(shown.length, 'question')} shown · {published} published in {SKILL_TITLE[skill]}
           </CardDescription>
         </div>
-        <Button onClick={onNew} className="font-bold text-xs rounded-full h-9 px-4 shrink-0">
+        <Button
+          onClick={() => onNew(matchingType?.typeId)}
+          className="font-bold text-xs rounded-full h-9 px-4 shrink-0"
+        >
           <Plus className="w-3.5 h-3.5 mr-1.5" />
-          New question
+          {taskTitle ? `Add ${taskTitle} question` : 'New question'}
         </Button>
       </div>
 
@@ -153,19 +211,35 @@ export default function AdminQuestionBank({
         <Card className="p-10 text-center space-y-3">
           <ClipboardList className="w-8 h-8 text-muted-foreground mx-auto" />
           <p className="text-sm font-bold text-foreground">
-            {questions.length === 0 ? `No ${skill} questions yet` : 'Nothing matches those filters'}
+            {taskTitle
+              ? `No ${taskTitle} questions found${exam !== 'all' ? ` for ${exam}` : ''}`
+              : questions.length === 0
+                ? `No ${skill} questions yet`
+                : 'Nothing matches those filters'}
           </p>
           <p className="text-xs text-muted-foreground">
-            {questions.length === 0
-              ? 'Add one for any task type. It stays a draft until you publish it.'
-              : 'Clear the search or switch the filters.'}
+            {taskTitle
+              ? 'Click below to author the first question for this task type. It stays a draft until you publish it.'
+              : questions.length === 0
+                ? 'Add one for any task type. It stays a draft until you publish it.'
+                : 'Clear the search or switch the filters.'}
           </p>
-          {questions.length === 0 && (
-            <Button onClick={onNew} size="sm" className="font-bold text-xs">
+          <div className="flex items-center justify-center gap-2 pt-1">
+            <Button onClick={() => onNew(matchingType?.typeId)} size="sm" className="font-bold text-xs">
               <Plus className="w-3.5 h-3.5 mr-1.5" />
-              New question
+              {taskTitle ? `Add ${taskTitle} question` : 'New question'}
             </Button>
-          )}
+            {typeKeyFilter !== 'all' && (
+              <Button
+                variant="outline"
+                onClick={() => setTypeKeyFilter('all')}
+                size="sm"
+                className="font-bold text-xs"
+              >
+                Show all {SKILL_TITLE[skill]}
+              </Button>
+            )}
+          </div>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
