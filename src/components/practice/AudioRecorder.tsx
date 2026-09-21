@@ -3,6 +3,8 @@ import { Mic, MicOff, Square, RotateCcw, Loader2, AlertCircle } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { canRecord, formatDuration, pickRecorderMimeType } from '@/lib/audio';
+import { startTranscribing, type TranscriptSession } from '@/lib/speech';
+import { createDeliveryMeter, type Delivery, type DeliveryMeter } from '@/lib/delivery';
 
 /**
  * The exam's own sequence: a fixed think time, then recording starts on its own
@@ -17,8 +19,15 @@ interface AudioRecorderProps {
   /** Recording stops itself here, as the exam does. */
   maxSeconds: number;
   disabled?: boolean;
-  /** Called with the finished recording, or null when it is discarded. */
-  onRecorded: (recording: Blob | null) => void;
+  /**
+   * Called with the finished recording, or null when it is discarded.
+   *
+   * `transcript` is what the browser's own speech recognition heard, when it
+   * has any. It is what gets scored where no provider can listen to audio, and
+   * it is empty on browsers without recognition — the caller decides what to
+   * offer then, because a missing transcript is not a failed recording.
+   */
+  onRecorded: (recording: Blob | null, transcript?: string, delivery?: Delivery) => void;
 }
 
 export default function AudioRecorder({
@@ -35,6 +44,9 @@ export default function AudioRecorder({
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
 
   const streamRef = useRef<MediaStream | null>(null);
+  const transcriberRef = useRef<TranscriptSession | null>(null);
+  // Pace and pauses, measured from the same meter that draws the level bar.
+  const deliveryRef = useRef<DeliveryMeter | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const frameRef = useRef<number | null>(null);
@@ -97,7 +109,16 @@ export default function AudioRecorder({
     setLevel(0);
   }, [clearTimer]);
 
-  useEffect(() => releaseMic, [releaseMic]);
+  // Leaving the screen mid-answer must also stop the recogniser, which holds
+  // the microphone indicator up on its own.
+  useEffect(
+    () => () => {
+      void transcriberRef.current?.stop();
+      transcriberRef.current = null;
+      releaseMic();
+    },
+    [releaseMic],
+  );
 
   useEffect(() => {
     if (!playbackUrl) return;
@@ -124,7 +145,11 @@ export default function AudioRecorder({
         sum += centred * centred;
       }
       // Root mean square, scaled so ordinary speech fills most of the bar.
-      setLevel(Math.min(1, Math.sqrt(sum / samples.length) * 4));
+      const level = Math.min(1, Math.sqrt(sum / samples.length) * 4);
+      setLevel(level);
+      // The meter is already reading the microphone frame by frame, so timing
+      // the silences costs nothing beyond this one call.
+      deliveryRef.current?.sample(level);
       frameRef.current = requestAnimationFrame(read);
     };
     read();
@@ -147,10 +172,28 @@ export default function AudioRecorder({
       releaseMic();
       setPlaybackUrl(URL.createObjectURL(recording));
       setPhase('review');
-      onRecorded(recording);
+
+      // The recogniser needs a moment to flush its last phrase, so the answer
+      // is handed over once it has, not the instant the recorder stops.
+      const delivery = deliveryRef.current?.finish();
+      deliveryRef.current = null;
+
+      const transcriber = transcriberRef.current;
+      transcriberRef.current = null;
+      if (!transcriber) {
+        onRecorded(recording, undefined, delivery);
+        return;
+      }
+      void transcriber.stop().then(transcript => onRecorded(recording, transcript, delivery));
     };
 
     recorder.start();
+    // Listening runs alongside the recording rather than over it: the learner
+    // still gets the audio to play back, and the words go for marking.
+    transcriberRef.current = startTranscribing();
+    // Prep time is not part of the answer, so measurement starts here rather
+    // than when the microphone opened.
+    deliveryRef.current = createDeliveryMeter();
     setPhase('recording');
 
     // The exam cuts the answer off at the limit, so this does too.
@@ -204,6 +247,9 @@ export default function AudioRecorder({
   }, [beginRecording, clearTimer]);
 
   const handleRetake = useCallback(() => {
+    void transcriberRef.current?.stop();
+    transcriberRef.current = null;
+    deliveryRef.current = null;
     setPlaybackUrl(null);
     setPhase('idle');
     setRemaining(0);
