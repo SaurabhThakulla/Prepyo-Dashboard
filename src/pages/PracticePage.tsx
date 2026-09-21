@@ -40,6 +40,9 @@ import { encodeForUpload } from '@/lib/audio';
 import { matchesTypeKey, typeLabel } from '@/lib/syllabus';
 import { loadMistakeTask } from '@/lib/mistakePractice';
 import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
+import { useAICapabilities } from '@/lib/hooks/useAICapabilities';
+import type { Delivery } from '@/lib/delivery';
+import { useProgressStage } from '@/lib/hooks/useProgressStage';
 import { loadCompleted, saveCompleted, unlockedIndex } from '@/lib/practiceProgress';
 
 function getSubtaskTitle(exam: ExamType, skill: SkillType, typeKey?: string | null, mistakeId?: string): string {
@@ -105,6 +108,12 @@ function PracticePageContent() {
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [blankResponses, setBlankResponses] = useState<Record<string, string>>({});
   const [recording, setRecording] = useState<Blob | null>(null);
+  // What the browser's own recogniser heard. It is what gets marked wherever
+  // the provider has no model that can listen to the recording itself.
+  const [spokenTranscript, setSpokenTranscript] = useState('');
+  // Pace and pauses measured while recording. Undefined on a browser that
+  // could not measure them, and then nothing claims to judge delivery.
+  const [delivery, setDelivery] = useState<Delivery | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [startedAt, setStartedAt] = useState<number>(() => Date.now());
@@ -117,6 +126,19 @@ function PracticePageContent() {
   const latestTaskKey = useRef(taskKey);
   latestTaskKey.current = taskKey;
   const hasStarted = taskKey !== null && startedTask === taskKey;
+  // Scoring a recording needs a provider that accepts audio. Without one the
+  // recorder still earns its place - record, listen back, try again - but
+  // nothing grades the answer and no sub-test credit is spent, so the screen
+  // says that instead of offering a Submit the server would refuse. Only a
+  // known false counts: until the check answers, nothing is claimed either way.
+  const isSpeakingTask = GRADING[selectedSkill] === 'speech';
+  const capabilities = useAICapabilities(isSpeakingTask);
+  // Two ways a spoken answer can be marked: the recording goes to a provider
+  // that hears it, or the browser transcribes it and the words are marked
+  // instead. The second cannot judge pronunciation, and says so.
+  const scoreFromTranscript = isSpeakingTask && capabilities?.speakingTranscript === true;
+  const speakingUnscored =
+    isSpeakingTask && capabilities?.speaking === false && !scoreFromTranscript;
   const subTestsRemaining = Math.max(0,
     (user?.subscription?.dailySubTestsLimit ?? 0) - (user?.subscription?.dailySubTestsUsed ?? 0),
   );
@@ -184,7 +206,12 @@ function PracticePageContent() {
       setStartedTask(startingKey);
       setStartedAt(Date.now());
       await refreshUser();
-      toast.success('Practice started', '1 sub-test credit applied. Good luck!');
+      toast.success(
+        'Practice started',
+        speakingUnscored
+          ? 'Recording practice - no sub-test credit used.'
+          : '1 sub-test credit applied. Good luck!',
+      );
     } catch (err) {
       if (err instanceof ApiError && err.isLimitReached) {
         toast.warning('Daily limit reached', 'You have reached your daily sub-test allowance.');
@@ -206,6 +233,8 @@ function PracticePageContent() {
     setBlankResponses({});
     setSelectedOptions([]);
     setRecording(null);
+    setSpokenTranscript('');
+    setDelivery(undefined);
     setStartedAt(Date.now());
   }, []);
 
@@ -238,7 +267,18 @@ function PracticePageContent() {
     const timeSpentSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
 
     try {
-      if (grading === 'speech') {
+      if (grading === 'speech' && scoreFromTranscript) {
+        const data = await api.post<{ evaluation: Evaluation; xpAwarded: number }>(
+          '/evaluations/speaking/transcript',
+          {
+            questionId: currentQuestion.id,
+            transcript: spokenTranscript,
+            durationSeconds: delivery?.durationSeconds || timeSpentSeconds,
+            delivery,
+          },
+        );
+        setResult({ evaluation: data.evaluation, xpAwarded: data.xpAwarded });
+      } else if (grading === 'speech') {
         if (!recording) return;
 
         let encoded;
@@ -304,14 +344,39 @@ function PracticePageContent() {
     setIsTutorOpen(true);
   };
 
+  // In transcript mode the words are the submission, so a recording with
+  // nothing recognised in it is not something to send: the learner is told to
+  // record again instead of being handed a validation error from the server.
   const canSubmit =
     grading === 'speech'
-      ? recording !== null
+      ? scoreFromTranscript
+        ? recording !== null && spokenTranscript.trim().length > 0
+        : recording !== null
       : grading === 'ai'
         ? wordCount >= minWords
         : textAnswer.trim().length > 0 ||
           selectedOptions.length > 0 ||
           Object.values(blankResponses).some(Boolean);
+
+  // Marking runs about half a minute on these models. Each stage names work
+  // that is genuinely happening, in order, so a long wait reads as progress
+  // rather than as a stuck page.
+  const submitStage = useProgressStage(
+    submitting,
+    grading === 'speech'
+      ? [
+          { afterSeconds: 0, label: 'Sending your answer…' },
+          { afterSeconds: 3, label: 'Marking content and grammar…' },
+          { afterSeconds: 18, label: 'Writing your feedback…' },
+        ]
+      : grading === 'ai'
+        ? [
+            { afterSeconds: 0, label: 'Sending your response…' },
+            { afterSeconds: 3, label: 'Marking against the rubric…' },
+            { afterSeconds: 18, label: 'Writing your feedback…' },
+          ]
+        : [{ afterSeconds: 0, label: 'Checking…' }],
+  );
 
   const isPteListening = activeExam === 'PTE' && selectedSkill === 'listening';
 
@@ -481,12 +546,28 @@ function PracticePageContent() {
                       <Mic className="w-3.5 h-3.5 text-blue-600" />
                       <span>Your answer</span>
                     </div>
+                    {scoreFromTranscript && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Your words are written down as you speak and marked for content, vocabulary
+                        and grammar. Pronunciation is not scored here.
+                      </p>
+                    )}
+                    {scoreFromTranscript && recording !== null && spokenTranscript.trim() === '' && (
+                      <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                        We could not make out any words. If you are on Safari or Firefox, speech
+                        recognition is not available there - try Chrome or Edge, or record again.
+                      </p>
+                    )}
                     <AudioRecorder
                       key={currentQuestion.id}
                       prepSeconds={currentQuestion.prepTimeSeconds ?? 0}
                       maxSeconds={currentQuestion.timeLimitSeconds}
                       disabled={submitting || result !== null}
-                      onRecorded={setRecording}
+                      onRecorded={(blob, transcript, measured) => {
+                        setRecording(blob);
+                        setSpokenTranscript(transcript ?? '');
+                        setDelivery(measured);
+                      }}
                     />
                   </div>
                 )}
@@ -723,6 +804,11 @@ function PracticePageContent() {
                   <span>Next question</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </Button>
+              ) : speakingUnscored ? (
+                <span className="text-xs font-semibold text-muted-foreground">
+                  Scoring for speaking answers is being set up. Record and listen back as
+                  often as you like - this costs no sub-test credit.
+                </span>
               ) : (
                 <Button
                   onClick={handleSubmitAnswer}
@@ -733,13 +819,7 @@ function PracticePageContent() {
                   {submitting ? (
                     <>
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>
-                        {grading === 'speech'
-                          ? 'Listening to your answer…'
-                          : grading === 'ai'
-                            ? 'Evaluating…'
-                            : 'Checking…'}
-                      </span>
+                      <span>{submitStage}</span>
                     </>
                   ) : (
                     <>
