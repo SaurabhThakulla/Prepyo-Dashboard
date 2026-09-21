@@ -157,10 +157,10 @@ function PracticePageContent() {
         const data = mistakeId
           ? await loadMistakeTask(mistakeId, activeExam, selectedSkill).then(task => ({ questions: [task.question] }))
           : await api.get<{ questions: Question[] }>('/questions', {
-              exam: activeExam,
-              skill: selectedSkill,
-              limit: QUESTION_LIMIT,
-            });
+            exam: activeExam,
+            skill: selectedSkill,
+            limit: QUESTION_LIMIT,
+          });
 
         const all = data.questions ?? [];
         const list = typeParam && !mistakeId
@@ -355,8 +355,8 @@ function PracticePageContent() {
       : grading === 'ai'
         ? wordCount >= minWords
         : textAnswer.trim().length > 0 ||
-          selectedOptions.length > 0 ||
-          Object.values(blankResponses).some(Boolean);
+        selectedOptions.length > 0 ||
+        Object.values(blankResponses).some(Boolean);
 
   // Marking runs about half a minute on these models. Each stage names work
   // that is genuinely happening, in order, so a long wait reads as progress
@@ -365,16 +365,16 @@ function PracticePageContent() {
     submitting,
     grading === 'speech'
       ? [
-          { afterSeconds: 0, label: 'Sending your answer…' },
-          { afterSeconds: 3, label: 'Marking content and grammar…' },
-          { afterSeconds: 18, label: 'Writing your feedback…' },
-        ]
+        { afterSeconds: 0, label: 'Sending your answer…' },
+        { afterSeconds: 3, label: 'Marking content and grammar…' },
+        { afterSeconds: 18, label: 'Writing your feedback…' },
+      ]
       : grading === 'ai'
         ? [
-            { afterSeconds: 0, label: 'Sending your response…' },
-            { afterSeconds: 3, label: 'Marking against the rubric…' },
-            { afterSeconds: 18, label: 'Writing your feedback…' },
-          ]
+          { afterSeconds: 0, label: 'Sending your response…' },
+          { afterSeconds: 3, label: 'Marking against the rubric…' },
+          { afterSeconds: 18, label: 'Writing your feedback…' },
+        ]
         : [{ afterSeconds: 0, label: 'Checking…' }],
   );
 
@@ -398,11 +398,10 @@ function PracticePageContent() {
 
   return (
     <div
-      className={`w-full ${
-        isReading && !isAdminUser
+      className={`w-full ${isReading && !isAdminUser
           ? 'min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] lg:overflow-hidden'
           : 'min-h-[calc(100vh-4rem)]'
-      } p-0 m-0 flex flex-col bg-background`}
+        } p-0 m-0 flex flex-col bg-background`}
     >
       {/* An admin has no reason to sit the paper. They add questions/passages instead. */}
       {isReading && isAdmin(user) ? (
@@ -451,8 +450,8 @@ function PracticePageContent() {
             title={
               currentQuestion
                 ? (isPteListening || /^question\s*\d+/i.test(currentQuestion.title)
-                    ? currentQuestion.typeName || currentQuestion.title
-                    : currentQuestion.title)
+                  ? currentQuestion.typeName || currentQuestion.title
+                  : currentQuestion.title)
                 : getSubtaskTitle(activeExam, selectedSkill, typeParam, mistakeId)
             }
             instructions="The questions will appear after you start."
@@ -610,9 +609,8 @@ function PracticePageContent() {
                       return (
                         <label
                           key={opt.id}
-                          className={`flex items-start gap-2.5 p-3.5 rounded-xl border cursor-pointer text-xs sm:text-sm transition-colors ${
-                            checked ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40'
-                          }`}
+                          className={`flex items-start gap-2.5 p-3.5 rounded-xl border cursor-pointer text-xs sm:text-sm transition-colors ${checked ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40'
+                            }`}
                         >
                           <input
                             type={allowsMultipleChoices(currentQuestion) ? 'checkbox' : 'radio'}
