@@ -23,4 +23,26 @@ describe('summary task spelling compatibility', () => {
     expect(matchesTypeKey('Summarise Group Discussion', 'summarisewrittentext')).toBe(false);
     expect(matchesTypeKey('Write Essay', 'writeessay')).toBe(true);
   });
+
+  it('matches single and multiple answer synonyms while strictly keeping them separate', () => {
+    // Single answer synonym matches
+    expect(matchesTypeKey('Multiple Choice, Single Answer', 'multipletypesingleanswer')).toBe(true);
+    expect(matchesTypeKey('MCQ Single Answer', 'multipletypesingleanswer')).toBe(true);
+    expect(matchesTypeKey('Multiple Type Single Answer', 'mcqsingleanswer')).toBe(true);
+    expect(matchesTypeKey('pte-listening-mcsa', 'mcqsingleanswer')).toBe(true);
+
+    // Multiple answer synonym matches
+    expect(matchesTypeKey('Multiple Choice, Multiple Answers', 'multipletypemultipleanswer')).toBe(true);
+    expect(matchesTypeKey('MCQ Multiple Answer', 'multipletypemultipleanswer')).toBe(true);
+    expect(matchesTypeKey('Multiple Type Multiple Answer', 'mcqmultipleanswer')).toBe(true);
+    expect(matchesTypeKey('pte-listening-mcma', 'mcqmultipleanswer')).toBe(true);
+
+    // Strict cross-contamination prevention: single MUST NEVER match multiple
+    expect(matchesTypeKey('Multiple Choice, Multiple Answers', 'multipletypesingleanswer')).toBe(false);
+    expect(matchesTypeKey('Multiple Choice, Single Answer', 'multipletypemultipleanswer')).toBe(false);
+    expect(matchesTypeKey('MCQ Multiple Answer', 'mcqsingleanswer')).toBe(false);
+    expect(matchesTypeKey('MCQ Single Answer', 'mcqmultipleanswer')).toBe(false);
+    expect(matchesTypeKey('Multiple Type Multiple Answer', 'multipletypesingleanswer')).toBe(false);
+    expect(matchesTypeKey('Multiple Type Single Answer', 'multipletypemultipleanswer')).toBe(false);
+  });
 });

@@ -104,7 +104,6 @@ export function typeIdsFor(syllabusKey?: string | null): string[] {
  * request itself.
  */
 const FAMILIES: string[][] = [
-  [READING_TYPES.mcqSingle, READING_TYPES.mcqMultiple],
   [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
 ];
 
