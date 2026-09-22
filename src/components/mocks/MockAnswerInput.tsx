@@ -7,6 +7,7 @@ import { AnswerSubmission, Question } from '@/lib/types';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import { isWordHighlightTask } from '@/lib/listening';
 import { allowsMultipleChoices } from '@/lib/choices';
+import { passageHasGaps } from '@/components/practice/InlineBlankPassage';
 
 interface MockAnswerInputProps {
   question: Question;
@@ -58,7 +59,7 @@ export default function MockAnswerInput({ question, answer, onChange }: MockAnsw
         </div>
       )}
 
-      {question.blanks && question.blanks.length > 0 && (
+      {!passageHasGaps(question.contextPassage) && question.blanks && question.blanks.length > 0 && (
         <div className="space-y-2">
           {question.blanks.map((blank, index) => (
             <div

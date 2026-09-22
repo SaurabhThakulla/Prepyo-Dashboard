@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import MockAnswerInput from '@/components/mocks/MockAnswerInput';
 import PromptAudio from '@/components/practice/PromptAudio';
+import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
 import { AnswerSubmission, Mock, Question } from '@/lib/types';
 import { isWordHighlightTask } from '@/lib/listening';
 
@@ -111,9 +112,18 @@ export default function MockExamRunner({
               </div>
 
               {currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && (
-                <div className="p-4 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed max-h-56 overflow-y-auto">
-                  {currentQuestion.contextPassage}
-                </div>
+                passageHasGaps(currentQuestion.contextPassage) ? (
+                  <InlineBlankPassage
+                    passage={currentQuestion.contextPassage}
+                    blanks={currentQuestion.blanks}
+                    responses={answers[currentQuestion.id]?.blankResponses ?? {}}
+                    onChange={blankResponses => onAnswer(currentQuestion, { blankResponses })}
+                  />
+                ) : (
+                  <div className="p-4 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed max-h-56 overflow-y-auto">
+                    {currentQuestion.contextPassage}
+                  </div>
+                )
               )}
 
               <PromptAudio

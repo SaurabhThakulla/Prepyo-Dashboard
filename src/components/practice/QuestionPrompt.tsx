@@ -3,11 +3,26 @@ import { Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import PromptAudio from '@/components/practice/PromptAudio';
-import { Question } from '@/lib/types';
+import { Question, Blank } from '@/lib/types';
 import { isWordHighlightTask } from '@/lib/listening';
+import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
+
+interface QuestionPromptProps {
+  question: Question;
+  blankResponses?: Record<string, string>;
+  onBlankChange?: (responses: Record<string, string>) => void;
+  disabled?: boolean;
+  reviewBlanks?: Blank[];
+}
 
 /** The question being answered: title, prompt, and any media that comes with it. */
-export default function QuestionPrompt({ question }: { question: Question }) {
+export default function QuestionPrompt({
+  question,
+  blankResponses = {},
+  onBlankChange,
+  disabled = false,
+  reviewBlanks,
+}: QuestionPromptProps) {
   return (
     <Card className="p-6 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
@@ -60,9 +75,20 @@ export default function QuestionPrompt({ question }: { question: Question }) {
       {/* Read Aloud puts the words to say in here, so the passage stays on
           screen while the recorder runs below it. */}
       {question.contextPassage && !isWordHighlightTask(question) && (
-        <div className="p-4 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed max-h-56 overflow-y-auto">
-          {question.contextPassage}
-        </div>
+        passageHasGaps(question.contextPassage) ? (
+          <InlineBlankPassage
+            passage={question.contextPassage}
+            blanks={question.blanks}
+            responses={blankResponses}
+            disabled={disabled}
+            reviewBlanks={reviewBlanks}
+            onChange={onBlankChange ?? (() => {})}
+          />
+        ) : (
+          <div className="p-4 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed max-h-56 overflow-y-auto">
+            {question.contextPassage}
+          </div>
+        )
       )}
     </Card>
   );

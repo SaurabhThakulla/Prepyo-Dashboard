@@ -10,6 +10,7 @@ import { isWordHighlightTask } from '@/lib/listening';
 import { Question } from '@/lib/types';
 import { minimumWritingWords, writingWordCount } from '@/lib/writing';
 import { usePracticeSession } from '@/lib/hooks/usePracticeSession';
+import { passageHasGaps } from '@/components/practice/InlineBlankPassage';
 
 interface PracticeAnswerFormProps {
   question: Question;
@@ -103,7 +104,7 @@ export default function PracticeAnswerForm({
         </div>
       )}
 
-      {question.blanks && question.blanks.length > 0 && (
+      {!passageHasGaps(question.contextPassage) && question.blanks && question.blanks.length > 0 && (
         <div className="space-y-3">
           <h4 className="text-xs font-bold text-foreground">Fill each blank:</h4>
           {question.blanks.map((blank, index) => {

@@ -119,6 +119,28 @@ export default function BlankedText({
           );
         }
 
+        if (!wordBank || wordBank.length === 0) {
+          return (
+            <span key={index} className="inline-flex items-center align-middle mx-1">
+              <input
+                type="text"
+                id={`blank-${blank.id}`}
+                value={answered}
+                disabled={disabled}
+                onChange={event => place(blank.id, event.target.value)}
+                placeholder="— type —"
+                aria-label={`Blank ${Math.floor(index / 2) + 1}`}
+                className={`h-7 w-28 sm:w-36 px-2.5 rounded-lg border text-xs sm:text-sm font-semibold align-baseline transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs disabled:opacity-70 ${toneOf(verdict)}`}
+              />
+              {verdict === false && correct && correct[blank.id] && (
+                <span className="ml-1 text-xs text-emerald-600 font-bold">
+                  {correct[blank.id]}
+                </span>
+              )}
+            </span>
+          );
+        }
+
         return (
           <GapSlot
             key={index}

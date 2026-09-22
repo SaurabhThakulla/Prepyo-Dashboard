@@ -92,7 +92,13 @@ export default function PracticeScreen() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-8 space-y-6">
-            <QuestionPrompt question={currentQuestion} />
+            <QuestionPrompt
+              question={currentQuestion}
+              blankResponses={session.blankResponses}
+              onBlankChange={session.setBlankResponses}
+              disabled={session.submitting || session.result !== null}
+              reviewBlanks={session.result?.review?.blanks}
+            />
             <PracticeAnswerForm
               question={currentQuestion}
               session={session}
