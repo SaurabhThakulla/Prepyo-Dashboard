@@ -22,7 +22,7 @@ import {
  * The exam is "not running" whenever `activeMock` is null.
  */
 export function useMockExam(onAttemptFinished: (attempt: MockAttempt) => void) {
-  const { refreshUser } = useApp();
+  const { refreshUser, setActiveTestSession } = useApp();
   const toast = useToast();
 
   const [activeMock, setActiveMock] = useState<Mock | null>(null);
@@ -34,6 +34,32 @@ export function useMockExam(onAttemptFinished: (attempt: MockAttempt) => void) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [startingMockId, setStartingMockId] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<MockSubmitOutcome | null>(null);
+
+  const exit = useCallback(() => {
+    setActiveMock(null);
+    setQuestions([]);
+    setOutcome(null);
+    setAnswers({});
+    setFlaggedIds([]);
+  }, []);
+
+  useEffect(() => {
+    if (activeMock && !outcome) {
+      setActiveTestSession?.({
+        isActive: true,
+        title: activeMock.title || `${activeMock.exam} Mock Exam`,
+        skill: activeMock.sections?.[0]?.skill,
+        onStop: () => {
+          exit();
+        },
+      });
+    } else {
+      setActiveTestSession?.(null);
+    }
+    return () => {
+      setActiveTestSession?.(null);
+    };
+  }, [activeMock, outcome, setActiveTestSession, exit]);
 
   const currentQuestion = questions[currentIndex] ?? null;
 
@@ -99,14 +125,6 @@ export function useMockExam(onAttemptFinished: (attempt: MockAttempt) => void) {
     },
     [toast],
   );
-
-  const exit = useCallback(() => {
-    setActiveMock(null);
-    setQuestions([]);
-    setOutcome(null);
-    setAnswers({});
-    setFlaggedIds([]);
-  }, []);
 
   /** Merge a partial answer into whatever the learner has already given. */
   const answerQuestion = useCallback((question: Question, patch: Partial<AnswerSubmission>) => {

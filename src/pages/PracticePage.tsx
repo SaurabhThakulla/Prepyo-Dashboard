@@ -87,7 +87,7 @@ export default function PracticePage() {
 }
 
 function PracticePageContent() {
-  const { user, activeExam: contextExam, refreshUser, setIsTutorOpen, setTutorContextPrompt } = useApp();
+  const { user, activeExam: contextExam, refreshUser, setIsTutorOpen, setTutorContextPrompt, setActiveTestSession } = useApp();
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const typeParam = searchParams.get('type');
@@ -269,6 +269,25 @@ function PracticePageContent() {
     setLoading(false);
   }, [activeExam, selectedSkill, typeParam, mistakeId, resetAnswer]);
 
+  // Keep global activeTestSession in sync while question or subtest is in progress
+  useEffect(() => {
+    if (hasStarted && !result && currentQuestion) {
+      setActiveTestSession?.({
+        isActive: true,
+        title: `${selectedSkill.toUpperCase()}: ${currentQuestion.typeName || currentQuestion.title || 'Practice'}`,
+        skill: selectedSkill,
+        onStop: () => {
+          resetAnswer();
+        },
+      });
+    } else {
+      setActiveTestSession?.(null);
+    }
+    return () => {
+      setActiveTestSession?.(null);
+    };
+  }, [hasStarted, result, currentQuestion, selectedSkill, setActiveTestSession, resetAnswer]);
+
   const wordCount = writingWordCount(textAnswer);
   const minWords = currentQuestion ? minimumWritingWords(currentQuestion) : 20;
 
@@ -417,6 +436,7 @@ function PracticePageContent() {
 
   return (
     <div
+      data-practice-workspace
       className={`w-full ${isReading && !isAdminUser
           ? 'min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] lg:overflow-hidden'
           : 'min-h-[calc(100vh-4rem)]'

@@ -356,7 +356,12 @@ export default function OnboardingFlow({
 
       {/* Main Flow Content Container */}
       <div className="flex flex-1 flex-col justify-between overflow-y-auto">
-        <OnboardingProgress current={stepIndex + 1} total={STEPS.length} progress={progress} />
+        <OnboardingProgress
+          current={stepIndex + 1}
+          total={STEPS.length}
+          progress={progress}
+          onExit={preview ? onDone : undefined}
+        />
 
         {/* Content Body: Centered Container */}
         <main className="mx-auto flex w-full max-w-5xl flex-1 items-center justify-center px-4 py-8 sm:px-8 lg:px-12">

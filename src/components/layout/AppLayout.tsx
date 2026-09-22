@@ -1,9 +1,7 @@
 import React, { useState, lazy, Suspense, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { AlertTriangle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { useLocation } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
+import { useToast } from '@/components/ui/toast';
 import AppSidebar from './AppSidebar';
 import Header from './Header';
 import RequireAuth from '@/components/auth/RequireAuth';
@@ -30,25 +28,8 @@ const PROTECTED_PREFIXES = [
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
-  const { user, loading, activeTestSession, setActiveTestSession } = useApp();
-  const [showLeaveModal, setShowLeaveModal] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
-
-  const handleConfirmLeave = async () => {
-    try {
-      if (activeTestSession?.onStop) {
-        await activeTestSession.onStop();
-      }
-    } finally {
-      setActiveTestSession(null);
-      setShowLeaveModal(false);
-      if (pendingNavigation) {
-        navigate(pendingNavigation);
-        setPendingNavigation(null);
-      }
-    }
-  };
+  const { user, loading, activeTestSession } = useApp();
+  const toast = useToast();
 
   const handleContainerClickCapture = (e: React.MouseEvent) => {
     if (!activeTestSession?.isActive) return;
@@ -56,8 +37,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const target = e.target as HTMLElement | null;
     if (!target) return;
 
-    // Allowed areas: inside the practice workspace or leave dialog itself
-    if (target.closest('[data-practice-workspace]') || target.closest('[data-leave-modal]')) {
+    // Allowed areas: inside the active practice / test workspace
+    if (target.closest('[data-practice-workspace]')) {
       return;
     }
 
@@ -67,17 +48,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
         e.preventDefault();
         e.stopPropagation();
-        setPendingNavigation(href);
-        setShowLeaveModal(true);
+        toast.error('Finish the exercise first', 'Please complete or submit your current exercise before navigating away.');
         return;
       }
     }
 
-    const navButton = target.closest('button[data-nav]');
-    if (navButton) {
-      e.preventDefault();
-      e.stopPropagation();
-      setShowLeaveModal(true);
+    const button = target.closest('button');
+    if (button) {
+      if (
+        button.closest('aside') ||
+        button.closest('nav') ||
+        button.closest('header') ||
+        button.closest('[data-sidebar]') !== null ||
+        button.getAttribute('data-nav') !== null
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        toast.error('Finish the exercise first', 'Please complete or submit your current exercise before navigating away.');
+        return;
+      }
     }
   };
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

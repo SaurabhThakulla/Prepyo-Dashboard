@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Check, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, X, type LucideIcon } from 'lucide-react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 
@@ -88,7 +88,18 @@ export function OnboardingSidebar({
   );
 }
 
-export function OnboardingProgress({ current, total, progress }: { current: number; total: number; progress: string }) {
+export function OnboardingProgress({
+  current,
+  total,
+  progress,
+  onExit,
+}: {
+  current: number;
+  total: number;
+  progress: string;
+  /** Shown only in admin preview mode, so the flow can be left mid-way. */
+  onExit?: () => void;
+}) {
   return (
     <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/90 px-5 py-4 backdrop-blur sm:px-10 lg:px-12">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-5">
@@ -98,7 +109,18 @@ export function OnboardingProgress({ current, total, progress }: { current: numb
             <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-[width] duration-500 ease-out" style={{ width: progress }} />
           </div>
         </div>
-        <span className="hidden text-xs font-medium text-slate-400 sm:block">Your personal prep plan</span>
+        {onExit ? (
+          <button
+            type="button"
+            onClick={onExit}
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+          >
+            <X className="h-3.5 w-3.5" />
+            Exit preview
+          </button>
+        ) : (
+          <span className="hidden text-xs font-medium text-slate-400 sm:block">Your personal prep plan</span>
+        )}
       </div>
     </header>
   );
