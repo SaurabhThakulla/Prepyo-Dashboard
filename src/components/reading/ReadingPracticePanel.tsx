@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { AlertCircle, Bot, CheckCircle2, RefreshCw, Send, Shuffle, Square, Play } from 'lucide-react';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
 import { api, ApiError } from '@/lib/api';
@@ -11,7 +11,7 @@ import { useReadingPractice, useReadingTypes } from '@/lib/hooks/useReading';
 import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
 import { READING_TYPES, typeIdsFor, needsParagraphLabels, familyOf } from '@/lib/readingTypes';
-import { ExamType, ReadingTaskType } from '@/lib/types';
+import { ExamType, ReadingGroup, ReadingTaskType } from '@/lib/types';
 import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
 import { ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 
@@ -233,6 +233,23 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam }
     setIsTutorOpen(true);
   };
 
+  const requestedTypeIds = useMemo(
+    () => (initialTypeKey ? typeIdsFor(initialTypeKey) : []),
+    [initialTypeKey],
+  );
+
+  const displayedGroups = useMemo<ReadingGroup[]>(() => {
+    if (!set) return [];
+    if (requestedTypeIds.length === 0) return set.groups;
+    const matching = set.groups.filter((group: ReadingGroup) => requestedTypeIds.includes(group.typeId));
+    return matching.length > 0 ? matching : set.groups;
+  }, [set, requestedTypeIds]);
+
+  const displayedQuestionCount = useMemo(
+    () => displayedGroups.reduce((sum: number, g: ReadingGroup) => sum + g.questions.length, 0),
+    [displayedGroups],
+  );
+
   const linked = firstAvailable(typeIdsFor(initialTypeKey), types);
   const targetTypeId = linked ?? currentTypeId ?? types[0]?.typeId;
 
@@ -275,7 +292,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam }
     );
   }
 
-  const hasPassage = Boolean(set.passage && set.groups[0]?.passageDisplay !== 'hidden');
+  const hasPassage = Boolean(set.passage && displayedGroups[0]?.passageDisplay !== 'hidden');
 
   return (
     <div data-practice-workspace className="relative w-full min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] p-0 m-0 flex flex-col bg-background lg:overflow-hidden">
@@ -288,8 +305,8 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam }
                 passage={set.passage!}
                 scroll={true}
                 passageNumber={1}
-                questionRange={`Questions 1–${practice.totalQuestions}`}
-                showLabels={set.groups.some(group => needsParagraphLabels(group.typeId))}
+                questionRange={`Questions 1–${displayedQuestionCount || practice.totalQuestions}`}
+                showLabels={displayedGroups.some((group: ReadingGroup) => needsParagraphLabels(group.typeId))}
               />
             </div>
           )}
@@ -297,12 +314,12 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam }
           {/* Right Pane: Questions & Answer Cards (Independent scroll only) */}
           <div className={`w-full ${hasPassage ? 'lg:w-1/2' : 'lg:w-full'} lg:h-full min-h-0 flex flex-col lg:overflow-hidden`}>
             <div className="flex-1 min-h-0 lg:overflow-y-auto px-3 lg:pl-1 lg:pr-2 space-y-2 scrollbar-thin">
-              {set.groups.map((group, index) => (
+              {displayedGroups.map((group: ReadingGroup, index: number) => (
                 <ReadingGroupCard
                   key={group.id}
                   group={group}
                   startNumber={
-                    set.groups.slice(0, index).reduce((sum, earlier) => sum + earlier.questions.length, 1)
+                    displayedGroups.slice(0, index).reduce((sum: number, earlier: ReadingGroup) => sum + earlier.questions.length, 1)
                   }
                   answers={practice.answers}
                   results={practice.results}
