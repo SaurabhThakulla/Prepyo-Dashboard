@@ -7,6 +7,8 @@ import Header from './Header';
 import RequireAuth from '@/components/auth/RequireAuth';
 import { shouldShowOnboarding } from '@/components/onboarding/onboarding';
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
+import { useClipboardGuard } from '@/lib/hooks/useClipboardGuard';
+import { isAdmin } from '@/lib/types';
 
 const AITutorDrawer = lazy(() => import('@/components/ai/AITutorDrawer'));
 
@@ -30,6 +32,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const { user, loading, activeTestSession } = useApp();
   const toast = useToast();
+
+  useClipboardGuard(!isAdmin(user), () =>
+    toast.info('Pasting is turned off', 'Type your answer yourself, the way you will in the exam.'),
+  );
 
   const handleContainerClickCapture = (e: React.MouseEvent) => {
     if (!activeTestSession?.isActive) return;

@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 import '@/lib/google';
 import { ExamType, NotificationItem, UserProfile } from '@/lib/types';
@@ -86,6 +86,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [activeTestSession?.isActive]);
 
 
+  const themeSwitchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (themeSwitchTimer.current !== null) clearTimeout(themeSwitchTimer.current);
+  }, []);
+
   // Theme is the one piece of state that legitimately lives in the browser: it
   // is a display preference, not account data.
   useEffect(() => {
@@ -98,7 +103,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setTheme = useCallback((next: 'light' | 'dark') => {
     setThemeState(next);
     localStorage.setItem('prepyo-theme', next);
-    document.documentElement.classList.toggle('dark', next === 'dark');
+
+    // Roughly 180 elements animate their own colours, each with its own
+    // duration, so switching theme used to sweep across the page component by
+    // component. Suspending those transitions for the swap makes the whole
+    // page change at once; they are restored on the next frame.
+    const root = document.documentElement;
+    root.classList.add('theme-switching');
+    root.classList.toggle('dark', next === 'dark');
+
+    if (themeSwitchTimer.current !== null) clearTimeout(themeSwitchTimer.current);
+    const release = () => {
+      themeSwitchTimer.current = null;
+      root.classList.remove('theme-switching');
+    };
+    // A frame for the new colours to paint, and a timer in case frames are
+    // throttled (a background tab never gets one).
+    requestAnimationFrame(() => requestAnimationFrame(release));
+    themeSwitchTimer.current = setTimeout(release, 120);
   }, []);
 
   const toggleTheme = useCallback(() => {

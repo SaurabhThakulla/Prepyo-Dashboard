@@ -569,6 +569,7 @@ function PracticePageContent() {
                   audioUrl={currentQuestion.audioUrl}
                   audioTranscript={currentQuestion.audioTranscript}
                   title={currentQuestion.title}
+                  allowTranscript={result !== null}
                 />
 
                 {currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && (
