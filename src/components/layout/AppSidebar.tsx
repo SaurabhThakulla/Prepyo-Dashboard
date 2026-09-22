@@ -65,12 +65,14 @@ export default function AppSidebar({
     [readingTypes.data],
   );
 
+  const hasMistake = Boolean(searchParams.get('mistake'));
   const sections = buildSections(
     activeExam,
     () => setIsTutorOpen(true),
     user,
     availableReadingTypes,
     readingTypes.data?.mockPassageCount ?? 0,
+    hasMistake,
   );
   const currentSection = sections.find(section => section.id === activeSection) ?? sections[0];
 

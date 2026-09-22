@@ -113,6 +113,11 @@ describe('the practice menu for an admin', () => {
     expect(pteItems.filter(item => item.group === 'Writing').map(i => i.label)).toEqual([
       'Summarise Written Text',
       'Write Essay',
+    ]);
+    const pteMistakeItems = buildSections('PTE', () => { }, admin, undefined, 0, true).find(s => s.id === 'practice')?.items ?? [];
+    expect(pteMistakeItems.filter(item => item.group === 'Writing').map(i => i.label)).toEqual([
+      'Summarise Written Text',
+      'Write Essay',
       'Repeated Essay Questions',
     ]);
     expect(pteItems.find(i => i.label === 'Read Aloud')?.href).toBe('/practice?skill=speaking&type=readaloud');

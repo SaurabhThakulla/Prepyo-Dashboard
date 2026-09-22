@@ -93,6 +93,7 @@ export function buildSections(
   user?: UserProfile | null,
   availableReadingTypes?: string[],
   mockPassageCount = 0,
+  hasMistake = false,
 ): PrimarySectionConfig[] {
   const isPTE = activeExam === 'PTE';
 
@@ -126,7 +127,7 @@ export function buildSections(
         isAdmin(user ?? null)
           ? {
               href: '/admin/payments',
-              label: 'Purchase requests',
+              label: 'Plan Management',
               icon: CreditCard,
               sublabel: 'Approve payments and grant plans',
               badge: 'Admin',
@@ -177,7 +178,14 @@ export function buildSections(
       // own shape, straight from the syllabus, so PTE and IELTS each list their
       // own tasks and a change there needs no edit here.
       items: PRACTICE_SKILLS.flatMap(({ skill, label, icon, sublabel }) => {
-        const names = SYLLABUS[activeExam][skill] ?? [];
+        const rawNames = SYLLABUS[activeExam][skill] ?? [];
+        const isRepeatedEssay = (n: string) => /repeated\s*essay/i.test(n);
+        const names = rawNames.filter(name => {
+          if (isRepeatedEssay(name)) {
+            return hasMistake;
+          }
+          return true;
+        });
 
         if (isAdmin(user ?? null)) {
           return names.map(name => ({
