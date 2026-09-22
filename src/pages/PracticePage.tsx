@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import AudioRecorder from '@/components/practice/AudioRecorder';
 import PromptAudio from '@/components/practice/PromptAudio';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
+import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
 import { isWordHighlightTask } from '@/lib/listening';
 import { allowsMultipleChoices } from '@/lib/choices';
 import { minimumWritingWords, writingWordCount } from '@/lib/writing';
@@ -89,6 +90,7 @@ function PracticePageContent() {
   const { user, activeExam: contextExam, refreshUser, setIsTutorOpen, setTutorContextPrompt } = useApp();
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
+  const typeParam = searchParams.get('type');
   const mistakeId = searchParams.get('mistake') || undefined;
   const linkedExam = searchParams.get('exam');
   const activeExam = mistakeId && (linkedExam === 'IELTS' || linkedExam === 'PTE') ? linkedExam : contextExam;
@@ -164,7 +166,25 @@ function PracticePageContent() {
 
         const all = data.questions ?? [];
         const list = typeParam && !mistakeId
-          ? all.filter(question => matchesTypeKey(question.typeName, typeParam))
+          ? all.filter(question => {
+              const matched =
+                matchesTypeKey(question.typeName, typeParam) ||
+                matchesTypeKey(question.typeId, typeParam);
+              if (!matched) return false;
+
+              const paramNorm = typeParam.toLowerCase();
+              const isSingleParam = paramNorm.includes('single') || paramNorm.includes('mcsa');
+              const isMultiParam = !isSingleParam && (paramNorm.includes('multiple') || paramNorm.includes('mcma'));
+
+              if (isSingleParam && allowsMultipleChoices(question)) {
+                return false;
+              }
+              if (isMultiParam && !allowsMultipleChoices(question)) {
+                return false;
+              }
+
+              return true;
+            })
           : all;
 
         if (list.length === 0) {
@@ -240,7 +260,6 @@ function PracticePageContent() {
 
   const isReading = selectedSkill === 'reading';
   const isAdminUser = isAdmin(user);
-  const typeParam = searchParams.get('type');
 
   // When switching exam, skill, subtask, or mistake, reset state cleanly without querying backend/database.
   useEffect(() => {
@@ -533,9 +552,20 @@ function PracticePageContent() {
                 />
 
                 {currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && (
-                  <div className="p-4 rounded-xl bg-background border border-border text-xs sm:text-sm text-foreground leading-relaxed max-h-60 overflow-y-auto">
-                    {currentQuestion.contextPassage}
-                  </div>
+                  passageHasGaps(currentQuestion.contextPassage) ? (
+                    <InlineBlankPassage
+                      passage={currentQuestion.contextPassage}
+                      blanks={currentQuestion.blanks}
+                      responses={blankResponses}
+                      disabled={submitting || result !== null}
+                      reviewBlanks={result?.review?.blanks}
+                      onChange={setBlankResponses}
+                    />
+                  ) : (
+                    <div className="p-4 rounded-xl bg-background border border-border text-xs sm:text-sm text-foreground leading-relaxed max-h-60 overflow-y-auto">
+                      {currentQuestion.contextPassage}
+                    </div>
+                  )
                 )}
 
                 {/* Question Inputs */}
@@ -632,7 +662,7 @@ function PracticePageContent() {
                   </div>
                 )}
 
-                {currentQuestion.blanks && currentQuestion.blanks.length > 0 && (
+                {!passageHasGaps(currentQuestion.contextPassage) && currentQuestion.blanks && currentQuestion.blanks.length > 0 && (
                   <div className="space-y-3 pt-2">
                     <h4 className="text-xs font-bold text-foreground">Fill each blank:</h4>
                     {currentQuestion.blanks.map((b, idx) => (

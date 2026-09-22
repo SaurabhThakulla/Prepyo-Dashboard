@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/toast';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
 import { matchesTypeKey } from '@/lib/syllabus';
+import { allowsMultipleChoices } from '@/lib/choices';
 import { minimumWritingWords, writingWordCount } from '@/lib/writing';
 import { useQuestions } from '@/lib/hooks/useResources';
 import { Evaluation, PracticeAttempt, Question, SkillType } from '@/lib/types';
@@ -93,7 +94,25 @@ export function usePracticeSession() {
   const questions = useMemo(() => {
     const all = questionsQuery.data?.questions ?? [];
     if (!typeParam) return all;
-    const ofType = all.filter(question => matchesTypeKey(question.typeName, typeParam));
+    const ofType = all.filter(question => {
+      const matched =
+        matchesTypeKey(question.typeName, typeParam) ||
+        matchesTypeKey(question.typeId, typeParam);
+      if (!matched) return false;
+
+      const paramNorm = typeParam.toLowerCase();
+      const isSingleParam = paramNorm.includes('single') || paramNorm.includes('mcsa');
+      const isMultiParam = !isSingleParam && (paramNorm.includes('multiple') || paramNorm.includes('mcma'));
+
+      if (isSingleParam && allowsMultipleChoices(question)) {
+        return false;
+      }
+      if (isMultiParam && !allowsMultipleChoices(question)) {
+        return false;
+      }
+
+      return true;
+    });
     return ofType.length > 0 ? ofType : all;
   }, [questionsQuery.data, typeParam]);
 

@@ -113,6 +113,30 @@ describe('PTE listening answer controls', () => {
       selectedOptions: ['w2'],
     })));
   });
+
+  it('renders inline blank inputs directly inside passage and hides separate blanks div', async () => {
+    const submit = await startListening('listeningfillinblanks', 'Listening Fill in the Blanks', {
+      contextPassage: 'Carbon dioxide enters the [[b1]] and reaches the [[b2]].',
+      blanks: [{ id: 'b1' }, { id: 'b2' }],
+    });
+    // Separate blanks div must not be shown
+    expect(screen.queryByText('Fill each blank:')).toBeNull();
+    // Inline blank inputs inside passage must be present
+    const blank1 = screen.getByRole('textbox', { name: 'Blank 1' });
+    const blank2 = screen.getByRole('textbox', { name: 'Blank 2' });
+    expect(blank1).toBeDefined();
+    expect(blank2).toBeDefined();
+    expect((submit as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(blank1, { target: { value: 'atmosphere' } });
+    fireEvent.change(blank2, { target: { value: 'ground' } });
+    expect((submit as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(submit);
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/practice/attempts', expect.objectContaining({
+      blankResponses: { b1: 'atmosphere', b2: 'ground' },
+    })));
+  });
 });
 
 describe('writing minimum on the routed page', () => {
