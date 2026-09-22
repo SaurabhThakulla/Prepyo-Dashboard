@@ -93,7 +93,7 @@ export const TASK_TYPES: TaskType[] = [
   },
   {
     id: 'fill-in-blanks-rw',
-    name: 'Fill in the Blanks Reading & Writing',
+    name: 'Fill in the Blanks (Dropdown)',
     style: 'blanks',
     exam: 'PTE',
     hint: 'Rewrite a part of the passage with gaps, each written [[b1]], [[b2]] … Every gap gets its own dropdown choices.',

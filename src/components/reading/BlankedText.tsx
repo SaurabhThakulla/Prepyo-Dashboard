@@ -1,16 +1,20 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import {
+  CollisionDetection,
   DndContext,
   DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
+  rectIntersection,
   useDraggable,
   useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { Blank, ReadingParagraph } from '@/lib/types';
 
 interface BlankedTextProps {
@@ -64,6 +68,13 @@ export default function BlankedText({
     useSensor(KeyboardSensor),
   );
 
+  // The word being dragged, drawn in an overlay so the scrolling question
+  // column cannot clip it on its way up to the text.
+  const [dragging, setDragging] = useState<string | null>(null);
+  // A drop is followed by a click on the chip that was dragged; without this it
+  // would pick the word straight back up.
+  const justDropped = useRef(false);
+
   const place = (blankId: string, word: string) => {
     if (disabled) return;
     onChange({ ...value, [blankId]: word });
@@ -77,7 +88,17 @@ export default function BlankedText({
     onChange(next);
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setArmed(null);
+    setDragging(String(event.active.id).replace(/^word:/, ''));
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setDragging(null);
+    justDropped.current = true;
+    setTimeout(() => {
+      justDropped.current = false;
+    }, 0);
     const { active, over } = event;
     if (!over) return;
     place(String(over.id), String(active.id).replace(/^word:/, ''));
@@ -97,8 +118,13 @@ export default function BlankedText({
         const answered = value[blank.id] ?? '';
         const verdict = correct ? sameWord(answered, correct[blank.id]) : undefined;
 
-        // Its own options means the choice is per gap: a dropdown.
-        if (blank.options && blank.options.length > 0) {
+        // A word bank means drag and drop, full stop. Some Reading gap-fills
+        // were saved with a list on every gap as well, and letting those win
+        // put a dropdown on a task that has none in the exam.
+        const hasBank = Boolean(wordBank && wordBank.length > 0);
+
+        // Otherwise its own options means the choice is per gap: a dropdown.
+        if (!hasBank && blank.options && blank.options.length > 0) {
           return (
             <span key={index} className="relative inline-flex items-center align-middle mx-1 my-0.5 group">
               <select
@@ -160,7 +186,13 @@ export default function BlankedText({
   if (!wordBank || wordBank.length === 0) return body;
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={dropUnderPointer}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setDragging(null)}
+    >
       <div className="space-y-4">
         {body}
 
@@ -172,10 +204,21 @@ export default function BlankedText({
               spent={used.has(word.text)}
               armed={armed === word.text}
               disabled={disabled}
-              onArm={() => setArmed(armed === word.text ? null : word.text)}
+              onArm={() => {
+                if (justDropped.current) return;
+                setArmed(armed === word.text ? null : word.text);
+              }}
             />
           ))}
         </div>
+
+        <DragOverlay dropAnimation={null}>
+          {dragging && (
+            <span className="inline-block cursor-grabbing rounded-lg border border-primary bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-lg ring-2 ring-primary/30">
+              {dragging}
+            </span>
+          )}
+        </DragOverlay>
 
         {correct && (
           <p className="text-[11px] text-muted-foreground">
@@ -227,7 +270,7 @@ interface WordChipProps {
 }
 
 function WordChip({ word, spent, armed, disabled, onArm }: WordChipProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `word:${word}`,
     disabled: disabled || spent,
   });
@@ -240,19 +283,30 @@ function WordChip({ word, spent, armed, disabled, onArm }: WordChipProps) {
       {...listeners}
       disabled={disabled || spent}
       onClick={onArm}
-      style={{ transform: CSS.Translate.toString(transform) }}
+      // Without this a touch drag scrolls the page instead of moving the word.
+      style={{ touchAction: 'none' }}
       className={`rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
         spent
           ? 'opacity-40 bg-background border-border text-muted-foreground cursor-default'
           : armed
             ? 'bg-primary text-primary-foreground border-primary cursor-pointer'
             : 'bg-background border-border text-foreground hover:border-primary/40 cursor-grab active:cursor-grabbing'
-      } ${isDragging ? 'opacity-60' : ''}`}
+      } ${isDragging ? 'opacity-40 border-dashed' : ''}`}
     >
       {word}
     </button>
   );
 }
+
+/**
+ * The gap under the pointer wins. The gaps are small inline targets, so
+ * matching on how much of the word's box overlaps one misses drops that land
+ * squarely on it. Keyboard drags have no pointer and fall back to overlap.
+ */
+const dropUnderPointer: CollisionDetection = args => {
+  const hits = pointerWithin(args);
+  return hits.length > 0 ? hits : rectIntersection(args);
+};
 
 /**
  * Gap answers are compared the way the server compares them: case and

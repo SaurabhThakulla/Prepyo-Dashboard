@@ -62,7 +62,7 @@ describe('the reading dashboard', () => {
     const pte = SYLLABUS.PTE.reading ?? [];
 
     for (const name of [
-      'Fill in the Blanks Reading & Writing',
+      'Fill in the Blanks (Dropdown)',
       'Reading Fill in the Blanks',
       'Reorder Paragraph',
     ]) {

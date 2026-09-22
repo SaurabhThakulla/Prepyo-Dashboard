@@ -257,7 +257,7 @@ export function useReadingMock(exam: ExamType, onGraded?: (attempt: MockAttempt)
       return true;
     } catch (err) {
       if (err instanceof ApiError && err.isLimitReached) {
-        toast.warning('Mock limit reached', errorMessage(err));
+        toast.warning('Not enough sub-tests left today', errorMessage(err));
       } else {
         toast.error('Could not start the reading mock', errorMessage(err));
       }

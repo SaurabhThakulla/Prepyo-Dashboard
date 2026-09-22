@@ -67,7 +67,9 @@ export const TYPE_BY_SYLLABUS_KEY: Record<string, string | string[]> = {
   arrangepassage: READING_TYPES.arrangePassage,
 
 
-  // PTE Reading tasks
+  // PTE Reading tasks. The Reading & Writing keys stay so old links and
+  // saved mistakes still resolve after the rename to Pearson's current name.
+  fillinblanksdropdown: READING_TYPES.fillBlanksRW,
   fillblanksreadingwriting: READING_TYPES.fillBlanksRW,
   fillinblanksreadingwriting: READING_TYPES.fillBlanksRW,
   readingwritingfillinblanks: READING_TYPES.fillBlanksRW,
