@@ -156,7 +156,7 @@
           "description": "Read paragraphs, choose multiple choices, and solve sentence re-ordering and fill-in-blanks",
           "topics": [
             {
-              "name": "Fill in the Blanks Reading & Writing",
+              "name": "Fill in the Blanks (Dropdown)",
               "simpleDescription": "Select the best word from drop-down menus to complete sentences in a reading text"
             },
             {

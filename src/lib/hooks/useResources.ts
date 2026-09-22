@@ -40,7 +40,7 @@ export function useMockAttempts() {
   });
 }
 
-export function useMistakeAnalytics(exam: ExamType, period: 'weekly' | 'monthly' | 'lifetime') {
+export function useMistakeAnalytics(exam: ExamType, period: 'weekly' | 'monthly') {
   return useQuery({
     queryKey: queryKeys.mistakeAnalytics(exam, period),
     queryFn: () =>
@@ -55,7 +55,7 @@ export function useMistakes(
   exam: ExamType,
   skill: string,
   unresolvedOnly: boolean,
-  period?: 'weekly' | 'monthly' | 'lifetime'
+  period?: 'weekly' | 'monthly'
 ) {
   return useQuery({
     queryKey: queryKeys.mistakes(exam, skill, unresolvedOnly, period),

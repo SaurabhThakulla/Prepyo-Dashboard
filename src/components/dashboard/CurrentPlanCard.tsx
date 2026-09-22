@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, ArrowRight, ShieldCheck, Zap, Gift } from 'lucide-react';
+import { ArrowRight, Gift } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { UserProfile } from '@/lib/types';
@@ -10,6 +10,29 @@ interface CurrentPlanCardProps {
   user?: UserProfile | null;
 }
 
+/** "2026-09-23" → "Sep 23, 2026", and whole days from today (null if unparseable). */
+function describeValidUntil(value?: string): { label: string; daysLeft: number | null } | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return { label: value, daysLeft: null };
+  const end = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return {
+    label: end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    daysLeft: Math.round((end.getTime() - today.getTime()) / 86_400_000),
+  };
+}
+
+type Tone = 'ok' | 'low' | 'out';
+
+/** Low once a fifth or less is left, out at zero. */
+function toneFor(remaining: number, limit: number): Tone {
+  if (remaining <= 0) return 'out';
+  if (limit > 0 && remaining / limit <= 0.2) return 'low';
+  return 'ok';
+}
+
 export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
   const sub = user?.subscription;
   if (!sub) return <CurrentPlanCardSkeleton />;
@@ -17,157 +40,210 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
   const planName = formatPlanName(sub.planName || sub.planId);
   const isActive = sub.isActive;
   const isFree = sub.planId === 'free';
-  const validUntil = sub.validUntil;
+  const validity = describeValidUntil(sub.validUntil);
 
   const subTestsUsed = sub.dailySubTestsUsed ?? sub.dailyEvaluationsUsed ?? 0;
   const subTestsLimit = sub.dailySubTestsLimit ?? sub.dailyEvaluationsLimit ?? 0;
   const subTestsRemaining = Math.max(0, subTestsLimit - subTestsUsed);
-  const subTestsPercent = Math.min(100, Math.round((subTestsUsed / Math.max(1, subTestsLimit)) * 100));
 
   const mocksUsed = sub.mockTestsUsed;
   const mocksLimit = sub.totalMockTestsAllowed;
   const mocksRemaining = Math.max(0, mocksLimit - mocksUsed);
-  const mocksPercent = Math.min(100, Math.round((mocksUsed / Math.max(1, mocksLimit)) * 100));
 
   return (
-    <div className="w-full relative overflow-hidden bg-card dark:bg-[#12161c] border border-border/80 dark:border-white/10 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-md transition-all duration-300">
-      {/* Decorative ambient gradient backdrop */}
-      <div className="absolute top-0 right-0 -mt-12 -mr-12 w-64 h-64 bg-gradient-to-br from-primary/10 via-indigo-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-1/4 -mb-12 w-48 h-48 bg-gradient-to-tr from-blue-500/5 to-transparent rounded-full blur-2xl pointer-events-none" />
+    <div className="relative w-full overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-shadow duration-300 hover:shadow-md dark:border-white/10 dark:bg-[#12161c] sm:p-6">
+      <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-gradient-to-br from-primary/10 via-indigo-500/10 to-transparent blur-3xl" />
 
-      <div className="relative z-10 flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-6">
-        {/* Left: Plan details */}
-        <div className="flex items-start sm:items-center gap-3.5 min-w-0 shrink-0">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary/15 to-indigo-500/15 dark:from-primary/25 dark:to-indigo-500/25 border border-primary/25 flex items-center justify-center text-primary shrink-0 shadow-xs">
-            <Sparkles className="w-5 h-5" />
+      <div className="relative z-10 grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-center">
+        {/* Plan */}
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-indigo-600 text-white shadow-md shadow-primary/20">
+            <PlanBadgeIcon className="h-8 w-8" />
           </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
-                Your Current Plan
+                Your plan
               </span>
               {isActive ? (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-700/50">
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/60 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:border-emerald-700/50 dark:bg-emerald-950/50 dark:text-emerald-300">
                   <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   </span>
                   Active
                 </span>
               ) : (
-                <Badge variant="destructive" className="text-[10px] px-2 py-0.5">
+                <Badge variant="destructive" className="px-2 py-0.5 text-[10px]">
                   Expired
                 </Badge>
               )}
-              {sub && sub.bonusDays > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200/60 dark:border-amber-900/40">
-                  <Gift className="w-3 h-3" />
-                  <span>+{sub.bonusDays} bonus days</span>
+              {sub.bonusDays > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-amber-200/60 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-400">
+                  <Gift className="h-3 w-3" />+{sub.bonusDays} bonus days
                 </span>
               )}
             </div>
-            <h3 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-              {planName}
-            </h3>
-            <p className="text-xs text-muted-foreground font-medium">
-              {validUntil ? `Valid until ${validUntil}` : isFree ? 'Standard starter tier' : 'Active subscription'}
+            <h3 className="truncate font-display text-2xl font-black tracking-tight text-foreground">{planName}</h3>
+            <p className="text-xs font-medium text-muted-foreground">
+              {validity ? (
+                <>
+                  Until {validity.label}
+                  {validity.daysLeft !== null && validity.daysLeft >= 0 && (
+                    <span
+                      className={`ml-1.5 font-bold ${
+                        validity.daysLeft <= 5 ? 'text-amber-600 dark:text-amber-400' : 'text-foreground/70'
+                      }`}
+                    >
+                      · {validity.daysLeft === 0 ? 'ends today' : `${validity.daysLeft} day${validity.daysLeft === 1 ? '' : 's'} left`}
+                    </span>
+                  )}
+                </>
+              ) : isFree ? (
+                'Free forever'
+              ) : (
+                'Active subscription'
+              )}
             </p>
           </div>
         </div>
 
-        {/* Middle: Quota Progress Meters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0 flex-1">
-          {/* Sub-test Meter Card */}
-          <div className="p-3.5 rounded-xl bg-muted/40 dark:bg-zinc-900/50 border border-border/70 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                <Zap className="w-4 h-4 text-indigo-500" />
-                Sub-tests today
-              </span>
-              <span className="font-mono font-extrabold text-foreground text-sm">
-                {subTestsUsed} <span className="text-muted-foreground font-normal text-xs">/ {subTestsLimit}</span>
-              </span>
-            </div>
-            <div className="w-full h-2.5 bg-muted-foreground/15 dark:bg-zinc-800 rounded-full overflow-hidden p-0.5">
-              <div
-                className="h-full bg-gradient-to-r from-primary to-indigo-500 rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${subTestsPercent}%` }}
-              />
-            </div>
-            <div className="flex justify-between text-[11px] text-muted-foreground font-medium">
-              <span>{subTestsRemaining} practice sub-tests left today</span>
-              <span className="font-semibold">{subTestsPercent}%</span>
-            </div>
-          </div>
+        <QuotaGauge
+          title="Practice sub-tests"
+          remaining={subTestsRemaining}
+          limit={subTestsLimit}
+          period="today"
+          hint="Resets at midnight"
+          accent="text-indigo-500"
+        />
 
-          {/* Mock Exams Meter Card */}
-          <div className="p-3.5 rounded-xl bg-muted/40 dark:bg-zinc-900/50 border border-border/70 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                <ShieldCheck className="w-4 h-4 text-violet-500" />
-                Mock tests used
-              </span>
-              <span className="font-mono font-extrabold text-foreground text-sm">
-                {mocksUsed} <span className="text-muted-foreground font-normal text-xs">/ {mocksLimit}</span>
-              </span>
-            </div>
-            <div className="w-full h-2.5 bg-muted-foreground/15 dark:bg-zinc-800 rounded-full overflow-hidden p-0.5">
-              <div
-                className="h-full bg-gradient-to-r from-violet-500 to-purple-600 rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${mocksPercent}%` }}
-              />
-            </div>
-            <div className="flex justify-between text-[11px] text-muted-foreground font-medium">
-              <span>{mocksRemaining} full mock tests left</span>
-              <span className="font-semibold">{mocksPercent}%</span>
-            </div>
-          </div>
-        </div>
+        <QuotaGauge
+          title="Full mock tests"
+          remaining={mocksRemaining}
+          limit={mocksLimit}
+          period={isFree ? 'in total' : 'this month'}
+          hint={isFree ? 'Included with your account' : 'Renews on the 1st'}
+          accent="text-violet-500"
+        />
 
-        {/* Right: Action Button */}
-        <div className="flex items-center lg:justify-end shrink-0">
-          <Button
-            asChild
-            variant={isFree ? 'nepal' : 'outline'}
-            size="default"
-            className="w-full sm:w-auto font-bold px-5 h-10 rounded-xl group/btn shadow-xs text-xs sm:text-sm"
-          >
-            <Link to="/subscription">
-              <span className="flex items-center gap-2">
-                {isFree ? 'Upgrade' : 'Manage Subscription & Quotas'}
-              </span>
-              <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
-            </Link>
-          </Button>
-        </div>
+        <Button
+          asChild
+          variant={isFree ? 'nepal' : 'outline'}
+          className="group/btn h-11 w-full rounded-xl px-5 text-sm font-bold shadow-xs lg:w-auto"
+        >
+          <Link to="/subscription">
+            {isFree ? 'Upgrade plan' : 'Manage plan'}
+            <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
+          </Link>
+        </Button>
       </div>
     </div>
   );
 }
 
+interface QuotaGaugeProps {
+  title: string;
+  remaining: number;
+  limit: number;
+  period: string;
+  hint: string;
+  /** Text colour class for the ring while there is plenty left. */
+  accent: string;
+}
+
+/** What is left, as the headline, with a ring that empties as it is used. */
+function QuotaGauge({ title, remaining, limit, period, hint, accent }: QuotaGaugeProps) {
+  const tone = toneFor(remaining, limit);
+  const fraction = limit > 0 ? remaining / limit : 0;
+  const radius = 20;
+  const circumference = 2 * Math.PI * radius;
+  const ring = tone === 'out' ? 'text-rose-500' : tone === 'low' ? 'text-amber-500' : accent;
+
+  return (
+    <div className="flex items-center gap-4 rounded-xl border border-border/70 bg-muted/40 p-3.5 dark:bg-zinc-900/50">
+      <div className="relative h-14 w-14 shrink-0">
+        <svg viewBox="0 0 48 48" className="h-full w-full -rotate-90" aria-hidden>
+          <circle cx="24" cy="24" r={radius} fill="none" strokeWidth="5" className="stroke-muted-foreground/15 dark:stroke-zinc-800" />
+          <circle
+            cx="24"
+            cy="24"
+            r={radius}
+            fill="none"
+            strokeWidth="5"
+            strokeLinecap="round"
+            stroke="currentColor"
+            strokeDasharray={`${Math.max(0, Math.min(1, fraction)) * circumference} ${circumference}`}
+            className={`${ring} transition-[stroke-dasharray] duration-500 ease-out`}
+          />
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center font-display text-sm font-extrabold text-foreground">
+          {remaining}
+        </span>
+      </div>
+
+      <div className="min-w-0">
+        <p className="text-xs font-bold text-foreground">{title}</p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          <span className="font-bold text-foreground">{remaining}</span> of {limit} left {period}
+        </p>
+        <p
+          className={`mt-0.5 text-[11px] font-semibold ${
+            tone === 'out'
+              ? 'text-rose-600 dark:text-rose-400'
+              : tone === 'low'
+                ? 'text-amber-600 dark:text-amber-400'
+                : 'text-muted-foreground/80'
+          }`}
+        >
+          {tone === 'out' ? `None left · ${hint.toLowerCase()}` : tone === 'low' ? `Running low · ${hint.toLowerCase()}` : hint}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** A rosette: the plan as something earned, not a sparkle. */
+function PlanBadgeIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
+      <path d="m8.5 13.5-2 7 5.5-2.5 5.5 2.5-2-7" fill="currentColor" fillOpacity={0.25} />
+      <circle cx="12" cy="9" r="6" fill="currentColor" fillOpacity={0.25} />
+      <path d="m12 6.2.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2L9.1 8.3l2-.3Z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 function CurrentPlanCardSkeleton() {
   return (
-    <div className="w-full relative overflow-hidden bg-card dark:bg-[#12161c] border border-border/80 dark:border-white/10 rounded-2xl p-5 sm:p-6 shadow-xs animate-pulse">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-11 h-11 rounded-2xl bg-muted" />
+    <div className="relative w-full animate-pulse overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs dark:border-white/10 dark:bg-[#12161c] sm:p-6">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-center">
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="h-14 w-14 rounded-2xl bg-muted" />
           <div className="space-y-2">
             <div className="h-2.5 w-24 rounded bg-muted" />
             <div className="h-5 w-32 rounded bg-muted" />
             <div className="h-3 w-28 rounded bg-muted" />
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
-          <div className="p-3.5 rounded-xl bg-muted/30 space-y-2">
-            <div className="h-3.5 w-28 rounded bg-muted" />
-            <div className="h-2.5 w-full rounded-full bg-muted" />
+        {[0, 1].map(i => (
+          <div key={i} className="flex items-center gap-4 rounded-xl bg-muted/30 p-3.5">
+            <div className="h-14 w-14 rounded-full bg-muted" />
+            <div className="space-y-2">
+              <div className="h-3 w-28 rounded bg-muted" />
+              <div className="h-2.5 w-20 rounded bg-muted" />
+            </div>
           </div>
-          <div className="p-3.5 rounded-xl bg-muted/30 space-y-2">
-            <div className="h-3.5 w-28 rounded bg-muted" />
-            <div className="h-2.5 w-full rounded-full bg-muted" />
-          </div>
-        </div>
-        <div className="w-full sm:w-32 h-10 rounded-xl bg-muted" />
+        ))}
+        <div className="h-11 w-full rounded-xl bg-muted lg:w-32" />
       </div>
     </div>
   );

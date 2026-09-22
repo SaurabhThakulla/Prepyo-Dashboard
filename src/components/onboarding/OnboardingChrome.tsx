@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, Check, X, type LucideIcon } from 'lucide-react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 
 export type OnboardingStep = {
@@ -9,8 +10,13 @@ export type OnboardingStep = {
   tagline: string;
 };
 
+/**
+ * Portalled to <body> so it always covers the app. The admin preview mounts it
+ * inside the admin page, where an ancestor's stacking context capped its
+ * z-index below the app header and sidebar, leaving them showing over the top.
+ */
 export function OnboardingLayout({ children }: { children: ReactNode }) {
-  return (
+  const overlay = (
     <div
       className="fixed inset-0 z-[80] flex overflow-hidden bg-[#fbfcff] text-slate-900 motion-safe:animate-in motion-safe:fade-in duration-300"
       role="dialog"
@@ -20,6 +26,7 @@ export function OnboardingLayout({ children }: { children: ReactNode }) {
       {children}
     </div>
   );
+  return typeof document === 'undefined' ? overlay : createPortal(overlay, document.body);
 }
 
 const STAGES = [
@@ -91,24 +98,76 @@ export function OnboardingSidebar({
 export function OnboardingProgress({
   current,
   total,
-  progress,
   onExit,
 }: {
   current: number;
   total: number;
-  progress: string;
+  /** Superseded by the per-step segments; kept so callers need not change. */
+  progress?: string;
   /** Shown only in admin preview mode, so the flow can be left mid-way. */
   onExit?: () => void;
 }) {
+  // One segment per step, grouped by stage, so the bar reads as "where am I
+  // in this section" as well as "how far overall". STAGES lists the steps in
+  // flow order, so the flat index lines up with `current`.
+  const index = current - 1;
+  let offset = 0;
+  const stages = STAGES.map(stage => {
+    const start = offset;
+    offset += stage.steps.length;
+    return { ...stage, start };
+  });
+  const activeStage =
+    stages.find(stage => index >= stage.start && index < stage.start + stage.steps.length) ?? stages[0];
+  const percent = Math.round((current / total) * 100);
+
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/90 px-5 py-4 backdrop-blur sm:px-10 lg:px-12">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-5">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <span className="text-xs font-semibold text-slate-500">Step {current} of {total}</span>
-          <div className="h-1.5 min-w-16 max-w-72 flex-1 overflow-hidden rounded-full bg-slate-100">
-            <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-[width] duration-500 ease-out" style={{ width: progress }} />
+    <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/90 px-5 py-3.5 backdrop-blur sm:px-10 lg:px-12">
+      {/* Three columns on wider screens so the bar sits dead centre whatever the
+          right-hand slot holds; on phones it just takes the free width. */}
+      <div className="mx-auto flex max-w-6xl items-center gap-4 sm:grid sm:grid-cols-[1fr_minmax(0,38rem)_1fr] sm:gap-6">
+        <div aria-hidden className="hidden sm:block" />
+        <div className="min-w-0 flex-1">
+          <div className="mb-2 flex items-baseline justify-between gap-3">
+            <span className="truncate text-xs font-bold text-slate-900">
+              {activeStage.label}
+              <span className="font-semibold text-slate-400"> · Step {current} of {total}</span>
+            </span>
+            <span className="shrink-0 text-xs font-bold tabular-nums text-blue-600">{percent}%</span>
+          </div>
+
+          <div
+            className="flex gap-2"
+            role="progressbar"
+            aria-valuemin={1}
+            aria-valuemax={total}
+            aria-valuenow={current}
+            aria-valuetext={`Step ${current} of ${total}: ${activeStage.label}`}
+          >
+            {stages.map(stage => (
+              <div key={stage.label} className="flex gap-1" style={{ flex: stage.steps.length }}>
+                {stage.steps.map((stepId, i) => {
+                  const position = stage.start + i;
+                  const done = position < index;
+                  const now = position === index;
+                  return (
+                    <span
+                      key={stepId}
+                      className={`relative h-2 flex-1 overflow-hidden rounded-full transition-colors duration-500 ${
+                        done ? 'bg-gradient-to-r from-blue-600 to-indigo-500' : now ? 'bg-blue-100' : 'bg-slate-100'
+                      }`}
+                    >
+                      {now && (
+                        <span className="absolute inset-y-0 left-0 w-1/2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 motion-safe:animate-pulse" />
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </div>
+        <div className="flex shrink-0 justify-end">
         {onExit ? (
           <button
             type="button"
@@ -119,8 +178,9 @@ export function OnboardingProgress({
             Exit preview
           </button>
         ) : (
-          <span className="hidden text-xs font-medium text-slate-400 sm:block">Your personal prep plan</span>
+          <span className="hidden text-xs font-medium text-slate-400 lg:block">Your personal prep plan</span>
         )}
+        </div>
       </div>
     </header>
   );

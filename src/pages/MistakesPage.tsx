@@ -275,7 +275,7 @@ export default function MistakesPage() {
   const toast = useToast();
   const [selectedSkill, setSelectedSkill] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [period, setPeriod] = useState<'weekly' | 'monthly' | 'lifetime'>('weekly');
+  const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly');
 
   // Both queries receive the active period so all components reflect it!
   const { data, isPending, error } = useMistakes(activeExam, selectedSkill, false, period);
@@ -333,7 +333,7 @@ export default function MistakesPage() {
   }));
 
   const periodLabel =
-    period === 'weekly' ? 'Past 7 Days' : period === 'monthly' ? 'Past 30 Days' : 'All-Time Lifetime';
+    period === 'weekly' ? 'Past 7 Days' : 'Past 4 Weeks';
 
   return (
     <div className="relative w-full pb-16 overflow-hidden">
@@ -364,7 +364,7 @@ export default function MistakesPage() {
 
             {/* Period Switcher Button Group */}
             <div className="flex bg-muted/60 p-1 rounded-xl border border-border/80 self-start sm:self-auto">
-              {(['weekly', 'monthly', 'lifetime'] as const).map(p => (
+              {(['weekly', 'monthly'] as const).map(p => (
                 <button
                   key={p}
                   onClick={() => setPeriod(p)}
@@ -374,7 +374,7 @@ export default function MistakesPage() {
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {p === 'weekly' ? 'Weekly (7d)' : p === 'monthly' ? 'Monthly (30d)' : 'Lifetime'}
+                  {p === 'weekly' ? 'Weekly' : 'Monthly'}
                 </button>
               ))}
             </div>

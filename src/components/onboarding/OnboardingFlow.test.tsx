@@ -137,7 +137,7 @@ describe('the first-run onboarding', () => {
     const onDone = renderFlow();
 
     await walkToPlan(user, { plan: /Prepyo Plus/ });
-    await user.click(screen.getByRole('button', { name: /continue to payment · NPR 299/i }));
+    await user.click(screen.getByRole('button', { name: /continue to payment/i }));
 
     await waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(completeOnboarding).toHaveBeenCalled();

@@ -1,24 +1,27 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  ArrowRight,
   Award,
   BookOpen,
   Bot,
-  Briefcase,
+  CalendarClock,
   CalendarDays,
   Check,
   CheckCircle2,
   Clock,
-  Compass,
   Crown,
   Flame,
   Globe,
-  GraduationCap,
   Headphones,
+  Lightbulb,
   Lock,
   LucideIcon,
+  MapPin,
+  Minus,
   Mic,
   PenTool,
+  Plus,
   RotateCcw,
   ShieldCheck,
   Sparkles,
@@ -78,6 +81,18 @@ import {
   skillLabel,
   toIsoDate,
 } from '@/components/onboarding/onboarding';
+import {
+  BriefcaseIcon,
+  FlagIcon,
+  ListeningIcon,
+  PassportIcon,
+  ReadingIcon,
+  RetakeIcon,
+  SpeakingIcon,
+  SproutIcon,
+  UniversityIcon,
+  WritingIcon,
+} from '@/components/onboarding/GoalIcons';
 
 const STEPS = [
   { id: 'welcome', pill: 'Your IELTS & PTE Copilot', label: 'Welcome', tagline: "Let's build a plan that fits you." },
@@ -109,9 +124,32 @@ const EXAMS: { id: ExamType; name: string; scale: string; blurb: string }[] = [
     id: 'PTE',
     name: 'PTE Academic',
     scale: 'Scores 10–90',
-    blurb: 'Computer-based exam with speech recognition & instant scoring engines.',
+    blurb: 'Computer-based exam with fast, consistent scoring.',
   },
 ];
+
+/** Exam-step look, and what Prepyo gives you for each exam (not claims about the exam itself). */
+const EXAM_STYLE: Record<
+  ExamType,
+  { facts: string[]; tile: string; soft: string; ring: string; wash: string; bar: string }
+> = {
+  IELTS: {
+    facts: ['All 4 skills', 'Band feedback in seconds'],
+    tile: 'bg-rose-600 text-white',
+    soft: 'bg-rose-50 text-rose-700',
+    ring: 'border-rose-600 ring-rose-600/20',
+    wash: 'from-rose-50',
+    bar: 'bg-rose-500',
+  },
+  PTE: {
+    facts: ['Every task type', 'Scored in seconds'],
+    tile: 'bg-blue-600 text-white',
+    soft: 'bg-blue-50 text-blue-700',
+    ring: 'border-blue-600 ring-blue-600/20',
+    wash: 'from-blue-50',
+    bar: 'bg-blue-600',
+  },
+};
 
 const UPCOMING_PREPARATIONS: {
   id: string;
@@ -150,48 +188,174 @@ const SKILL_ICONS: Record<SkillType, LucideIcon> = {
   listening: Headphones,
 };
 
-const GOAL_ICONS: Record<StudyGoal, LucideIcon> = {
-  university: GraduationCap,
-  migration: Compass,
-  work: Briefcase,
-  other: Sparkles,
+const GOAL_ICONS: Record<StudyGoal, React.ComponentType<{ className?: string }>> = {
+  university: UniversityIcon,
+  migration: PassportIcon,
+  work: BriefcaseIcon,
+  other: FlagIcon,
 };
 
-const FEATURES: { icon: LucideIcon; title: string; text: string; where?: string }[] = [
+/** Per goal: examples to scan, and full class strings so Tailwind keeps them. */
+const GOAL_STYLE: Record<StudyGoal, { examples: string[]; tile: string; soft: string; ring: string; wash: string }> = {
+  university: {
+    examples: ["Bachelor's", "Master's", 'PhD'],
+    tile: 'bg-blue-600 text-white',
+    soft: 'bg-blue-50 text-blue-600',
+    ring: 'border-blue-600 ring-blue-600/20',
+    wash: 'from-blue-50',
+  },
+  migration: {
+    examples: ['PR', 'Skilled visa', 'Partner visa'],
+    tile: 'bg-emerald-600 text-white',
+    soft: 'bg-emerald-50 text-emerald-600',
+    ring: 'border-emerald-600 ring-emerald-600/20',
+    wash: 'from-emerald-50',
+  },
+  work: {
+    examples: ['Nursing', 'Engineering', 'Teaching'],
+    tile: 'bg-violet-600 text-white',
+    soft: 'bg-violet-50 text-violet-600',
+    ring: 'border-violet-600 ring-violet-600/20',
+    wash: 'from-violet-50',
+  },
+  other: {
+    examples: ['Personal goal', 'Not sure yet'],
+    tile: 'bg-amber-500 text-white',
+    soft: 'bg-amber-50 text-amber-600',
+    ring: 'border-amber-500 ring-amber-500/20',
+    wash: 'from-amber-50',
+  },
+};
+
+type Feature = {
+  icon: LucideIcon;
+  title: string;
+  tag: string;
+  text: string;
+  highlights: string[];
+  where?: string;
+  /** Full class strings so Tailwind keeps them: solid tile, soft tint, glow. */
+  accent: { tile: string; soft: string; glow: string };
+};
+
+/** Focus-step look per skill, echoing the skill colours used on the practice hub. */
+const SKILL_STYLE: Record<
+  SkillType,
+  { icon: React.ComponentType<{ className?: string }>; tile: string; soft: string; ring: string; wash: string }
+> = {
+  speaking: {
+    icon: SpeakingIcon,
+    tile: 'bg-rose-500 text-white',
+    soft: 'bg-rose-50 text-rose-600',
+    ring: 'border-rose-500 ring-rose-500/20',
+    wash: 'from-rose-50',
+  },
+  writing: {
+    icon: WritingIcon,
+    tile: 'bg-emerald-600 text-white',
+    soft: 'bg-emerald-50 text-emerald-600',
+    ring: 'border-emerald-600 ring-emerald-600/20',
+    wash: 'from-emerald-50',
+  },
+  reading: {
+    icon: ReadingIcon,
+    tile: 'bg-amber-500 text-white',
+    soft: 'bg-amber-50 text-amber-600',
+    ring: 'border-amber-500 ring-amber-500/20',
+    wash: 'from-amber-50',
+  },
+  listening: {
+    icon: ListeningIcon,
+    tile: 'bg-sky-600 text-white',
+    soft: 'bg-sky-50 text-sky-600',
+    ring: 'border-sky-600 ring-sky-600/20',
+    wash: 'from-sky-50',
+  },
+};
+
+/** A few real tasks per skill, so the choice is concrete for the learner's exam. */
+const SKILL_TASKS: Record<ExamType, Record<SkillType, string[]>> = {
+  PTE: {
+    speaking: ['Read Aloud', 'Describe Image'],
+    writing: ['Write Essay', 'Summarize Written Text'],
+    reading: ['Fill in the Blanks', 'Reorder Paragraph'],
+    listening: ['Write from Dictation', 'Summarize Spoken Text'],
+  },
+  IELTS: {
+    speaking: ['Part 2 cue card', 'Part 3 discussion'],
+    writing: ['Task 1 report', 'Task 2 essay'],
+    reading: ['True / False / Not Given', 'Matching headings'],
+    listening: ['Form completion', 'Multiple choice'],
+  },
+};
+
+/** How each daily amount feels, shown under the time. */
+const DAILY_PACE: Record<number, string> = {
+  15: 'Light',
+  30: 'Steady',
+  45: 'Focused',
+  60: 'Serious',
+  90: 'Intensive',
+  120: 'Full sprint',
+};
+
+const FEATURES: Feature[] = [
   {
     icon: PenTool,
     title: 'Practice Studio',
-    text: 'Every task type for all four skills. Reading and listening are marked instantly; writing and speaking get rubric feedback.',
+    tag: 'All four skills',
+    text: 'Drill every task type, one question at a time.',
+    highlights: [
+      'Every task type for speaking, writing, reading and listening',
+      'Reading and listening are marked instantly',
+      'Writing and speaking get rubric-based feedback',
+    ],
     where: 'Practice, in the sidebar',
+    accent: { tile: 'bg-blue-600 text-white', soft: 'bg-blue-50 text-blue-600', glow: 'from-blue-100' },
   },
   {
     icon: Award,
     title: 'Mock tests',
-    text: 'Timed papers under exam conditions, with a full score report at the end.',
+    tag: 'Exam conditions',
+    text: 'Sit a full paper before the real thing.',
+    highlights: ['Timed papers under real exam conditions', 'A full score report at the end'],
     where: 'Mock Exam, in the sidebar',
+    accent: { tile: 'bg-violet-600 text-white', soft: 'bg-violet-50 text-violet-600', glow: 'from-violet-100' },
   },
   {
     icon: Bot,
     title: 'AI Coach',
-    text: 'Stuck on a question? Ask the coach to explain it, right where you are.',
+    tag: 'Help on demand',
+    text: 'Stuck on a question? Ask, right where you are.',
+    highlights: ['Explains any question in plain language', 'Opens alongside your practice, no tab switching'],
     where: 'AI Coach, in the sidebar',
+    accent: { tile: 'bg-sky-600 text-white', soft: 'bg-sky-50 text-sky-600', glow: 'from-sky-100' },
   },
   {
     icon: RotateCcw,
     title: 'Mistake bank',
-    text: 'Questions you miss are saved, so you can retry them until they stick.',
+    tag: 'Learn from misses',
+    text: 'Turn every wrong answer into practice.',
+    highlights: ['Questions you miss are saved automatically', 'Retry them until they stick'],
     where: 'Home → Mistake Bank',
+    accent: { tile: 'bg-rose-600 text-white', soft: 'bg-rose-50 text-rose-600', glow: 'from-rose-100' },
   },
   {
     icon: Flame,
     title: 'Streaks & XP',
-    text: 'Practise a little every day to keep your streak alive and climb the levels.',
+    tag: 'Daily habit',
+    text: 'Small daily sessions, rewarded.',
+    highlights: ['Practise a little every day to keep your streak alive', 'Earn XP and climb the levels'],
+    accent: { tile: 'bg-amber-500 text-white', soft: 'bg-amber-50 text-amber-600', glow: 'from-amber-100' },
   },
   {
     icon: Trophy,
     title: 'Nepal Study Challenge',
-    text: 'See how your practice stacks up against learners across Nepal.',
+    tag: 'Nationwide ranking',
+    text: 'See where you stand among learners across Nepal.',
+    highlights: ['Compare your practice with learners nationwide', 'A friendly push to keep going'],
     where: 'Home → Nepal Study Challenge',
+    accent: { tile: 'bg-emerald-600 text-white', soft: 'bg-emerald-50 text-emerald-600', glow: 'from-emerald-100' },
   },
 ];
 
@@ -355,7 +519,7 @@ export default function OnboardingFlow({
       <OnboardingSidebar steps={STEPS} stepIndex={stepIndex} />
 
       {/* Main Flow Content Container */}
-      <div className="flex flex-1 flex-col justify-between overflow-y-auto">
+      <div className="flex min-w-0 flex-1 flex-col justify-between overflow-y-auto">
         <OnboardingProgress
           current={stepIndex + 1}
           total={STEPS.length}
@@ -374,47 +538,67 @@ export default function OnboardingFlow({
 
                 {/* Step 1: Welcome Screen */}
                 {step.id === 'welcome' && (
-                  <div className="w-full max-w-2xl space-y-6">
+                  <div className="grid w-full max-w-4xl items-center gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-12">
                     <div>
                       <h2
                         ref={headingRef}
                         id="onboarding-title"
                         tabIndex={-1}
-                        className="mt-3 font-display text-2xl font-bold tracking-tight text-slate-900 outline-none sm:text-3xl"
+                        className="font-display text-3xl font-bold tracking-tight text-slate-900 outline-none sm:text-4xl"
                       >
                         Namaste,{' '}
-                        <span className="block text-blue-600 sm:inline">{firstName}!</span>
+                        <span className="bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">
+                          {firstName}!
+                        </span>
                       </h2>
-                      <p className="mt-3 max-w-lg text-sm leading-relaxed text-slate-500 sm:text-base">
+                      <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-500 sm:text-base">
                         Welcome to Prepyo. Answer {QUESTION_COUNT} quick questions and we&apos;ll build a study plan
                         around your exam, your goals and your schedule.
                       </p>
+
+                      <div className="mt-6 flex flex-wrap gap-2">
+                        {[
+                          { icon: Target, label: `${QUESTION_COUNT} questions` },
+                          { icon: Clock, label: 'About 2 minutes' },
+                          { icon: ShieldCheck, label: 'Free to start' },
+                        ].map(item => (
+                          <span
+                            key={item.label}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm"
+                          >
+                            <item.icon className="h-3.5 w-3.5 text-blue-600" />
+                            {item.label}
+                          </span>
+                        ))}
+                      </div>
                     </div>
 
-                    {/* 4 Feature Cards as in Screenshot */}
-                    <div className="grid grid-cols-2 gap-3.5 pt-2 sm:grid-cols-4">
-                      {[
-                        { icon: Target, bg: 'bg-blue-100 text-blue-600', title: '9 quick questions', sub: 'Just a few minutes' },
-                        { icon: CalendarDays, bg: 'bg-purple-100 text-purple-600', title: 'A plan made for you', sub: 'Personalized & smart' },
-                        { icon: Zap, bg: 'bg-emerald-100 text-emerald-600', title: 'Your goal, our focus', sub: 'IELTS or PTE' },
-                        { icon: Clock, bg: 'bg-amber-100 text-amber-600', title: 'About 2 minutes', sub: 'Super quick' },
-                      ].map(item => (
-                        <div
-                          key={item.title}
-                          className="flex flex-col space-y-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm"
-                        >
-                          <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${item.bg}`}>
-                            <item.icon className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-bold text-slate-900">{item.title}</h4>
-                            <p className="mt-0.5 text-[11px] text-slate-400">{item.sub}</p>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">How it works</span>
+                      <ol className="mt-4 space-y-5">
+                        {[
+                          { icon: Target, title: 'Tell us your goal', text: 'Your exam, target score and exam date.' },
+                          { icon: CalendarDays, title: 'Get your plan', text: 'Built around your weakest skill and your daily time.' },
+                          { icon: Zap, title: 'Start practising', text: 'Take a diagnostic test or jump straight into your dashboard.' },
+                        ].map((item, index, all) => (
+                          <li key={item.title} className="relative flex gap-3.5">
+                            {index < all.length - 1 && (
+                              <span aria-hidden className="absolute left-[19px] top-11 h-[calc(100%-1.75rem)] w-px bg-slate-200" />
+                            )}
+                            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                              <item.icon className="h-[18px] w-[18px]" />
+                              <span className="absolute -right-1 -top-1 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white ring-2 ring-white">
+                                {index + 1}
+                              </span>
+                            </span>
+                            <div className="pt-0.5">
+                              <span className="block text-sm font-bold text-slate-900">{item.title}</span>
+                              <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">{item.text}</span>
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
                     </div>
-
-
                   </div>
                 )}
 
@@ -428,130 +612,129 @@ export default function OnboardingFlow({
                       subtitle="Your practice, mock tests and scoring are all built around it."
                     />
 
-                    <div className="space-y-4">
-                      <div className="grid max-w-2xl gap-3.5 sm:grid-cols-2">
-                        {EXAMS.map(option => {
-                          const selected = option.id === exam;
-                          return (
-                            <button
-                              key={option.id}
-                              type="button"
-                              aria-pressed={selected}
-                              onClick={() => chooseExam(option.id)}
-                              className={`relative flex flex-col justify-between rounded-2xl border p-5 text-left transition-all duration-200 ${
-                                selected
-                                  ? 'border-blue-600 bg-blue-50/50 shadow-sm ring-1 ring-blue-600/20'
-                                  : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.45)]'
+                    <div className="grid gap-3.5 sm:grid-cols-2">
+                      {EXAMS.map(option => {
+                        const style = EXAM_STYLE[option.id];
+                        const selected = option.id === exam;
+                        const ielts = option.id === 'IELTS';
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => chooseExam(option.id)}
+                            className={`group relative flex flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all duration-200 ${
+                              selected
+                                ? `${style.ring} bg-white shadow-md ring-2`
+                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_12px_28px_-18px_rgba(15,23,42,0.45)]'
+                            }`}
+                          >
+                            <span
+                              aria-hidden
+                              className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${style.wash} to-transparent transition-opacity duration-300 ${
+                                selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'
                               }`}
-                            >
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-display text-2xl font-bold text-slate-900">{option.name}</span>
-                                  <span
-                                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all ${
-                                      selected ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white'
-                                    }`}
-                                  >
-                                    {selected && <div className="h-2 w-2 rounded-full bg-white" />}
-                                  </span>
-                                </div>
+                            />
 
-                                <div className="flex">
-                                  <span
-                                    className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-bold transition-colors ${
-                                      selected
-                                        ? 'bg-blue-100 text-blue-700'
-                                        : 'bg-slate-100 text-slate-600'
-                                    }`}
-                                  >
-                                    {option.scale}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <p className="mt-3 text-xs leading-relaxed text-slate-500">{option.blurb}</p>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Coming Soon Tracks: Korean, Japanese, Germany */}
-                      <div className="pt-2">
-                        <div className="flex items-center gap-2.5 mb-3">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                            Upcoming Language Preparations
-                          </span>
-                          <div className="h-px flex-1 bg-slate-200/80" />
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200/60 px-2.5 py-0.5 rounded-full">
-                            <Sparkles className="h-3 w-3 text-amber-500" />
-                            Coming soon
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                          {UPCOMING_PREPARATIONS.map(option => {
-                            const FlagComponent =
-                              option.flagCode === 'KR' ? KR : option.flagCode === 'JP' ? JP : DE;
-                            return (
-                              <button
-                                key={option.id}
-                                type="button"
-                                disabled
-                                aria-disabled="true"
-                                className="relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 text-left opacity-75 cursor-not-allowed select-none transition-all hover:border-slate-300"
+                            {/* Name first in the DOM, so the button's name starts with the exam. */}
+                            <span className="relative flex items-start justify-between gap-3">
+                              <span className="font-display text-2xl font-bold text-slate-900">{option.name}</span>
+                              <span
+                                className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
+                                  selected ? `${style.tile} border-transparent` : 'border-slate-200 bg-white'
+                                }`}
                               >
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between gap-1.5">
-                                    <div className="flex items-center gap-2">
-                                      <span className="flex h-5 w-7 shrink-0 items-center justify-center overflow-hidden rounded-[4px] border border-slate-200/90 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                                        <FlagComponent className="h-full w-full object-cover" />
-                                      </span>
-                                      <span className="font-display text-sm font-bold text-slate-800 leading-tight">
-                                        {option.name}
-                                      </span>
-                                    </div>
-                                    <span className="text-[9px] font-bold uppercase tracking-wider text-amber-600 bg-amber-100/70 px-1.5 py-0.5 rounded-md shrink-0">
-                                      Soon
-                                    </span>
-                                  </div>
+                                {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                              </span>
+                            </span>
 
-                                  <div className="flex">
-                                    <span className="inline-flex items-center rounded-md bg-slate-200/70 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                                      {option.scale}
-                                    </span>
-                                  </div>
-                                </div>
+                            <span className="relative mt-1 text-xs leading-relaxed text-slate-500">{option.blurb}</span>
 
-                                <p className="mt-2.5 text-[11px] leading-relaxed text-slate-500">{option.blurb}</p>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
+                            {/* The scoring scale, drawn as rising steps and lit in the exam's colour once chosen. */}
+                            <span aria-hidden className="relative mt-5 block">
+                              <span className="flex items-end gap-[3px]">
+                                {(ielts ? Array.from({ length: 11 }) : Array.from({ length: 17 })).map((_, i, all) => (
+                                  <span
+                                    key={i}
+                                    style={{ height: `${6 + (i / (all.length - 1)) * 14}px` }}
+                                    className={`flex-1 rounded-sm transition-colors ${selected ? style.bar : 'bg-slate-200'} ${
+                                      selected ? '' : 'group-hover:bg-slate-300'
+                                    }`}
+                                  />
+                                ))}
+                              </span>
+                              <span className="mt-1.5 flex justify-between text-[10px] font-bold text-slate-400">
+                                <span>{ielts ? '0' : '10'}</span>
+                                <span className={selected ? 'text-slate-700' : ''}>{option.scale}</span>
+                                <span>{ielts ? '9' : '90'}</span>
+                              </span>
+                            </span>
+
+                            <span className="relative mt-4 flex flex-wrap gap-1.5">
+                              {style.facts.map(fact => (
+                                <span
+                                  key={fact}
+                                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
+                                    selected ? style.soft : 'bg-slate-100 text-slate-500'
+                                  }`}
+                                >
+                                  {fact}
+                                </span>
+                              ))}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
 
-                    <div className="flex max-w-2xl items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-xs text-slate-600 shadow-sm">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                        <Lock className="h-3.5 w-3.5" />
-                      </div>
-                      <p>Your exam can&apos;t be changed after setup, so pick the one you&apos;re sitting.</p>
+                    {/* Coming soon, kept small so it never competes with the real choice. */}
+                    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-slate-200 px-4 py-3">
+                      <span className="mr-1 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                        Coming soon
+                      </span>
+                      {UPCOMING_PREPARATIONS.map(option => {
+                        const FlagComponent = option.flagCode === 'KR' ? KR : option.flagCode === 'JP' ? JP : DE;
+                        return (
+                          <span
+                            key={option.id}
+                            title={option.blurb}
+                            className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600"
+                          >
+                            <span className="flex h-3.5 w-5 overflow-hidden rounded-[3px] ring-1 ring-black/5">
+                              <FlagComponent className="h-full w-full object-cover" />
+                            </span>
+                            {option.name}
+                            <span className="text-[10px] font-medium text-slate-400">{option.scale}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-3 rounded-2xl border border-amber-200/70 bg-amber-50/60 px-4 py-3 text-xs text-amber-900">
+                      <Lock className="h-4 w-4 shrink-0 text-amber-600" />
+                      <p>
+                        <span className="font-bold">Choose carefully:</span> your exam can&apos;t be changed after setup, so
+                        pick the one you&apos;re sitting.
+                      </p>
                     </div>
                   </div>
                 )}
 
                 {/* Step 3: Goal */}
                 {step.id === 'goal' && (
-                  <div className="w-full max-w-xl space-y-6">
+                  <div className="w-full max-w-2xl space-y-6">
                     <QuestionHeader
                       badge={step.pill}
                       headingRef={headingRef}
                       title={`What's your ${examName(chosen)} for?`}
-                      subtitle="We'll keep your end goal in view on your dashboard."
+                      subtitle="Knowing why keeps you going on the hard days. Pick the one that fits best."
                     />
 
-                    <div className="grid max-w-xl gap-3.5 sm:grid-cols-2">
+                    <div className="grid gap-3.5 sm:grid-cols-2">
                       {STUDY_GOALS.map(option => {
-                        const Icon = GOAL_ICONS[option.id] || Sparkles;
+                        const Icon = GOAL_ICONS[option.id];
+                        const style = GOAL_STYLE[option.id];
                         const selected = goal === option.id;
                         return (
                           <button
@@ -559,37 +742,68 @@ export default function OnboardingFlow({
                             type="button"
                             aria-pressed={selected}
                             onClick={() => setGoal(option.id)}
-                            className={`flex items-start justify-between rounded-2xl border p-4 text-left transition-all duration-200 ${
+                            className={`group relative flex flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all duration-200 ${
                               selected
-                                ? 'border-blue-600 bg-blue-50/50 shadow-sm ring-1 ring-blue-600/20'
-                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.45)]'
+                                ? `${style.ring} bg-white shadow-md ring-2`
+                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_12px_28px_-18px_rgba(15,23,42,0.45)]'
                             }`}
                           >
-                            <div className="flex items-start gap-3">
-                              <div
-                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
-                                  selected ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'
+                            <span
+                              aria-hidden
+                              className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${style.wash} to-transparent transition-opacity duration-300 ${
+                                selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'
+                              }`}
+                            />
+
+                            <span className="relative flex items-start justify-between gap-3">
+                              <span
+                                className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-200 ${
+                                  selected ? `${style.tile} shadow-sm` : style.soft
                                 }`}
                               >
-                                <Icon className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <span className="block text-sm font-bold text-slate-900">{option.label}</span>
-                                <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">
-                                  {option.detail}
+                                <Icon className="h-7 w-7" />
+                              </span>
+                              <span
+                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
+                                  selected ? `${style.tile} border-transparent` : 'border-slate-200 bg-white'
+                                }`}
+                              >
+                                {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                              </span>
+                            </span>
+
+                            <span className="relative mt-4 block text-base font-bold text-slate-900">{option.label}</span>
+                            <span className="relative mt-1 block text-xs leading-relaxed text-slate-500">{option.detail}</span>
+
+                            <span className="relative mt-4 flex flex-wrap gap-1.5">
+                              {style.examples.map(example => (
+                                <span
+                                  key={example}
+                                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
+                                    selected ? style.soft : 'bg-slate-100 text-slate-500'
+                                  }`}
+                                >
+                                  {example}
                                 </span>
-                              </div>
-                            </div>
-                            <span
-                              className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all ${
-                                selected ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white'
-                              }`}
-                            >
-                              {selected && <div className="h-2 w-2 rounded-full bg-white" />}
+                              ))}
                             </span>
                           </button>
                         );
                       })}
+                    </div>
+
+                    <div
+                      aria-live="polite"
+                      className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-xs transition-colors ${
+                        goal ? 'border-slate-200/80 bg-white text-slate-600 shadow-sm' : 'border-dashed border-slate-200 text-slate-400'
+                      }`}
+                    >
+                      <Target className={`h-4 w-4 shrink-0 ${goal ? 'text-blue-600' : 'text-slate-300'}`} />
+                      <p>
+                        {goal
+                          ? <>We&apos;ll keep <span className="font-bold text-slate-900">{STUDY_GOALS.find(item => item.id === goal)?.short}</span> on your dashboard as a daily reminder of why you&apos;re practising.</>
+                          : 'Your goal shows on your dashboard, so the reason you started is always in view.'}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -641,7 +855,7 @@ export default function OnboardingFlow({
 
                 {/* Step 5: Experience */}
                 {step.id === 'experience' && (
-                  <div className="w-full max-w-xl space-y-6">
+                  <div className="w-full max-w-2xl space-y-6">
                     <QuestionHeader
                       badge={step.pill}
                       headingRef={headingRef}
@@ -649,74 +863,106 @@ export default function OnboardingFlow({
                       subtitle="First try or a comeback, we'll plan from where you are."
                     />
 
-                    <div className="grid max-w-xl gap-3.5 sm:grid-cols-2">
+                    <div className="grid gap-3.5 sm:grid-cols-2">
                       {[
                         {
-                          key: 'first',
+                          key: 'first' as const,
                           title: 'This is my first attempt',
                           desc: "We'll start with the fundamentals of every task.",
-                          icon: Target,
+                          icon: SproutIcon,
+                          tile: 'bg-emerald-600 text-white',
+                          soft: 'bg-emerald-50 text-emerald-600',
+                          ring: 'border-emerald-600 ring-emerald-600/20',
+                          wash: 'from-emerald-50',
                         },
                         {
-                          key: 'retake',
+                          key: 'retake' as const,
                           title: "I've taken it before",
                           desc: "We'll help you beat your last result.",
-                          icon: RotateCcw,
+                          icon: RetakeIcon,
+                          tile: 'bg-blue-600 text-white',
+                          soft: 'bg-blue-50 text-blue-600',
+                          ring: 'border-blue-600 ring-blue-600/20',
+                          wash: 'from-blue-50',
                         },
                       ].map(opt => {
                         const selected = prior === opt.key;
+                        const Icon = opt.icon;
                         return (
                           <button
                             key={opt.key}
                             type="button"
                             aria-pressed={selected}
-                            onClick={() => setPrior(opt.key as 'first' | 'retake')}
-                            className={`flex items-start justify-between rounded-2xl border p-4 text-left transition-all duration-200 ${
+                            onClick={() => setPrior(opt.key)}
+                            className={`group relative flex flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all duration-200 ${
                               selected
-                                ? 'border-blue-600 bg-blue-50/50 shadow-sm ring-1 ring-blue-600/20'
-                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.45)]'
+                                ? `${opt.ring} bg-white shadow-md ring-2`
+                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_12px_28px_-18px_rgba(15,23,42,0.45)]'
                             }`}
                           >
-                            <div className="flex items-start gap-3">
-                              <div
-                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                                  selected ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'
+                            <span
+                              aria-hidden
+                              className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${opt.wash} to-transparent transition-opacity duration-300 ${
+                                selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'
+                              }`}
+                            />
+                            <span className="relative flex items-start justify-between gap-3">
+                              <span
+                                className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-200 ${
+                                  selected ? `${opt.tile} shadow-sm` : opt.soft
                                 }`}
                               >
-                                <opt.icon className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <span className="block text-sm font-bold text-slate-900">{opt.title}</span>
-                                <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">{opt.desc}</span>
-                              </div>
-                            </div>
-                            <span
-                              className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all ${
-                                selected ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white'
-                              }`}
-                            >
-                              {selected && <div className="h-2 w-2 rounded-full bg-white" />}
+                                <Icon className="h-7 w-7" />
+                              </span>
+                              <span
+                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
+                                  selected ? `${opt.tile} border-transparent` : 'border-slate-200 bg-white'
+                                }`}
+                              >
+                                {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                              </span>
                             </span>
+                            <span className="relative mt-4 block text-base font-bold text-slate-900">{opt.title}</span>
+                            <span className="relative mt-1 block text-xs leading-relaxed text-slate-500">{opt.desc}</span>
                           </button>
                         );
                       })}
                     </div>
 
                     {prior === 'retake' && (
-                      <div className="max-w-xl space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm motion-safe:animate-in motion-safe:fade-in">
-                        <div className="flex items-end justify-between">
-                          <div>
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                              Your last {unit}
-                            </span>
-                            <span className="block font-display text-4xl font-extrabold text-slate-900">
-                              {formatScore(chosen, previousScore)}
-                            </span>
-                          </div>
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                            <RotateCcw className="h-5 w-5" />
-                          </div>
+                      <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-2">
+                        <span className="block text-center text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                          Your last {unit}
+                        </span>
+
+                        <div className="mt-2 flex items-center justify-center gap-6">
+                          <button
+                            type="button"
+                            onClick={() => setPreviousScore(clampScore(chosen, previousScore - scale.step))}
+                            disabled={previousScore <= scale.min}
+                            aria-label={`Lower your last ${unit}`}
+                            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:text-blue-600 active:scale-95 disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-600"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="min-w-[5ch] text-center font-display text-5xl font-extrabold tracking-tight text-slate-900">
+                            {formatScore(chosen, previousScore)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setPreviousScore(clampScore(chosen, previousScore + scale.step))}
+                            disabled={previousScore >= scale.max}
+                            aria-label={`Raise your last ${unit}`}
+                            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:text-blue-600 active:scale-95 disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-600"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
                         </div>
+
+                        <p className="mt-1 text-center text-sm font-semibold text-slate-500" aria-live="polite">
+                          {scoreLabel(chosen, previousScore)}
+                        </p>
+
                         <input
                           type="range"
                           min={scale.min}
@@ -725,8 +971,12 @@ export default function OnboardingFlow({
                           value={previousScore}
                           onChange={event => setPreviousScore(Number(event.target.value))}
                           aria-label={`Your last ${unit}`}
-                          className="w-full cursor-pointer accent-blue-600"
+                          className="mt-5 w-full cursor-pointer accent-blue-600"
                         />
+                        <div className="mt-1 flex justify-between text-[10px] font-bold text-slate-400">
+                          <span>{formatScore(chosen, scale.min)}</span>
+                          <span>{formatScore(chosen, scale.max)}</span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -742,53 +992,81 @@ export default function OnboardingFlow({
                       subtitle="Your dashboard measures your progress against this target."
                     />
 
-                    <div className="max-w-xl space-y-5 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
-                      <div className="flex items-end justify-between">
-                        <div>
-                          <span className="block font-display text-6xl font-extrabold tracking-tight text-blue-600">
-                            {formatScore(chosen, score)}
-                          </span>
-                          <span className="text-xs font-bold text-slate-500">{scoreLabel(chosen, score)}</span>
-                        </div>
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                          <Target className="h-6 w-6" />
-                        </div>
+                    <div className="max-w-xl rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-7">
+                      {/* The ring shows where the target sits on the scale; minus and plus fine-tune it. */}
+                      <div className="flex items-center justify-center gap-5 sm:gap-8">
+                        <button
+                          type="button"
+                          onClick={() => setScore(clampScore(chosen, score - scale.step))}
+                          disabled={score <= scale.min}
+                          aria-label={`Lower target ${unit}`}
+                          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:text-blue-600 active:scale-95 disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-600"
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+
+                        <ScoreRing
+                          fraction={(score - scale.min) / (scale.max - scale.min)}
+                          value={formatScore(chosen, score)}
+                          caption={chosen === 'IELTS' ? 'Target band' : 'Target score'}
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => setScore(clampScore(chosen, score + scale.step))}
+                          disabled={score >= scale.max}
+                          aria-label={`Raise target ${unit}`}
+                          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:text-blue-600 active:scale-95 disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-600"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
                       </div>
 
-                      <input
-                        type="range"
-                        min={scale.min}
-                        max={scale.max}
-                        step={scale.step}
-                        value={score}
-                        onChange={event => setScore(Number(event.target.value))}
-                        aria-label="Target score"
-                        aria-valuetext={scoreLabel(chosen, score)}
-                        className="w-full cursor-pointer accent-blue-600"
-                      />
+                      <p className="mt-3 text-center text-sm font-semibold text-slate-600" aria-live="polite">
+                        {scoreLabel(chosen, score)}
+                      </p>
 
-                      <div className="flex justify-between text-[10px] font-bold text-slate-400">
-                        <span>{formatScore(chosen, scale.min)}</span>
-                        <span>{formatScore(chosen, scale.max)}</span>
-                      </div>
+                      <div className="mt-6">
+                        <input
+                          type="range"
+                          min={scale.min}
+                          max={scale.max}
+                          step={scale.step}
+                          value={score}
+                          onChange={event => setScore(Number(event.target.value))}
+                          aria-label="Target score"
+                          aria-valuetext={scoreLabel(chosen, score)}
+                          className="w-full cursor-pointer accent-blue-600"
+                        />
 
-                      <div className="flex flex-wrap items-center gap-2 pt-2">
-                        <span className="mr-1 text-[11px] font-bold text-slate-400">Quick picks:</span>
-                        {scale.presets.map(preset => (
-                          <button
-                            key={preset}
-                            type="button"
-                            aria-pressed={score === preset}
-                            onClick={() => setScore(preset)}
-                            className={`h-9 rounded-full px-4 text-xs font-bold transition-all ${
-                              score === preset
-                                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
-                                : 'border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
-                            }`}
-                          >
-                            {formatScore(chosen, preset)}
-                          </button>
-                        ))}
+                        <div className="mt-1 flex justify-between text-[10px] font-bold text-slate-400">
+                          <span>{formatScore(chosen, scale.min)}</span>
+                          <span>{formatScore(chosen, scale.max)}</span>
+                        </div>
+
+                        {/* A row, not marks placed on the track: IELTS targets sit half a band
+                            apart, which is too close to label on a phone-width slider. */}
+                        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                          <span className="mr-1 text-[11px] font-semibold text-slate-400">Popular targets</span>
+                          {scale.presets.map(preset => {
+                            const active = score === preset;
+                            return (
+                              <button
+                                key={preset}
+                                type="button"
+                                aria-pressed={active}
+                                onClick={() => setScore(preset)}
+                                className={`h-8 rounded-full px-3.5 text-xs font-bold transition-all ${
+                                  active
+                                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
+                                    : 'border border-slate-200 bg-slate-50 text-slate-600 hover:border-blue-200 hover:bg-white hover:text-blue-700'
+                                }`}
+                              >
+                                {formatScore(chosen, preset)}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
 
@@ -799,12 +1077,19 @@ export default function OnboardingFlow({
                           : `That's no higher than your last ${unit} of ${formatScore(chosen, previousScore)}. Aim a little higher?`}
                       </p>
                     )}
+                    <div className="flex max-w-xl items-start gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm">
+                      <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                      <p className="text-xs leading-relaxed text-slate-600">
+                        Not sure? Aim for the {unit} your university, visa or registration body asks for. You can
+                        change it any time in Profile.
+                      </p>
+                    </div>
                   </div>
                 )}
 
                 {/* Step 7: Exam Date */}
                 {step.id === 'date' && (
-                  <div className="w-full max-w-xl space-y-6">
+                  <div className="w-full max-w-2xl space-y-6">
                     <QuestionHeader
                       badge={step.pill}
                       headingRef={headingRef}
@@ -812,10 +1097,12 @@ export default function OnboardingFlow({
                       subtitle="Knowing your runway helps you pace your practice."
                     />
 
-                    <div className="flex flex-wrap gap-2 max-w-xl">
+                    <div className="grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
                       {[1, 3, 6].map(months => {
                         const value = isoDateAfterMonths(months);
                         const selected = !notBooked && examDate === value;
+                        const when = new Date(`${value}T00:00:00`);
+                        const weeks = Math.round((daysUntil(value) ?? 0) / 7);
                         return (
                           <button
                             key={months}
@@ -825,13 +1112,20 @@ export default function OnboardingFlow({
                               setExamDate(value);
                               setNotBooked(false);
                             }}
-                            className={`h-9 rounded-full px-4 text-xs font-bold transition-all ${
-                              selected
-                                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
-                                : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                            }`}
+                            className={`relative flex flex-col rounded-2xl border p-4 text-left transition-all duration-200 ${selected ? 'border-blue-600 bg-white shadow-md ring-2 ring-blue-600/20' : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_12px_28px_-18px_rgba(15,23,42,0.45)]'}`}
                           >
-                            In {months} month{months === 1 ? '' : 's'}
+                            <span className="flex items-start justify-between">
+                              <MiniCalendar
+                                month={when.toLocaleDateString('en-US', { month: 'short' })}
+                                day={when.getDate()}
+                                active={selected}
+                              />
+                              <SelectedCheck on={selected} />
+                            </span>
+                            <span className={`mt-3 whitespace-nowrap font-display text-base font-bold ${selected ? 'text-blue-700' : 'text-slate-900'}`}>
+                              In {months} month{months === 1 ? '' : 's'}
+                            </span>
+                            <span className="mt-0.5 text-[11px] font-semibold text-slate-400">{weeks} weeks to prepare</span>
                           </button>
                         );
                       })}
@@ -842,18 +1136,34 @@ export default function OnboardingFlow({
                           setNotBooked(true);
                           setExamDate('');
                         }}
-                        className={`h-9 rounded-full px-4 text-xs font-bold transition-all ${
-                          notBooked
-                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
-                            : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                        }`}
+                        className={`relative flex flex-col rounded-2xl border p-4 text-left transition-all duration-200 ${notBooked ? 'border-blue-600 bg-white shadow-md ring-2 ring-blue-600/20' : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_12px_28px_-18px_rgba(15,23,42,0.45)]'}`}
                       >
-                        Not booked yet
+                        <span className="flex items-start justify-between">
+                          <span
+                            className={`flex h-12 w-11 items-center justify-center rounded-xl border transition-colors ${
+                              notBooked ? 'border-blue-600 bg-blue-600 text-white' : 'border-dashed border-slate-300 bg-slate-50 text-slate-400'
+                            }`}
+                          >
+                            <CalendarClock className="h-5 w-5" />
+                          </span>
+                          <SelectedCheck on={notBooked} />
+                        </span>
+                        <span className={`mt-3 whitespace-nowrap font-display text-base font-bold ${notBooked ? 'text-blue-700' : 'text-slate-900'}`}>
+                          Not booked yet
+                        </span>
+                        <span className="mt-0.5 text-[11px] font-semibold text-slate-400">Add it later</span>
                       </button>
                     </div>
 
-                    <label className="block max-w-xl space-y-1.5">
-                      <span className="text-xs font-bold text-slate-700">Or pick the exact date</span>
+                    <div className="flex max-w-2xl items-center gap-3">
+                      <div className="h-px flex-1 bg-slate-200/80" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">or pick the exact date</span>
+                      <div className="h-px flex-1 bg-slate-200/80" />
+                    </div>
+
+                    <label className="relative block max-w-2xl">
+                      <span className="sr-only">Exam date</span>
+                      <CalendarDays className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-600" />
                       <input
                         type="date"
                         min={toIsoDate(new Date())}
@@ -862,29 +1172,53 @@ export default function OnboardingFlow({
                           setExamDate(event.target.value);
                           setNotBooked(false);
                         }}
-                        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 sm:w-64"
+                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm font-semibold text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
                       />
                     </label>
 
-                    <div className="flex max-w-xl items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                        <CalendarDays className="h-6 w-6" />
-                      </div>
+                    <div aria-live="polite">
                       {notBooked ? (
-                        <p className="text-sm font-medium text-slate-700">
-                          No problem. You can add the date in Profile once it&apos;s booked.
-                        </p>
+                        <div className="flex max-w-2xl items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                            <CalendarClock className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">No problem, start practising now</p>
+                            <p className="mt-0.5 text-xs text-slate-500">Add your date in Profile once it&apos;s booked and we&apos;ll start the countdown.</p>
+                          </div>
+                        </div>
                       ) : days === null ? (
-                        <p className="text-sm text-slate-500">Pick a date to see your countdown.</p>
+                        <div className="flex max-w-2xl items-center gap-4 rounded-2xl border border-dashed border-slate-200 p-5">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-300">
+                            <CalendarDays className="h-6 w-6" />
+                          </div>
+                          <p className="text-sm text-slate-400">Pick a date to see your countdown.</p>
+                        </div>
                       ) : days < 0 ? (
-                        <p className="text-sm font-semibold text-rose-600">That date has passed. Pick an upcoming one.</p>
+                        <div className="max-w-2xl rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-sm font-semibold text-rose-700">
+                          That date has passed. Pick an upcoming one.
+                        </div>
                       ) : (
-                        <div aria-live="polite">
-                          <p className="text-sm text-slate-900">
-                            <span className="font-display text-4xl font-extrabold text-blue-600">{days}</span>{' '}
-                            <span className="font-bold">day{days === 1 ? '' : 's'} to go</span>
-                          </p>
-                          <p className="text-xs text-slate-400">{runwayAdvice(days)}</p>
+                        <div className="max-w-2xl overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+                          <div className="flex items-center gap-5 bg-gradient-to-br from-blue-600 to-indigo-600 px-5 py-4 text-white">
+                            <div>
+                              <span className="block font-display text-4xl font-extrabold leading-none">{days}</span>
+                              <span className="mt-1 block text-[11px] font-semibold text-white/80">
+                                day{days === 1 ? '' : 's'} to go
+                              </span>
+                            </div>
+                            <div className="h-10 w-px bg-white/25" />
+                            <div className="min-w-0">
+                              <span className="block text-[11px] font-bold uppercase tracking-wider text-white/70">Exam day</span>
+                              <span className="block truncate text-sm font-bold">{formatExamDate(examDate)}</span>
+                            </div>
+                            {days >= 7 && (
+                              <span className="ml-auto hidden rounded-full bg-white/15 px-3 py-1 text-xs font-bold sm:inline">
+                                {Math.floor(days / 7)} week{Math.floor(days / 7) === 1 ? '' : 's'}
+                              </span>
+                            )}
+                          </div>
+                          <p className="px-5 py-3 text-xs text-slate-600">{runwayAdvice(days)}</p>
                         </div>
                       )}
                     </div>
@@ -893,7 +1227,7 @@ export default function OnboardingFlow({
 
                 {/* Step 8: Focus Skill */}
                 {step.id === 'focus' && (
-                  <div className="w-full max-w-xl space-y-6">
+                  <div className="w-full max-w-2xl space-y-6">
                     <QuestionHeader
                       badge={step.pill}
                       headingRef={headingRef}
@@ -901,9 +1235,10 @@ export default function OnboardingFlow({
                       subtitle="We'll put it front and centre on your dashboard."
                     />
 
-                    <div className="grid max-w-xl gap-3.5 sm:grid-cols-2">
+                    <div className="grid gap-3.5 sm:grid-cols-2">
                       {FOCUS_SKILLS.map(option => {
-                        const Icon = SKILL_ICONS[option.id];
+                        const style = SKILL_STYLE[option.id];
+                        const Icon = style.icon;
                         const selected = focus === option.id;
                         return (
                           <button
@@ -911,33 +1246,50 @@ export default function OnboardingFlow({
                             type="button"
                             aria-pressed={selected}
                             onClick={() => setFocus(option.id)}
-                            className={`flex items-start justify-between rounded-2xl border p-4 text-left transition-all duration-200 ${
+                            className={`group relative flex flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all duration-200 ${
                               selected
-                                ? 'border-blue-600 bg-blue-50/50 shadow-sm ring-1 ring-blue-600/20'
-                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.45)]'
+                                ? `${style.ring} bg-white shadow-md ring-2`
+                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_12px_28px_-18px_rgba(15,23,42,0.45)]'
                             }`}
                           >
-                            <div className="flex items-start gap-3">
-                              <div
-                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                                  selected ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'
+                            <span
+                              aria-hidden
+                              className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${style.wash} to-transparent transition-opacity duration-300 ${
+                                selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'
+                              }`}
+                            />
+
+                            {/* Label first in the DOM so the button's name starts with the skill. */}
+                            <span className="relative order-2 mt-4 block text-base font-bold text-slate-900">{option.label}</span>
+                            <span className="relative order-1 flex items-start justify-between gap-3">
+                              <span
+                                className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-200 ${
+                                  selected ? `${style.tile} shadow-sm` : style.soft
                                 }`}
                               >
-                                <Icon className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <span className="block text-sm font-bold text-slate-900">{option.label}</span>
-                                <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">
-                                  {option.detail}
+                                <Icon className="h-7 w-7" />
+                              </span>
+                              <span
+                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
+                                  selected ? `${style.tile} border-transparent` : 'border-slate-200 bg-white'
+                                }`}
+                              >
+                                {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                              </span>
+                            </span>
+                            <span className="relative order-3 mt-1 block text-xs leading-relaxed text-slate-500">{option.detail}</span>
+
+                            <span className="relative order-4 mt-4 flex flex-wrap gap-1.5">
+                              {SKILL_TASKS[chosen][option.id].map(task => (
+                                <span
+                                  key={task}
+                                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
+                                    selected ? style.soft : 'bg-slate-100 text-slate-500'
+                                  }`}
+                                >
+                                  {task}
                                 </span>
-                              </div>
-                            </div>
-                            <span
-                              className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all ${
-                                selected ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white'
-                              }`}
-                            >
-                              {selected && <div className="h-2 w-2 rounded-full bg-white" />}
+                              ))}
                             </span>
                           </button>
                         );
@@ -948,7 +1300,7 @@ export default function OnboardingFlow({
 
                 {/* Step 9: Daily Routine */}
                 {step.id === 'daily' && (
-                  <div className="w-full max-w-xl space-y-6">
+                  <div className="w-full max-w-2xl space-y-6">
                     <QuestionHeader
                       badge={step.pill}
                       headingRef={headingRef}
@@ -956,8 +1308,8 @@ export default function OnboardingFlow({
                       subtitle="Pick what you can keep up, even on busy days."
                     />
 
-                    <div className="grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-3">
-                      {DAILY_MINUTES.map(value => {
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {DAILY_MINUTES.map((value, level) => {
                         const selected = minutes === value;
                         return (
                           <button
@@ -965,28 +1317,69 @@ export default function OnboardingFlow({
                             type="button"
                             aria-pressed={selected}
                             onClick={() => setMinutes(value)}
-                            className={`rounded-2xl border p-4 text-left transition-all duration-200 ${
+                            className={`relative flex flex-col rounded-2xl border p-4 text-left transition-all duration-200 ${
                               selected
-                                ? 'border-blue-600 bg-blue-50/50 shadow-sm ring-1 ring-blue-600/20'
-                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.45)]'
+                                ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-600/20'
+                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_12px_28px_-18px_rgba(15,23,42,0.45)]'
                             }`}
                           >
-                            <span className="block font-display text-2xl font-bold text-slate-900">
+                            <span className={`block font-display text-2xl font-bold ${selected ? 'text-blue-700' : 'text-slate-900'}`}>
                               {dailyLabel(value)}
                             </span>
-                            <span className="text-[11px] font-semibold text-slate-400">a day</span>
+                            <span className="mt-0.5 text-[11px] font-semibold text-slate-400">
+                              {DAILY_PACE[value] ?? 'a day'} · a day
+                            </span>
+
+                            {/* Intensity meter: one more bar lit per step up. */}
+                            <span aria-hidden className="mt-3 flex items-end gap-1">
+                              {DAILY_MINUTES.map((_, bar) => (
+                                <span
+                                  key={bar}
+                                  style={{ height: `${6 + bar * 3}px` }}
+                                  className={`w-2 rounded-sm transition-colors ${
+                                    bar <= level
+                                      ? selected
+                                        ? 'bg-blue-600'
+                                        : 'bg-blue-300'
+                                      : 'bg-slate-100'
+                                  }`}
+                                />
+                              ))}
+                            </span>
+
+                            {selected && (
+                              <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white">
+                                <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                              </span>
+                            )}
                           </button>
                         );
                       })}
                     </div>
 
-                    <div className="flex max-w-xl items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3.5 shadow-sm">
-                      <Clock className="h-5 w-5 shrink-0 text-blue-600" />
-                      <p className="text-xs text-slate-600">
-                        {minutes === null
-                          ? 'Twenty focused minutes a day adds up faster than you think.'
-                          : practiceHours(minutes, days)}
-                      </p>
+                    <div
+                      aria-live="polite"
+                      className={`flex items-center gap-4 rounded-2xl border px-4 py-3.5 transition-colors ${
+                        minutes === null ? 'border-dashed border-slate-200' : 'border-slate-200/80 bg-white shadow-sm'
+                      }`}
+                    >
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                          minutes === null ? 'bg-slate-50 text-slate-300' : 'bg-blue-50 text-blue-600'
+                        }`}
+                      >
+                        <Clock className="h-5 w-5" />
+                      </div>
+                      {minutes === null ? (
+                        <p className="text-xs text-slate-500">Twenty focused minutes a day adds up faster than you think.</p>
+                      ) : (
+                        <div>
+                          <p className="text-sm font-bold text-slate-900">
+                            {Math.round(((minutes * 7) / 60) * 10) / 10} hours a week
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-500">{practiceHours(minutes, days)}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1063,183 +1456,160 @@ export default function OnboardingFlow({
 
                 {/* Step 11: Tour */}
                 {step.id === 'tour' && (
-                  <div className="w-full max-w-2xl space-y-6">
+                  <div className="w-full max-w-4xl space-y-6">
                     <QuestionHeader
                       badge={step.pill}
                       headingRef={headingRef}
-                      title="Here's what you can do on Prepyo"
-                      subtitle="Tap a card to learn more."
+                      title="Your Prepyo toolkit"
+                      subtitle="Six tools that work together to get you to your target. Pick one to see how it helps."
                     />
 
-                    <div className="grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-3">
-                      {FEATURES.map((item, index) => {
-                        const Icon = item.icon;
-                        const selected = index === feature;
-                        return (
-                          <button
-                            key={item.title}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => setFeature(index)}
-                            className={`rounded-2xl border p-4 text-left transition-all duration-200 ${
-                              selected
-                                ? 'border-blue-600 bg-blue-50/50 shadow-sm ring-1 ring-blue-600/20'
-                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.45)]'
-                            }`}
-                          >
-                            <div
-                              className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${
-                                selected ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+                      <div
+                        role="tablist"
+                        aria-label="Prepyo tools"
+                        aria-orientation="vertical"
+                        className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1"
+                      >
+                        {FEATURES.map((item, index) => {
+                          const Icon = item.icon;
+                          const selected = index === feature;
+                          return (
+                            <button
+                              key={item.title}
+                              type="button"
+                              role="tab"
+                              id={`tour-tab-${index}`}
+                              aria-selected={selected}
+                              aria-controls="tour-panel"
+                              onClick={() => setFeature(index)}
+                              className={`group flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-all duration-200 ${
+                                selected
+                                  ? 'border-blue-600/40 bg-white shadow-sm ring-1 ring-blue-600/20'
+                                  : 'border-slate-200/60 bg-white/50 hover:border-slate-200 hover:bg-white lg:border-transparent lg:bg-transparent'
                               }`}
                             >
-                              <Icon className="h-4 w-4" />
-                            </div>
-                            <span className="mt-3 block text-xs font-bold text-slate-900">{item.title}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                              <span
+                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                                  selected ? item.accent.tile : item.accent.soft
+                                }`}
+                              >
+                                <Icon className="h-4 w-4" />
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-xs font-bold text-slate-900">{item.title}</span>
+                                <span className="hidden truncate text-[11px] text-slate-400 sm:block">{item.tag}</span>
+                              </span>
+                              <ArrowRight
+                                className={`hidden h-3.5 w-3.5 shrink-0 transition-all lg:block ${
+                                  selected
+                                    ? 'translate-x-0 text-blue-600'
+                                    : '-translate-x-1 text-transparent group-hover:text-slate-300'
+                                }`}
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
 
-                    <div className="max-w-2xl rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-                      <p className="text-xs leading-relaxed text-slate-700">{FEATURES[feature].text}</p>
-                      {FEATURES[feature].where && (
-                        <p className="mt-1.5 text-[11px] font-bold text-blue-600">Find it: {FEATURES[feature].where}</p>
-                      )}
+                      <ToolkitPanel index={feature} onNext={() => setFeature((feature + 1) % FEATURES.length)} />
                     </div>
                   </div>
                 )}
 
                 {/* Step 12: All Set */}
                 {step.id === 'ready' && (
-                  <div className="w-full max-w-xl space-y-6">
+                  <div className="relative grid w-full max-w-4xl items-center gap-8 lg:grid-cols-2 lg:gap-12">
                     <Confetti />
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-500/30">
-                      <Check className="h-8 w-8" strokeWidth={3} />
-                    </div>
 
-                    <div>
-                      <h2
-                        ref={headingRef}
-                        id="onboarding-title"
-                        tabIndex={-1}
-                        className="mt-3 font-display text-2xl font-bold tracking-tight text-slate-900 outline-none sm:text-3xl"
-                      >
-                        You&apos;re all set,{' '}
-                        <span className="block text-blue-600 sm:inline">{firstName}!</span>
-                      </h2>
-                      <p className="mt-2 text-sm text-slate-500 sm:text-base">
-                        {needsPayment && selectedPlan
-                          ? `One last step: pay for ${formatPlanName(selectedPlan.id)} and your plan is ready on your dashboard.`
-                          : "Here's your plan. It's waiting on your dashboard."}
-                      </p>
-                    </div>
-
-                    <div className="grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-3">
-                      {[
-                        { label: 'Exam', value: chosen === 'PTE' ? 'PTE' : 'IELTS' },
-                        { label: 'Target', value: formatScore(chosen, score) },
-                        { label: 'Exam date', value: dateValid ? formatExamDate(examDate) : 'Not booked' },
-                        { label: 'Focus', value: skillLabel(focus ?? undefined) ?? '—' },
-                        { label: 'Daily', value: minutes ? dailyLabel(minutes) : '—' },
-                        { label: 'Plan', value: selectedPlan ? formatPlanName(selectedPlan.id) : '—' },
-                      ].map(item => (
-                        <div
-                          key={item.label}
-                          className="rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm"
-                        >
-                          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                            {item.label}
-                          </span>
-                          <span className="mt-1 block font-display text-base font-bold text-slate-900">{item.value}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {saveError && (
-                      <div
-                        role="alert"
-                        className="max-w-xl rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-xs text-rose-800"
-                      >
-                        <p className="font-bold">We couldn&apos;t save your plan.</p>
-                        <p className="mt-0.5">{saveError}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <Button size="sm" onClick={() => void finish('/dashboard')} disabled={saving}>
-                            Try again
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={onDone} disabled={saving}>
-                            Continue for now
-                          </Button>
-                        </div>
+                    <div className="space-y-6">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-500 text-white shadow-md shadow-blue-500/30">
+                        <Check className="h-7 w-7" strokeWidth={3} />
                       </div>
-                    )}
 
-                    <div className="pt-2">
-                      {needsPayment && selectedPlan ? (
-                        paymentSubmitted ? (
-                          <div className="space-y-4">
-                            <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-xs text-emerald-800 max-w-xl">
-                              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                              <div>
-                                <p className="font-bold">Payment proof submitted</p>
-                                <p className="text-[11px] text-emerald-700">
-                                  Your payment is being verified. You can start practicing right away.
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex flex-col gap-3 sm:flex-row">
-                              <Button
-                                onClick={() => void finish('/diagnostic')}
-                                disabled={saving}
-                                className="h-12 rounded-full bg-blue-600 px-8 text-sm font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 gap-2"
-                              >
-                                <Sparkles className="h-4 w-4" />
-                                Take the diagnostic test
-                              </Button>
-                              <Button
-                                variant="outline"
-                                onClick={() => void finish('/dashboard')}
-                                disabled={saving}
-                                className="h-12 rounded-full border-slate-200 bg-white px-7 text-sm font-bold text-slate-700 hover:bg-slate-50"
-                              >
-                                Go to my dashboard
-                              </Button>
-                            </div>
+                      <div>
+                        <h2
+                          ref={headingRef}
+                          id="onboarding-title"
+                          tabIndex={-1}
+                          className="font-display text-3xl font-bold tracking-tight text-slate-900 outline-none sm:text-4xl"
+                        >
+                          You&apos;re all set,{' '}
+                          <span className="bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">
+                            {firstName}!
+                          </span>
+                        </h2>
+                        <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-500 sm:text-base">
+                          {needsPayment && selectedPlan && !paymentSubmitted
+                            ? `One last step: pay for ${formatPlanName(selectedPlan.id)} and your plan is ready on your dashboard.`
+                            : "Your plan is ready and waiting on your dashboard. A quick diagnostic test is the best place to start."}
+                        </p>
+                      </div>
+
+                      {saveError && (
+                        <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-xs text-rose-800">
+                          <p className="font-bold">We couldn&apos;t save your plan.</p>
+                          <p className="mt-0.5">{saveError}</p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button size="sm" onClick={() => void finish('/dashboard')} disabled={saving}>
+                              Try again
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={onDone} disabled={saving}>
+                              Continue for now
+                            </Button>
                           </div>
-                        ) : (
-                          <div className="flex flex-col gap-3 sm:flex-row">
+                        </div>
+                      )}
+
+                      {needsPayment && selectedPlan && paymentSubmitted && (
+                        <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-xs text-emerald-800">
+                          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+                          <div>
+                            <p className="font-bold">Payment proof submitted</p>
+                            <p className="text-[11px] text-emerald-700">
+                              Your payment is being verified. You can start practising right away.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {needsPayment && selectedPlan && !paymentSubmitted ? (
+                        <div className="space-y-3">
+                          <div className="flex flex-col gap-2.5 sm:flex-row">
                             <Button
                               type="button"
                               onClick={() => setCheckoutModalOpen(true)}
                               disabled={saving}
-                              className="h-12 rounded-full bg-blue-600 px-7 text-sm font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 gap-2"
+                              className="h-12 gap-2 rounded-full bg-blue-600 px-7 text-sm font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700"
                             >
                               <Crown className="h-4 w-4" />
-                              Pay now with QR · NPR {selectedPlan.priceNPR.toLocaleString()}
+                              Pay now with QR
                             </Button>
                             <Button
                               onClick={() => void finish(`/subscription?plan=${selectedPlan.id}`)}
                               disabled={saving}
                               variant="outline"
-                              className="h-12 rounded-full border-slate-200 bg-white px-7 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                              className="h-12 rounded-full border-slate-200 bg-white px-6 text-sm font-bold text-slate-700 hover:bg-slate-50"
                             >
-                              Continue to payment · NPR {selectedPlan.priceNPR.toLocaleString()}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              onClick={() => void finish('/dashboard')}
-                              disabled={saving}
-                              className="h-12 text-slate-500 hover:text-slate-900"
-                            >
-                              Pay later, go to my dashboard
+                              Continue to payment
                             </Button>
                           </div>
-                        )
+                          <button
+                            type="button"
+                            onClick={() => void finish('/dashboard')}
+                            disabled={saving}
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 transition-colors hover:text-slate-900 disabled:opacity-50"
+                          >
+                            Pay later, go to my dashboard
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       ) : (
-                        <div className="flex flex-col gap-3 sm:flex-row">
+                        <div className="flex flex-col gap-2.5 sm:flex-row">
                           <Button
                             onClick={() => void finish('/diagnostic')}
                             disabled={saving}
-                            className="h-12 rounded-full bg-blue-600 px-8 text-sm font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 gap-2"
+                            className="h-12 gap-2 rounded-full bg-blue-600 px-7 text-sm font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700"
                           >
                             <Sparkles className="h-4 w-4" />
                             Take the diagnostic test
@@ -1248,13 +1618,24 @@ export default function OnboardingFlow({
                             variant="outline"
                             onClick={() => void finish('/dashboard')}
                             disabled={saving}
-                            className="h-12 rounded-full border-slate-200 bg-white px-7 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                            className="h-12 rounded-full border-slate-200 bg-white px-6 text-sm font-bold text-slate-700 hover:bg-slate-50"
                           >
                             Go to my dashboard
                           </Button>
                         </div>
                       )}
                     </div>
+
+                    <PlanSummary
+                      exam={chosen}
+                      score={score}
+                      days={dateValid ? days : null}
+                      examDate={dateValid ? examDate : null}
+                      focus={focus}
+                      minutes={minutes}
+                      plan={selectedPlan}
+                      awaitingPayment={needsPayment && !paymentSubmitted}
+                    />
                   </div>
                 )}
               </div>
@@ -1362,6 +1743,216 @@ function PlanCard({
         ))}
       </div>
     </OptionCard>
+  );
+}
+
+/** A tear-off calendar page: month strip on top, day underneath. */
+function MiniCalendar({ month, day, active }: { month: string; day: number; active: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={`flex h-12 w-11 flex-col overflow-hidden rounded-xl border text-center shadow-sm transition-colors ${
+        active ? 'border-blue-600' : 'border-slate-200'
+      }`}
+    >
+      <span
+        className={`py-0.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${
+          active ? 'bg-blue-600 text-white' : 'bg-rose-500 text-white'
+        }`}
+      >
+        {month}
+      </span>
+      <span className="flex flex-1 items-center justify-center bg-white font-display text-lg font-extrabold leading-none text-slate-900">
+        {day}
+      </span>
+    </span>
+  );
+}
+
+function SelectedCheck({ on }: { on: boolean }) {
+  return (
+    <span
+      className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all ${
+        on ? 'border-transparent bg-blue-600 text-white' : 'border-slate-200 bg-white'
+      }`}
+    >
+      {on && <Check className="h-3 w-3" strokeWidth={3} />}
+    </span>
+  );
+}
+
+function ScoreRing({ fraction, value, caption }: { fraction: number; value: string; caption: string }) {
+  const radius = 54;
+  const circumference = 2 * Math.PI * radius;
+  const filled = Math.min(1, Math.max(0, fraction)) * circumference;
+
+  return (
+    <div className="relative h-36 w-36 shrink-0 sm:h-40 sm:w-40">
+      <svg viewBox="0 0 128 128" className="h-full w-full -rotate-90" aria-hidden>
+        <defs>
+          <linearGradient id="score-ring-gradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#2563eb" />
+            <stop offset="100%" stopColor="#6366f1" />
+          </linearGradient>
+        </defs>
+        <circle cx="64" cy="64" r={radius} fill="none" stroke="#eef2ff" strokeWidth="10" />
+        <circle
+          cx="64"
+          cy="64"
+          r={radius}
+          fill="none"
+          stroke="url(#score-ring-gradient)"
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={`${filled} ${circumference}`}
+          className="transition-[stroke-dasharray] duration-300 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-display text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">{value}</span>
+        <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">{caption}</span>
+      </div>
+    </div>
+  );
+}
+
+function PlanSummary({
+  exam,
+  score,
+  days,
+  examDate,
+  focus,
+  minutes,
+  plan,
+  awaitingPayment,
+}: {
+  exam: ExamType;
+  score: number;
+  days: number | null;
+  examDate: string | null;
+  focus: SkillType | null;
+  minutes: number | null;
+  plan: SubscriptionPlan | null;
+  awaitingPayment: boolean;
+}) {
+  const FocusIcon = focus ? SKILL_ICONS[focus] : Target;
+  const rows: { icon: LucideIcon; label: string; value: string; note?: string }[] = [
+    { icon: CalendarDays, label: 'Exam date', value: examDate ? formatExamDate(examDate) : 'Not booked yet' },
+    { icon: FocusIcon, label: 'Focus skill', value: skillLabel(focus ?? undefined) ?? '—' },
+    { icon: Clock, label: 'Daily practice', value: minutes ? dailyLabel(minutes) : '—' },
+    {
+      icon: Crown,
+      label: 'Plan',
+      value: plan ? formatPlanName(plan.id) : '—',
+      note: plan && awaitingPayment ? `NPR ${plan.priceNPR.toLocaleString()} · awaiting payment` : undefined,
+    },
+  ];
+
+  return (
+    <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm">
+      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-600 p-6 text-white">
+        <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-xl" />
+        <span className="relative text-[11px] font-bold uppercase tracking-wider text-white/70">
+          Your {examName(exam)} plan
+        </span>
+        <div className="relative mt-3 flex items-end justify-between gap-4">
+          <div>
+            <span className="block font-display text-5xl font-extrabold leading-none tracking-tight">
+              {formatScore(exam, score)}
+            </span>
+            <span className="mt-1.5 block text-xs font-semibold text-white/75">Target {exam === 'IELTS' ? 'band' : 'score'}</span>
+          </div>
+          {days !== null && (
+            <div className="rounded-2xl bg-white/15 px-4 py-2.5 text-right backdrop-blur-sm">
+              <span className="block font-display text-2xl font-bold leading-none">{days}</span>
+              <span className="mt-1 block text-[11px] font-semibold text-white/80">day{days === 1 ? '' : 's'} to go</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <dl className="divide-y divide-slate-100 px-6">
+        {rows.map(row => (
+          <div key={row.label} className="flex items-center gap-3 py-3.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <row.icon className="h-4 w-4" />
+            </span>
+            <dt className="flex-1 text-xs font-semibold text-slate-500">{row.label}</dt>
+            <dd className="text-right">
+              <span className="block text-sm font-bold text-slate-900">{row.value}</span>
+              {row.note && <span className="block text-[11px] font-semibold text-amber-600">{row.note}</span>}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function ToolkitPanel({ index, onNext }: { index: number; onNext: () => void }) {
+  const active = FEATURES[index];
+  const next = FEATURES[(index + 1) % FEATURES.length];
+  const Icon = active.icon;
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  return (
+    <div
+      key={index}
+      id="tour-panel"
+      role="tabpanel"
+      aria-labelledby={`tour-tab-${index}`}
+      className="relative flex min-h-[320px] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm motion-safe:animate-in motion-safe:fade-in duration-300 sm:p-7"
+    >
+      <div
+        aria-hidden
+        className={`pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br ${active.accent.glow} to-transparent blur-2xl`}
+      />
+
+      <div className="relative flex items-start justify-between gap-4">
+        <span className={`flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm ${active.accent.tile}`}>
+          <Icon className="h-7 w-7" />
+        </span>
+        <span className="font-display text-xs font-bold tabular-nums text-slate-300">
+          {pad(index + 1)} / {pad(FEATURES.length)}
+        </span>
+      </div>
+
+      <div className="relative mt-5">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{active.tag}</span>
+        <h3 className="mt-1 font-display text-xl font-bold text-slate-900">{active.title}</h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{active.text}</p>
+      </div>
+
+      <ul className="relative mb-6 mt-5 space-y-2.5">
+        {active.highlights.map(point => (
+          <li key={point} className="flex items-start gap-2.5 text-sm text-slate-700">
+            <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${active.accent.soft}`}>
+              <Check className="h-3 w-3" strokeWidth={3} />
+            </span>
+            <span>{point}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="relative mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+        {active.where ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
+            <MapPin className="h-3.5 w-3.5 text-blue-600" />
+            {active.where}
+          </span>
+        ) : (
+          <span className="text-[11px] font-semibold text-slate-400">Tracks itself as you practise</span>
+        )}
+        <button
+          type="button"
+          onClick={onNext}
+          className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 transition-colors hover:text-blue-800"
+        >
+          Next: {next.title}
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
   );
 }
 

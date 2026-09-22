@@ -414,7 +414,7 @@ export interface TagStat {
 }
 
 export interface MistakeAnalytics {
-  period: 'weekly' | 'monthly' | 'lifetime';
+  period: 'weekly' | 'monthly';
   total: number;
   unresolved: number;
   resolved: number;
