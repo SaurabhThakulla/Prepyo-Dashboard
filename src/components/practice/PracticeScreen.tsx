@@ -51,7 +51,7 @@ export default function PracticeScreen() {
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">{activeExam} Practice Studio</h1>
           <p className="text-xs text-muted-foreground">
-            Answers are graded on the server — nothing is scored in your browser.
+            Practise every task type and get your score after each answer.
           </p>
         </div>
 
@@ -98,6 +98,7 @@ export default function PracticeScreen() {
               onBlankChange={session.setBlankResponses}
               disabled={session.submitting || session.result !== null}
               reviewBlanks={session.result?.review?.blanks}
+              allowTranscript={session.result !== null}
             />
             <PracticeAnswerForm
               question={currentQuestion}

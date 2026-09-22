@@ -60,11 +60,11 @@ describe('browser TTS lifecycle', () => {
   });
 
   it('cancels on question change even for identical scripts and ignores stale callbacks', () => {
-    const { rerender, unmount } = render(<PromptAudio questionId="one" title="Task" audioTranscript="Same script." />);
+    const { rerender, unmount } = render(<PromptAudio questionId="one" title="Task" audioTranscript="Same script." allowTranscript />);
     fireEvent.click(screen.getByText('Show transcript'));
     play();
     const staleEnd = latest().onend;
-    rerender(<PromptAudio questionId="two" title="Task" audioTranscript="Same script." />);
+    rerender(<PromptAudio questionId="two" title="Task" audioTranscript="Same script." allowTranscript />);
     expect(speech.cancel).toHaveBeenCalled();
     expect(screen.queryByText('Hide transcript')).toBeNull();
     play();
@@ -80,7 +80,7 @@ describe('browser TTS lifecycle', () => {
     expect(screen.queryByText('Show transcript')).toBeNull();
     play();
     act(() => latest().onerror?.());
-    expect(screen.getByRole('alert').textContent).toContain('Audio playback failed');
+    expect(screen.getByRole('alert').textContent).toContain("The audio couldn't play");
     play();
     expect(screen.queryByRole('alert')).toBeNull();
   });
@@ -114,6 +114,6 @@ describe('browser TTS lifecycle', () => {
     Reflect.deleteProperty(window, 'speechSynthesis');
     render(<PromptAudio title="Task" audioTranscript="Hidden script." allowTranscript={false} />);
     expect(screen.queryByText(/Hidden script/)).toBeNull();
-    expect(screen.getByText(/does not support text-to-speech/)).toBeDefined();
+    expect(screen.getByText(/can't play on this device/)).toBeDefined();
   });
 });

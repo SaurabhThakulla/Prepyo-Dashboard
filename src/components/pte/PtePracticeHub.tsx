@@ -78,7 +78,7 @@ export const PTE_SECTIONS: PteSection[] = [
     buttonClass:
       'bg-[#ff9900] hover:bg-[#ea8c00] text-white shadow-sm hover:shadow active:scale-[0.98]',
     tasks: [
-      { name: 'Fill in the Blanks Reading & Writing' },
+      { name: 'Fill in the Blanks (Dropdown)' },
       { name: 'Multiple Type Multiple Answer' },
       { name: 'Reorder Paragraph' },
       { name: 'Reading Fill in the Blanks' },

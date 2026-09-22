@@ -13,6 +13,8 @@ interface QuestionPromptProps {
   onBlankChange?: (responses: Record<string, string>) => void;
   disabled?: boolean;
   reviewBlanks?: Blank[];
+  /** Offer the audio script, which gives the answer away until the question is submitted. */
+  allowTranscript?: boolean;
 }
 
 /** The question being answered: title, prompt, and any media that comes with it. */
@@ -22,6 +24,7 @@ export default function QuestionPrompt({
   onBlankChange,
   disabled = false,
   reviewBlanks,
+  allowTranscript = false,
 }: QuestionPromptProps) {
   return (
     <Card className="p-6 space-y-4">
@@ -70,6 +73,7 @@ export default function QuestionPrompt({
         audioUrl={question.audioUrl}
         audioTranscript={question.audioTranscript}
         title={question.title}
+        allowTranscript={allowTranscript}
       />
 
       {/* Read Aloud puts the words to say in here, so the passage stays on

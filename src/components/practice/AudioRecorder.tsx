@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Mic, MicOff, Square, RotateCcw, Loader2, AlertCircle } from 'lucide-react';
+import { Mic, MicOff, Square, RotateCcw, Loader2, AlertCircle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { canRecord, formatDuration, pickRecorderMimeType } from '@/lib/audio';
 import { startTranscribing, type TranscriptSession } from '@/lib/speech';
 import { createDeliveryMeter, type Delivery, type DeliveryMeter } from '@/lib/delivery';
@@ -39,6 +38,9 @@ export default function AudioRecorder({
   const [phase, setPhase] = useState<Phase>('idle');
   const [remaining, setRemaining] = useState(0);
   const [level, setLevel] = useState(0);
+  // Recent levels, oldest first: drawn as a waveform that scrolls left as you speak.
+  const [wave, setWave] = useState<number[]>(() => Array(WAVE_BARS).fill(0));
+  const waveRef = useRef<number[]>(Array(WAVE_BARS).fill(0));
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
@@ -50,6 +52,7 @@ export default function AudioRecorder({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const frameRef = useRef<number | null>(null);
+  const waveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const remainingRef = useRef(0);
   const supported = canRecord();
@@ -96,6 +99,10 @@ export default function AudioRecorder({
    * they read their feedback.
    */
   const releaseMic = useCallback(() => {
+    if (waveTimerRef.current !== null) {
+      clearInterval(waveTimerRef.current);
+      waveTimerRef.current = null;
+    }
     if (frameRef.current !== null) {
       cancelAnimationFrame(frameRef.current);
       frameRef.current = null;
@@ -137,15 +144,29 @@ export default function AudioRecorder({
     context.createMediaStreamSource(stream).connect(analyser);
 
     const samples = new Uint8Array(analyser.fftSize);
-    const read = () => {
+    // Root mean square of one buffer, scaled so ordinary speech fills most of the range.
+    const measure = () => {
       analyser.getByteTimeDomainData(samples);
       let sum = 0;
       for (const sample of samples) {
         const centred = (sample - 128) / 128;
         sum += centred * centred;
       }
-      // Root mean square, scaled so ordinary speech fills most of the bar.
-      const level = Math.min(1, Math.sqrt(sum / samples.length) * 4);
+      return Math.min(1, Math.sqrt(sum / samples.length) * 4);
+    };
+
+    // The scrolling wave runs on its own clock: a new column every 60ms, so it
+    // moves at a readable pace whatever the frame rate, and React is not
+    // re-rendering on every animation frame.
+    waveRef.current = Array(WAVE_BARS).fill(0);
+    setWave(waveRef.current);
+    waveTimerRef.current = setInterval(() => {
+      waveRef.current = [...waveRef.current.slice(1), measure()];
+      setWave(waveRef.current);
+    }, 60);
+
+    const read = () => {
+      const level = measure();
       setLevel(level);
       // The meter is already reading the microphone frame by frame, so timing
       // the silences costs nothing beyond this one call.
@@ -271,98 +292,190 @@ export default function AudioRecorder({
     );
   }
 
-  return (
-    <div className="p-4 rounded-xl bg-background border border-border space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-          <Mic className="w-4 h-4 text-primary" /> Your answer
-        </span>
+  // How far through the current countdown we are, for the ring and the bar.
+  const phaseTotal = phase === 'prep' ? prepSeconds : phase === 'recording' ? maxSeconds : 0;
+  const elapsed = phaseTotal > 0 ? Math.min(1, Math.max(0, 1 - remaining / phaseTotal)) : phase === 'review' ? 1 : 0;
+  const live = phase === 'prep' || phase === 'recording';
+  const silent = phase === 'recording' && level < 0.02;
 
-        {phase === 'prep' && (
-          <Badge variant="warning">Prepare · {formatDuration(remaining)}</Badge>
-        )}
-        {phase === 'recording' && (
-          <Badge variant="destructive" className="gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-            Recording · {formatDuration(remaining)}
-          </Badge>
-        )}
-        {phase === 'review' && <Badge variant="success">Recorded</Badge>}
+  const status =
+    phase === 'idle'
+      ? prepSeconds > 0
+        ? `You get ${formatDuration(prepSeconds)} to prepare, then recording starts on its own and stops after ${formatDuration(maxSeconds)}, the same as the exam.`
+        : `Recording starts as soon as you press the button and stops after ${formatDuration(maxSeconds)}, the same as the exam.`
+      : phase === 'prep'
+        ? 'Read the task and plan your answer. Recording begins automatically.'
+        : phase === 'recording'
+          ? silent
+            ? 'No sound is reaching your microphone yet.'
+            : 'Speaking. Keep going until the timer ends.'
+          : 'Listen back before you submit. Re-recording replaces this answer and costs nothing.';
+
+  const tone =
+    phase === 'recording'
+      ? { orb: 'from-rose-500 to-rose-600 shadow-rose-500/30', ring: 'text-rose-500', bar: 'from-rose-500 to-rose-400', panel: 'border-rose-500/40 from-rose-500/10 via-background to-rose-500/5' }
+      : phase === 'prep'
+        ? { orb: 'from-amber-400 to-amber-500 shadow-amber-500/30', ring: 'text-amber-500', bar: 'from-amber-500 to-amber-300', panel: 'border-amber-500/40 from-amber-500/10 via-background to-amber-500/5' }
+        : phase === 'review'
+          ? { orb: 'from-emerald-500 to-emerald-600 shadow-emerald-500/30', ring: 'text-emerald-500', bar: 'from-emerald-500 to-emerald-400', panel: 'border-emerald-500/30 from-emerald-500/5 via-background to-background' }
+          : { orb: 'from-primary to-indigo-600 shadow-primary/30', ring: 'text-primary', bar: 'from-primary to-indigo-500', panel: 'border-border from-muted/40 via-background to-background' };
+
+  const radius = 34;
+  const circumference = 2 * Math.PI * radius;
+
+  return (
+    <div className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 transition-colors duration-500 sm:p-5 ${tone.panel}`}>
+      {phase === 'recording' && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-10 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-rose-500/20 blur-3xl motion-safe:animate-pulse"
+        />
+      )}
+
+      <div className="relative flex items-center gap-4 sm:gap-5">
+        {/* The orb: countdown ring around it, and during recording it swells with your voice. */}
+        <div className="relative h-20 w-20 shrink-0">
+          <svg viewBox="0 0 80 80" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden>
+            <circle cx="40" cy="40" r={radius} fill="none" strokeWidth="4" className="stroke-muted-foreground/15" />
+            {phase !== 'idle' && (
+              <circle
+                cx="40"
+                cy="40"
+                r={radius}
+                fill="none"
+                strokeWidth="4"
+                strokeLinecap="round"
+                stroke="currentColor"
+                strokeDasharray={`${elapsed * circumference} ${circumference}`}
+                className={`${tone.ring} transition-[stroke-dasharray] duration-1000 ease-linear`}
+              />
+            )}
+          </svg>
+          {phase === 'recording' && (
+            <span
+              aria-hidden
+              className="absolute inset-3 rounded-full bg-rose-500/25 transition-transform duration-75"
+              style={{ transform: `scale(${1 + level * 0.6})` }}
+            />
+          )}
+          <button
+            type="button"
+            onClick={phase === 'idle' ? handleStart : phase === 'prep' ? handleSkipPrep : phase === 'recording' ? handleStopEarly : undefined}
+            disabled={phase === 'review' || (phase === 'idle' && (disabled || starting))}
+            // A bigger target for the same action as the labelled button below,
+            // so it is kept out of the tab order and the accessibility tree.
+            tabIndex={-1}
+            aria-hidden
+            className={`absolute inset-3 flex items-center justify-center rounded-full bg-gradient-to-br text-white shadow-lg transition-all duration-300 active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 disabled:cursor-default ${tone.orb} ${
+              phase === 'idle' && !disabled ? 'hover:scale-105' : ''
+            }`}
+          >
+            {phase === 'idle' && (starting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-6 w-6" />)}
+            {phase === 'prep' && <span className="font-display text-lg font-extrabold tabular-nums">{remaining}</span>}
+            {phase === 'recording' && <Square className="h-5 w-5 fill-current" />}
+            {phase === 'review' && <Check className="h-6 w-6" strokeWidth={3} />}
+          </button>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+              <Mic className={`h-4 w-4 ${phase === 'recording' ? 'text-rose-500' : 'text-primary'}`} /> Your answer
+            </span>
+            {phase === 'prep' && (
+              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-amber-700 dark:text-amber-300">
+                Prepare · {formatDuration(remaining)}
+              </span>
+            )}
+            {phase === 'recording' && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-rose-700 dark:text-rose-300">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
+                Recording · {formatDuration(remaining)}
+              </span>
+            )}
+            {phase === 'review' && (
+              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                Recorded
+              </span>
+            )}
+          </div>
+
+          {/* Live waveform from the microphone. It moves during prep too, so a
+              muted or wrong mic shows up before the answer is spent. */}
+          {phase !== 'review' && (
+            <div aria-hidden className="mt-2.5 flex h-10 items-center gap-[3px]">
+              {WAVE_SHAPE.map((shape, i) => (
+                <span
+                  key={i}
+                  style={{
+                    height: `${Math.round(
+                      (live ? 0.1 + Math.min(1, wave[i] * 1.6) * (0.8 + 0.2 * shape) : 0.25 + shape * 0.25) * 100,
+                    )}%`,
+                  }}
+                  className={`flex-1 rounded-full transition-[height] duration-100 ease-out ${
+                    phase === 'recording' ? 'bg-gradient-to-t from-rose-500 to-rose-300' : phase === 'prep' ? 'bg-amber-400/60' : 'bg-muted-foreground/20'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+
+          {phase === 'review' && playbackUrl && (
+            <audio controls src={playbackUrl} className="mt-2.5 h-10 w-full">
+              Audio can't play on this device.
+            </audio>
+          )}
+
+          {phase !== 'idle' && phase !== 'review' && (
+            <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted-foreground/15">
+              <div
+                className={`h-full rounded-full bg-gradient-to-r transition-[width] duration-1000 ease-linear ${tone.bar}`}
+                style={{ width: `${elapsed * 100}%` }}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
-      {phase === 'idle' && (
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
-          {prepSeconds > 0
-            ? `You get ${formatDuration(prepSeconds)} to prepare, then recording starts on its own and stops after ${formatDuration(maxSeconds)} — the same as the exam.`
-            : `Recording starts as soon as you press the button and stops after ${formatDuration(maxSeconds)}, the same as the exam.`}
-        </p>
-      )}
-
-      {(phase === 'prep' || phase === 'recording') && (
-        <div className="space-y-2">
-          {/* Input meter. A flat bar while speaking means the wrong microphone
-              is selected, which is worth seeing before the answer is spent. */}
-          <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-[width] duration-75 ${
-                phase === 'recording' ? 'bg-rose-500' : 'bg-primary/40'
-              }`}
-              style={{ width: `${Math.round(level * 100)}%` }}
-            />
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            {phase === 'prep'
-              ? 'Read the task. Recording begins automatically.'
-              : level < 0.02
-                ? 'No sound is reaching your microphone yet.'
-                : 'Speaking — keep going until the timer ends.'}
-          </p>
-        </div>
-      )}
-
-      {phase === 'review' && playbackUrl && (
-        <div className="space-y-2">
-          <audio controls src={playbackUrl} className="w-full">
-            Your browser does not support audio playback.
-          </audio>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Listen back before you submit. Re-recording replaces this answer and costs nothing.
-          </p>
-        </div>
-      )}
+      <p
+        className={`relative mt-3 text-[11px] leading-relaxed ${silent ? 'font-semibold text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}
+        aria-live="polite"
+      >
+        {status}
+      </p>
 
       {error && (
-        <div className="flex items-start gap-2 p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10">
-          <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">{error}</p>
+        <div className="relative mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+          <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">{error}</p>
         </div>
       )}
 
-      <div className="flex items-center gap-2">
+      <div className="relative mt-3 flex flex-wrap items-center gap-2">
         {phase === 'idle' && (
-          <Button onClick={handleStart} disabled={disabled || starting} size="sm" className="font-bold gap-1.5">
-            {starting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mic className="w-3.5 h-3.5" />}
+          <Button onClick={handleStart} disabled={disabled || starting} size="sm" className="gap-1.5 rounded-full px-4 font-bold">
+            {starting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mic className="h-3.5 w-3.5" />}
             <span>{starting ? 'Opening microphone…' : 'Start recording'}</span>
           </Button>
         )}
 
         {phase === 'prep' && (
-          <Button onClick={handleSkipPrep} size="sm" variant="outline" className="font-bold gap-1.5">
-            <Mic className="w-3.5 h-3.5" />
+          <Button onClick={handleSkipPrep} size="sm" variant="outline" className="gap-1.5 rounded-full px-4 font-bold">
+            <Mic className="h-3.5 w-3.5" />
             <span>Start now</span>
           </Button>
         )}
 
         {phase === 'recording' && (
-          <Button onClick={handleStopEarly} size="sm" variant="destructive" className="font-bold gap-1.5">
-            <Square className="w-3.5 h-3.5" />
+          <Button onClick={handleStopEarly} size="sm" variant="destructive" className="gap-1.5 rounded-full px-4 font-bold">
+            <Square className="h-3.5 w-3.5" />
             <span>Stop</span>
           </Button>
         )}
 
         {phase === 'review' && (
-          <Button onClick={handleRetake} disabled={disabled} size="sm" variant="outline" className="font-bold gap-1.5">
-            <RotateCcw className="w-3.5 h-3.5" />
+          <Button onClick={handleRetake} disabled={disabled} size="sm" variant="outline" className="gap-1.5 rounded-full px-4 font-bold">
+            <RotateCcw className="h-3.5 w-3.5" />
             <span>Record again</span>
           </Button>
         )}
@@ -370,3 +483,7 @@ export default function AudioRecorder({
     </div>
   );
 }
+
+// Resting shape, and a little per-bar texture on the live wave.
+const WAVE_BARS = 40;
+const WAVE_SHAPE = Array.from({ length: WAVE_BARS }, (_, i) => 0.35 + 0.65 * Math.abs(Math.sin(i * 0.8) * Math.cos(i * 0.33)));

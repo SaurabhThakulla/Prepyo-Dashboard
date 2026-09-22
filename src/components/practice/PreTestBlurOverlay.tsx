@@ -14,11 +14,15 @@ interface PreTestBlurOverlayProps {
   onPickAnother?: () => void;
   skill?: string;
   loading?: boolean;
+  /** Sub-tests this start spends. A section mock costs 5; everything else 1. */
+  credits?: number;
+  /** Button text, when "Start Practice" is the wrong word (a mock test). */
+  startLabel?: string;
 }
 
 /**
  * Centered glassmorphic card displayed over blurred test content prior to starting.
- * Starting deducts 1 sub-test credit and initiates the test session.
+ * Starting deducts `credits` sub-tests (1 unless told otherwise) and starts the session.
  */
 export default function PreTestBlurOverlay({
   title,
@@ -28,14 +32,17 @@ export default function PreTestBlurOverlay({
   onStart,
   onPickAnother,
   loading = false,
+  credits = 1,
+  startLabel = 'Start Practice',
 }: PreTestBlurOverlayProps) {
-  const hasCredits = subTestsRemaining > 0;
+  const hasCredits = subTestsRemaining >= credits;
+  const creditWord = credits === 1 ? 'credit' : 'credits';
 
   return (
     <div className="relative z-20 flex min-h-[calc(100dvh-4rem)] items-center justify-center p-4 bg-background/60 backdrop-blur-[2px] animate-in fade-in duration-200">
       <Card className="w-full max-w-lg p-6 sm:p-8 text-center space-y-5 bg-card/95 border-border/90 shadow-2xl rounded-2xl backdrop-blur-xl">
         <div className="space-y-2">
-          <CardTitle className="text-xl sm:text-2xl font-black text-foreground">
+          <CardTitle className="font-display text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
             {title}
           </CardTitle>
           <CardDescription className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
@@ -47,7 +54,7 @@ export default function PreTestBlurOverlay({
         <div className="p-3.5 rounded-xl bg-muted/60 border border-border/80 flex flex-wrap gap-3 items-center justify-between text-xs">
           <div className="flex items-center gap-2 text-left">
             <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-            <span className="text-foreground font-semibold">1 sub-test credit</span>
+            <span className="text-foreground font-semibold">{credits} sub-test {creditWord}</span>
           </div>
           <div>
             {hasCredits ? (
@@ -56,7 +63,7 @@ export default function PreTestBlurOverlay({
               </span>
             ) : (
               <span className="font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-md border border-rose-500/30">
-                0 left today
+                {subTestsRemaining} left today
               </span>
             )}
           </div>
@@ -69,7 +76,7 @@ export default function PreTestBlurOverlay({
               onClick={onStart}
               disabled={isStarting || loading}
               size="lg"
-              className="w-full h-12 text-sm font-extrabold gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25 transition-all active:scale-[0.99]"
+              className="w-full h-12 text-sm font-bold gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25 transition-all active:scale-[0.99]"
             >
               {loading ? (
                 <>
@@ -84,7 +91,7 @@ export default function PreTestBlurOverlay({
               ) : (
                 <>
                   <Play className="w-4 h-4 fill-current" />
-                  <span>Start Practice (1 Credit)</span>
+                  <span>{startLabel} ({credits} {credits === 1 ? 'Credit' : 'Credits'})</span>
                 </>
               )}
             </Button>
@@ -92,7 +99,7 @@ export default function PreTestBlurOverlay({
             <Button
               asChild
               size="lg"
-              className="w-full h-12 text-sm font-extrabold gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-500/25"
+              className="w-full h-12 text-sm font-bold gap-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-500/25"
             >
               <Link to="/subscription">
                 <ShieldAlert className="w-4 h-4" />
