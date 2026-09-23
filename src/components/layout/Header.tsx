@@ -122,14 +122,16 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
             variant="ghost"
             size="icon"
             onClick={() => setShowNotifications(!showNotifications)}
-            aria-label="Notifications"
+            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
             className="relative h-9 w-9 text-muted-foreground hover:text-foreground"
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute top-2 right-2 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-nepal-crimson opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-nepal-crimson"></span>
+              <span
+                aria-hidden
+                className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-nepal-crimson px-1 text-[10px] font-medium leading-none text-white ring-2 ring-background"
+              >
+                {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
           </Button>

@@ -35,6 +35,7 @@ const PROTECTED_PREFIXES = [
   '/referrals',
   '/subscription',
   '/diagnostic',
+  '/reports',
   '/admin',
 ];
 

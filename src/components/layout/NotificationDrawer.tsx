@@ -1,92 +1,187 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Award,
+  Bell,
+  BellOff,
+  CheckCheck,
+  ChevronRight,
+  CreditCard,
+  Flame,
+  Gift,
+  Gauge,
+  Info,
+  Loader2,
+  Megaphone,
+  MessageSquare,
+  Target,
+  X,
+  CalendarClock,
+} from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { Bell, Check, Flame, Award, AlertCircle, X, ExternalLink } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import type { NotificationItem } from '@/lib/types';
 
 interface Props {
   open: boolean;
   onClose: () => void;
 }
 
+/** Each kind of notice gets its own icon and colour, so the list scans at a glance. */
+const KIND: Record<string, { icon: React.ElementType; tone: string }> = {
+  payment: { icon: CreditCard, tone: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  plan: { icon: CalendarClock, tone: 'bg-violet-500/10 text-violet-600 dark:text-violet-400' },
+  limit: { icon: Gauge, tone: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+  report: { icon: MessageSquare, tone: 'bg-sky-500/10 text-sky-600 dark:text-sky-400' },
+  evaluation: { icon: Award, tone: 'bg-primary/10 text-primary' },
+  mission: { icon: Target, tone: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  streak: { icon: Flame, tone: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
+  referral: { icon: Gift, tone: 'bg-pink-500/10 text-pink-600 dark:text-pink-400' },
+  announcement: { icon: Megaphone, tone: 'bg-primary/10 text-primary' },
+  system: { icon: Info, tone: 'bg-muted text-muted-foreground' },
+};
+
+/** "just now", "5m", "3h", "2d", then a date. */
+function timeAgo(iso: string): string {
+  const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 7 * 86400) return `${Math.floor(seconds / 86400)}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
 export default function NotificationDrawer({ open, onClose }: Props) {
-  const { notifications, markNotificationAsRead } = useApp();
+  const {
+    notifications,
+    unreadCount,
+    hasMoreNotifications,
+    loadMoreNotifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+  } = useApp();
+  const navigate = useNavigate();
+  const [loadingMore, setLoadingMore] = useState(false);
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
+  const openNotification = (notif: NotificationItem) => {
+    if (!notif.read) void markNotificationAsRead(notif.id);
+    if (notif.actionUrl) {
+      onClose();
+      navigate(notif.actionUrl);
+    }
+  };
 
-      <div className="fixed top-0 right-0 h-dvh max-w-sm w-full bg-card border-l border-border shadow-2xl p-5 flex flex-col z-50 animate-in slide-in-from-right duration-200">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-border">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <Bell className="w-5 h-5" />
+  const showMore = async () => {
+    setLoadingMore(true);
+    try {
+      await loadMoreNotifications();
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label="Notifications">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+
+      <div className="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-sm flex-col border-l border-border bg-card shadow-2xl animate-in slide-in-from-right duration-200">
+        <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+          <div className="flex items-center gap-2.5">
+            <div className="rounded-lg bg-primary/10 p-2 text-primary">
+              <Bell className="h-4 w-4" aria-hidden />
             </div>
             <div>
-              <h3 className="font-display font-bold text-base text-foreground">Notifications</h3>
-              <p className="text-xs text-muted-foreground">{notifications.filter(n => !n.read).length} unread</p>
+              <h3 className="font-display text-base font-semibold text-foreground">Notifications</h3>
+              <p className="text-xs text-muted-foreground">
+                {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
+              </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={() => void markAllNotificationsAsRead()}
+                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-primary hover:bg-primary/10"
+              >
+                <CheckCheck className="h-3.5 w-3.5" aria-hidden /> Mark all read
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close notifications"
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
-        {/* Notifications List */}
-        <div className="flex-1 overflow-y-auto py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto px-3 py-3">
           {notifications.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground text-sm">
-              No notifications yet.
+            <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
+              <div className="rounded-full bg-muted p-3 text-muted-foreground">
+                <BellOff className="h-5 w-5" aria-hidden />
+              </div>
+              <p className="text-sm text-foreground">No notifications yet</p>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Payment updates, replies to your reports and daily reminders will show up here.
+              </p>
             </div>
           ) : (
-            notifications.map(notif => (
-              <div
-                key={notif.id}
-                className={`p-3.5 rounded-xl border transition-all ${
-                  notif.read
-                    ? 'bg-muted/40 border-border opacity-75'
-                    : 'bg-background border-primary/30 shadow-md shadow-primary/5'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    {notif.type === 'streak' && <Flame className="w-4 h-4 text-amber-500 shrink-0" />}
-                    {notif.type === 'evaluation' && <Award className="w-4 h-4 text-primary shrink-0" />}
-                    {notif.type === 'system' && <AlertCircle className="w-4 h-4 text-primary shrink-0" />}
-                    <h4 className="font-semibold text-xs text-foreground">{notif.title}</h4>
-                  </div>
-                  {!notif.read && (
+            <ul className="space-y-1.5">
+              {notifications.map(notif => {
+                const kind = KIND[notif.type] ?? KIND.system;
+                const Icon = kind.icon;
+                return (
+                  <li key={notif.id}>
                     <button
-                      onClick={() => markNotificationAsRead(notif.id)}
-                      className="text-[10px] text-primary hover:text-primary/80 font-medium shrink-0 flex items-center gap-0.5"
+                      type="button"
+                      onClick={() => openNotification(notif)}
+                      className={cn(
+                        'group flex w-full items-start gap-3 rounded-xl p-3 text-left transition-colors hover:bg-muted/60',
+                        !notif.read && 'bg-primary/[0.04]',
+                      )}
                     >
-                      <Check className="w-3 h-3" /> Read
+                      <span className={cn('mt-0.5 shrink-0 rounded-lg p-2', kind.tone)}>
+                        <Icon className="h-4 w-4" aria-hidden />
+                      </span>
+                      <span className="min-w-0 flex-1 space-y-0.5">
+                        <span className="flex items-start justify-between gap-2">
+                          <span className={cn('text-sm leading-snug', notif.read ? 'text-muted-foreground' : 'font-medium text-foreground')}>
+                            {notif.title}
+                          </span>
+                          {!notif.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" aria-label="Unread" />}
+                        </span>
+                        <span className="block text-xs leading-relaxed text-muted-foreground">{notif.message}</span>
+                        <span className="flex items-center justify-between pt-0.5 text-[11px] text-muted-foreground/80">
+                          <span>{timeAgo(notif.createdAt)}</span>
+                          {notif.actionUrl && (
+                            <ChevronRight className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
+                          )}
+                        </span>
+                      </span>
                     </button>
-                  )}
-                </div>
-                <p className="text-xs text-foreground/90 mt-1.5 leading-relaxed">{notif.message}</p>
-                {notif.actionUrl && (
-                  <Link
-                    to={notif.actionUrl}
-                    onClick={onClose}
-                    className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline font-semibold mt-2.5"
-                  >
-                    <span>View details</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </Link>
-                )}
-              </div>
-            ))
+                  </li>
+                );
+              })}
+            </ul>
           )}
-        </div>
 
-        {/* Footer */}
-        <div className="pt-3 border-t border-border text-center">
-          <p className="text-[11px] text-muted-foreground">Prepyo Study Alerts & Daily Streak Reminders</p>
+          {hasMoreNotifications && (
+            <button
+              type="button"
+              onClick={() => void showMore()}
+              disabled={loadingMore}
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border py-2.5 text-sm text-foreground hover:bg-muted/60 disabled:opacity-60"
+            >
+              {loadingMore && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+              {loadingMore ? 'Loading…' : 'Show more'}
+            </button>
+          )}
         </div>
       </div>
     </div>

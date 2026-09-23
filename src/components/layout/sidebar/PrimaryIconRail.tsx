@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Bug, User, CreditCard, LogOut } from 'lucide-react';
+import { Bug, User, CreditCard, LogOut, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -165,6 +165,16 @@ export default function PrimaryIconRail({
               >
                 <CreditCard className="w-4 h-4 text-primary shrink-0" />
                 <span className="flex-1">Subscription</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link
+                to="/reports"
+                onClick={onCloseMobile}
+                className="cursor-pointer flex items-center gap-2.5 py-2 px-2.5 rounded-xl text-xs font-medium hover:bg-muted/70 transition-colors"
+              >
+                <MessageSquare className="w-4 h-4 text-primary shrink-0" />
+                <span className="flex-1">My reports</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

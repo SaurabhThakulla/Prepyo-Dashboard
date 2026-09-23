@@ -39,8 +39,12 @@ interface AppContextType {
   refreshUser: () => Promise<void>;
 
   notifications: NotificationItem[];
+  /** Unread across the whole inbox, from the server, not just the loaded page. */
   unreadCount: number;
+  /** More notifications exist beyond the ones loaded so far. */
+  hasMoreNotifications: boolean;
   refreshNotifications: () => Promise<void>;
+  loadMoreNotifications: () => Promise<void>;
   markNotificationAsRead: (id: string) => Promise<void>;
   markAllNotificationsAsRead: () => Promise<void>;
 
@@ -63,10 +67,26 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+/** The panel shows this many at a time; "Show more" loads the next batch. */
+const NOTIFICATION_PAGE = 5;
+const NOTIFICATION_POLL_MS = 60_000;
+
+interface NotificationPage {
+  notifications: NotificationItem[];
+  unreadCount: number;
+  pagination?: { total: number };
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationTotal, setNotificationTotal] = useState(0);
+  // How many the panel is showing, so a refresh keeps "Show more" pages open.
+  const loadedNotifications = useRef(NOTIFICATION_PAGE);
+  const notificationsRef = useRef(notifications);
+  notificationsRef.current = notifications;
   const [activeExam, setActiveExamState] = useState<ExamType>('PTE');
   const [isTutorOpen, setIsTutorOpen] = useState(false);
   const [tutorContextPrompt, setTutorContextPrompt] = useState('');
@@ -134,8 +154,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const refreshNotifications = useCallback(async () => {
     try {
-      const data = await api.get<{ notifications: NotificationItem[] }>('/notifications');
+      const data = await api.get<NotificationPage>('/notifications', {
+        limit: loadedNotifications.current,
+        offset: 0,
+      });
       setNotifications(data.notifications ?? []);
+      setUnreadCount(data.unreadCount ?? 0);
+      setNotificationTotal(data.pagination?.total ?? 0);
     } catch (err) {
       // A signed-out visitor has no notifications; that is not an error worth
       // logging on every sign-in page view.
@@ -143,6 +168,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error('Failed to load notifications:', err);
       }
       setNotifications([]);
+      setUnreadCount(0);
+      setNotificationTotal(0);
+    }
+  }, []);
+
+  const loadMoreNotifications = useCallback(async () => {
+    try {
+      const data = await api.get<NotificationPage>('/notifications', {
+        limit: NOTIFICATION_PAGE,
+        offset: loadedNotifications.current,
+      });
+      const next = data.notifications ?? [];
+      loadedNotifications.current += next.length;
+      // A notice that arrived since the last load shifts the pages by one, so
+      // ids already on screen are skipped rather than shown twice.
+      setNotifications(prev => {
+        const seen = new Set(prev.map(n => n.id));
+        return [...prev, ...next.filter(n => !seen.has(n.id))];
+      });
+      setUnreadCount(data.unreadCount ?? 0);
+      setNotificationTotal(data.pagination?.total ?? 0);
+    } catch (err) {
+      console.error('Failed to load more notifications:', err);
     }
   }, []);
 
@@ -234,7 +282,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [user, updateProfile],
   );
 
+  // New notices arrive without a reload: once a minute while the tab is in
+  // view, and straight away when the learner comes back to it.
+  useEffect(() => {
+    if (!user) return;
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') void refreshNotifications();
+    };
+    const timer = window.setInterval(refreshIfVisible, NOTIFICATION_POLL_MS);
+    document.addEventListener('visibilitychange', refreshIfVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refreshIfVisible);
+    };
+  }, [user?.id, refreshNotifications]);
+
   const markNotificationAsRead = useCallback(async (id: string) => {
+    if (notificationsRef.current.some(n => n.id === id && !n.read)) {
+      setUnreadCount(count => Math.max(0, count - 1));
+    }
     setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
     try {
       await api.post(`/notifications/${id}/read`);
@@ -246,6 +312,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const markAllNotificationsAsRead = useCallback(async () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setUnreadCount(0);
     try {
       await api.post('/notifications/read-all');
     } catch (err) {
@@ -254,7 +321,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refreshNotifications]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const hasMoreNotifications = notifications.length < notificationTotal;
 
   return (
     <AppContext.Provider
@@ -268,7 +335,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         refreshUser,
         notifications,
         unreadCount,
+        hasMoreNotifications,
         refreshNotifications,
+        loadMoreNotifications,
         markNotificationAsRead,
         markAllNotificationsAsRead,
         activeExam,
