@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -58,7 +58,6 @@ export default function ReportIssueDialog({ open, onOpenChange }: ReportIssueDia
       await api.post('/report', { message: message.trim(), path: pathname });
 
       setSent(true);
-      setTimeout(() => onOpenChange(false), 1200);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(ERRORS[err.code] ?? GENERIC);
@@ -96,6 +95,15 @@ export default function ReportIssueDialog({ open, onOpenChange }: ReportIssueDia
             placeholder="What happened? What were you expecting instead?"
             className="text-xs resize-none rounded-xl"
           />
+          {sent && (
+            <p role="status" className="rounded-xl bg-emerald-500/10 px-3 py-2 text-xs leading-relaxed text-emerald-700 dark:text-emerald-300">
+              Sent. We will reply in your notifications, and you can follow the conversation in{' '}
+              <Link to="/reports" onClick={() => onOpenChange(false)} className="underline underline-offset-2">
+                My reports
+              </Link>
+              .
+            </p>
+          )}
           <div className="flex items-center justify-between gap-3 min-h-[16px]">
             <p className="text-[11px] text-destructive leading-tight">{error}</p>
             <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
@@ -111,7 +119,7 @@ export default function ReportIssueDialog({ open, onOpenChange }: ReportIssueDia
             onClick={() => onOpenChange(false)}
             className="text-xs text-muted-foreground hover:text-foreground rounded-xl"
           >
-            Cancel
+            {sent ? 'Close' : 'Cancel'}
           </Button>
           <Button
             type="button"
