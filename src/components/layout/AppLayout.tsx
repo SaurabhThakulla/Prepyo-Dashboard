@@ -2,6 +2,7 @@ import React, { useState, lazy, Suspense, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/ui/toast';
+import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -90,6 +91,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
     }
   };
+
+  // "WRITING: Write Essay" reads better as "Writing · Write Essay".
+  const taskLabel = activeTestSession?.title?.replace(
+    /^([A-Z]+):\s*/,
+    (_, skill: string) => `${skill.charAt(0)}${skill.slice(1).toLowerCase()} · `,
+  );
 
   const confirmLeave = async () => {
     const destination = pendingLeave;
@@ -220,20 +227,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
 
     <Dialog open={pendingLeave !== null} onOpenChange={open => { if (!open && !ending) setPendingLeave(null); }}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Are you sure you want to end this task?</DialogTitle>
-          <DialogDescription>
-            {activeTestSession?.title ? `${activeTestSession.title} is still in progress. ` : 'Your task is still in progress. '}
-            If you leave now, this attempt ends and your answer will not be submitted.
+      <DialogContent className="max-w-[380px] gap-0 p-6 sm:p-7 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 ring-8 ring-amber-500/5">
+          <LogOut className="h-5 w-5 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
+        </div>
+        <DialogHeader className="space-y-2 sm:text-center">
+          <DialogTitle className="text-lg font-medium leading-snug">
+            End this task?
+          </DialogTitle>
+          <DialogDescription className="text-sm font-normal leading-relaxed">
+            If you leave now, this attempt ends and your answer won&rsquo;t be submitted.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="gap-2">
-          <Button type="button" variant="outline" disabled={ending} onClick={() => setPendingLeave(null)}>
-            No, stay
+        {taskLabel && (
+          <div className="mx-auto mt-4 inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-normal text-muted-foreground">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+            <span className="truncate">{taskLabel} in progress</span>
+          </div>
+        )}
+        <DialogFooter className="mt-6 grid grid-cols-2 gap-3 sm:flex-none">
+          <Button type="button" variant="outline" className="h-10 w-full rounded-xl font-normal" disabled={ending} onClick={() => setPendingLeave(null)}>
+            Keep going
           </Button>
-          <Button type="button" variant="destructive" disabled={ending} onClick={confirmLeave}>
-            {ending ? 'Ending…' : 'Yes, end task'}
+          <Button type="button" variant="destructive" className="h-10 w-full rounded-xl font-normal" disabled={ending} onClick={confirmLeave}>
+            {ending ? 'Ending…' : 'End task'}
           </Button>
         </DialogFooter>
       </DialogContent>

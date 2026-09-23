@@ -326,7 +326,7 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
                           <input
                             id="paymentProof"
                             type="file"
-                            accept="image/*"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
                             onChange={pickProof}
                             className="sr-only"
                           />

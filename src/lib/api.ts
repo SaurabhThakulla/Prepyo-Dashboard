@@ -1,8 +1,9 @@
 // The one place the frontend talks to the API.
 //
-// Requests go to /api/v1/* on our own origin and Next proxies them to the Go
-// backend (see next.config.js). Because it is same-origin, the HttpOnly session
-// cookie is sent automatically and there is no token for page scripts to leak.
+// Requests go to /api/v1/* on our own origin. In production the Go binary
+// serves both the app and the API; in development Vite proxies /api to it (see
+// vite.config.ts). Because it is same-origin, the HttpOnly session cookie is
+// sent automatically and there is no token for page scripts to leak.
 
 export interface ApiErrorBody {
   code: string;

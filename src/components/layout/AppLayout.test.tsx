@@ -92,19 +92,19 @@ describe('AppLayout active test session protection', () => {
 
     // Clicking inside the workspace is not interrupted.
     fireEvent.click(screen.getByTestId('practice-submit-button'));
-    expect(screen.queryByText('Are you sure you want to end this task?')).toBeNull();
+    expect(screen.queryByText('End this task?')).toBeNull();
 
     // Clicking a sidebar button asks first, and "No" keeps the task running.
     fireEvent.click(screen.getByTestId('sidebar-nav-button'));
-    expect(screen.getByText('Are you sure you want to end this task?')).toBeTruthy();
+    expect(screen.getByText('End this task?')).toBeTruthy();
     expect(onNavButton).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByText('No, stay'));
-    await waitFor(() => expect(screen.queryByText('Are you sure you want to end this task?')).toBeNull());
+    fireEvent.click(screen.getByText('Keep going'));
+    await waitFor(() => expect(screen.queryByText('End this task?')).toBeNull());
     expect(onStop).not.toHaveBeenCalled();
 
     // "Yes" ends the task, then carries out the original click.
     fireEvent.click(screen.getByTestId('sidebar-mocks-link'));
-    fireEvent.click(screen.getByText('Yes, end task'));
+    fireEvent.click(screen.getByText('End task'));
     await waitFor(() => expect(mocks.setActiveTestSession).toHaveBeenCalledWith(null));
     expect(onStop).toHaveBeenCalledTimes(1);
   });
@@ -123,7 +123,7 @@ describe('AppLayout active test session protection', () => {
     screen.getByTestId('sidebar-nav-button').addEventListener('click', onNavButton);
 
     fireEvent.click(screen.getByTestId('sidebar-nav-button'));
-    fireEvent.click(screen.getByText('Yes, end task'));
+    fireEvent.click(screen.getByText('End task'));
     await waitFor(() => expect(onNavButton).toHaveBeenCalledTimes(1));
   });
 });
