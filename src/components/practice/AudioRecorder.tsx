@@ -19,6 +19,11 @@ interface AudioRecorderProps {
   maxSeconds: number;
   disabled?: boolean;
   /**
+   * Open the microphone and start the think-time countdown as soon as the
+   * recorder appears, so the timer runs from the moment the task starts.
+   */
+  autoStart?: boolean;
+  /**
    * Called with the finished recording, or null when it is discarded.
    *
    * `transcript` is what the browser's own speech recognition heard, when it
@@ -33,6 +38,7 @@ export default function AudioRecorder({
   prepSeconds,
   maxSeconds,
   disabled = false,
+  autoStart = false,
   onRecorded,
 }: AudioRecorderProps) {
   const [phase, setPhase] = useState<Phase>('idle');
@@ -55,7 +61,16 @@ export default function AudioRecorder({
   const waveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const remainingRef = useRef(0);
+  const mountedRef = useRef(true);
+  const autoStartedRef = useRef(false);
   const supported = canRecord();
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const clearTimer = useCallback(() => {
     if (tickRef.current !== null) {
@@ -237,9 +252,15 @@ export default function AudioRecorder({
       // These three are on by default in most browsers, but naming them means a
       // learner on a laptop mic in a noisy room gets the same treatment
       // everywhere rather than depending on the browser's defaults.
-      streamRef.current = await navigator.mediaDevices.getUserMedia({
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
+      // The learner may have left while the permission prompt was open.
+      if (!mountedRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
+      streamRef.current = stream;
       watchLevel(streamRef.current);
 
       if (prepSeconds > 0) startPrep();
@@ -256,6 +277,17 @@ export default function AudioRecorder({
       setStarting(false);
     }
   }, [beginRecording, disabled, prepSeconds, releaseMic, starting, startPrep, watchLevel]);
+
+  // Deferred a tick so React's development double-mount cancels the first
+  // attempt instead of opening the microphone twice.
+  useEffect(() => {
+    if (!autoStart || !supported || disabled || autoStartedRef.current) return;
+    const id = setTimeout(() => {
+      autoStartedRef.current = true;
+      void handleStart();
+    }, 0);
+    return () => clearTimeout(id);
+  }, [autoStart, supported, disabled, handleStart]);
 
   const handleStopEarly = useCallback(() => {
     clearTimer();

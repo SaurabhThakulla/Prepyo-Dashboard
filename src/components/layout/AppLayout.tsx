@@ -1,7 +1,16 @@
-import React, { useState, lazy, Suspense, useEffect } from 'react';
+import React, { useState, lazy, Suspense, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/ui/toast';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import AppSidebar from './AppSidebar';
 import Header from './Header';
 import RequireAuth from '@/components/auth/RequireAuth';
@@ -30,15 +39,21 @@ const PROTECTED_PREFIXES = [
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
-  const { user, loading, activeTestSession } = useApp();
+  const { user, loading, activeTestSession, setActiveTestSession } = useApp();
   const toast = useToast();
 
   useClipboardGuard(!isAdmin(user), () =>
     toast.info('Pasting is turned off', 'Type your answer yourself, the way you will in the exam.'),
   );
 
+  // The link or button the learner clicked while a task was running. It is
+  // clicked again for them once they confirm they want to end the task.
+  const [pendingLeave, setPendingLeave] = useState<HTMLElement | null>(null);
+  const [ending, setEnding] = useState(false);
+  const replayingClick = useRef(false);
+
   const handleContainerClickCapture = (e: React.MouseEvent) => {
-    if (!activeTestSession?.isActive) return;
+    if (!activeTestSession?.isActive || replayingClick.current) return;
 
     const target = e.target as HTMLElement | null;
     if (!target) return;
@@ -54,7 +69,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
         e.preventDefault();
         e.stopPropagation();
-        toast.error('Finish the exercise first', 'Please complete or submit your current exercise before navigating away.');
+        setPendingLeave(anchor);
         return;
       }
     }
@@ -70,8 +85,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       ) {
         e.preventDefault();
         e.stopPropagation();
-        toast.error('Finish the exercise first', 'Please complete or submit your current exercise before navigating away.');
+        setPendingLeave(button);
         return;
+      }
+    }
+  };
+
+  const confirmLeave = async () => {
+    const destination = pendingLeave;
+    setEnding(true);
+    try {
+      await activeTestSession?.onStop?.();
+    } catch (err) {
+      console.error('Failed to end the task:', err);
+    } finally {
+      setActiveTestSession(null);
+      setEnding(false);
+      setPendingLeave(null);
+    }
+    if (destination?.isConnected) {
+      replayingClick.current = true;
+      try {
+        destination.click();
+      } finally {
+        replayingClick.current = false;
       }
     }
   };
@@ -146,6 +183,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
+    <>
     <div onClickCapture={handleContainerClickCapture} className="min-h-screen bg-background text-foreground flex flex-col transition-colors duration-200">
       <AppSidebar
         isOpen={isSidebarOpen}
@@ -180,5 +218,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <AITutorDrawer />
       </Suspense>
     </div>
+
+    <Dialog open={pendingLeave !== null} onOpenChange={open => { if (!open && !ending) setPendingLeave(null); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Are you sure you want to end this task?</DialogTitle>
+          <DialogDescription>
+            {activeTestSession?.title ? `${activeTestSession.title} is still in progress. ` : 'Your task is still in progress. '}
+            If you leave now, this attempt ends and your answer will not be submitted.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2">
+          <Button type="button" variant="outline" disabled={ending} onClick={() => setPendingLeave(null)}>
+            No, stay
+          </Button>
+          <Button type="button" variant="destructive" disabled={ending} onClick={confirmLeave}>
+            {ending ? 'Ending…' : 'Yes, end task'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

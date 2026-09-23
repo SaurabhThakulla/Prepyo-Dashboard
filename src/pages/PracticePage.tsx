@@ -613,6 +613,7 @@ function PracticePageContent() {
                       prepSeconds={currentQuestion.prepTimeSeconds ?? 0}
                       maxSeconds={currentQuestion.timeLimitSeconds}
                       disabled={submitting || result !== null}
+                      autoStart
                       onRecorded={(blob, transcript, measured) => {
                         setRecording(blob);
                         setSpokenTranscript(transcript ?? '');
