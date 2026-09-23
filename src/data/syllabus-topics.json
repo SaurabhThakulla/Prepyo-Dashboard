@@ -31,7 +31,13 @@
           "topics": [
             {
               "name": "Describe the figure",
-              "simpleDescription": "Explain a chart, graph, map, or diagram in at least 150 words"
+              "simpleDescription": "Academic Task 1: summarise a chart, graph, table, map or diagram in at least 150 words",
+              "module": "academic"
+            },
+            {
+              "name": "Write a letter",
+              "simpleDescription": "General Training Task 1: write a formal, semi-formal or informal letter of at least 150 words",
+              "module": "general_training"
             },
             {
               "name": "Opinion / Agree or Disagree",

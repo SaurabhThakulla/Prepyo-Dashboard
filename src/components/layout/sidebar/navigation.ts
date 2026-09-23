@@ -20,9 +20,9 @@ import {
   ShieldCheck,
   LucideIcon,
 } from 'lucide-react';
-import { SYLLABUS, typeKey } from '@/lib/syllabus';
+import { SYLLABUS, syllabusFor, typeKey } from '@/lib/syllabus';
 import { typeIdsFor } from '@/lib/readingTypes';
-import { ExamType, isAdmin, SkillType, UserProfile } from '@/lib/types';
+import { ExamType, ieltsModuleOf, isAdmin, SkillType, UserProfile } from '@/lib/types';
 
 /**
  * What goes in the sidebar, and which item is highlighted.
@@ -173,12 +173,15 @@ export function buildSections(
       label: 'Practice',
       icon: FilePenLine,
       title: `${activeExam} Practice Studio`,
-      description: 'Official test modules & AI rubric',
+      description: 'Exam-format tasks & AI rubric feedback',
       // One heading per skill, one item per task type underneath — the exam's
       // own shape, straight from the syllabus, so PTE and IELTS each list their
       // own tasks and a change there needs no edit here.
       items: PRACTICE_SKILLS.flatMap(({ skill, label, icon, sublabel }) => {
-        const rawNames = SYLLABUS[activeExam][skill] ?? [];
+        // Admins author both IELTS modules' tasks; a learner sees their own.
+        const rawNames = isAdmin(user ?? null)
+          ? SYLLABUS[activeExam][skill] ?? []
+          : syllabusFor(activeExam, skill, ieltsModuleOf(user));
         const isRepeatedEssay = (n: string) => /repeated\s*essay/i.test(n);
         const names = rawNames.filter(name => {
           if (isRepeatedEssay(name)) {
@@ -303,8 +306,8 @@ export function buildSections(
           href: '/mocks',
           label: 'Full Mock Simulator',
           icon: ClipboardCheck,
-          sublabel: isPTE ? '2-Hour scored PTE simulation' : 'Full band IELTS simulation',
-          badge: '2h Full',
+          sublabel: isPTE ? '2-Hour scored PTE simulation' : 'All four skills with an overall band',
+          badge: isPTE ? '2h Full' : '4 skills',
         },
         {
           href: '/diagnostic',

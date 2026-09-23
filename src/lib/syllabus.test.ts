@@ -46,3 +46,18 @@ describe('summary task spelling compatibility', () => {
     expect(matchesTypeKey('Multiple Type Single Answer', 'multipletypemultipleanswer')).toBe(false);
   });
 });
+
+describe('IELTS module syllabus', () => {
+  it('offers the letter to General Training and the figure to Academic', async () => {
+    const { syllabusFor } = await import('./syllabus');
+    const academic = syllabusFor('IELTS', 'writing', 'academic');
+    const general = syllabusFor('IELTS', 'writing', 'general_training');
+    expect(academic).toContain('Describe the figure');
+    expect(academic).not.toContain('Write a letter');
+    expect(general).toContain('Write a letter');
+    expect(general).not.toContain('Describe the figure');
+    // Task 2 is the same paper in both modules.
+    expect(academic).toContain('Opinion / Agree or Disagree');
+    expect(general).toContain('Opinion / Agree or Disagree');
+  });
+});

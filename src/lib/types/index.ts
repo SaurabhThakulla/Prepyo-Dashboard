@@ -52,6 +52,12 @@ export interface ScoreEstimate {
   /** Percent of target reached, or null when there is no estimate yet. */
   readiness: number | null;
   updatedAt: string;
+  /**
+   * How many skills the estimate rests on. An IELTS overall band needs all
+   * four; until then `value` is null and these say what is missing.
+   */
+  skillsCovered?: number;
+  skillsRequired?: number;
 }
 
 export interface SubscriptionState {
@@ -88,6 +94,12 @@ export interface UserProfile {
   paidPlanActive: boolean;
   daysRemaining: number;
   targetExam: ExamType;
+  /**
+   * The IELTS module: Academic or General Training. Reading texts, Writing
+   * Task 1 and the Reading band table differ between them. Absent on servers
+   * that predate it, which means Academic.
+   */
+  targetModule?: IELTSModule;
   targetScore: number | null;
   examDate?: string;
   nepalRegion: string;
@@ -123,6 +135,18 @@ export interface UserProfile {
   estimate?: ScoreEstimate;
   subscription?: SubscriptionState;
 }
+
+export type IELTSModule = 'academic' | 'general_training';
+
+/** The learner's IELTS module, Academic unless they chose General Training. */
+export function ieltsModuleOf(user: Pick<UserProfile, 'targetModule'> | null | undefined): IELTSModule {
+  return user?.targetModule === 'general_training' ? 'general_training' : 'academic';
+}
+
+export const IELTS_MODULE_LABEL: Record<IELTSModule, string> = {
+  academic: 'Academic',
+  general_training: 'General Training',
+};
 
 export function isAdmin(user: UserProfile | null): boolean {
   return user?.role === 'admin';
@@ -191,6 +215,17 @@ export interface Question {
    * passage: one passage is shared, and the questions on it are not.
    */
   supportedExams?: ExamType[];
+  /**
+   * How many options an IELTS multiple-answer item asks for ("Choose TWO
+   * letters"). Absent where the exam does not say, as in PTE.
+   */
+  selectCount?: number;
+  /**
+   * The listening script is the answer key, so it is not sent with an IELTS
+   * item. The player fetches it from /questions/{id}/playback on play; review
+   * responses carry it in audioTranscript.
+   */
+  scriptOnRequest?: boolean;
 
   // Present only after submission, on review responses.
   correctAnswers?: string[];
@@ -322,6 +357,12 @@ export interface ReadingMockSession {
    */
   reusedPassages: boolean;
   sets?: ReadingSet[];
+  /** When the paper's time runs out, kept by the server. */
+  expiresAt?: string;
+  /** Time left on the server's clock when this session was read. */
+  secondsRemaining?: number;
+  /** Answers saved so far, restored when the paper is reopened. */
+  draftAnswers?: AnswerSubmission[];
 }
 
 // ---------------------------------------------------------------------------

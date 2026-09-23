@@ -8,7 +8,7 @@ import AudioRecorder from '@/components/practice/AudioRecorder';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import { isWordHighlightTask } from '@/lib/listening';
 import { Question } from '@/lib/types';
-import { minimumWritingWords, writingWordCount } from '@/lib/writing';
+import { minimumWritingWords, writingLengthNote, writingWordCount, writingWordTarget } from '@/lib/writing';
 import { usePracticeSession } from '@/lib/hooks/usePracticeSession';
 import { passageHasGaps } from '@/components/practice/InlineBlankPassage';
 
@@ -31,6 +31,7 @@ export default function PracticeAnswerForm({
   const { grading, submitting, result, canSubmit } = session;
   const wordCount = writingWordCount(session.textAnswer);
   const minWords = minimumWritingWords(question);
+  const target = writingWordTarget(question);
 
   return (
     <Card className="p-6 space-y-4">
@@ -50,7 +51,9 @@ export default function PracticeAnswerForm({
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-foreground">Your response</span>
-            <Badge variant={wordCount >= minWords ? 'success' : 'warning'}>{wordCount} words</Badge>
+            <Badge variant={wordCount >= (target ?? minWords) ? 'success' : 'warning'}>
+              {target ? `${wordCount} / ${target} words` : `${wordCount} words`}
+            </Badge>
           </div>
           <Textarea
             rows={8}
@@ -58,11 +61,7 @@ export default function PracticeAnswerForm({
             onChange={event => session.setTextAnswer(event.target.value)}
             placeholder="Write your response here…"
           />
-          <p className="text-[11px] text-muted-foreground">
-            {minWords === 5
-              ? 'Write one sentence of 5–75 words. Responses outside the task limits can still receive feedback.'
-              : 'At least 20 words for feedback. Follow the prompt for the exam word requirement.'}
-          </p>
+          <p className="text-[11px] text-muted-foreground">{writingLengthNote(question)}</p>
         </div>
       )}
 

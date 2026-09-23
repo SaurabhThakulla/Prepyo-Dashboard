@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Clock, LogOut, RefreshCw, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +25,13 @@ interface ReadingMockRunnerProps {
 export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerProps) {
   const sets = session.sets ?? [];
   const [activeIndex, setActiveIndex] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(session.durationMinutes * 60);
+  // The clock is the server's: a reopened paper resumes with the time it has
+  // left, not a fresh hour. Counting down to a fixed deadline, rather than
+  // subtracting a second per tick, stays right when the tab is throttled.
+  const [deadline] = useState(
+    () => Date.now() + (session.secondsRemaining ?? session.durationMinutes * 60) * 1000,
+  );
+  const [secondsLeft, setSecondsLeft] = useState(() => Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
 
   // Where each passage's questions start, so numbering runs 1..n across the
   // whole paper rather than restarting on every passage.
@@ -47,14 +53,23 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
 
   useEffect(() => {
     if (secondsLeft <= 0) return;
-    const timer = setInterval(() => setSecondsLeft(seconds => seconds - 1), 1000);
+    const timer = setInterval(
+      () => setSecondsLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000))),
+      1000,
+    );
     return () => clearInterval(timer);
-  }, [secondsLeft]);
+  }, [secondsLeft, deadline]);
 
   // Time is up: submit what there is. A paper that expires unsubmitted would
-  // leave the learner holding an open session they can no longer finish.
+  // leave the learner holding an open session they can no longer finish. It
+  // is tried once; a failure is left to the Submit button, not retried in a
+  // loop.
+  const autoSubmitted = useRef(false);
   useEffect(() => {
-    if (secondsLeft === 0 && !submitting) void finish();
+    if (secondsLeft === 0 && !submitting && !autoSubmitted.current) {
+      autoSubmitted.current = true;
+      void finish();
+    }
   }, [secondsLeft, submitting, finish]);
 
   // "Questions 14-26" for the passage on screen, numbered across the whole
@@ -166,7 +181,7 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-border shrink-0">
         <p className="text-[11px] text-muted-foreground">
-          Unanswered questions are marked wrong. You can move between passages freely.
+          Unanswered questions are marked wrong. You can move between passages freely, and your answers are saved as you go.
         </p>
         <Button onClick={() => void finish()} disabled={submitting} className="font-bold gap-1.5 shadow-md">
           {submitting ? (

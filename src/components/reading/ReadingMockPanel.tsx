@@ -1,5 +1,5 @@
 import { subTestsLeft } from '@/lib/subscriptions';
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '@/context/AppContext';
@@ -9,7 +9,8 @@ import { ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
 import { READING_PRACTICE_HREF } from '@/components/layout/sidebar/navigation';
 import ReadingMockRunner from '@/components/reading/ReadingMockRunner';
-import { isPremiumUser } from '@/lib/types';
+import { isPremiumUser, ReadingMockSession } from '@/lib/types';
+import { FullMockSection } from '@/lib/fullMock';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
 
@@ -18,12 +19,12 @@ const SECTION_MOCK_SUB_TESTS = 5;
 
 const ScoreReport = lazy(() => import('@/components/mocks/ScoreReport'));
 
-export default function ReadingMockPanel() {
+export default function ReadingMockPanel({ section }: { section?: FullMockSection<ReadingMockSession> } = {}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, activeExam, refreshUser } = useApp();
 
-  if (!isPremiumUser(user)) {
+  if (!section && !isPremiumUser(user)) {
     return <PracticeMockPaywall skill="reading" exam={activeExam} />;
   }
 
@@ -31,6 +32,19 @@ export default function ReadingMockPanel() {
     void queryClient.invalidateQueries({ queryKey: queryKeys.mockAttempts() });
   });
   const [starting, setStarting] = useState(false);
+
+  // Inside a full mock the paper has already been dealt, and the results come
+  // at the end of the test rather than after each section.
+  const dealt = section?.session;
+  const { open } = mock;
+  useEffect(() => {
+    if (dealt) open(dealt);
+  }, [dealt, open]);
+  const sectionOver = Boolean(section && (mock.outcome || mock.closed));
+  useEffect(() => {
+    if (sectionOver) section?.onSubmitted();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionOver]);
 
   const subTestsRemaining = subTestsLeft(user?.subscription);
 
@@ -45,8 +59,11 @@ export default function ReadingMockPanel() {
 
   const leave = () => {
     mock.exit();
-    navigate(READING_PRACTICE_HREF);
+    if (section) section.onLeave();
+    else navigate(READING_PRACTICE_HREF);
   };
+
+  if (section && !mock.session) return null;
 
   if (mock.outcome) {
     return (

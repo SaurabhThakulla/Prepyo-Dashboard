@@ -169,11 +169,11 @@ export default function SubscriptionPage() {
   }
 
   return (
-    <div className="w-full pb-16 space-y-6">
+    <div className="w-full pb-16 space-y-4 sm:space-y-6">
       {/* Full width edge-to-edge Header Banner matching ProfilePage */}
       <div className="w-full bg-card border-b border-border/80 overflow-hidden">
-        <div className="px-4 sm:px-6 lg:px-8 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
+        <div className="px-4 sm:px-6 lg:px-8 py-3.5 sm:py-5 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div className="space-y-1 sm:space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-md">
                 Nepal Pricing · NPR
@@ -182,16 +182,16 @@ export default function SubscriptionPage() {
                 Flexible Plans
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+            <h1 className="text-xl sm:text-3xl font-extrabold text-foreground tracking-tight">
               Subscription &amp; Plans
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">
+            <p className="text-[11px] leading-snug sm:text-sm text-muted-foreground">
               Upgrade your PTE &amp; IELTS preparation with AI scoring, full-length scored mocks, and instant feedback.
             </p>
           </div>
 
           {user?.subscription && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-muted/40 border border-border/80 rounded-2xl p-3.5 sm:px-4 shrink-0 shadow-xs">
+            <div className="flex flex-row items-center justify-between gap-3 sm:gap-4 bg-muted/40 border border-border/80 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 sm:px-4 shrink-0 shadow-xs">
               <div className="space-y-0.5">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Your plan</span>
                 <div className="flex items-center gap-2">
@@ -211,9 +211,9 @@ export default function SubscriptionPage() {
                   </p>
                 )}
               </div>
-              <div className="sm:border-l border-border/80 sm:pl-4 flex gap-5 text-xs font-semibold">
+              <div className="border-l border-border/80 pl-3 sm:pl-4 flex gap-3 sm:gap-5 text-xs font-semibold shrink-0">
                 <div>
-                  <span className="text-[10px] text-muted-foreground block uppercase font-bold">Sub-tests today</span>
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground block uppercase font-bold">Sub-tests today</span>
                   <span className="font-extrabold text-foreground text-sm">
                     {user.subscription.unlimited
                       ? `${user.subscription.dailySubTestsUsed} · Unlimited`
@@ -221,7 +221,7 @@ export default function SubscriptionPage() {
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-muted-foreground block uppercase font-bold">Mocks used</span>
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground block uppercase font-bold">Mocks used</span>
                   <span className="font-extrabold text-foreground text-sm">
                     {user.subscription.unlimited
                       ? `${user.subscription.mockTestsUsed} · Unlimited`
@@ -237,24 +237,24 @@ export default function SubscriptionPage() {
       </div>
 
       {/* Accepted payment methods */}
-      <div className="px-4 sm:px-6 lg:px-8 flex flex-col items-center gap-3">
-        <span className="text-[15px] font-bold uppercase tracking-wider text-muted-foreground">Supported Payment Methods</span>
-        <div className="flex flex-wrap items-center justify-center gap-x-8 sm:gap-x-10 gap-y-4">
-          <img src="/images/esewa-logo.png" alt="eSewa" className="h-8 w-auto dark:hidden" />
-          <img src="/images/esewa-logo-dark.png" alt="eSewa" className="h-8 w-auto hidden dark:block" />
-          <img src="/images/khalti-logo.svg" alt="Khalti" className="h-9 w-auto dark:brightness-125" />
-          <span className="flex items-center gap-1.5 text-[#1B3A6B] dark:text-[#7FA9E6]">
-            <svg viewBox="0 0 32 32" className="h-8 w-8" fill="currentColor" aria-hidden="true"><path d="M16 3 3 10v2.4h26V10L16 3Z" /><rect x="6" y="14.5" width="3" height="9" rx=".6" /><rect x="11.6" y="14.5" width="3" height="9" rx=".6" /><rect x="17.2" y="14.5" width="3" height="9" rx=".6" /><rect x="22.8" y="14.5" width="3" height="9" rx=".6" /><rect x="3" y="25.4" width="26" height="3.2" rx=".8" /></svg>
+      <div className="px-4 sm:px-6 lg:px-8 flex flex-col items-center gap-2 sm:gap-3">
+        <span className="text-[10px] sm:text-[15px] font-bold uppercase tracking-wider text-muted-foreground">Supported Payment Methods</span>
+        <div className="flex flex-nowrap sm:flex-wrap items-center justify-center gap-x-5 sm:gap-x-10 gap-y-4">
+          <img src="/images/esewa-logo.png" alt="eSewa" className="h-5 sm:h-8 w-auto dark:hidden" />
+          <img src="/images/esewa-logo-dark.png" alt="eSewa" className="h-5 sm:h-8 w-auto hidden dark:block" />
+          <img src="/images/khalti-logo.svg" alt="Khalti" className="h-6 sm:h-9 w-auto dark:brightness-125" />
+          <span className="flex items-center gap-1 sm:gap-1.5 text-[#1B3A6B] dark:text-[#7FA9E6]">
+            <svg viewBox="0 0 32 32" className="h-5 w-5 sm:h-8 sm:w-8" fill="currentColor" aria-hidden="true"><path d="M16 3 3 10v2.4h26V10L16 3Z" /><rect x="6" y="14.5" width="3" height="9" rx=".6" /><rect x="11.6" y="14.5" width="3" height="9" rx=".6" /><rect x="17.2" y="14.5" width="3" height="9" rx=".6" /><rect x="22.8" y="14.5" width="3" height="9" rx=".6" /><rect x="3" y="25.4" width="26" height="3.2" rx=".8" /></svg>
             <span className="leading-none">
-              <span className="block font-extrabold text-lg tracking-tight">All Banks</span>
-              <span className="block text-[9px] font-semibold text-muted-foreground -mt-0.5">Supported</span>
+              <span className="block font-extrabold text-sm sm:text-lg tracking-tight">All Banks</span>
+              <span className="hidden sm:block text-[9px] font-semibold text-muted-foreground -mt-0.5">Supported</span>
             </span>
           </span>
         </div>
       </div>
 
       {/* Main Content: Comparison Matrix stretching full width */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 space-y-6">
+      <div className="w-full px-3 sm:px-6 lg:px-8 space-y-6">
         {loadError ? (
           <Card className="p-12 text-center space-y-3">
             <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
@@ -264,19 +264,22 @@ export default function SubscriptionPage() {
         ) : (
           /* Comparison Table Matrix matching requested full-width design */
           <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden" aria-label="Subscription plans">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:hidden" aria-label="Subscription plans">
             {[freePlan, weeklyPlan, proPlan, elitePlan].map(plan => (
-              <Card key={plan.id} className="p-4 space-y-4">
-                <div>
-                  <h2 className="font-bold text-lg">{formatPlanName(plan.name)}</h2>
-                  <p className="text-2xl font-black text-primary">NPR {plan.priceNPR}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {plan.id === 'free' ? 'Free forever' : `One-time · ${plan.durationDays + plan.bonusDays} days`}
-                  </p>
+              <Card key={plan.id} className="p-3 sm:p-4 space-y-2.5 sm:space-y-4">
+                {/* Name and price on one line on phones, so each card stays short. */}
+                <div className="flex items-baseline justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="font-bold text-sm sm:text-lg leading-tight">{formatPlanName(plan.name)}</h2>
+                    <p className="text-[11px] sm:text-xs text-muted-foreground">
+                      {plan.id === 'free' ? 'Free forever' : `One-time · ${(plan.durationDays || plan.durationMonths * 30) + plan.bonusDays} days`}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-lg sm:text-2xl font-black text-primary">NPR {plan.priceNPR}</p>
                 </div>
-                <dl className="space-y-3">
+                <dl className="divide-y divide-border/60 border-y border-border/60">
                   {rows.map((row, index) => (
-                    <div key={row.rowKey ?? index} className="flex justify-between gap-4 border-b border-border/60 pb-2 text-xs">
+                    <div key={row.rowKey ?? index} className="flex items-center justify-between gap-3 py-1.5 sm:py-2 text-[11px] sm:text-xs">
                       <dt className="flex-1 text-muted-foreground">{row.label}</dt>
                       <dd className="max-w-[50%] text-right font-semibold">{row[plan.id]}</dd>
                     </div>
@@ -286,7 +289,7 @@ export default function SubscriptionPage() {
                   type="button"
                   disabled={currentPlanId === plan.id || (plan.id === 'free' && !currentPlanId)}
                   onClick={() => handleOpenCheckout(plan)}
-                  className="w-full rounded-xl bg-primary px-4 py-3 font-bold text-sm text-primary-foreground disabled:opacity-50"
+                  className="w-full rounded-lg sm:rounded-xl bg-primary px-4 py-2 sm:py-3 font-bold text-xs sm:text-sm text-primary-foreground disabled:opacity-50"
                 >
                   {currentPlanId === plan.id ? 'Current Plan' : plan.id === 'free' && !currentPlanId ? 'Default Plan' : `Choose ${formatPlanName(plan.name)}`}
                 </button>

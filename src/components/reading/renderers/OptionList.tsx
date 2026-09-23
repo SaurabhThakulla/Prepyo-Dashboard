@@ -5,6 +5,12 @@ import { AnswerProps, correctIds } from './types';
 interface OptionListProps extends AnswerProps {
   /** Whether choosing a second option adds to the answer or replaces it. */
   multiple: boolean;
+  /**
+   * The most options that may be chosen, when the task says ("Choose TWO
+   * letters"). An IELTS answer sheet has one box per letter, so a third
+   * letter is not something the learner can write; it is refused here too.
+   */
+  limit?: number;
 }
 
 /**
@@ -23,6 +29,7 @@ export default function OptionList({
   result,
   locked,
   multiple,
+  limit,
   onChange,
 }: OptionListProps) {
   const options = question.options ?? [];
@@ -35,6 +42,7 @@ export default function OptionList({
 
   const toggle = (id: string) => {
     if (!multiple) return onChange({ selectedOptions: [id] });
+    if (limit && !selected.includes(id) && selected.length >= limit) return;
     onChange({
       selectedOptions: selected.includes(id)
         ? selected.filter(value => value !== id)

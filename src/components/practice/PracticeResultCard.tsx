@@ -166,6 +166,26 @@ const CONFIDENCE_LABEL: Record<Evaluation['scoreConfidence'], string> = {
   low: 'Low confidence',
 };
 
+/**
+ * What an IELTS estimate does and does not cover. A speaking estimate from a
+ * transcript has no Pronunciation criterion, so it is three of the four the
+ * Speaking band is made of; a writing estimate is one task, where the Writing
+ * band weights Task 2 twice as heavily as Task 1.
+ */
+function ieltsNote(evaluation: Evaluation, score: number | null, criteria: Evaluation['criteria']): string | null {
+  if (evaluation.exam !== 'IELTS' || score === null) return null;
+  if (evaluation.skill === 'speaking' && !(criteria ?? []).some(c => /pronunciation/i.test(c.name))) {
+    return 'Pronunciation was not assessed, so this uses three of the four Speaking criteria. It is not a Speaking band.';
+  }
+  if (evaluation.skill === 'writing') {
+    return 'This rates one task. The IELTS Writing band combines both tasks, with Task 2 counting twice as much as Task 1.';
+  }
+  if (evaluation.skill === 'speaking') {
+    return 'This rates one answer. The IELTS Speaking band reflects performance across all three parts of the test.';
+  }
+  return null;
+}
+
 /** Writing and speaking: an estimate on the exam's scale plus rubric feedback. */
 function EvaluationResult({ evaluation, xpAwarded }: { evaluation: Evaluation; xpAwarded: number }) {
   const [showRewrite, setShowRewrite] = useState(false);
@@ -200,6 +220,9 @@ function EvaluationResult({ evaluation, xpAwarded }: { evaluation: Evaluation; x
           </div>
           {evaluation.summary && <p className="text-sm leading-relaxed text-foreground">{evaluation.summary}</p>}
           <p className="text-[11px] text-muted-foreground">A practice estimate, not an official result.</p>
+          {ieltsNote(evaluation, score, criteria) && (
+            <p className="text-[11px] text-muted-foreground">{ieltsNote(evaluation, score, criteria)}</p>
+          )}
         </div>
       </div>
 

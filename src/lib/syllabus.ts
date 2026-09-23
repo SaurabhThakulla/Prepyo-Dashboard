@@ -1,5 +1,5 @@
 import syllabusData from '@/data/syllabus-topics.json';
-import { ExamType, SkillType } from '@/lib/types';
+import { ExamType, IELTSModule, SkillType } from '@/lib/types';
 
 export const SYLLABUS: Record<ExamType, Partial<Record<SkillType, string[]>>> = {
   IELTS: {
@@ -15,6 +15,18 @@ export const SYLLABUS: Record<ExamType, Partial<Record<SkillType, string[]>>> = 
     speaking: syllabusData.exams.PTE.skills.speaking.topics.map(t => t.name),
   },
 };
+
+type Topic = { name: string; module?: string };
+
+/**
+ * The task names a learner is offered: the whole syllabus, less the other
+ * IELTS module's own tasks. Academic learners describe a visual in Writing
+ * Task 1; General Training learners write a letter.
+ */
+export function syllabusFor(exam: ExamType, skill: SkillType, module: IELTSModule = 'academic'): string[] {
+  const topics = (syllabusData.exams[exam]?.skills as Record<string, { topics: Topic[] }> | undefined)?.[skill]?.topics ?? [];
+  return topics.filter(topic => exam !== 'IELTS' || !topic.module || topic.module === module).map(topic => topic.name);
+}
 
 export const typeKey = (name?: string | null) =>
   (name ?? '')

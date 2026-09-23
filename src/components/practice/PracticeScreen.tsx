@@ -99,6 +99,7 @@ export default function PracticeScreen() {
               disabled={session.submitting || session.result !== null}
               reviewBlanks={session.result?.review?.blanks}
               allowTranscript={session.result !== null}
+              reviewTranscript={session.result?.review?.audioTranscript}
             />
             <PracticeAnswerForm
               question={currentQuestion}

@@ -60,7 +60,7 @@ import {
   isPaidTier,
   planAccessDays,
 } from '@/lib/subscriptions';
-import { ExamType, SkillType, SubscriptionPlan, SubscriptionTier, UserProfile } from '@/lib/types';
+import { ExamType, SkillType, SubscriptionPlan, SubscriptionTier, UserProfile, IELTSModule, IELTS_MODULE_LABEL, ieltsModuleOf } from '@/lib/types';
 import {
   DAILY_MINUTES,
   DESTINATIONS,
@@ -93,6 +93,11 @@ import {
   UniversityIcon,
   WritingIcon,
 } from '@/components/onboarding/GoalIcons';
+
+const IELTS_MODULE_CHOICES: { id: IELTSModule; blurb: string }[] = [
+  { id: 'academic', blurb: 'For university study and professional registration.' },
+  { id: 'general_training', blurb: 'For work, migration and training below degree level.' },
+];
 
 const STEPS = [
   { id: 'welcome', pill: 'Your IELTS & PTE Copilot', label: 'Welcome', tagline: "Let's build a plan that fits you." },
@@ -389,6 +394,8 @@ export default function OnboardingFlow({
   const [stepIndex, setStepIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [exam, setExam] = useState<ExamType | null>(null);
+  // IELTS comes in two modules with different Reading texts and Writing Task 1.
+  const [ieltsModule, setIeltsModule] = useState<IELTSModule>(() => ieltsModuleOf(user));
   const [goal, setGoal] = useState<StudyGoal | null>(null);
   const [destination, setDestination] = useState<Destination | null>(null);
   const [prior, setPrior] = useState<'first' | 'retake' | null>(null);
@@ -492,6 +499,7 @@ export default function OnboardingFlow({
     try {
       await completeOnboarding({
         targetExam: exam,
+        ...(exam === 'IELTS' ? { targetModule: ieltsModule } : {}),
         targetScore: score,
         ...(dateValid ? { examDate } : {}),
         studyGoal: goal,
@@ -686,6 +694,33 @@ export default function OnboardingFlow({
                         );
                       })}
                     </div>
+
+                    {exam === 'IELTS' && (
+                      <fieldset className="space-y-2 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                        <legend className="px-1 text-xs font-bold text-slate-700">Which IELTS test?</legend>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {IELTS_MODULE_CHOICES.map(choice => (
+                            <button
+                              key={choice.id}
+                              type="button"
+                              aria-pressed={ieltsModule === choice.id}
+                              onClick={() => setIeltsModule(choice.id)}
+                              className={`rounded-xl border px-3 py-2 text-left transition ${
+                                ieltsModule === choice.id
+                                  ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600'
+                                  : 'border-slate-200 hover:border-slate-300'
+                              }`}
+                            >
+                              <span className="block text-sm font-bold text-slate-900">{IELTS_MODULE_LABEL[choice.id]}</span>
+                              <span className="block text-[11px] leading-snug text-slate-500">{choice.blurb}</span>
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          Listening, Speaking and Writing Task 2 are the same in both. You can change this later in your profile.
+                        </p>
+                      </fieldset>
+                    )}
 
                     {/* Coming soon, kept small so it never competes with the real choice. */}
                     <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-slate-200 px-4 py-3">

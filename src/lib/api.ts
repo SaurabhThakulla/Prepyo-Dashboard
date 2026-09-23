@@ -182,6 +182,9 @@ const SERVER_WORDED: ReadonlySet<string> = new Set([
   'limit_reached',
   'ai_unavailable',
   'not_configured',
+  // Why a paper could not be marked: nothing answered, or its time ran out.
+  'not_attempted',
+  'paper_expired',
 ]);
 
 const GENERIC = 'Something went wrong. Please try again.';

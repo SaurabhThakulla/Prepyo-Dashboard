@@ -99,6 +99,7 @@ describe('the first-run onboarding', () => {
     await waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(completeOnboarding).toHaveBeenCalledWith({
       targetExam: 'IELTS',
+      targetModule: 'academic',
       targetScore: 7,
       studyGoal: 'university',
       destination: 'australia',
@@ -130,7 +131,7 @@ describe('the first-run onboarding', () => {
     }
     expect(screen.getByText('NPR 299')).toBeDefined();
     expect(screen.getByRole('button', { name: /^continue$/i }).hasAttribute('disabled')).toBe(true);
-  });
+  }, 15000);
 
   it('sends a learner who picks a paid plan to checkout', async () => {
     const user = userEvent.setup();

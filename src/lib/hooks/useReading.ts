@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
@@ -236,24 +236,40 @@ export function useReadingMock(exam: ExamType, onGraded?: (attempt: MockAttempt)
   const [session, setSession] = useState<ReadingMockSession | null>(null);
   const [answers, setAnswers] = useState<Record<string, AnswerSubmission>>({});
   const [outcome, setOutcome] = useState<MockSubmitOutcome | null>(null);
+  // The paper closed without a result: time ran out with nothing answered.
+  const [closed, setClosed] = useState(false);
   const [starting, setStarting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [startedAt, setStartedAt] = useState(() => Date.now());
+  const savedAnswers = useRef('{}');
 
-  const start = useCallback(async (): Promise<boolean> => {
-    setStarting(true);
-    try {
-      const data = await api.post<{ session: ReadingMockSession }>('/reading/mocks', { exam });
-      setSession(data.session);
-      setAnswers({});
+  /** Opens a dealt paper: one this hook started, or one a full mock dealt. */
+  const open = useCallback(
+    (paper: ReadingMockSession) => {
+      setSession(paper);
+      // A reopened paper comes back with the answers saved on the server.
+      const restored: Record<string, AnswerSubmission> = {};
+      for (const saved of paper.draftAnswers ?? []) restored[saved.questionId] = saved;
+      setAnswers(restored);
+      savedAnswers.current = JSON.stringify(restored);
       setOutcome(null);
+      setClosed(false);
       setStartedAt(Date.now());
-      if (data.session.reusedPassages) {
+      if (paper.reusedPassages) {
         toast.warning(
           'Some passages are ones you have sat before',
           'There are not enough new reading passages in the bank yet, so this paper repeats one.',
         );
       }
+    },
+    [toast],
+  );
+
+  const start = useCallback(async (): Promise<boolean> => {
+    setStarting(true);
+    try {
+      const data = await api.post<{ session: ReadingMockSession }>('/reading/mocks', { exam });
+      open(data.session);
       return true;
     } catch (err) {
       if (err instanceof ApiError && err.isLimitReached) {
@@ -265,7 +281,28 @@ export function useReadingMock(exam: ExamType, onGraded?: (attempt: MockAttempt)
     } finally {
       setStarting(false);
     }
-  }, [exam, toast]);
+  }, [exam, open, toast]);
+
+  // Answers are saved to the server as the learner works, a moment after the
+  // last change. The server keeps the paper's time: a reopened paper resumes
+  // with these answers, and one that runs out of time is graded from them.
+  const saveDrafts = useCallback(async (paper: ReadingMockSession, current: Record<string, AnswerSubmission>) => {
+    const body = JSON.stringify(current);
+    if (body === savedAnswers.current) return;
+    try {
+      await api.put(`/reading/mocks/${paper.id}/answers`, { answers: Object.values(current) });
+      savedAnswers.current = body;
+    } catch {
+      // A failed save is retried with the next change or on submission; the
+      // answers are still in the page.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!session || outcome) return;
+    const timer = setTimeout(() => void saveDrafts(session, answers), 1500);
+    return () => clearTimeout(timer);
+  }, [answers, session, outcome, saveDrafts]);
 
   const answer = useCallback((questionId: string, patch: Partial<AnswerSubmission>) => {
     setAnswers(previous => ({
@@ -294,7 +331,17 @@ export function useReadingMock(exam: ExamType, onGraded?: (attempt: MockAttempt)
       onGraded?.(data.attempt);
       await refreshUser();
     } catch (err) {
-      toast.error('Could not submit the reading mock', errorMessage(err));
+      if (err instanceof ApiError && err.code === 'paper_expired') {
+        // Time ran out on a paper with nothing answered: the server closed it
+        // without a band, so there is nothing left to resume.
+        setSession(null);
+        setClosed(true);
+        toast.warning('Time is up', errorMessage(err));
+      } else if (err instanceof ApiError && err.code === 'not_attempted') {
+        toast.warning('Nothing answered yet', errorMessage(err));
+      } else {
+        toast.error('Could not submit the reading mock', errorMessage(err));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -302,9 +349,10 @@ export function useReadingMock(exam: ExamType, onGraded?: (attempt: MockAttempt)
 
   /** Leaves the paper open on the server, so it can be resumed. */
   const exit = useCallback(() => {
+    if (session) void saveDrafts(session, answers);
     setSession(null);
     setOutcome(null);
-  }, []);
+  }, [answers, saveDrafts, session]);
 
   const questions = session?.sets?.flatMap(set => set.groups.flatMap(group => group.questions)) ?? [];
 
@@ -312,9 +360,11 @@ export function useReadingMock(exam: ExamType, onGraded?: (attempt: MockAttempt)
     session,
     answers,
     outcome,
+    closed,
     starting,
     submitting,
     start,
+    open,
     answer,
     finish,
     exit,

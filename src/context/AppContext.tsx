@@ -14,6 +14,7 @@ export type OnboardingAnswers = Partial<
   Pick<
     UserProfile,
     | 'targetExam'
+    | 'targetModule'
     | 'targetScore'
     | 'examDate'
     | 'nepalRegion'
@@ -52,7 +53,7 @@ interface AppContextType {
 
   activeExam: ExamType;
   setActiveExam: (exam: ExamType) => Promise<void>;
-  updateProfile: (updates: Partial<Pick<UserProfile, 'name' | 'targetExam' | 'targetScore' | 'examDate' | 'nepalRegion'>>) => Promise<void>;
+  updateProfile: (updates: Partial<Pick<UserProfile, 'name' | 'targetExam' | 'targetModule' | 'targetScore' | 'examDate' | 'nepalRegion'>>) => Promise<void>;
   completeOnboarding: (answers?: OnboardingAnswers) => Promise<void>;
 
   isTutorOpen: boolean;
@@ -253,7 +254,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateProfile = useCallback(
-    async (updates: Partial<Pick<UserProfile, 'name' | 'targetExam' | 'targetScore' | 'examDate' | 'nepalRegion'>>) => {
+    async (updates: Partial<Pick<UserProfile, 'name' | 'targetExam' | 'targetModule' | 'targetScore' | 'examDate' | 'nepalRegion'>>) => {
       const data = await api.patch<{ user: UserProfile }>('/profile', updates);
       applyUser(data.user);
     },

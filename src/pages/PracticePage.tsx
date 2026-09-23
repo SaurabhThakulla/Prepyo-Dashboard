@@ -26,13 +26,16 @@ import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
 import { isWordHighlightTask } from '@/lib/listening';
 import { allowsMultipleChoices } from '@/lib/choices';
-import { minimumWritingWords, writingWordCount } from '@/lib/writing';
+import { minimumWritingWords, writingLengthNote, writingWordCount, writingWordTarget } from '@/lib/writing';
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
-import { Evaluation, ExamType, isAdmin, isPremiumUser, PracticeAttempt, Question, SkillType } from '@/lib/types';
+import { Evaluation, ExamType, isAdmin, isPremiumUser, PracticeAttempt, Question, SkillType, ieltsModuleOf } from '@/lib/types';
 
 const ReadingPracticePanel = lazy(() => import('@/components/reading/ReadingPracticePanel'));
 const ReadingMockPanel = lazy(() => import('@/components/reading/ReadingMockPanel'));
 const SkillMockPanel = lazy(() => import('@/components/practice/SkillMockPanel'));
+const WritingMockPanel = lazy(() => import('@/components/practice/WritingMockPanel'));
+const ListeningMockPanel = lazy(() => import('@/components/practice/ListeningMockPanel'));
+const SpeakingMockPanel = lazy(() => import('@/components/practice/SpeakingMockPanel'));
 const PracticeMockPaywall = lazy(() => import('@/components/practice/PracticeMockPaywall'));
 const AdminReadingAuthoring = lazy(() => import('@/components/admin/AdminReadingAuthoring'));
 const AdminQuestionAuthoring = lazy(() => import('@/components/admin/AdminQuestionAuthoring'));
@@ -325,6 +328,7 @@ function PracticePageContent() {
 
   const wordCount = writingWordCount(textAnswer);
   const minWords = currentQuestion ? minimumWritingWords(currentQuestion) : 20;
+  const wordTarget = currentQuestion ? writingWordTarget(currentQuestion) : null;
 
   const markComplete = (questionId: string) => {
     if (completedIds.includes(questionId)) return;
@@ -492,6 +496,18 @@ function PracticePageContent() {
         <Suspense fallback={<ReadingPracticeSkeleton />}>
           <ReadingMockPanel key={activeExam} />
         </Suspense>
+      ) : searchParams.get('mock') && selectedSkill === 'speaking' && activeExam === 'IELTS' && !isAdmin(user) ? (
+        <Suspense fallback={<PracticePageSkeleton />}>
+          <SpeakingMockPanel key="speaking-mock" />
+        </Suspense>
+      ) : searchParams.get('mock') && selectedSkill === 'listening' && activeExam === 'IELTS' && !isAdmin(user) ? (
+        <Suspense fallback={<PracticePageSkeleton />}>
+          <ListeningMockPanel key="listening-mock" />
+        </Suspense>
+      ) : searchParams.get('mock') && selectedSkill === 'writing' && activeExam === 'IELTS' && !isAdmin(user) ? (
+        <Suspense fallback={<PracticePageSkeleton />}>
+          <WritingMockPanel key={`writing-mock-${ieltsModuleOf(user)}`} />
+        </Suspense>
       ) : searchParams.get('mock') ? (
         <Suspense fallback={<PracticePageSkeleton />}>
           <SkillMockPanel key={`${activeExam}-${selectedSkill}`} skill={selectedSkill} exam={activeExam} />
@@ -555,7 +571,7 @@ function PracticePageContent() {
 
               {/* Instructions */}
               {currentQuestion.prompt && (
-                <p className="text-xs sm:text-[13px] text-muted-foreground font-medium leading-relaxed">
+                <p className="text-xs sm:text-[13px] text-muted-foreground font-medium leading-relaxed whitespace-pre-line">
                   {currentQuestion.prompt}
                 </p>
               )}
@@ -600,7 +616,9 @@ function PracticePageContent() {
                   key={currentQuestion.id}
                   questionId={currentQuestion.id}
                   audioUrl={currentQuestion.audioUrl}
-                  audioTranscript={currentQuestion.audioTranscript}
+                  audioTranscript={result?.review?.audioTranscript ?? currentQuestion.audioTranscript}
+                  scriptOnRequest={currentQuestion.scriptOnRequest}
+                  singlePlay={currentQuestion.exam === 'IELTS' && currentQuestion.skill === 'listening'}
                   title={currentQuestion.title}
                   allowTranscript={result !== null}
                   onFinished={() => setHeardPromptFor(currentQuestion.id)}
@@ -668,7 +686,9 @@ function PracticePageContent() {
                   <div className="space-y-3 pt-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-bold text-foreground">Your response</span>
-                      <Badge variant={wordCount >= minWords ? 'success' : 'warning'}>{wordCount} words</Badge>
+                      <Badge variant={wordCount >= (wordTarget ?? minWords) ? 'success' : 'warning'}>
+                        {wordTarget ? `${wordCount} / ${wordTarget} words` : `${wordCount} words`}
+                      </Badge>
                     </div>
                     <Textarea
                       rows={8}
@@ -678,9 +698,7 @@ function PracticePageContent() {
                       className="text-sm leading-relaxed"
                     />
                     <p className="text-[11px] text-muted-foreground">
-                      {minWords === 5
-                        ? 'Write one sentence of 5–75 words. Responses outside the task limits can still receive feedback.'
-                        : 'At least 20 words for feedback. Follow the prompt for the exam word requirement.'}
+                      {currentQuestion ? writingLengthNote(currentQuestion) : ''}
                     </p>
                   </div>
                 )}

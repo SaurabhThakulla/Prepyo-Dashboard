@@ -15,6 +15,8 @@ interface QuestionPromptProps {
   reviewBlanks?: Blank[];
   /** Offer the audio script, which gives the answer away until the question is submitted. */
   allowTranscript?: boolean;
+  /** The script from the review response, for items that do not carry one. */
+  reviewTranscript?: string;
 }
 
 /** The question being answered: title, prompt, and any media that comes with it. */
@@ -25,6 +27,7 @@ export default function QuestionPrompt({
   disabled = false,
   reviewBlanks,
   allowTranscript = false,
+  reviewTranscript,
 }: QuestionPromptProps) {
   return (
     <Card className="p-6 space-y-4">
@@ -44,7 +47,7 @@ export default function QuestionPrompt({
 
       <div className="space-y-2">
         <h3 className="font-display font-bold text-lg text-foreground">{question.title}</h3>
-        <div className="p-3.5 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed font-medium">
+        <div className="p-3.5 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed font-medium whitespace-pre-line">
           {question.prompt}
         </div>
       </div>
@@ -71,7 +74,9 @@ export default function QuestionPrompt({
         key={question.id}
         questionId={question.id}
         audioUrl={question.audioUrl}
-        audioTranscript={question.audioTranscript}
+        audioTranscript={reviewTranscript ?? question.audioTranscript}
+        scriptOnRequest={question.scriptOnRequest}
+        singlePlay={question.exam === 'IELTS' && question.skill === 'listening'}
         title={question.title}
         allowTranscript={allowTranscript}
       />

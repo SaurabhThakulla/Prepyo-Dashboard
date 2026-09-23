@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { api, errorMessage, profileImageUrl } from '@/lib/api';
-import { ActivitySummary, ExamType, ProgressSummary, SkillType, isAdmin } from '@/lib/types';
+import { ActivitySummary, ExamType, ProgressSummary, SkillType, isAdmin, IELTSModule, IELTS_MODULE_LABEL, ieltsModuleOf } from '@/lib/types';
 import { useToast } from '@/components/ui/toast';
 import { BookOpen, Camera, Trash2, Sparkles, Edit3, Loader2, CheckCircle2, X, ChevronDown } from 'lucide-react';
 import { ProfilePageSkeleton } from '@/components/layout/PageSkeleton';
@@ -49,7 +49,7 @@ export default function ProfilePage() {
   const targetNum = user?.targetScore ?? null;
   const target = targetNum != null ? String(targetNum) : null;
   const planId = user?.subscription?.planId?.toLowerCase();
-  const [form, setForm] = useState({ name: '', exam: 'PTE' as ExamType, score: '', date: '', region: REGIONS[0] });
+  const [form, setForm] = useState({ name: '', exam: 'PTE' as ExamType, module: 'academic' as IELTSModule, score: '', date: '', region: REGIONS[0] });
 
   useEffect(() => {
     let cancelled = false;
@@ -123,6 +123,7 @@ export default function ProfilePage() {
     setForm({
       name: user?.name || '',
       exam: targetExam,
+      module: ieltsModuleOf(user),
       score: target ?? '',
       date: user?.examDate ? user.examDate.split('T')[0] : '',
       region: user?.nepalRegion || REGIONS[0],
@@ -135,7 +136,7 @@ export default function ProfilePage() {
     try {
       const canSwitchExam = isAdmin(user);
       if (canSwitchExam && form.exam !== activeExam) await setActiveExam(form.exam);
-      await updateProfile({ name: form.name.trim(), ...(canSwitchExam ? { targetExam: form.exam } : {}), targetScore: form.score.trim() ? Number(form.score) : null, examDate: form.date || undefined, nepalRegion: form.region });
+      await updateProfile({ name: form.name.trim(), ...(canSwitchExam ? { targetExam: form.exam } : {}), ...(form.exam === 'IELTS' ? { targetModule: form.module } : {}), targetScore: form.score.trim() ? Number(form.score) : null, examDate: form.date || undefined, nepalRegion: form.region });
       setSaved(true); toast.success('Profile updated'); setTimeout(() => setIsEdit(false), 400);
     } catch (e) { toast.error('Failed to update', errorMessage(e)); } finally { setSaving(false); }
   };
@@ -206,12 +207,21 @@ export default function ProfilePage() {
       };
     });
 
-    const scored = items.filter(i => i.score != null);
-    const overall = scored.length
-      ? (scored.reduce((a, b) => a + (b.score as number), 0) / scored.length).toFixed(isIELTS ? 1 : 0)
-      : NONE;
+    // The overall figure is the server's. For IELTS it is the mean of all four
+    // skill bands with the official rounding, and does not exist until all
+    // four have evidence; a mean of whichever skills happen to be practised,
+    // shown to one decimal place, is not an IELTS overall band.
+    const serverOverall = user?.estimate?.value ?? progress?.estimate?.value ?? null;
+    const overall = serverOverall != null ? (isIELTS ? serverOverall.toFixed(1) : String(Math.round(serverOverall))) : NONE;
     return { skillList: items, overallScore: overall };
-  }, [progress, isIELTS, targetNum]);
+  }, [progress, isIELTS, targetNum, user?.estimate?.value]);
+
+  const skillsCovered = user?.estimate?.skillsCovered ?? progress?.estimate?.skillsCovered;
+  const skillsRequired = user?.estimate?.skillsRequired ?? progress?.estimate?.skillsRequired;
+  const overallNote =
+    isIELTS && overallScore === NONE && skillsRequired
+      ? `Needs all four skills (${skillsCovered ?? 0} of ${skillsRequired} so far)`
+      : null;
 
   const rad = 105, cx = 150, cy = 150, axes = skillList.length;
   const pt = (i: number, r: number) => ({ x: cx + r * Math.cos((i * 2 * Math.PI) / axes - Math.PI / 2), y: cy + r * Math.sin((i * 2 * Math.PI) / axes - Math.PI / 2) });
@@ -332,7 +342,7 @@ export default function ProfilePage() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">{skillList.map(s => <div key={s.name} className="rounded-xl border border-border bg-muted/20 p-2.5 space-y-1.5 text-xs"><div className="flex justify-between font-bold"><span>{s.name}</span>{s.gap != null ? <span className={`text-[9px] px-1.5 py-0.5 rounded ${s.gap >= 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>{s.gap >= 0 ? 'Target Met' : String(s.gap)}</span> : <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{s.att === 0 ? 'No attempts' : 'No target'}</span>}</div><div className="text-base font-black text-foreground">{s.score ?? NONE} <span className="text-[11px] font-normal text-muted-foreground">/ {maxScale}</span></div><div className="h-1 bg-muted rounded-full overflow-hidden"><div className="h-full bg-blue-600" style={{ width: `${s.score != null ? Math.round(norm(s.score) * 100) : 0}%` }} /></div><div className="text-[10px] text-muted-foreground">{s.att} {s.att === 1 ? 'attempt' : 'attempts'}{s.att > 0 ? ` · ${s.acc}% accuracy` : ''}</div></div>)}</div>
         )}
-        <div className="flex items-center justify-between pt-2 border-t border-border"><span className="text-xs font-bold text-muted-foreground uppercase">{isIELTS ? 'Overall band (0–9.0)' : 'Overall score (10–90)'}</span><span className="text-xl font-black text-foreground font-mono">{overallScore}</span></div>
+        <div className="flex items-center justify-between pt-2 border-t border-border"><span className="text-xs font-bold text-muted-foreground uppercase">{isIELTS ? 'Overall band (0–9.0)' : 'Overall score (10–90)'}</span><span className="text-right"><span className="block text-xl font-black text-foreground font-mono">{overallScore}</span>{overallNote && <span className="block text-[10px] font-medium text-muted-foreground">{overallNote}</span>}</span></div>
       </div>
       </div>
 
@@ -343,7 +353,8 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between pb-2 border-b border-border"><h3 className="text-sm font-bold text-foreground">Edit Profile &amp; Goals</h3><button onClick={() => setIsEdit(false)} className="p-1 rounded-lg hover:bg-muted text-muted-foreground"><X className="w-4 h-4" /></button></div>
             <div className="space-y-3 text-xs">
               <div><label className="font-bold">Full Name</label><input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full h-8.5 rounded-xl border border-input bg-card px-3 text-xs mt-1" /></div>
-              <div><label className="font-bold">Track</label>{isAdmin(user) ? <div className="grid grid-cols-2 gap-2 mt-1">{(['PTE', 'IELTS'] as const).map(e => <button key={e} type="button" onClick={() => setForm({ ...form, exam: e, score: '' })} className={`py-1.5 rounded-xl border text-xs font-bold transition ${form.exam === e ? 'bg-blue-600 text-white border-blue-600' : 'border-border text-foreground'}`}>{e} Academic</button>)}</div> : <div className="mt-1 flex items-center justify-between rounded-xl border border-border bg-muted/40 px-3 py-1.5 text-xs font-bold text-foreground"><span>{form.exam} Academic</span><span className="text-[10px] font-semibold text-muted-foreground">Fixed</span></div>}</div>
+              <div><label className="font-bold">Track</label>{isAdmin(user) ? <div className="grid grid-cols-2 gap-2 mt-1">{(['PTE', 'IELTS'] as const).map(e => <button key={e} type="button" onClick={() => setForm({ ...form, exam: e, score: '' })} className={`py-1.5 rounded-xl border text-xs font-bold transition ${form.exam === e ? 'bg-blue-600 text-white border-blue-600' : 'border-border text-foreground'}`}>{e} Academic</button>)}</div> : <div className="mt-1 flex items-center justify-between rounded-xl border border-border bg-muted/40 px-3 py-1.5 text-xs font-bold text-foreground"><span>{form.exam === 'IELTS' ? 'IELTS' : `${form.exam} Academic`}</span><span className="text-[10px] font-semibold text-muted-foreground">Fixed</span></div>}</div>
+              {form.exam === 'IELTS' && <div><label className="font-bold">IELTS test</label><div className="grid grid-cols-2 gap-2 mt-1">{(['academic', 'general_training'] as const).map(m => <button key={m} type="button" aria-pressed={form.module === m} onClick={() => setForm({ ...form, module: m })} className={`py-1.5 rounded-xl border text-xs font-bold transition ${form.module === m ? 'bg-blue-600 text-white border-blue-600' : 'border-border text-foreground'}`}>{IELTS_MODULE_LABEL[m]}</button>)}</div><p className="mt-1 text-[10px] text-muted-foreground">Reading texts and Writing Task 1 differ; Listening, Speaking and Task 2 are the same.</p></div>}
               <div className="grid grid-cols-2 gap-2.5"><div><label className="font-bold">{form.exam === 'IELTS' ? 'Band (0-9)' : 'Score (10-90)'}</label><input type="number" step={form.exam === 'PTE' ? '1' : '0.5'} value={form.score} onChange={e => setForm({ ...form, score: e.target.value })} className="w-full h-8.5 rounded-xl border border-input bg-card px-3 text-xs mt-1" /></div><div><label className="font-bold">Test Date</label><input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full h-8.5 rounded-xl border border-input bg-card px-3 text-xs mt-1" /></div></div>
               <div>
                 <label className="font-bold">City / Region</label>

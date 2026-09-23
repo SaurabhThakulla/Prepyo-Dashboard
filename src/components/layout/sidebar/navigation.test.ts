@@ -87,8 +87,10 @@ describe('the practice menu for an admin', () => {
       'Speaking Part 2 (Cue Card)',
       'Speaking Part 3 (Discussion)',
     ]);
+    // Admins author both IELTS modules' Writing Task 1.
     expect(ieltsItems.filter(item => item.group === 'Writing').map(i => i.label)).toEqual([
       'Describe the figure',
+      'Write a letter',
       'Opinion / Agree or Disagree',
     ]);
     // Reading shows all syllabus topics for admin even when no available reading types are passed
@@ -181,5 +183,20 @@ describe('mock tests for all practice skills', () => {
     expect(listeningMock?.group).toBe('Listening');
     expect(listeningMock?.badge).toBe('MOCK');
     expect(listeningMock?.href).toBe('/practice?skill=listening&mock=1');
+  });
+});
+
+describe('the IELTS writing menu for a learner', () => {
+  const writing = (module?: 'academic' | 'general_training') =>
+    (buildSections('IELTS', () => { }, { role: 'suru', targetExam: 'IELTS', targetModule: module } as unknown as UserProfile)
+      .find(s => s.id === 'practice')?.items ?? [])
+      .filter(item => item.group === 'Writing' && item.badge !== 'MOCK')
+      .map(item => item.label);
+
+  it('offers Academic learners the figure and General Training learners the letter', () => {
+    expect(writing('academic')).toEqual(['Describe the figure', 'Opinion / Agree or Disagree']);
+    expect(writing('general_training')).toEqual(['Write a letter', 'Opinion / Agree or Disagree']);
+    // A profile from before modules existed is Academic.
+    expect(writing(undefined)).toEqual(['Describe the figure', 'Opinion / Agree or Disagree']);
   });
 });

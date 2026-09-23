@@ -143,7 +143,6 @@ describe('writing minimum on the routed page', () => {
   it.each([
     ['PTE', 'summarize-written-text', 5],
     ['PTE', 'pte-write-essay', 20],
-    ['IELTS', 'ielts-writing-task2-opinion', 20],
   ])('enforces %s %s minimum of %i words', async (exam, typeId, minimum) => {
     mocks.activeExam = exam;
     vi.mocked(api.get).mockResolvedValue({ questions: [{
@@ -180,6 +179,35 @@ describe('writing minimum on the routed page', () => {
       fireEvent.change(input, { target: { value: Array(76).fill('word').join(' ') } });
       expect(submit.disabled).toBe(false);
     }
+  });
+});
+
+// IELTS rates a response of 20 words or fewer at Band 1 rather than refusing
+// it, so any answer can be sent; the badge counts towards the task's length.
+describe('IELTS writing length on the routed page', () => {
+  it('lets any answer be sent and counts towards 250 words for Task 2', async () => {
+    mocks.activeExam = 'IELTS';
+    vi.mocked(api.get).mockResolvedValue({ questions: [{
+      id: 'writing-1', exam: 'IELTS', skill: 'writing', typeId: 'ielts-writing-task2-opinion', typeName: 'Writing task',
+      title: 'Writing task', prompt: 'Write your answer', timeLimitSeconds: 2400,
+    }] });
+    vi.mocked(api.post).mockImplementation(async path => {
+      if (path === '/practice/start') return { sessionId: 'session-1', remainingSubTests: 0 };
+      throw new Error('Retry later');
+    });
+    render(<MemoryRouter initialEntries={['/practice?skill=writing']}><PracticePage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Start Practice (1 Credit)' }));
+    const input = await screen.findByPlaceholderText('Write your response here…');
+    const submit = screen.getByRole('button', { name: 'Submit Answer' }) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    expect(screen.getByText(/Write at least 250 words/)).toBeDefined();
+    fireEvent.change(input, { target: { value: 'Too short' } });
+    expect(submit.disabled).toBe(false);
+    expect(screen.getByText('2 / 250 words')).toBeDefined();
+    fireEvent.click(submit);
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/evaluations/writing', {
+      questionId: 'writing-1', text: 'Too short',
+    }));
   });
 });
 
