@@ -1,4 +1,4 @@
-import { PaidTier, SubscriptionPlan, SubscriptionTier } from './types';
+import { PaidTier, SubscriptionPlan, SubscriptionState, SubscriptionTier } from './types';
 
 export const SUBSCRIPTION_TIERS: SubscriptionTier[] = ['free', 'weekly', 'pro', 'elite'];
 
@@ -68,13 +68,14 @@ export const DEFAULT_PLANS: SubscriptionPlan[] = [
     id: 'elite',
     name: 'Udaan',
     priceNPR: 999,
-    durationMonths: 3,
-    durationDays: 90,
-    bonusDays: 7,
-    features: ['97 days access', '60 practice sub-tests per day', '40 section mock tests / month', '10 full mock exams'],
+    durationMonths: 1,
+    durationDays: 30,
+    bonusDays: 3,
+    features: ['33 days full access', 'Unlimited practice sub-tests', 'Unlimited full mock exams', 'Unlimited AI tutor', 'Priority evaluation queue'],
     subTestsPerDay: 60,
     mockTestsIncluded: 10,
     isPopular: false,
+    unlimited: true,
   },
 ];
 
@@ -84,6 +85,21 @@ export const PLAN_TAGLINES: Record<SubscriptionTier, string> = {
   pro: 'Preparation',
   elite: 'Take-off',
 };
+
+/**
+ * Sub-tests the learner can still start today. Infinity on an unlimited plan,
+ * so "have I got enough?" comparisons keep working unchanged.
+ */
+export function subTestsLeft(sub?: SubscriptionState | null): number {
+  if (!sub) return 0;
+  if (sub.unlimited) return Number.POSITIVE_INFINITY;
+  return Math.max(0, (sub.dailySubTestsLimit ?? 0) - (sub.dailySubTestsUsed ?? 0));
+}
+
+/** A limit as learners read it: "Unlimited" instead of a number when there is none. */
+export function limitLabel(count: number, unlimited?: boolean): string {
+  return unlimited || !Number.isFinite(count) ? 'Unlimited' : String(count);
+}
 
 export const planAccessDays = (plan: SubscriptionPlan) =>
   (plan.durationDays || plan.durationMonths * 30) + plan.bonusDays;

@@ -12,7 +12,7 @@ import { SubscriptionPlan } from '@/lib/types';
 import { errorMessage } from '@/lib/api';
 import { formatExamDate } from '@/lib/dates';
 import { useSubscriptionPlans } from '@/lib/hooks/useResources';
-import { formatPlanName } from '@/lib/subscriptions';
+import { formatPlanName, limitLabel } from '@/lib/subscriptions';
 import QRPaymentCheckoutDialog from '@/components/subscription/QRPaymentCheckoutDialog';
 import QueuedPlansCard from '@/components/subscription/QueuedPlansCard';
 
@@ -83,13 +83,14 @@ export default function SubscriptionPage() {
     id: 'elite' as const,
     name: 'Udaan',
     priceNPR: 999,
-    durationMonths: 3,
-    durationDays: 90,
-    bonusDays: 7,
-    features: ['97 days access', '60 practice sub-tests per day', '40 section mock tests / month', '10 full mock exams'],
+    durationMonths: 1,
+    durationDays: 30,
+    bonusDays: 3,
+    features: ['33 days full access', 'Unlimited practice sub-tests', 'Unlimited full mock exams', 'Unlimited AI tutor', 'Priority evaluation queue'],
     subTestsPerDay: 60,
     mockTestsIncluded: 10,
     isPopular: false,
+    unlimited: true,
   };
 
   const handleOpenCheckout = (plan: SubscriptionPlan) => {
@@ -107,24 +108,31 @@ export default function SubscriptionPage() {
   const rows: ComparisonRow[] = [
     {
       label: 'Practice sub-tests per day',
-      free: String(freePlan.subTestsPerDay),
-      weekly: String(weeklyPlan.subTestsPerDay),
-      pro: String(proPlan.subTestsPerDay),
-      elite: String(elitePlan.subTestsPerDay),
+      free: limitLabel(freePlan.subTestsPerDay, freePlan.unlimited),
+      weekly: limitLabel(weeklyPlan.subTestsPerDay, weeklyPlan.unlimited),
+      pro: limitLabel(proPlan.subTestsPerDay, proPlan.unlimited),
+      elite: limitLabel(elitePlan.subTestsPerDay, elitePlan.unlimited),
     },
     {
       label: 'Section mock tests',
       free: dashMark,
       weekly: '10 / week',
       pro: '20 / calendar month',
-      elite: '40 / calendar month',
+      elite: elitePlan.unlimited ? 'Unlimited' : '40 / calendar month',
     },
     {
       label: 'Full mock exams',
       free: `${freePlan.mockTestsIncluded} lifetime`,
       weekly: String(weeklyPlan.mockTestsIncluded),
       pro: `${proPlan.mockTestsIncluded} / calendar month`,
-      elite: `${elitePlan.mockTestsIncluded} / calendar month`,
+      elite: elitePlan.unlimited ? 'Unlimited' : `${elitePlan.mockTestsIncluded} / calendar month`,
+    },
+    {
+      label: 'AI tutor messages',
+      free: '10 / day',
+      weekly: '100 / day',
+      pro: '100 / day',
+      elite: elitePlan.unlimited ? 'Unlimited' : '100 / day',
     },
     {
       label: 'Sentence-level rewrites',
@@ -145,14 +153,14 @@ export default function SubscriptionPage() {
       free: dashMark,
       weekly: dashMark,
       pro: `+${proPlan.bonusDays || 3} days`,
-      elite: `+${elitePlan.bonusDays || 7} days`,
+      elite: `+${elitePlan.bonusDays} days`,
     },
     {
       label: 'Access duration',
       free: 'Lifetime',
       weekly: `${weeklyPlan.durationDays || 7} days`,
       pro: `${(proPlan.durationDays || 30) + (proPlan.bonusDays || 3)} days`,
-      elite: `${(elitePlan.durationDays || 90) + (elitePlan.bonusDays || 7)} days`,
+      elite: `${(elitePlan.durationDays || elitePlan.durationMonths * 30) + elitePlan.bonusDays} days`,
     },
   ];
 
@@ -207,13 +215,17 @@ export default function SubscriptionPage() {
                 <div>
                   <span className="text-[10px] text-muted-foreground block uppercase font-bold">Sub-tests today</span>
                   <span className="font-extrabold text-foreground text-sm">
-                    {user.subscription.dailySubTestsUsed} / {user.subscription.dailySubTestsLimit}
+                    {user.subscription.unlimited
+                      ? `${user.subscription.dailySubTestsUsed} · Unlimited`
+                      : `${user.subscription.dailySubTestsUsed} / ${user.subscription.dailySubTestsLimit}`}
                   </span>
                 </div>
                 <div>
                   <span className="text-[10px] text-muted-foreground block uppercase font-bold">Mocks used</span>
                   <span className="font-extrabold text-foreground text-sm">
-                    {user.subscription.mockTestsUsed} / {user.subscription.totalMockTestsAllowed}
+                    {user.subscription.unlimited
+                      ? `${user.subscription.mockTestsUsed} · Unlimited`
+                      : `${user.subscription.mockTestsUsed} / ${user.subscription.totalMockTestsAllowed}`}
                   </span>
                 </div>
               </div>

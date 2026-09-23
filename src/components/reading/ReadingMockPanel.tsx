@@ -1,3 +1,4 @@
+import { subTestsLeft } from '@/lib/subscriptions';
 import React, { lazy, Suspense, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -31,10 +32,7 @@ export default function ReadingMockPanel() {
   });
   const [starting, setStarting] = useState(false);
 
-  const subTestsRemaining = Math.max(
-    0,
-    (user?.subscription?.dailySubTestsLimit ?? 0) - (user?.subscription?.dailySubTestsUsed ?? 0),
-  );
+  const subTestsRemaining = subTestsLeft(user?.subscription);
 
   // Starting costs sub-tests, so it waits for the learner to press Start rather
   // than firing the moment the page opens.

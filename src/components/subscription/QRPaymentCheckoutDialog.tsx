@@ -191,8 +191,10 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
                 Complete your payment
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
-                {planTitle} · {totalDays} days · {selectedPlan.subTestsPerDay} sub-tests a day ·{' '}
-                {selectedPlan.mockTestsIncluded} full mocks
+                {planTitle} · {totalDays} days ·{' '}
+                {selectedPlan.unlimited
+                  ? 'unlimited sub-tests and mocks'
+                  : `${selectedPlan.subTestsPerDay} sub-tests a day · ${selectedPlan.mockTestsIncluded} full mocks`}
               </DialogDescription>
               <div className="mt-3 flex items-end justify-between gap-3">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground pb-0.5">

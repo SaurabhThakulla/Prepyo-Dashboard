@@ -1688,8 +1688,10 @@ function PlanCard({
   const days = planAccessDays(plan);
   const brand = formatPlanName(plan.id);
   const perks = [
-    `${plan.subTestsPerDay} practice sub-tests a day`,
-    `${plan.mockTestsIncluded} full mock exam${plan.mockTestsIncluded === 1 ? '' : 's'}${free ? '' : ` included`}`,
+    plan.unlimited ? 'Unlimited practice sub-tests' : `${plan.subTestsPerDay} practice sub-tests a day`,
+    plan.unlimited
+      ? 'Unlimited full mock exams'
+      : `${plan.mockTestsIncluded} full mock exam${plan.mockTestsIncluded === 1 ? '' : 's'}${free ? '' : ` included`}`,
     free ? 'Free forever' : `${days} days of access${plan.bonusDays ? ` (incl. ${plan.bonusDays} bonus)` : ''}`,
   ];
 

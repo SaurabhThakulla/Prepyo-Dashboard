@@ -112,6 +112,7 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
           title="Practice sub-tests"
           remaining={subTestsRemaining}
           limit={subTestsLimit}
+          unlimited={sub.unlimited}
           period="today"
           hint="Resets at midnight"
           accent="text-indigo-500"
@@ -121,6 +122,7 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
           title="Full mock tests"
           remaining={mocksRemaining}
           limit={mocksLimit}
+          unlimited={sub.unlimited}
           period={isFree ? 'in total' : 'this month'}
           hint={isFree ? 'Included with your account' : 'Renews on the 1st'}
           accent="text-violet-500"
@@ -149,12 +151,15 @@ interface QuotaGaugeProps {
   hint: string;
   /** Text colour class for the ring while there is plenty left. */
   accent: string;
+  /** No limit: shown as ∞ and never "running low". */
+  unlimited?: boolean;
 }
 
 /** What is left, as the headline, with a ring that empties as it is used. */
-function QuotaGauge({ title, remaining, limit, period, hint, accent }: QuotaGaugeProps) {
-  const tone = toneFor(remaining, limit);
-  const fraction = limit > 0 ? remaining / limit : 0;
+function QuotaGauge({ title, remaining, limit, period, hint, accent, unlimited = false }: QuotaGaugeProps) {
+  const tone = unlimited ? 'ok' : toneFor(remaining, limit);
+  // An unlimited allowance is drawn as a full ring that never runs down.
+  const fraction = unlimited ? 1 : limit > 0 ? remaining / limit : 0;
   const radius = 20;
   const circumference = 2 * Math.PI * radius;
   const ring = tone === 'out' ? 'text-rose-500' : tone === 'low' ? 'text-amber-500' : accent;
@@ -177,14 +182,20 @@ function QuotaGauge({ title, remaining, limit, period, hint, accent }: QuotaGaug
           />
         </svg>
         <span className="absolute inset-0 flex items-center justify-center font-display text-sm font-extrabold text-foreground">
-          {remaining}
+          {unlimited ? '∞' : remaining}
         </span>
       </div>
 
       <div className="min-w-0">
         <p className="text-xs font-bold text-foreground">{title}</p>
         <p className="mt-0.5 text-[11px] text-muted-foreground">
-          <span className="font-bold text-foreground">{remaining}</span> of {limit} left {period}
+          {unlimited ? (
+            <span className="font-bold text-foreground">Unlimited</span>
+          ) : (
+            <>
+              <span className="font-bold text-foreground">{remaining}</span> of {limit} left {period}
+            </>
+          )}
         </p>
         <p
           className={`mt-0.5 text-[11px] font-semibold ${
@@ -195,7 +206,7 @@ function QuotaGauge({ title, remaining, limit, period, hint, accent }: QuotaGaug
                 : 'text-muted-foreground/80'
           }`}
         >
-          {tone === 'out' ? `None left · ${hint.toLowerCase()}` : tone === 'low' ? `Running low · ${hint.toLowerCase()}` : hint}
+          {unlimited ? 'No daily limit on your plan' : tone === 'out' ? `None left · ${hint.toLowerCase()}` : tone === 'low' ? `Running low · ${hint.toLowerCase()}` : hint}
         </p>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { subTestsLeft } from '@/lib/subscriptions';
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
 import { useSearchParams } from 'react-router-dom';
@@ -171,9 +172,7 @@ function PracticePageContent() {
   const scoreFromTranscript = isSpeakingTask && capabilities?.speakingTranscript === true;
   const speakingUnscored =
     isSpeakingTask && capabilities?.speaking === false && !scoreFromTranscript;
-  const subTestsRemaining = Math.max(0,
-    (user?.subscription?.dailySubTestsLimit ?? 0) - (user?.subscription?.dailySubTestsUsed ?? 0),
-  );
+  const subTestsRemaining = subTestsLeft(user?.subscription);
 
   const handleStart = async () => {
     if (hasStarted || startPending.current || isStarting) return;
@@ -418,14 +417,12 @@ function PracticePageContent() {
     setIsTutorOpen(true);
   };
 
-  // In transcript mode the words are the submission, so a recording with
-  // nothing recognised in it is not something to send: the learner is told to
-  // record again instead of being handed a validation error from the server.
+  // A finished recording can always be submitted, even when the device heard
+  // few or no words: the server scores it at the bottom of the scale and says
+  // why, rather than leaving the learner with an answer they cannot send.
   const canSubmit =
     grading === 'speech'
-      ? scoreFromTranscript
-        ? recording !== null && spokenTranscript.trim().length > 0
-        : recording !== null
+      ? recording !== null
       : grading === 'ai'
         ? wordCount >= minWords
         : textAnswer.trim().length > 0 ||
@@ -641,8 +638,9 @@ function PracticePageContent() {
                     )}
                     {scoreFromTranscript && recording !== null && spokenTranscript.trim() === '' && (
                       <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                        We could not make out any words. If you are on Safari or Firefox, speech
-                        recognition is not available there - try Chrome or Edge, or record again.
+                        We could not make out any words. You can still submit, but it will get the
+                        lowest score. If you did speak, try recording again - on Safari or Firefox,
+                        speech recognition is not available, so use Chrome or Edge.
                       </p>
                     )}
                     {waitingForPrompt && (

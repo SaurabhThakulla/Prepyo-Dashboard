@@ -1,3 +1,4 @@
+import { subTestsLeft } from '@/lib/subscriptions';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { AlertCircle, Bot, CheckCircle2, RefreshCw, Send, Shuffle, Square, Play } from 'lucide-react';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
@@ -123,10 +124,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam }
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
 
-  const subTestsRemaining = Math.max(
-    0,
-    (user?.subscription?.dailySubTestsLimit ?? 0) - (user?.subscription?.dailySubTestsUsed ?? 0)
-  );
+  const subTestsRemaining = subTestsLeft(user?.subscription);
 
   const handleStop = useCallback(async () => {
     if (sessionId) {

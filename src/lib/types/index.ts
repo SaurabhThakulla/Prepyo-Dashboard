@@ -71,6 +71,8 @@ export interface SubscriptionState {
   totalMockTestsAllowed: number;
   mockTestsUsed: number;
   bonusDays: number;
+  /** None of the limits above apply. */
+  unlimited?: boolean;
 }
 
 export interface UserProfile {
@@ -574,6 +576,8 @@ export interface SubscriptionPlan {
   aiEvaluationsPerDay?: number;
   mockTestsIncluded: number;
   isPopular: boolean;
+  /** No daily sub-test, mock or tutor limit; the numbers above are not shown. */
+  unlimited?: boolean;
 }
 
 export interface ReferralMilestone {

@@ -101,15 +101,38 @@ describe('speaking practice scored from the transcript', () => {
     });
   });
 
-  it('will not submit a recording nothing was heard in', async () => {
+  // A recording is always submittable: when nothing was heard the learner is
+  // warned, but can still send it, and the server marks it at the bottom.
+  it('still submits a recording nothing was heard in, with a warning', async () => {
     mocks.transcript = '';
-    vi.mocked(api.post).mockResolvedValue({ sessionId: 'session-1', remainingSubTests: 4, scored: true });
+    vi.mocked(api.post).mockImplementation(async (path: string) => {
+      if (path === '/practice/start') return { sessionId: 'session-1', remainingSubTests: 4, scored: true };
+      return {
+        evaluation: {
+          id: 'e-2', exam: 'IELTS', skill: 'speaking', estimatedScore: 0, scoreConfidence: 'low',
+          summary: 'No words could be made out in your recording, so this answer gets the lowest score.',
+          criteria: [], strengths: [], weaknesses: [], sentenceFeedback: [], transcript: '',
+          createdAt: new Date().toISOString(),
+        },
+        xpAwarded: 0,
+      };
+    });
 
     render(<MemoryRouter initialEntries={['/practice?skill=speaking']}><PracticePage /></MemoryRouter>);
     fireEvent.click(await screen.findByRole('button', { name: /Start Practice/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Record test audio' }));
 
     expect(await screen.findByText(/could not make out any words/)).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Submit recording' })).toHaveProperty('disabled', true);
+    const submit = screen.getByRole('button', { name: 'Submit recording' });
+    expect(submit).toHaveProperty('disabled', false);
+    fireEvent.click(submit);
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        '/evaluations/speaking/transcript',
+        expect.objectContaining({ questionId: 'speaking-1', transcript: '' }),
+      );
+    });
+    expect(await screen.findByText(/No words could be made out/)).toBeTruthy();
   });
 });

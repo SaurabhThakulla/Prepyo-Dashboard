@@ -59,7 +59,7 @@ export default function PreTestBlurOverlay({
           <div>
             {hasCredits ? (
               <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/30">
-                {subTestsRemaining} left today
+                {Number.isFinite(subTestsRemaining) ? `${subTestsRemaining} left today` : 'Unlimited'}
               </span>
             ) : (
               <span className="font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-md border border-rose-500/30">

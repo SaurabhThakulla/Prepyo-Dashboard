@@ -47,6 +47,8 @@ interface AppContextType {
   loadMoreNotifications: () => Promise<void>;
   markNotificationAsRead: (id: string) => Promise<void>;
   markAllNotificationsAsRead: () => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
+  clearAllNotifications: () => Promise<void>;
 
   activeExam: ExamType;
   setActiveExam: (exam: ExamType) => Promise<void>;
@@ -321,6 +323,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refreshNotifications]);
 
+  // Deletes update the panel at once; the refresh afterwards pulls in the next
+  // notice so the page stays full, and repairs the list if the call failed.
+  const deleteNotification = useCallback(async (id: string) => {
+    const target = notificationsRef.current.find(n => n.id === id);
+    if (!target) return;
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    setNotificationTotal(total => Math.max(0, total - 1));
+    if (!target.read) setUnreadCount(count => Math.max(0, count - 1));
+    loadedNotifications.current = Math.max(NOTIFICATION_PAGE, loadedNotifications.current - 1);
+    try {
+      await api.delete(`/notifications/${id}`);
+    } catch (err) {
+      console.error('Failed to delete notification:', err);
+    }
+    await refreshNotifications();
+  }, [refreshNotifications]);
+
+  const clearAllNotifications = useCallback(async () => {
+    setNotifications([]);
+    setNotificationTotal(0);
+    setUnreadCount(0);
+    loadedNotifications.current = NOTIFICATION_PAGE;
+    try {
+      await api.delete('/notifications');
+    } catch (err) {
+      console.error('Failed to clear notifications:', err);
+      await refreshNotifications();
+    }
+  }, [refreshNotifications]);
+
   const hasMoreNotifications = notifications.length < notificationTotal;
 
   return (
@@ -340,6 +372,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         loadMoreNotifications,
         markNotificationAsRead,
         markAllNotificationsAsRead,
+        deleteNotification,
+        clearAllNotifications,
         activeExam,
         setActiveExam,
         updateProfile,

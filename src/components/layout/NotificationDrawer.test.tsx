@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
     loadMoreNotifications: vi.fn(),
     markNotificationAsRead: vi.fn(),
     markAllNotificationsAsRead: vi.fn(),
+    deleteNotification: vi.fn(),
+    clearAllNotifications: vi.fn(),
   },
 }));
 vi.mock('@/context/AppContext', () => ({ useApp: () => mocks.app }));
@@ -65,7 +67,7 @@ describe('NotificationDrawer', () => {
     mocks.app.unreadCount = 1;
     const onClose = renderDrawer();
 
-    fireEvent.click(screen.getByRole('button', { name: /Notice a/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Notice a/ }));
     expect(mocks.app.markNotificationAsRead).toHaveBeenCalledWith('a');
     expect(onClose).toHaveBeenCalled();
     expect(screen.getByText('Reports page')).toBeTruthy();
@@ -74,7 +76,41 @@ describe('NotificationDrawer', () => {
   it('does not mark an already-read notice again', () => {
     mocks.app.notifications = [notice('a', true)];
     renderDrawer();
-    fireEvent.click(screen.getByRole('button', { name: /Notice a/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Notice a/ }));
     expect(mocks.app.markNotificationAsRead).not.toHaveBeenCalled();
+  });
+
+  it('deletes one notice without opening it', () => {
+    mocks.app.notifications = [notice('a', false, '/reports')];
+    mocks.app.unreadCount = 1;
+    const onClose = renderDrawer();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete notification: Notice a' }));
+    expect(mocks.app.deleteNotification).toHaveBeenCalledWith('a');
+    expect(mocks.app.markNotificationAsRead).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('asks before clearing everything', () => {
+    mocks.app.notifications = [notice('a', false), notice('b', true)];
+    renderDrawer();
+
+    fireEvent.click(screen.getByRole('button', { name: /Clear all/ }));
+    expect(mocks.app.clearAllNotifications).not.toHaveBeenCalled();
+    expect(screen.getByText(/Delete all notifications\?/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText(/Delete all notifications\?/)).toBeNull();
+    expect(mocks.app.clearAllNotifications).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Clear all/ }));
+    const confirm = screen.getAllByRole('button', { name: 'Clear all' }).at(-1)!;
+    fireEvent.click(confirm);
+    expect(mocks.app.clearAllNotifications).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides Clear all when there is nothing to clear', () => {
+    renderDrawer();
+    expect(screen.queryByRole('button', { name: /Clear all/ })).toBeNull();
   });
 });

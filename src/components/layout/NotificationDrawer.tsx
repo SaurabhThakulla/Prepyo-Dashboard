@@ -17,6 +17,7 @@ import {
   Target,
   X,
   CalendarClock,
+  Trash2,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { cn } from '@/lib/utils';
@@ -59,16 +60,25 @@ export default function NotificationDrawer({ open, onClose }: Props) {
     loadMoreNotifications,
     markNotificationAsRead,
     markAllNotificationsAsRead,
+    deleteNotification,
+    clearAllNotifications,
   } = useApp();
   const navigate = useNavigate();
   const [loadingMore, setLoadingMore] = useState(false);
+  // Clearing everything asks once more; deleting one notice does not.
+  const [confirmingClear, setConfirmingClear] = useState(false);
 
   if (!open) return null;
+
+  const close = () => {
+    setConfirmingClear(false);
+    onClose();
+  };
 
   const openNotification = (notif: NotificationItem) => {
     if (!notif.read) void markNotificationAsRead(notif.id);
     if (notif.actionUrl) {
-      onClose();
+      close();
       navigate(notif.actionUrl);
     }
   };
@@ -84,7 +94,7 @@ export default function NotificationDrawer({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label="Notifications">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={close} />
 
       <div className="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-sm flex-col border-l border-border bg-card shadow-2xl animate-in slide-in-from-right duration-200">
         <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
@@ -109,9 +119,18 @@ export default function NotificationDrawer({ open, onClose }: Props) {
                 <CheckCheck className="h-3.5 w-3.5" aria-hidden /> Mark all read
               </button>
             )}
+            {notifications.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setConfirmingClear(true)}
+                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden /> Clear all
+              </button>
+            )}
             <button
               type="button"
-              onClick={onClose}
+              onClick={close}
               aria-label="Close notifications"
               className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
             >
@@ -119,6 +138,31 @@ export default function NotificationDrawer({ open, onClose }: Props) {
             </button>
           </div>
         </div>
+
+        {confirmingClear && (
+          <div role="alertdialog" aria-label="Clear all notifications" className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/50 px-5 py-3">
+            <p className="text-xs text-foreground">Delete all notifications? This cannot be undone.</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmingClear(false)}
+                className="rounded-lg border border-border px-3 py-1.5 text-xs text-foreground hover:bg-background"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingClear(false);
+                  void clearAllNotifications();
+                }}
+                className="rounded-lg bg-destructive px-3 py-1.5 text-xs text-destructive-foreground hover:bg-destructive/90"
+              >
+                Clear all
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto px-3 py-3">
           {notifications.length === 0 ? (
@@ -137,12 +181,12 @@ export default function NotificationDrawer({ open, onClose }: Props) {
                 const kind = KIND[notif.type] ?? KIND.system;
                 const Icon = kind.icon;
                 return (
-                  <li key={notif.id}>
+                  <li key={notif.id} className="group relative">
                     <button
                       type="button"
                       onClick={() => openNotification(notif)}
                       className={cn(
-                        'group flex w-full items-start gap-3 rounded-xl p-3 text-left transition-colors hover:bg-muted/60',
+                        'flex w-full items-start gap-3 rounded-xl p-3 pr-10 text-left transition-colors hover:bg-muted/60',
                         !notif.read && 'bg-primary/[0.04]',
                       )}
                     >
@@ -154,16 +198,27 @@ export default function NotificationDrawer({ open, onClose }: Props) {
                           <span className={cn('text-sm leading-snug', notif.read ? 'text-muted-foreground' : 'font-medium text-foreground')}>
                             {notif.title}
                           </span>
-                          {!notif.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" aria-label="Unread" />}
                         </span>
                         <span className="block text-xs leading-relaxed text-muted-foreground">{notif.message}</span>
                         <span className="flex items-center justify-between pt-0.5 text-[11px] text-muted-foreground/80">
-                          <span>{timeAgo(notif.createdAt)}</span>
+                          <span className="flex items-center gap-1.5">
+                            {!notif.read && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-label="Unread" />}
+                            {timeAgo(notif.createdAt)}
+                          </span>
                           {notif.actionUrl && (
                             <ChevronRight className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
                           )}
                         </span>
                       </span>
+                    </button>
+                    {/* Always visible on touch screens, where there is no hover. */}
+                    <button
+                      type="button"
+                      onClick={() => void deleteNotification(notif.id)}
+                      aria-label={`Delete notification: ${notif.title}`}
+                      className="absolute right-2 top-2 rounded-lg p-1.5 text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden />
                     </button>
                   </li>
                 );
