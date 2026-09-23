@@ -41,7 +41,13 @@ export default function ScoreReport({ attempt, outcome, onBack }: ScoreReportPro
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-background p-5 text-center space-y-1">
           <span className="text-xs font-bold text-muted-foreground uppercase">
-            {attempt.exam === 'IELTS' ? 'Estimated Band' : 'Estimated Overall'}
+            {attempt.exam === 'IELTS'
+              ? skillScores.length === 1
+                ? `Estimated ${skillScores[0][0]} band`
+                : skillScores.length === 4
+                  ? 'Estimated overall band'
+                  : 'Estimated band (sections taken)'
+              : 'Estimated Overall'}
           </span>
           <div className="font-display text-4xl font-black text-foreground">
             {attempt.exam === 'IELTS' ? attempt.userScore.toFixed(1) : Math.round(attempt.userScore)}
@@ -49,14 +55,17 @@ export default function ScoreReport({ attempt, outcome, onBack }: ScoreReportPro
           <Badge variant="default">Practice estimate</Badge>
         </Card>
 
-        <Card className="bg-background p-5 text-center space-y-1">
-          <span className="text-xs font-bold text-muted-foreground uppercase">Correct</span>
-          <div className="font-display text-4xl font-black text-primary">
-            {attempt.totalCorrect}
-            <span className="text-xs font-bold text-muted-foreground"> / {attempt.totalQuestions}</span>
-          </div>
-          <p className="text-[10px] text-muted-foreground">Auto-graded questions</p>
-        </Card>
+        {/* A writing paper is rated, not counted, so it has no correct-answer tally. */}
+        {attempt.totalQuestions > 0 && (
+          <Card className="bg-background p-5 text-center space-y-1">
+            <span className="text-xs font-bold text-muted-foreground uppercase">Correct</span>
+            <div className="font-display text-4xl font-black text-primary">
+              {attempt.totalCorrect}
+              <span className="text-xs font-bold text-muted-foreground"> / {attempt.totalQuestions}</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Auto-graded questions</p>
+          </Card>
+        )}
 
         <Card className="bg-background p-5 text-center space-y-1">
           <span className="text-xs font-bold text-muted-foreground uppercase">Duration</span>

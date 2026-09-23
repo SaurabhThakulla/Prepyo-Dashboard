@@ -107,7 +107,7 @@ export default function MockExamRunner({
 
             <div className="space-y-4">
               <h4 className="font-display font-bold text-base text-foreground">{currentQuestion.title}</h4>
-              <div className="p-4 rounded-xl bg-background border border-border text-xs sm:text-sm text-foreground leading-relaxed">
+              <div className="p-4 rounded-xl bg-background border border-border text-xs sm:text-sm text-foreground leading-relaxed whitespace-pre-line">
                 {currentQuestion.prompt}
               </div>
 
@@ -131,6 +131,8 @@ export default function MockExamRunner({
                 questionId={currentQuestion.id}
                 audioUrl={currentQuestion.audioUrl}
                 audioTranscript={currentQuestion.audioTranscript}
+                scriptOnRequest={currentQuestion.scriptOnRequest}
+                singlePlay={currentQuestion.exam === 'IELTS'}
                 title={currentQuestion.title}
                 allowTranscript={false}
               />

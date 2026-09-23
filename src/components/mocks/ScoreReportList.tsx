@@ -5,6 +5,17 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Mock, MockAttempt } from '@/lib/types';
 
+/**
+ * Titles for mock attempts whose mock is not in the catalogue: the IELTS
+ * section mocks and the full mock, which are started from their own pages.
+ */
+const SECTION_MOCK_TITLES: Record<string, string> = {
+  'mock-ielts-full': 'IELTS Full Mock Test',
+  'mock-ielts-listening-gen': 'IELTS Listening Mock',
+  'mock-ielts-writing-gen': 'IELTS Writing Mock',
+  'mock-ielts-speaking-gen': 'IELTS Speaking Mock',
+};
+
 interface ScoreReportListProps {
   attempts: MockAttempt[];
   /** Used to show the mock's title instead of its id. */
@@ -49,7 +60,7 @@ export default function ScoreReportList({
             <div className="flex items-center gap-2">
               <Badge variant="indigo">{attempt.exam}</Badge>
               <span className="text-xs font-bold text-foreground">
-                {mocks.find(mock => mock.id === attempt.mockId)?.title ?? attempt.mockId}
+                {mocks.find(mock => mock.id === attempt.mockId)?.title ?? SECTION_MOCK_TITLES[attempt.mockId] ?? attempt.mockId}
               </span>
             </div>
             <div className="text-xs text-muted-foreground flex items-center gap-3">

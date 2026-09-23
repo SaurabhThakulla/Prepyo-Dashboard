@@ -18,6 +18,7 @@ import { READING_MOCK_HREF } from '@/components/layout/sidebar/navigation';
 
 const MockExamRunner = lazy(() => import('@/components/mocks/MockExamRunner'));
 const ScoreReport = lazy(() => import('@/components/mocks/ScoreReport'));
+const FullMockPanel = lazy(() => import('@/components/mocks/FullMockPanel'));
 
 export default function MocksPage() {
   const navigate = useNavigate();
@@ -128,8 +129,7 @@ export default function MocksPage() {
     );
   }
 
-  return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
+  const header = (
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">{activeExam} Mock Exam Center</h1>
@@ -152,6 +152,21 @@ export default function MocksPage() {
           />
         </div>
       </div>
+  );
+
+  // IELTS has a four-skill full mock with an overall band, run section by
+  // section by the section mocks.
+  if (activeExam === 'IELTS' && activeTab === 'catalog') {
+    return (
+      <Suspense fallback={<AppPageSkeleton />}>
+        <FullMockPanel header={header} />
+      </Suspense>
+    );
+  }
+
+  return (
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
+      {header}
 
       {loading ? (
         <MocksPageSkeleton bare />
