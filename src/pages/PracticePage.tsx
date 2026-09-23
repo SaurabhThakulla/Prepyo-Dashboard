@@ -8,20 +8,19 @@ import {
   Clock,
   Bot,
   AlertCircle,
-  Award,
   Send,
   CheckCircle2,
-  XCircle,
-  Quote,
   ChevronDown,
   ChevronRight,
+  Volume2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import AudioRecorder from '@/components/practice/AudioRecorder';
 import PromptAudio from '@/components/practice/PromptAudio';
+import PracticeResultCard from '@/components/practice/PracticeResultCard';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
 import { isWordHighlightTask } from '@/lib/listening';
@@ -70,6 +69,12 @@ const GRADING: Record<SkillType, 'deterministic' | 'ai' | 'speech'> = {
   speaking: 'speech',
 };
 
+interface EvaluationResponse {
+  evaluation: Evaluation;
+  xpAwarded: number;
+  notificationId?: string;
+}
+
 interface SubmitResult {
   attempt?: PracticeAttempt;
   review?: Question;
@@ -87,7 +92,29 @@ export default function PracticePage() {
 }
 
 function PracticePageContent() {
-  const { user, activeExam: contextExam, refreshUser, setIsTutorOpen, setTutorContextPrompt, setActiveTestSession } = useApp();
+  const {
+    user, activeExam: contextExam, refreshUser, setIsTutorOpen, setTutorContextPrompt, setActiveTestSession,
+    markNotificationAsRead, refreshNotifications,
+  } = useApp();
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // The server also files a "feedback ready" notification. A learner still
+  // here is reading the feedback, so it is marked read at once; one who left
+  // while it was being marked finds it waiting in the bell.
+  const showEvaluation = (data: EvaluationResponse) => {
+    if (!mounted.current) return;
+    setResult({ evaluation: data.evaluation, xpAwarded: data.xpAwarded });
+    // Refresh after marking, so the bell picks up any mission notice without
+    // counting the feedback one as unread.
+    void (data.notificationId ? markNotificationAsRead(data.notificationId) : Promise.resolve())
+      .then(refreshNotifications);
+  };
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const typeParam = searchParams.get('type');
@@ -110,6 +137,9 @@ function PracticePageContent() {
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [blankResponses, setBlankResponses] = useState<Record<string, string>>({});
   const [recording, setRecording] = useState<Blob | null>(null);
+  // The question whose prompt audio has played through. Keyed by id, so moving
+  // to the next question starts out not heard.
+  const [heardPromptFor, setHeardPromptFor] = useState<string | null>(null);
   // What the browser's own recogniser heard. It is what gets marked wherever
   // the provider has no model that can listen to the recording itself.
   const [spokenTranscript, setSpokenTranscript] = useState('');
@@ -245,6 +275,12 @@ function PracticePageContent() {
   };
 
   const grading = GRADING[selectedSkill];
+  // Speaking tasks with something to listen to (Repeat Sentence, Re-tell
+  // Lecture, Answer Short Question...) record only after the audio has played
+  // through, as the exam does; recording over the prompt would capture it.
+  const promptHasAudio = Boolean(currentQuestion?.audioUrl || currentQuestion?.audioTranscript?.trim());
+  const waitingForPrompt =
+    grading === 'speech' && promptHasAudio && result === null && heardPromptFor !== currentQuestion?.id;
 
   const resetAnswer = useCallback(() => {
     setStartedTask(null);
@@ -306,7 +342,7 @@ function PracticePageContent() {
 
     try {
       if (grading === 'speech' && scoreFromTranscript) {
-        const data = await api.post<{ evaluation: Evaluation; xpAwarded: number }>(
+        const data = await api.post<EvaluationResponse>(
           '/evaluations/speaking/transcript',
           {
             questionId: currentQuestion.id,
@@ -315,7 +351,7 @@ function PracticePageContent() {
             delivery,
           },
         );
-        setResult({ evaluation: data.evaluation, xpAwarded: data.xpAwarded });
+        showEvaluation(data);
       } else if (grading === 'speech') {
         if (!recording) return;
 
@@ -330,19 +366,19 @@ function PracticePageContent() {
           return;
         }
 
-        const data = await api.post<{ evaluation: Evaluation; xpAwarded: number }>('/evaluations/speaking', {
+        const data = await api.post<EvaluationResponse>('/evaluations/speaking', {
           questionId: currentQuestion.id,
           audio: encoded.base64,
           format: encoded.format,
           durationSeconds: encoded.durationSeconds,
         });
-        setResult({ evaluation: data.evaluation, xpAwarded: data.xpAwarded });
+        showEvaluation(data);
       } else if (grading === 'ai') {
-        const data = await api.post<{ evaluation: Evaluation; xpAwarded: number }>('/evaluations/writing', {
+        const data = await api.post<EvaluationResponse>('/evaluations/writing', {
           questionId: currentQuestion.id,
           text: textAnswer,
         });
-        setResult({ evaluation: data.evaluation, xpAwarded: data.xpAwarded });
+        showEvaluation(data);
       } else {
         const data = await api.post<{ attempt: PracticeAttempt; review: Question; xpAwarded: number }>(
           '/practice/attempts',
@@ -570,6 +606,7 @@ function PracticePageContent() {
                   audioTranscript={currentQuestion.audioTranscript}
                   title={currentQuestion.title}
                   allowTranscript={result !== null}
+                  onFinished={() => setHeardPromptFor(currentQuestion.id)}
                 />
 
                 {currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && (
@@ -608,11 +645,17 @@ function PracticePageContent() {
                         recognition is not available there - try Chrome or Edge, or record again.
                       </p>
                     )}
+                    {waitingForPrompt && (
+                      <p role="status" className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                        <Volume2 className="w-3.5 h-3.5" aria-hidden />
+                        Play the audio above. Recording starts on its own when it finishes, as in the exam.
+                      </p>
+                    )}
                     <AudioRecorder
                       key={currentQuestion.id}
                       prepSeconds={currentQuestion.prepTimeSeconds ?? 0}
                       maxSeconds={currentQuestion.timeLimitSeconds}
-                      disabled={submitting || result !== null}
+                      disabled={submitting || result !== null || waitingForPrompt}
                       autoStart
                       onRecorded={(blob, transcript, measured) => {
                         setRecording(blob);
@@ -718,94 +761,7 @@ function PracticePageContent() {
                 )}
               </div>
 
-              {/* Deterministic Attempt Result */}
-              {result?.attempt && (
-                <Card className="border-primary/40 p-6 space-y-4 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {result.attempt.isCorrect ? (
-                        <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                      ) : (
-                        <XCircle className="w-5 h-5 text-rose-500" />
-                      )}
-                      <CardTitle className="text-base">
-                        {result.attempt.isCorrect ? 'Correct' : 'Not quite'}
-                      </CardTitle>
-                    </div>
-                    {result.xpAwarded > 0 && <Badge variant="warning">+{result.xpAwarded} XP</Badge>}
-                  </div>
-
-                  <div className="bg-background p-4 rounded-xl border border-border text-center space-y-1">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Score</span>
-                    <div className="font-display text-4xl font-black text-foreground">
-                      {result.attempt.score}
-                      <span className="text-xs text-muted-foreground font-bold"> / {result.attempt.maxScore}</span>
-                    </div>
-                    <p className="text-xs text-foreground pt-1">{result.attempt.feedback}</p>
-                  </div>
-
-                  {result.review?.explanation && (
-                    <div className="p-3.5 rounded-xl bg-background border border-border space-y-1">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase">Explanation</span>
-                      <p className="text-xs text-foreground leading-relaxed">{result.review.explanation}</p>
-                    </div>
-                  )}
-                </Card>
-              )}
-
-              {/* AI Evaluation Result */}
-              {result?.evaluation && (
-                <Card className="border-primary/40 p-6 space-y-4 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Award className="w-5 h-5 text-amber-400" />
-                      <CardTitle className="text-base">Evaluation</CardTitle>
-                    </div>
-                    {result.xpAwarded > 0 && <Badge variant="warning">+{result.xpAwarded} XP</Badge>}
-                  </div>
-
-                  <div className="bg-background p-4 rounded-xl border border-border text-center space-y-1">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Practice estimate</span>
-                    <div className="font-display text-4xl font-black text-foreground">
-                      {result.evaluation.estimatedScore ?? '—'}
-                    </div>
-                    <p className="text-xs text-foreground pt-1">{result.evaluation.summary}</p>
-                  </div>
-
-                  {result.evaluation.skill === 'speaking' && (
-                    <div className="p-3.5 rounded-xl bg-background border border-border space-y-1.5">
-                      <span className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase">
-                        <Quote className="w-3 h-3" /> What we heard
-                      </span>
-                      {result.evaluation.transcript ? (
-                        <p className="text-xs text-foreground italic leading-relaxed">
-                          &ldquo;{result.evaluation.transcript}&rdquo;
-                        </p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          No speech could be made out in that recording, so there is no score for it.
-                          Check your microphone and record the answer again.
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {result.evaluation.criteria.length > 0 && (
-                    <div className="space-y-2">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase">Rubric</span>
-                      {result.evaluation.criteria.map(c => (
-                        <div key={c.name} className="p-2.5 rounded-lg bg-background border border-border text-xs space-y-1">
-                          <div className="flex justify-between font-bold text-foreground">
-                            <span>{c.name}</span>
-                            <span className="text-primary">{c.score}/{c.maxScore}</span>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground">{c.feedback}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              )}
+              {result && <PracticeResultCard result={result} />}
             </Card>
 
             {/* Bottom Action Bar */}

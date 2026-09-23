@@ -23,6 +23,7 @@ const AdminPaymentsPage = lazy(() => import('@/pages/AdminPaymentsPage'));
 const TermsPage = lazy(() => import('@/pages/TermsPage'));
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
+const MyReportsPage = lazy(() => import('@/pages/MyReportsPage'));
 
 export default function App() {
   return (
@@ -70,6 +71,7 @@ export default function App() {
         <Route path="/referrals" element={<Suspense fallback={<AppPageSkeleton />}><ReferralsPage /></Suspense>} />
         <Route path="/subscription" element={<Suspense fallback={<AppPageSkeleton />}><SubscriptionPage /></Suspense>} />
         <Route path="/diagnostic" element={<Suspense fallback={<AppPageSkeleton />}><DiagnosticPage /></Suspense>} />
+        <Route path="/reports" element={<Suspense fallback={<AppPageSkeleton />}><MyReportsPage /></Suspense>} />
         <Route path="/admin" element={<Suspense fallback={<AppPageSkeleton />}><AdminPage /></Suspense>} />
         <Route path="/admin/reports" element={<Suspense fallback={<AppPageSkeleton />}><AdminReportsPage /></Suspense>} />
         <Route path="/admin/payments" element={<Suspense fallback={<AppPageSkeleton />}><AdminPaymentsPage /></Suspense>} />

@@ -16,6 +16,12 @@ interface PromptAudioProps {
    * Blanks are words from it — so callers turn it on only after submission.
    */
   allowTranscript?: boolean;
+  /**
+   * Called each time the audio plays through to the end. Speaking tasks use it
+   * to start recording only once the learner has heard the prompt, as the exam
+   * does.
+   */
+  onFinished?: () => void;
 }
 
 /**
@@ -27,7 +33,10 @@ interface PromptAudioProps {
  * background noise a real recording has, and a learner who mistakes one for the
  * other will misjudge how ready they are.
  */
-export default function PromptAudio({ audioUrl, audioTranscript, title, questionId, allowTranscript = false }: PromptAudioProps) {
+export default function PromptAudio({ audioUrl, audioTranscript, title, questionId, allowTranscript = false, onFinished }: PromptAudioProps) {
+  // Read through a ref so a new callback each render never restarts playback.
+  const onFinishedRef = useRef(onFinished);
+  onFinishedRef.current = onFinished;
   const [canSpeak, setCanSpeak] = useState(() => typeof window !== 'undefined' && 'speechSynthesis' in window);
   const [speaking, setSpeaking] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
@@ -127,6 +136,7 @@ export default function PromptAudio({ audioUrl, audioTranscript, title, question
           setSpeaking(false);
           setProgress(1);
           setFinished(true);
+          onFinishedRef.current?.();
           return;
         }
         setProgress(starts[index] / total);
@@ -173,7 +183,7 @@ export default function PromptAudio({ audioUrl, audioTranscript, title, question
   }, [script, cancelPlayback]);
 
   if (audioUrl) {
-    return <RecordedAudio src={audioUrl} title={title} questionId={questionId} />;
+    return <RecordedAudio src={audioUrl} title={title} questionId={questionId} onFinished={() => onFinishedRef.current?.()} />;
   }
 
   if (!script) return null;
@@ -230,7 +240,7 @@ export default function PromptAudio({ audioUrl, audioTranscript, title, question
 }
 
 /** A real recording, in the same voice panel, with true position from the file. */
-function RecordedAudio({ src, title, questionId }: { src: string; title: string; questionId?: string }) {
+function RecordedAudio({ src, title, questionId, onFinished }: { src: string; title: string; questionId?: string; onFinished: () => void }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -270,6 +280,7 @@ function RecordedAudio({ src, title, questionId }: { src: string; title: string;
           setPlaying(false);
           setFinished(true);
           setProgress(1);
+          onFinished();
         }}
         onTimeUpdate={event => {
           const el = event.currentTarget;
