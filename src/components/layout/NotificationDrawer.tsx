@@ -96,47 +96,65 @@ export default function NotificationDrawer({ open, onClose }: Props) {
     <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label="Notifications">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={close} />
 
-      <div className="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-sm flex-col border-l border-border bg-card shadow-2xl animate-in slide-in-from-right duration-200">
-        <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="rounded-lg bg-primary/10 p-2 text-primary">
-              <Bell className="h-4 w-4" aria-hidden />
+      <div className="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-sm sm:max-w-md flex-col border-l border-border bg-card shadow-2xl animate-in slide-in-from-right duration-200">
+        <div className="border-b border-border px-4 sm:px-5 py-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="rounded-lg bg-primary/10 p-2 text-primary shrink-0">
+                <Bell className="h-4 w-4" aria-hidden />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display text-base font-semibold text-foreground whitespace-nowrap">
+                    Notifications
+                  </h3>
+                  {unreadCount > 0 && (
+                    <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary whitespace-nowrap">
+                      {unreadCount} unread
+                    </span>
+                  )}
+                </div>
+                {unreadCount === 0 && (
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">All caught up</p>
+                )}
+              </div>
             </div>
-            <div>
-              <h3 className="font-display text-base font-semibold text-foreground">Notifications</h3>
-              <p className="text-xs text-muted-foreground">
-                {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={() => void markAllNotificationsAsRead()}
-                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-primary hover:bg-primary/10"
-              >
-                <CheckCheck className="h-3.5 w-3.5" aria-hidden /> Mark all read
-              </button>
-            )}
-            {notifications.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setConfirmingClear(true)}
-                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <Trash2 className="h-3.5 w-3.5" aria-hidden /> Clear all
-              </button>
-            )}
             <button
               type="button"
               onClick={close}
               aria-label="Close notifications"
-              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground shrink-0 transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
+
+          {(unreadCount > 0 || notifications.length > 0) && (
+            <div className="mt-2.5 flex items-center justify-between border-t border-border/50 pt-2 text-xs">
+              <div>
+                {unreadCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => void markAllNotificationsAsRead()}
+                    className="flex items-center gap-1.5 rounded-md px-2 py-1 font-medium text-primary hover:bg-primary/10 transition-colors whitespace-nowrap"
+                  >
+                    <CheckCheck className="h-3.5 w-3.5" aria-hidden /> Mark all read
+                  </button>
+                ) : (
+                  <span className="text-xs text-muted-foreground px-2">All read</span>
+                )}
+              </div>
+              {notifications.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingClear(true)}
+                  className="flex items-center gap-1.5 rounded-md px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors whitespace-nowrap"
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden /> Clear all
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {confirmingClear && (

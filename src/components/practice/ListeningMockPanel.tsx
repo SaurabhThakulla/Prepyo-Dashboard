@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { AnswerSubmission, MockAttempt, Question, isPremiumUser } from '@/lib/types';
 import { subTestsLeft } from '@/lib/subscriptions';
-import { Playback, playRecording, StoppedError } from '@/lib/scriptPlayer';
+import { Playback, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
 
@@ -339,6 +339,9 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
         {phase === 'ready' && (
           <Button
             onClick={() => {
+              // The recording starts after the reading time, not on this tap;
+              // iOS needs audio unlocked by the tap itself.
+              unlockAudio();
               setCountdown(part?.readingSeconds ?? 30);
               setPhase('reading');
             }}
@@ -348,7 +351,14 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
           </Button>
         )}
         {audioError && (
-          <Button variant="outline" onClick={() => void play()} className="font-bold gap-1.5">
+          <Button
+            variant="outline"
+            onClick={() => {
+              unlockAudio();
+              void play();
+            }}
+            className="font-bold gap-1.5"
+          >
             <RefreshCw className="w-3.5 h-3.5" /> Try the audio again
           </Button>
         )}

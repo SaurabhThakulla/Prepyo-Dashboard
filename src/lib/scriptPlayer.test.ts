@@ -1,5 +1,40 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { speakScript, StoppedError } from './scriptPlayer';
+import { api } from '@/lib/api';
+import {
+  browserCanSpeak,
+  browserVoiceBroken,
+  playRecording,
+  resetBrowserVoice,
+  speakScript,
+  SpeechUnavailableError,
+  StoppedError,
+} from './scriptPlayer';
+
+vi.mock('@/lib/api', () => ({ api: { get: vi.fn() } }));
+
+/** An audio element that plays each clip for a tenth of a second. */
+const played: string[] = [];
+class FakeAudio {
+  src = '';
+  paused = true;
+  duration = 0.1;
+  currentTime = 0;
+  onended: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  ontimeupdate: (() => void) | null = null;
+  play() {
+    played.push(this.src);
+    this.paused = false;
+    setTimeout(() => {
+      this.paused = true;
+      this.onended?.();
+    }, 100);
+    return Promise.resolve();
+  }
+  pause() {
+    this.paused = true;
+  }
+}
 
 /** An utterance as the fake engine sees it. */
 class FakeUtterance {
@@ -49,6 +84,10 @@ function installEngine(mode: 'normal' | 'lostEnd' | 'silent') {
 describe('speakScript', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    resetBrowserVoice();
+    played.length = 0;
+    vi.stubGlobal('Audio', FakeAudio);
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response())));
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -76,8 +115,8 @@ describe('speakScript', () => {
     const playback = speakScript('Nothing will be heard.');
     const outcome = playback.done.catch(error => error);
     await vi.advanceTimersByTimeAsync(5000);
-    expect(await outcome).toBeInstanceOf(Error);
-    expect((await outcome).message).toBe('speech did not start');
+    expect(await outcome).toBeInstanceOf(SpeechUnavailableError);
+    expect(browserVoiceBroken()).toBe(true);
   });
 
   it('rejects with StoppedError when stopped', async () => {
@@ -87,5 +126,58 @@ describe('speakScript', () => {
     await vi.advanceTimersByTimeAsync(100);
     playback.stop();
     expect(await outcome).toBeInstanceOf(StoppedError);
+  });
+});
+
+describe('playRecording', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetBrowserVoice();
+    played.length = 0;
+    vi.stubGlobal('Audio', FakeAudio);
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response())));
+    vi.mocked(api.get).mockReset();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("uses the browser's voice where it works", async () => {
+    const spoken = installEngine('normal');
+    const playback = await playRecording({ script: 'Where is your hometown?', audioUrl: '/clips' });
+    await vi.advanceTimersByTimeAsync(2000);
+    await expect(playback.done).resolves.toBeUndefined();
+    expect(spoken).toEqual(['Where is your hometown?']);
+    expect(api.get).not.toHaveBeenCalled();
+  });
+
+  it('switches to the server voice when the browser voice never starts, and stays with it', async () => {
+    installEngine('silent');
+    vi.mocked(api.get).mockResolvedValue({ segments: [{ url: '/speech/a' }, { url: '/speech/b' }] });
+    const playback = await playRecording({ script: 'Where is your hometown?', audioUrl: '/clips' });
+    await vi.advanceTimersByTimeAsync(5000);
+    await expect(playback.done).resolves.toBeUndefined();
+    expect(api.get).toHaveBeenCalledWith('/clips');
+    expect(played).toEqual(['/speech/a', '/speech/b']);
+    // The next recording goes straight to the server's voice.
+    expect(await browserCanSpeak()).toBe(false);
+  });
+
+  it('goes straight to the server voice in a browser with no voices', async () => {
+    vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance);
+    Object.defineProperty(window, 'speechSynthesis', {
+      value: { getVoices: () => [], addEventListener: () => {}, removeEventListener: () => {} },
+      configurable: true,
+    });
+    vi.mocked(api.get).mockResolvedValue({ segments: [{ url: '/speech/a' }] });
+    const pending = playRecording({ scriptUrl: '/script', audioUrl: '/clips' });
+    await vi.advanceTimersByTimeAsync(2000);
+    const playback = await pending;
+    await vi.advanceTimersByTimeAsync(500);
+    await expect(playback.done).resolves.toBeUndefined();
+    expect(api.get).toHaveBeenCalledTimes(1);
+    expect(api.get).toHaveBeenCalledWith('/clips');
+    expect(played).toEqual(['/speech/a']);
   });
 });

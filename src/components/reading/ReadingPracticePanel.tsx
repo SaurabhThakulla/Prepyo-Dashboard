@@ -181,7 +181,12 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam }
         skill: 'reading',
         onStop: handleStop,
       });
-      toast.success('Reading test started', '1 sub-test credit applied. Good luck!');
+      toast.success(
+        'Reading test started',
+        !Number.isFinite(subTestsRemaining)
+          ? 'Unlimited practice active. Good luck!'
+          : '1 sub-test credit applied. Good luck!',
+      );
     } catch (err) {
       if (err instanceof ApiError && err.isLimitReached) {
         toast.warning('Daily limit reached', 'You have reached your daily sub-test allowance.');

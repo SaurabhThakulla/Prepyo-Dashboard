@@ -35,7 +35,8 @@ export default function PreTestBlurOverlay({
   credits = 1,
   startLabel = 'Start Practice',
 }: PreTestBlurOverlayProps) {
-  const hasCredits = subTestsRemaining >= credits;
+  const isUnlimited = !Number.isFinite(subTestsRemaining);
+  const hasCredits = isUnlimited || subTestsRemaining >= credits;
   const creditWord = credits === 1 ? 'credit' : 'credits';
 
   return (
@@ -50,23 +51,39 @@ export default function PreTestBlurOverlay({
           </CardDescription>
         </div>
 
-        {/* Credit Information Box */}
+        {/* Credit / Unlimited Information Box */}
         <div className="p-3.5 rounded-xl bg-muted/60 border border-border/80 flex flex-wrap gap-3 items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-left">
-            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-            <span className="text-foreground font-semibold">{credits} sub-test {creditWord}</span>
-          </div>
-          <div>
-            {hasCredits ? (
-              <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/30">
-                {Number.isFinite(subTestsRemaining) ? `${subTestsRemaining} left today` : 'Unlimited'}
-              </span>
-            ) : (
-              <span className="font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-md border border-rose-500/30">
-                {subTestsRemaining} left today
-              </span>
-            )}
-          </div>
+          {isUnlimited ? (
+            <>
+              <div className="flex items-center gap-2 text-left">
+                <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span className="text-foreground font-semibold">Unlimited Practice</span>
+              </div>
+              <div>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/30">
+                  Unlimited
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 text-left">
+                <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                <span className="text-foreground font-semibold">{credits} sub-test {creditWord}</span>
+              </div>
+              <div>
+                {hasCredits ? (
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/30">
+                    {subTestsRemaining} left today
+                  </span>
+                ) : (
+                  <span className="font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-md border border-rose-500/30">
+                    {subTestsRemaining} left today
+                  </span>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Action Controls */}
@@ -91,7 +108,9 @@ export default function PreTestBlurOverlay({
               ) : (
                 <>
                   <Play className="w-4 h-4 fill-current" />
-                  <span>{startLabel} ({credits} {credits === 1 ? 'Credit' : 'Credits'})</span>
+                  <span>
+                    {isUnlimited ? startLabel : `${startLabel} (${credits} ${credits === 1 ? 'Credit' : 'Credits'})`}
+                  </span>
                 </>
               )}
             </Button>

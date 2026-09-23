@@ -262,6 +262,8 @@ function PracticePageContent() {
         'Practice started',
         speakingUnscored
           ? 'Recording practice - no sub-test credit used.'
+          : !Number.isFinite(subTestsRemaining)
+          ? 'Unlimited practice active. Good luck!'
           : '1 sub-test credit applied. Good luck!',
       );
     } catch (err) {

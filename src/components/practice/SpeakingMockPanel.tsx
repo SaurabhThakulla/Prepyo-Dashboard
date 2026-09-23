@@ -12,7 +12,7 @@ import { Evaluation, MockAttempt, isPremiumUser } from '@/lib/types';
 import { subTestsLeft } from '@/lib/subscriptions';
 import { encodeForUpload } from '@/lib/audio';
 import { AnswerRecorder } from '@/lib/answerRecorder';
-import { browserCanSpeak, Playback, playClips, speakScript, StoppedError } from '@/lib/scriptPlayer';
+import { Playback, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
 import PracticeResultCard from '@/components/practice/PracticeResultCard';
@@ -187,23 +187,24 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
   }, [phase, countdown]);
 
   /**
-   * The examiner speaks: the browser's voice where it has one, otherwise the
+   * The examiner speaks: the browser's voice where it works, otherwise the
    * server's clips of the same words. `say` picks half of a step's words.
    */
   const speak = useCallback(
     async (key: string, say: 'lead' | 'question' | 'all', text: string) => {
       const current = run.current;
       if (!text.trim()) return;
-      if (await browserCanSpeak()) {
-        if (current !== run.current) throw new StoppedError();
-        examiner.current = speakScript(text);
-      } else {
-        const query = say === 'all' ? '' : `?say=${say}`;
-        const { segments } = await api.get<{ segments: { url: string }[] }>(`/speaking/mocks/${session.id}/steps/${key}/audio${query}`);
-        if (current !== run.current) throw new StoppedError();
-        examiner.current = playClips(segments ?? []);
+      const query = say === 'all' ? '' : `?say=${say}`;
+      const playback = await playRecording({
+        script: text,
+        audioUrl: `/speaking/mocks/${session.id}/steps/${key}/audio${query}`,
+      });
+      if (current !== run.current) {
+        playback.stop();
+        throw new StoppedError();
       }
-      await examiner.current.done;
+      examiner.current = playback;
+      await playback.done;
     },
     [session.id],
   );
@@ -322,6 +323,9 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
   }, [phase, countdown, finishAnswer]);
 
   const begin = async () => {
+    // The examiner speaks after the microphone prompt, not on this tap; iOS
+    // needs audio unlocked by the tap itself.
+    unlockAudio();
     if (!AnswerRecorder.supported()) {
       setError('This browser cannot record audio. Please use Chrome, Edge or Safari.');
       return;

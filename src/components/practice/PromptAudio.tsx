@@ -3,6 +3,7 @@ import { Volume2, Play, Square, Pause, ChevronDown, ChevronUp } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { assignVoices, splitSentences, splitTurns } from '@/lib/listeningScript';
+import { browserVoiceBroken, markBrowserVoiceBroken, Playback, playClips, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
 
 interface PromptAudioProps {
   /** A real recording, when the question has one. Always preferred. */
@@ -72,6 +73,8 @@ export default function PromptAudio({
   const playbackUrl = scriptUrl ?? (questionId ? `/questions/${questionId}/playback` : undefined);
   const spokenUrl = serverAudioUrl ?? (questionId ? `/questions/${questionId}/playback/audio` : undefined);
   const browserVoice = useBrowserVoice();
+  // The browser listed voices but none would speak: use the server's voice.
+  const [voiceFailed, setVoiceFailed] = useState(browserVoiceBroken);
   // Read through a ref so a new callback each render never restarts playback.
   const onFinishedRef = useRef(onFinished);
   onFinishedRef.current = onFinished;
@@ -150,6 +153,9 @@ export default function PromptAudio({
     if (!window.speechSynthesis || oncePlayed) return;
     let text = script;
     if (!text && scriptOnRequest && playbackUrl) {
+      // Speech starts after the fetch, outside the tap, which iOS refuses
+      // unless the tap has unlocked it.
+      unlockAudio();
       try {
         const data = await api.get<{ script: string }>(playbackUrl);
         text = data.script?.trim();
@@ -192,12 +198,36 @@ export default function PromptAudio({
     const total = segments.reduce((sum, part) => sum + part.length, 0) || 1;
     const starts: number[] = [];
     segments.reduce((sum, part, i) => ((starts[i] = sum), sum + part.length), 0);
+    // Whether the voice has said anything yet. A voice that never starts does
+    // not work in this browser (Brave's shields can do this), so the server's
+    // voice takes over; nothing was heard, so the one play is not used up.
+    let anyStarted = false;
     const fail = () => {
       if (run !== generation.current) return;
       cancelPlayback();
       setSpeaking(false);
+      if (!anyStarted && spokenUrl) {
+        markBrowserVoiceBroken();
+        setPlayed(false);
+        setProgress(0);
+        setVoiceFailed(true);
+        return;
+      }
       setError("The audio couldn't play. Check your sound is on and try again.");
     };
+    let quiet = 0;
+    const watchdog = setInterval(() => {
+      if (run !== generation.current || anyStarted) {
+        clearInterval(watchdog);
+        return;
+      }
+      const synth = window.speechSynthesis;
+      quiet = synth.speaking || synth.pending ? 0 : quiet + 1;
+      if (quiet >= 4) {
+        clearInterval(watchdog);
+        fail();
+      }
+    }, 500);
     try {
       if (segments.some(part => /^\[beep\]$/i.test(part))) {
         // Create/resume on the Play gesture, not later inside a speech callback.
@@ -248,6 +278,9 @@ export default function PromptAudio({
           if (english) utterance.voice = english;
           utterance.lang = english?.lang ?? 'en-GB';
           utterance.rate = 0.95;
+          utterance.onstart = () => {
+            anyStarted = true;
+          };
           utterance.onboundary = event => {
             if (run === generation.current) setProgress((starts[index] + event.charIndex) / total);
           };
@@ -259,7 +292,7 @@ export default function PromptAudio({
       };
       next(0);
     } catch { fail(); }
-  }, [script, scriptOnRequest, playbackUrl, oncePlayed, cancelPlayback]);
+  }, [script, scriptOnRequest, playbackUrl, spokenUrl, oncePlayed, cancelPlayback]);
 
   if (audioUrl) {
     return (
@@ -276,7 +309,7 @@ export default function PromptAudio({
   if (!script && !scriptOnRequest) return null;
 
   // A browser that cannot speak gets the same script spoken on the server.
-  if ((!canSpeak || browserVoice === 'none') && spokenUrl) {
+  if ((!canSpeak || browserVoice === 'none' || voiceFailed) && spokenUrl) {
     return (
       <ServerSpokenAudio
         listUrl={spokenUrl}
@@ -364,7 +397,7 @@ export default function PromptAudio({
  */
 function useBrowserVoice(): 'checking' | 'ready' | 'none' {
   const [state, setState] = useState<'checking' | 'ready' | 'none'>(() => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return 'none';
+    if (typeof window === 'undefined' || !window.speechSynthesis || browserVoiceBroken()) return 'none';
     return window.speechSynthesis.getVoices?.().length ? 'ready' : 'checking';
   });
   useEffect(() => {
@@ -409,7 +442,7 @@ function ServerSpokenAudio({
   onFinished: () => void;
   footer?: React.ReactNode;
 }) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playbackRef = useRef<Playback | null>(null);
   const run = useRef(0);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -420,7 +453,7 @@ function ServerSpokenAudio({
 
   useEffect(() => {
     run.current += 1;
-    audioRef.current?.pause();
+    playbackRef.current?.stop();
     setPlaying(false);
     setProgress(0);
     setFinished(false);
@@ -430,11 +463,13 @@ function ServerSpokenAudio({
 
   useEffect(() => () => {
     run.current += 1;
-    audioRef.current?.pause();
+    playbackRef.current?.stop();
   }, []);
 
   const play = async () => {
     if (playing || loading || (singlePlay && started)) return;
+    // Before the fetch: iOS lets audio start only inside the tap.
+    unlockAudio();
     const current = ++run.current;
     setError(null);
     setLoading(true);
@@ -446,30 +481,17 @@ function ServerSpokenAudio({
       setStarted(true);
       setPlaying(true);
       setFinished(false);
-      // Warm the cache for the next clip while this one plays.
-      const prefetch = (index: number) => {
-        const next = segments[index];
-        if (next) void fetch(next.url, { credentials: 'include' }).catch(() => {});
-      };
-      for (let index = 0; index < segments.length; index += 1) {
-        if (current !== run.current) return;
-        prefetch(index + 1);
-        await new Promise<void>((resolve, reject) => {
-          const audio = new Audio(segments[index].url);
-          audioRef.current = audio;
-          audio.ontimeupdate = () => {
-            if (audio.duration) setProgress((index + audio.currentTime / audio.duration) / segments.length);
-          };
-          audio.onended = () => resolve();
-          audio.onerror = () => reject(new Error('clip failed'));
-          audio.play().catch(reject);
-        });
-      }
+      const playback = playClips(segments, fraction => {
+        if (current === run.current) setProgress(fraction);
+      });
+      playbackRef.current = playback;
+      await playback.done;
       if (current !== run.current) return;
       setProgress(1);
       setFinished(true);
       onFinished();
-    } catch {
+    } catch (err) {
+      if (err instanceof StoppedError) return;
       if (current === run.current) {
         setError("The audio couldn't play. Check your connection and try again, or open Prepyo in Chrome or Edge.");
         if (!singlePlay) setStarted(false);
