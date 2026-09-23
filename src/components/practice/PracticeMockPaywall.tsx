@@ -57,11 +57,11 @@ export default function PracticeMockPaywall({ skill, exam }: PracticeMockPaywall
             <ul className="text-xs text-muted-foreground space-y-2">
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                <span>Unlimited section mock tests for Speaking, Writing, Reading & Listening</span>
+                <span>Full-length timed section mocks (Reading now, more sections as they are added)</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                <span>Official section timing, countdowns, and examiner evaluation</span>
+                <span>Test-length timing with a countdown, and AI feedback against the public band descriptors (a practice estimate, not an official score)</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
