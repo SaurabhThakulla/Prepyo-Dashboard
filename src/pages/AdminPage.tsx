@@ -17,6 +17,7 @@ import { api, ApiError, errorMessage } from '@/lib/api';
 import { useApp } from '@/context/AppContext';
 import AdminUsersPanel from '@/components/admin/AdminUsersPanel';
 import StatCard from '@/components/admin/StatCard';
+import AdminAnnouncementCard from '@/components/admin/AdminAnnouncementCard';
 
 const OnboardingFlow = lazy(() => import('@/components/onboarding/OnboardingFlow'));
 
@@ -227,6 +228,8 @@ export default function AdminPage() {
       <AdminUsersPanel />
 
       {/* Activity */}
+      <AdminAnnouncementCard />
+
       <Card className="p-6 space-y-4">
         <CardTitle className="text-base">Learner activity</CardTitle>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
