@@ -172,7 +172,8 @@ function PracticePageContent() {
   // Two ways a spoken answer can be marked: the recording goes to a provider
   // that hears it, or the browser transcribes it and the words are marked
   // instead. The second cannot judge pronunciation, and says so.
-  const scoreFromTranscript = isSpeakingTask && capabilities?.speakingTranscript === true;
+  const scoreFromTranscript =
+    isSpeakingTask && !capabilities?.speaking && capabilities?.speakingTranscript === true;
   const speakingUnscored =
     isSpeakingTask && capabilities?.speaking === false && !scoreFromTranscript;
   const subTestsRemaining = subTestsLeft(user?.subscription);
@@ -620,7 +621,10 @@ function PracticePageContent() {
                   audioUrl={currentQuestion.audioUrl}
                   audioTranscript={result?.review?.audioTranscript ?? currentQuestion.audioTranscript}
                   scriptOnRequest={currentQuestion.scriptOnRequest}
-                  singlePlay={currentQuestion.exam === 'IELTS' && currentQuestion.skill === 'listening'}
+                  singlePlay={
+                    (currentQuestion.exam === 'IELTS' && currentQuestion.skill === 'listening') ||
+                    (currentQuestion.exam === 'PTE' && (currentQuestion.skill === 'listening' || currentQuestion.skill === 'speaking'))
+                  }
                   title={currentQuestion.title}
                   allowTranscript={result !== null}
                   onFinished={() => setHeardPromptFor(currentQuestion.id)}

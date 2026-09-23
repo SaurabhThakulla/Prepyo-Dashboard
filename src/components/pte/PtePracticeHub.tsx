@@ -91,7 +91,7 @@ export const PTE_SECTIONS: PteSection[] = [
     buttonClass:
       'bg-[#5b6873] hover:bg-[#4d5963] text-white shadow-sm hover:shadow active:scale-[0.98]',
     tasks: [
-      { name: 'Summarize Spoken text', isAi: true },
+      { name: 'Summarize Spoken Text', isAi: true },
       { name: 'MCQ Multiple Answer' },
       { name: 'Listening Fill in the Blanks' },
       { name: 'Highlight Correct Summary' },

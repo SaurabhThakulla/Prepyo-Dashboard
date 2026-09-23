@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import AudioRecorder from '@/components/practice/AudioRecorder';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import { isWordHighlightTask } from '@/lib/listening';
+import { allowsMultipleChoices } from '@/lib/choices';
 import { Question } from '@/lib/types';
 import { minimumWritingWords, writingLengthNote, writingWordCount, writingWordTarget } from '@/lib/writing';
 import { usePracticeSession } from '@/lib/hooks/usePracticeSession';
@@ -32,6 +33,7 @@ export default function PracticeAnswerForm({
   const wordCount = writingWordCount(session.textAnswer);
   const minWords = minimumWritingWords(question);
   const target = writingWordTarget(question);
+  const isMultiple = allowsMultipleChoices(question);
 
   return (
     <Card className="p-6 space-y-4">
@@ -86,16 +88,27 @@ export default function PracticeAnswerForm({
                   checked ? 'border-primary bg-primary/5' : 'border-border bg-background hover:border-primary/40'
                 }`}
               >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={event =>
-                    session.setSelectedOptions(prev =>
-                      event.target.checked ? [...prev, option.id] : prev.filter(id => id !== option.id),
-                    )
-                  }
-                  className="mt-0.5 rounded border-input text-primary focus:ring-primary h-3.5 w-3.5"
-                />
+                {isMultiple ? (
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={event =>
+                      session.setSelectedOptions(prev =>
+                        event.target.checked ? [...prev, option.id] : prev.filter(id => id !== option.id),
+                      )
+                    }
+                    className="mt-0.5 rounded border-input text-primary focus:ring-primary h-3.5 w-3.5"
+                  />
+                ) : (
+                  <input
+                    type="radio"
+                    name={`question-${question.id}-options`}
+                    value={option.id}
+                    checked={checked}
+                    onChange={() => session.setSelectedOptions([option.id])}
+                    className="mt-0.5 border-input text-primary focus:ring-primary h-3.5 w-3.5"
+                  />
+                )}
                 <span className="text-foreground font-medium leading-relaxed">{option.text}</span>
               </label>
             );

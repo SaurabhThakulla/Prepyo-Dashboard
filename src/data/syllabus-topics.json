@@ -188,7 +188,7 @@
           "description": "Listen to authentic audio recordings and complete comprehension, dictation, and summary tasks",
           "topics": [
             {
-              "name": "Summarize Spoken text",
+              "name": "Summarize Spoken Text",
               "simpleDescription": "Listen to a short lecture or dialogue and write a 50–70 word summary",
               "isAi": true
             },
