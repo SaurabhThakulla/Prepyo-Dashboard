@@ -16,7 +16,6 @@ import {
   Volume2,
   LayoutList,
   PanelRight,
-  Sparkles,
   PlayCircle,
   AlertTriangle,
 } from 'lucide-react';
@@ -677,7 +676,7 @@ function PracticePageContent() {
         ) : questions.length > 0 ? (
           <div className="w-full min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 sm:p-6 lg:p-8">
             <Card className="max-w-xl w-full p-6 sm:p-8 text-center space-y-6 bg-card dark:bg-[#0f141f] border-border/80 shadow-lg rounded-2xl">
-              <div className="mx-auto w-16 h-16 rounded-2xl bg-teal-500/10 dark:bg-teal-500/15 border border-teal-500/20 flex items-center justify-center text-teal-600 dark:text-teal-400 shadow-xs">
+              <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-xs">
                 <LayoutList className="w-8 h-8" />
               </div>
 
@@ -692,16 +691,13 @@ function PracticePageContent() {
                 <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
                   Choose Any Question to Start
                 </h2>
-                <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-                  Select any question from the side drawer to begin practicing. You can complete questions in any order and review previous scores.
-                </p>
               </div>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
                 <Button
                   type="button"
                   onClick={() => setIsDrawerOpen(true)}
-                  className="w-full sm:w-auto px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full sm:w-auto px-6 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <PanelRight className="w-4 h-4" />
                   <span>Choose Question ({questions.length} available)</span>
@@ -717,11 +713,6 @@ function PracticePageContent() {
                     <span>Start First Question</span>
                   </Button>
                 )}
-              </div>
-
-              <div className="pt-2 border-t border-border/60 flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
-                <Sparkles className="w-3.5 h-3.5 text-teal-500 shrink-0" />
-                <span>If you closed the side panel, click the button above or use the floating arrow on the right edge.</span>
               </div>
             </Card>
           </div>
