@@ -705,6 +705,31 @@ export interface StudyPlanData {
   scheduledEvents: StudyPlanEvent[];
 }
 
+// ---------------------------------------------------------------------------
+// Mock Papers (Numbered Tests)
+// ---------------------------------------------------------------------------
+
+export type MockPaperStatus = 'not_started' | 'in_progress' | 'completed';
+
+export interface MockPaperItem {
+  id: string;
+  exam: string;
+  section: string;
+  module: string;
+  number: number;
+  revision: number;
+  title: string;
+  status: MockPaperStatus;
+  sessionId?: string;
+  lastAttemptSessionId?: string;
+  /** The mock_attempts row of the last completed attempt; IELTS Review opens it. */
+  attemptId?: string;
+  score?: number | null;
+  lastAttemptAt?: string;
+  attemptCount: number;
+  isUpdated: boolean;
+}
+
 
 
 

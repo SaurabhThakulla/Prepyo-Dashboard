@@ -1,7 +1,7 @@
 import { subTestsLeft } from '@/lib/subscriptions';
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import {
   Mic,
@@ -51,6 +51,9 @@ const SpeakingMockPanel = lazy(() => import('@/components/practice/SpeakingMockP
 const PracticeMockPaywall = lazy(() => import('@/components/practice/PracticeMockPaywall'));
 const AdminReadingAuthoring = lazy(() => import('@/components/admin/AdminReadingAuthoring'));
 const AdminQuestionAuthoring = lazy(() => import('@/components/admin/AdminQuestionAuthoring'));
+import MockPaperDrawer from '@/components/practice/MockPaperDrawer';
+import { useMockPapers } from '@/lib/hooks/useMockPapers';
+import { pteReportHref } from '@/lib/pteMock/catalog';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
 import { matchesTypeKey, typeLabel } from '@/lib/syllabus';
@@ -154,9 +157,13 @@ function PracticePageContent() {
   const [loading, setLoading] = useState(false);
   const [pendingQuestionToStart, setPendingQuestionToStart] = useState<Question | null>(null);
 
+  const navigate = useNavigate();
+  const isMockMode = Boolean(searchParams.get('mock'));
+  const { data: mockPapers = [], isLoading: mockPapersLoading } = useMockPapers(activeExam, selectedSkill, undefined, isMockMode);
+
   const drawerParam = searchParams.get('drawer');
   const [isDrawerOpen, setIsDrawerOpen] = useState(
-    () => drawerParam === 'open' || drawerParam === '1',
+    () => (isMockMode && !searchParams.get('paper')) || drawerParam === 'open' || drawerParam === '1',
   );
 
   useEffect(() => {
@@ -1032,7 +1039,48 @@ function PracticePageContent() {
         </div>
       )}
 
-      {!isAdminUser && !mistakeId && (
+      {!isAdminUser && !mistakeId && isMockMode && (
+        <MockPaperDrawer
+          isOpen={isDrawerOpen}
+          onToggle={() => setIsDrawerOpen(prev => !prev)}
+          onClose={() => setIsDrawerOpen(false)}
+          exam={activeExam}
+          skill={selectedSkill}
+          papers={mockPapers}
+          isLoading={mockPapersLoading}
+          selectedPaperId={searchParams.get('paper')}
+          onStart={paper => {
+            const next = new URLSearchParams(searchParams);
+            next.set('paper', paper.id);
+            setSearchParams(next);
+            setIsDrawerOpen(false);
+          }}
+          onResume={paper => {
+            const next = new URLSearchParams(searchParams);
+            next.set('paper', paper.id);
+            setSearchParams(next);
+            setIsDrawerOpen(false);
+          }}
+          onReview={paper => {
+            // A PTE report is found by its session; an IELTS result by the
+            // mock attempt the finished session recorded.
+            if (activeExam === 'PTE') {
+              const id = paper.lastAttemptSessionId || paper.sessionId;
+              if (id) navigate(pteReportHref(id));
+            } else if (paper.attemptId) {
+              navigate(`/mocks?review=${paper.attemptId}`);
+            }
+          }}
+          onRetake={paper => {
+            const next = new URLSearchParams(searchParams);
+            next.set('paper', paper.id);
+            setSearchParams(next);
+            setIsDrawerOpen(false);
+          }}
+        />
+      )}
+
+      {!isAdminUser && !mistakeId && !isMockMode && (
         <QuestionDrawer
           isOpen={isDrawerOpen}
           onToggle={() => setIsDrawerOpen(prev => !prev)}
@@ -1040,7 +1088,7 @@ function PracticePageContent() {
           exam={activeExam}
           skill={selectedSkill}
           typeKey={typeParam}
-          isMock={Boolean(searchParams.get('mock'))}
+          isMock={false}
           questions={questions}
           currentQuestionId={currentQuestion?.id}
           completedIds={completedIds}

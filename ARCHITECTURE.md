@@ -104,6 +104,12 @@ This mistake has already been made here once — see fixtures below.
 rather than a guess, because whatever it displays must match what checkout
 charges.
 
+**6. Numbered mock tests are permanent and immutable.**
+Every section mock (PTE & IELTS) displays numbered papers (Test 1, 2, 3...) via
+`MockPaperList` and `MockPaperDrawer`. Papers never regenerate on the catalog GET
+and revisions are immutable. For full design rules and architecture, see
+[Prepyo-Backend/docs/mock-papers.md](../Prepyo-Backend/docs/mock-papers.md).
+
 ## Working without a backend
 
 Set this in `.env.local` and restart:

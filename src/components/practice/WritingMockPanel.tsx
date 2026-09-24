@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Clock, LogOut, RefreshCw, Send } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
+import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
 import { useToast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -76,12 +77,18 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
     if (dealt) open(dealt);
   }, [dealt, open]);
 
+  const [searchParams] = useSearchParams();
+  const refreshPapers = useRefreshMockPapers();
+
   const start = useCallback(async () => {
     setStarting(true);
     try {
-      const data = await api.post<{ session: WritingMockSession }>('/writing/mocks', {});
+      const paperId = searchParams.get('paper');
+      const body = paperId ? { paperId } : {};
+      const data = await api.post<{ session: WritingMockSession }>('/writing/mocks', body);
       open(data.session);
       void refreshUser();
+      refreshPapers();
     } catch (err) {
       if (err instanceof ApiError && err.isLimitReached) {
         toast.warning('Not enough sub-tests left today', errorMessage(err));
@@ -91,7 +98,7 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
     } finally {
       setStarting(false);
     }
-  }, [open, refreshUser, toast]);
+  }, [open, refreshPapers, refreshUser, searchParams, toast]);
 
   // Drafts are saved a few seconds after the learner stops typing.
   const saveDrafts = useCallback(async (paper: WritingMockSession, current: Record<TaskKey, string>) => {
@@ -118,6 +125,7 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
       const data = await api.post<WritingMockOutcome>(`/writing/mocks/${session.id}/submit`, drafts);
       setSession(null);
       void refreshUser();
+      refreshPapers();
       // In a full mock the results come at the end, as in the test.
       if (section) section.onSubmitted();
       else setOutcome(data);
@@ -131,7 +139,7 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
     } finally {
       setSubmitting(false);
     }
-  }, [drafts, refreshUser, section, session, submitting, toast]);
+  }, [drafts, refreshPapers, refreshUser, section, session, submitting, toast]);
 
   const leave = () => {
     if (session) void saveDrafts(session, drafts);

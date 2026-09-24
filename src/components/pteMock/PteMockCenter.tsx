@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/toast';
 import { errorMessage } from '@/lib/api';
 import { usePteMockCatalog } from '@/lib/hooks/usePteMock';
+import { useMockPapers } from '@/lib/hooks/useMockPapers';
 import { formatMinutes, pteMockHref, pteMockMeta, pteReportHref } from '@/lib/pteMock/catalog';
 import { PteCatalogEntry } from '@/lib/pteMock/types';
 
@@ -88,6 +89,7 @@ export default function PteMockCenter({ header }: { header: React.ReactNode }) {
 
 function FullTestCard({ entry, onOpen, onReport }: { entry: PteCatalogEntry; onOpen: () => void; onReport: (id: string) => void }) {
   const meta = pteMockMeta('full');
+  const { data: fullPapers = [] } = useMockPapers('pte', 'full');
   return (
     <Card className="overflow-hidden">
       <div className={`bg-gradient-to-r ${meta.accent} p-6 sm:p-8 text-white grid grid-cols-1 lg:grid-cols-3 gap-6`}>
@@ -97,7 +99,7 @@ function FullTestCard({ entry, onOpen, onReport }: { entry: PteCatalogEntry; onO
           <p className="text-sm text-white/85 max-w-xl">{entry.description}</p>
           <div className="flex flex-wrap gap-2 text-xs font-semibold">
             <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1"><Clock className="h-3.5 w-3.5" /> About {formatMinutes(entry.estimatedMinutes)}</span>
-            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1"><ListChecks className="h-3.5 w-3.5" /> {entry.availableItems} items</span>
+            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1"><ListChecks className="h-3.5 w-3.5" /> {fullPapers.length > 0 ? `${fullPapers.length} tests · ` : ''}{entry.availableItems} items</span>
             {entry.parts.map((p, i) => (
               <span key={p.part} className="rounded-full bg-white/15 px-3 py-1">Part {i + 1}: {p.label} · {p.items}</span>
             ))}
@@ -127,20 +129,28 @@ function FullTestCard({ entry, onOpen, onReport }: { entry: PteCatalogEntry; onO
 function SectionCard({ entry, onOpen, onReport }: { entry: PteCatalogEntry; onOpen: () => void; onReport: (id: string) => void }) {
   const meta = pteMockMeta(entry.kind);
   const Icon = meta.icon;
+  const { data: papers = [] } = useMockPapers('pte', entry.kind);
   return (
     <Card className="p-5 flex flex-col gap-3 hover:border-primary/40 transition-colors">
       <div className="flex items-start justify-between gap-2">
         <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${meta.accent} text-white flex items-center justify-center shadow-sm`}>
           <Icon className="h-5 w-5" />
         </div>
-        {entry.latest?.headline != null ? (
-          <button type="button" onClick={() => onReport(entry.latest!.id)} className="text-right">
-            <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">Last score</span>
-            <span className="text-lg font-extrabold tabular-nums text-foreground">{entry.latest.headline}</span>
-          </button>
-        ) : entry.live ? (
-          <Badge variant="indigo">In progress</Badge>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {papers.length > 0 && (
+            <Badge variant="outline" className="font-semibold text-[10px]">
+              {papers.length} {papers.length === 1 ? 'test' : 'tests'}
+            </Badge>
+          )}
+          {entry.latest?.headline != null ? (
+            <button type="button" onClick={() => onReport(entry.latest!.id)} className="text-right">
+              <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">Last score</span>
+              <span className="text-lg font-extrabold tabular-nums text-foreground">{entry.latest.headline}</span>
+            </button>
+          ) : entry.live ? (
+            <Badge variant="indigo">In progress</Badge>
+          ) : null}
+        </div>
       </div>
       <div className="space-y-1 flex-1">
         <h3 className="font-display text-base font-bold text-foreground">{entry.title}</h3>

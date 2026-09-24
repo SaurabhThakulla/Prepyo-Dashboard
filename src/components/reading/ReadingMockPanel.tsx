@@ -1,6 +1,6 @@
 import { subTestsLeft } from '@/lib/subscriptions';
 import React, { lazy, Suspense, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '@/context/AppContext';
 import { queryKeys } from '@/lib/queryKeys';
@@ -21,6 +21,7 @@ const ScoreReport = lazy(() => import('@/components/mocks/ScoreReport'));
 
 export default function ReadingMockPanel({ section }: { section?: FullMockSection<ReadingMockSession> } = {}) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user, activeExam, refreshUser } = useApp();
 
@@ -52,7 +53,8 @@ export default function ReadingMockPanel({ section }: { section?: FullMockSectio
   // than firing the moment the page opens.
   const begin = async () => {
     setStarting(true);
-    const started = await mock.start();
+    const paperParam = searchParams.get('paper') || undefined;
+    const started = await mock.start(paperParam);
     setStarting(false);
     if (started) void refreshUser();
   };

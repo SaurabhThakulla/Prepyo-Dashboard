@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Clock, Headphones, LogOut, RefreshCw, Send, Volume2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
+import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
 import { useToast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,8 @@ export interface ListeningOutcome {
 /** The IELTS Listening mock: start screen, the paper, then the marked result. */
 export default function ListeningMockPanel() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const refreshPapers = useRefreshMockPapers();
   const toast = useToast();
   const { user, activeExam, refreshUser } = useApp();
   const [session, setSession] = useState<ListeningSession | null>(null);
@@ -74,9 +77,12 @@ export default function ListeningMockPanel() {
   const start = async () => {
     setStarting(true);
     try {
-      const data = await api.post<{ session: ListeningSession }>('/listening/mocks', {});
+      const paperId = searchParams.get('paper');
+      const body = paperId ? { paperId } : {};
+      const data = await api.post<{ session: ListeningSession }>('/listening/mocks', body);
       setSession(data.session);
       void refreshUser();
+      refreshPapers();
     } catch (err) {
       if (err instanceof ApiError && err.isLimitReached) {
         toast.warning('Not enough sub-tests left today', errorMessage(err));
@@ -98,6 +104,7 @@ export default function ListeningMockPanel() {
           setOutcome(result);
           setSession(null);
           void refreshUser();
+          refreshPapers();
         }}
         onLeave={() => navigate('/practice?skill=listening')}
         onClosed={message => {

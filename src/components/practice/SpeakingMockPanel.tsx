@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Mic, Square, Send, LogOut, RefreshCw, User } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
+import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
 import { useToast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -61,6 +62,8 @@ export interface SpeakingOutcome {
 /** The IELTS Speaking mock: start screen, the test, then the rating. */
 export default function SpeakingMockPanel() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const refreshPapers = useRefreshMockPapers();
   const toast = useToast();
   const { user, activeExam, refreshUser } = useApp();
   const [session, setSession] = useState<SpeakingSession | null>(null);
@@ -70,9 +73,12 @@ export default function SpeakingMockPanel() {
   const start = async () => {
     setStarting(true);
     try {
-      const data = await api.post<{ session: SpeakingSession }>('/speaking/mocks', {});
+      const paperId = searchParams.get('paper');
+      const body = paperId ? { paperId } : {};
+      const data = await api.post<{ session: SpeakingSession }>('/speaking/mocks', body);
       setSession(data.session);
       void refreshUser();
+      refreshPapers();
     } catch (err) {
       if (err instanceof ApiError && err.isLimitReached) {
         toast.warning('Not enough sub-tests left today', errorMessage(err));
@@ -94,6 +100,7 @@ export default function SpeakingMockPanel() {
           setOutcome(result);
           setSession(null);
           void refreshUser();
+          refreshPapers();
         }}
         onLeave={() => navigate('/practice?skill=speaking')}
         onClosed={message => {

@@ -7,7 +7,7 @@ import { Award, FileText } from 'lucide-react';
 import { MocksPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Card } from '@/components/ui/card';
 import { Mock, MockAttempt } from '@/lib/types';
-import { errorMessage } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { useMocks, useMockAttempts } from '@/lib/hooks/useResources';
 import { useMockExam } from '@/lib/hooks/useMockExam';
@@ -92,6 +92,21 @@ export default function MocksPage() {
     toast.warning('That mock is not available', `No ${activeExam} mock matches "${startParam}".`);
     navigate('/mocks', { replace: true });
   }, [startParam, exam, loading, mocks, navigate, toast, activeExam]);
+
+  const reviewParam = searchParams.get('review');
+  useEffect(() => {
+    if (!reviewParam || reviewAttempt) return;
+    const found = pastAttempts.find(a => a.id === reviewParam || a.mockId === reviewParam);
+    if (found) {
+      setReviewAttempt(found);
+    } else {
+      api.get<{ attempt: MockAttempt }>(`/mocks/attempts/${reviewParam}`)
+        .then(data => {
+          if (data?.attempt) setReviewAttempt(data.attempt);
+        })
+        .catch(() => {});
+    }
+  }, [reviewParam, pastAttempts, reviewAttempt]);
 
   const leaveReport = () => {
     exam.exit();

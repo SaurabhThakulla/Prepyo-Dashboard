@@ -63,10 +63,12 @@ function TestScreen({ kind }: { kind: Parameters<typeof pteMockHref>[0] }) {
     if (catalog.error) toast.error('Could not load this test', errorMessage(catalog.error));
   }, [catalog.error]);
 
-  const start = async (checkedMic: TestMicrophone | null) => {
+  const start = async (checkedMic: TestMicrophone | null, paperId?: string) => {
     setStarting(true);
     try {
-      const data = await api.post<{ session: PteSession }>('/pte/mocks', { kind });
+      const payload: { kind: Parameters<typeof pteMockHref>[0]; paperId?: string } = { kind };
+      if (paperId) payload.paperId = paperId;
+      const data = await api.post<{ session: PteSession }>('/pte/mocks', payload);
       setMic(checkedMic);
       if (data.session.status !== 'in_progress') {
         navigate(pteReportHref(data.session.id), { replace: true });
@@ -75,6 +77,7 @@ function TestScreen({ kind }: { kind: Parameters<typeof pteMockHref>[0] }) {
       setSession(data.session);
       void refreshUser();
       void queryClient.invalidateQueries({ queryKey: ['pte-mocks'] });
+      void queryClient.invalidateQueries({ queryKey: ['mock-papers'] });
     } catch (err) {
       checkedMic?.close();
       if (err instanceof ApiError && err.isLimitReached) toast.warning('Not enough left on your plan', errorMessage(err));
@@ -88,6 +91,7 @@ function TestScreen({ kind }: { kind: Parameters<typeof pteMockHref>[0] }) {
     try {
       await api.post(`/pte/mocks/${id}/abandon`);
       await queryClient.invalidateQueries({ queryKey: ['pte-mocks'] });
+      void queryClient.invalidateQueries({ queryKey: ['mock-papers'] });
       toast.success('Attempt discarded', 'You can start a fresh test.');
     } catch (err) {
       toast.error('Could not discard the attempt', errorMessage(err));
@@ -98,6 +102,7 @@ function TestScreen({ kind }: { kind: Parameters<typeof pteMockHref>[0] }) {
     (id: string) => {
       mic?.close();
       void queryClient.invalidateQueries({ queryKey: ['pte-mocks'] });
+      void queryClient.invalidateQueries({ queryKey: ['mock-papers'] });
       void queryClient.invalidateQueries({ queryKey: ['mocks', 'attempts'] });
       navigate(pteReportHref(id), { replace: true });
     },
@@ -107,6 +112,7 @@ function TestScreen({ kind }: { kind: Parameters<typeof pteMockHref>[0] }) {
   const leave = useCallback(() => {
     mic?.close();
     void queryClient.invalidateQueries({ queryKey: ['pte-mocks'] });
+    void queryClient.invalidateQueries({ queryKey: ['mock-papers'] });
     navigate('/mocks');
   }, [mic, navigate, queryClient]);
 
@@ -125,7 +131,7 @@ function TestScreen({ kind }: { kind: Parameters<typeof pteMockHref>[0] }) {
       entry={entry}
       serverTranscription={catalog.data?.serverTranscription ?? false}
       starting={starting}
-      onStart={checked => void start(checked)}
+      onStart={(checked, paperId) => void start(checked, paperId)}
       onAbandon={entry.live ? () => void abandon(entry.live!.id) : undefined}
     />
   );

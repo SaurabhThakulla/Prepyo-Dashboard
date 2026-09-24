@@ -49,4 +49,7 @@ export const queryKeys = {
   evaluations: (limit: number) => ['evaluations', limit] as const,
 
   subscriptionPlans: () => ['subscription-plans'] as const,
+
+  mockPapers: (exam: string, section: string, module?: string) =>
+    ['mock-papers', exam.toLowerCase(), section.toLowerCase(), (module || '').toLowerCase()] as const,
 } as const;

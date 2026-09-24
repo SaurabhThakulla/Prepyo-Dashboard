@@ -9,7 +9,11 @@ import { speechRecognitionSupported } from '@/lib/speech';
 import { speakScript, unlockAudio } from '@/lib/scriptPlayer';
 import { TestMicrophone } from '@/lib/pteMock/audio';
 import { formatMinutes, pteMockMeta } from '@/lib/pteMock/catalog';
+import { useNavigate } from 'react-router-dom';
+import { useMockPapers } from '@/lib/hooks/useMockPapers';
+import { pteReportHref } from '@/lib/pteMock/catalog';
 import { PteCatalogEntry } from '@/lib/pteMock/types';
+import MockPaperList from '@/components/mocks/MockPaperList';
 
 interface Props {
   entry: PteCatalogEntry;
@@ -17,7 +21,7 @@ interface Props {
   serverTranscription: boolean;
   starting: boolean;
   /** Called with the microphone, opened and checked, when the test has speaking. */
-  onStart: (mic: TestMicrophone | null) => void;
+  onStart: (mic: TestMicrophone | null, paperId?: string) => void;
   onAbandon?: () => void;
 }
 
@@ -47,6 +51,11 @@ const RULES: { text: string; when?: (n: Needs) => boolean }[] = [
  * wasted test.
  */
 export default function PteMockIntro({ entry, serverTranscription, starting, onStart, onAbandon }: Props) {
+  const navigate = useNavigate();
+  const { data: papers = [], isLoading: papersLoading } = useMockPapers('pte', entry.kind);
+  const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
+  const selectedPaper = papers.find(p => p.id === selectedPaperId) ?? null;
+
   const meta = pteMockMeta(entry.kind);
   const needsMic = entry.tasks.some(t => t.skill === 'speaking' && t.available > 0);
   const needsAudio = needsMic || entry.parts.some(p => p.part === 'listening');
@@ -169,7 +178,30 @@ export default function PteMockIntro({ entry, serverTranscription, starting, onS
           </div>
 
           <div className="lg:col-span-2 p-5 space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Equipment check</h2>
+            {/* Numbered Papers for this PTE mock */}
+            <div className="space-y-2">
+              <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Numbered Tests</h2>
+              <div className="max-h-[360px] overflow-hidden rounded-xl border border-border">
+                <MockPaperList
+                  papers={papers}
+                  isLoading={papersLoading}
+                  selectedPaperId={selectedPaperId}
+                  exam="PTE"
+                  section={entry.kind}
+                  // A row only picks the test; the button below starts it, after
+                  // the equipment check, as every other start does.
+                  onStart={paper => setSelectedPaperId(paper.id)}
+                  onResume={paper => setSelectedPaperId(paper.id)}
+                  onReview={paper => {
+                    const id = paper.lastAttemptSessionId || paper.sessionId;
+                    if (id) navigate(pteReportHref(id));
+                  }}
+                  onRetake={paper => setSelectedPaperId(paper.id)}
+                />
+              </div>
+            </div>
+
+            <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Equipment check</h2>
 
             {needsMic && (
               <div className="rounded-xl border border-border p-3 space-y-2">
@@ -231,11 +263,17 @@ export default function PteMockIntro({ entry, serverTranscription, starting, onS
                 disabled={!ready || starting || !entry.available}
                 onClick={() => {
                   handedOver.current = true;
-                  onStart(mic);
+                  // An open attempt is resumed whichever test is picked; the
+                  // server refuses a second test while one is open.
+                  onStart(mic, resuming ? undefined : selectedPaper?.id);
                 }}
               >
                 {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : resuming ? <RotateCcw className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
-                {resuming ? `Resume at item ${entry.live!.current}` : 'Start the test'}
+                {resuming
+                  ? `Resume at item ${entry.live!.current}`
+                  : selectedPaper
+                    ? `${selectedPaper.status === 'completed' ? 'Retake' : 'Start'} Test ${selectedPaper.number}`
+                    : 'Start the test'}
               </Button>
               {!ready && needsMic && (
                 <p className="text-[11px] text-center text-muted-foreground">Check your microphone to continue.</p>

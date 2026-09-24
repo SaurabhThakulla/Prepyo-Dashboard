@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
+import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
 import { loadMistakeTask, mistakeReadingSet } from '@/lib/mistakePractice';
 import { useToast } from '@/components/ui/toast';
 import { useApp } from '@/context/AppContext';
@@ -232,6 +233,7 @@ export function useReadingPractice(exam: ExamType) {
 export function useReadingMock(exam: ExamType, onGraded?: (attempt: MockAttempt) => void) {
   const toast = useToast();
   const { refreshUser } = useApp();
+  const refreshPapers = useRefreshMockPapers();
 
   const [session, setSession] = useState<ReadingMockSession | null>(null);
   const [answers, setAnswers] = useState<Record<string, AnswerSubmission>>({});
@@ -265,11 +267,14 @@ export function useReadingMock(exam: ExamType, onGraded?: (attempt: MockAttempt)
     [toast],
   );
 
-  const start = useCallback(async (): Promise<boolean> => {
+  const start = useCallback(async (paperId?: string): Promise<boolean> => {
     setStarting(true);
     try {
-      const data = await api.post<{ session: ReadingMockSession }>('/reading/mocks', { exam });
+      const payload: { exam: ExamType; paperId?: string } = { exam };
+      if (paperId) payload.paperId = paperId;
+      const data = await api.post<{ session: ReadingMockSession }>('/reading/mocks', payload);
       open(data.session);
+      refreshPapers();
       return true;
     } catch (err) {
       if (err instanceof ApiError && err.isLimitReached) {
@@ -281,7 +286,7 @@ export function useReadingMock(exam: ExamType, onGraded?: (attempt: MockAttempt)
     } finally {
       setStarting(false);
     }
-  }, [exam, open, toast]);
+  }, [exam, open, refreshPapers, toast]);
 
   // Answers are saved to the server as the learner works, a moment after the
   // last change. The server keeps the paper's time: a reopened paper resumes
@@ -329,6 +334,7 @@ export function useReadingMock(exam: ExamType, onGraded?: (attempt: MockAttempt)
       setOutcome(data);
       setSession(null);
       onGraded?.(data.attempt);
+      refreshPapers();
       await refreshUser();
     } catch (err) {
       if (err instanceof ApiError && err.code === 'paper_expired') {
@@ -345,7 +351,7 @@ export function useReadingMock(exam: ExamType, onGraded?: (attempt: MockAttempt)
     } finally {
       setSubmitting(false);
     }
-  }, [answers, onGraded, refreshUser, session, startedAt, submitting, toast]);
+  }, [answers, onGraded, refreshPapers, refreshUser, session, startedAt, submitting, toast]);
 
   /** Leaves the paper open on the server, so it can be resumed. */
   const exit = useCallback(() => {
