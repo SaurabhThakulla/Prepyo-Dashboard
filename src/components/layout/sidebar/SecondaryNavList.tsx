@@ -30,6 +30,9 @@ import {
   PenLine,
   Folder,
   CreditCard,
+  ClipboardCheck,
+  LayoutGrid,
+  ChartColumn,
   LucideIcon,
 } from 'lucide-react';
 import { SecondaryNavItem } from './navigation';
@@ -45,6 +48,9 @@ interface SecondaryNavListProps {
 /** Returns the icon appropriate for the main topic/skill group. */
 function getGroupIcon(groupName?: string): LucideIcon {
   const norm = (groupName ?? '').toLowerCase();
+  if (norm.includes('full mock')) return ClipboardCheck;
+  if (norm.includes('sectional')) return LayoutGrid;
+  if (norm.includes('result')) return ChartColumn;
   if (norm.includes('speak')) return Mic;
   if (norm.includes('writ')) return PenTool;
   if (norm.includes('read')) return BookOpen;

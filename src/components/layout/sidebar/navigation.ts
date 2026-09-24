@@ -23,6 +23,7 @@ import {
 import { SYLLABUS, syllabusFor, typeKey } from '@/lib/syllabus';
 import { typeIdsFor } from '@/lib/readingTypes';
 import { ExamType, ieltsModuleOf, isAdmin, SkillType, UserProfile } from '@/lib/types';
+import { PTE_MOCK_KINDS, pteMockHref } from '@/lib/pteMock/catalog';
 
 /**
  * What goes in the sidebar, and which item is highlighted.
@@ -222,7 +223,18 @@ export function buildSections(
         }));
 
         // Mock tests sit under the same heading as the practice tasks for each skill.
-        if (skill === 'reading' && mockPassageCount > 0 && links.length > 0) {
+        // PTE runs every sectional test on its own test player.
+        if (isPTE && links.length > 0) {
+          links.push({
+            href: pteMockHref(skill),
+            label: `${label} Sectional Test`,
+            icon: BookOpenCheck,
+            sublabel: 'Timed, in test order, scored 10-90',
+            badge: 'MOCK',
+            group: label,
+            groupHref: `/practice?skill=${skill}`,
+          });
+        } else if (skill === 'reading' && mockPassageCount > 0 && links.length > 0) {
           links.push({
             href: READING_MOCK_HREF,
             label: 'Reading Mock Test',
@@ -302,28 +314,57 @@ export function buildSections(
       title: 'Mock Exam Simulator',
       description: 'Timed full exams with scorecards',
       items: [
-        {
-          href: '/mocks',
-          label: 'Full Mock Simulator',
-          icon: ClipboardCheck,
-          sublabel: isPTE ? '2-Hour scored PTE simulation' : 'All four skills with an overall band',
-          badge: isPTE ? '2h Full' : '4 skills',
-        },
+        ...(isPTE
+          ? pteMockItems()
+          : [
+              {
+                href: '/mocks',
+                label: 'Full Mock Simulator',
+                icon: ClipboardCheck,
+                sublabel: 'All four skills with an overall band',
+                badge: '4 skills',
+              },
+            ]),
         {
           href: '/diagnostic',
           label: 'Diagnostic Test',
           icon: Gauge,
           sublabel: 'Short initial baseline test',
           badge: '15 Min',
+          group: isPTE ? 'Results & Baseline' : undefined,
         },
         {
           href: '/mocks?tab=reports',
           label: 'Mock Score Reports',
           icon: ChartColumn,
           sublabel: 'Review previous exam scores',
+          group: isPTE ? 'Results & Baseline' : undefined,
         },
       ],
     },
+  ];
+}
+
+/**
+ * The PTE mock tests, in the two groups a learner chooses between: the whole
+ * test, or one section of it. The mock centre (/mocks) heads the list.
+ */
+function pteMockItems(): SecondaryNavItem[] {
+  return [
+    {
+      href: '/mocks',
+      label: 'PTE Mock Test Centre',
+      icon: Timer,
+      sublabel: 'Every test, your progress and results',
+    },
+    ...PTE_MOCK_KINDS.map(meta => ({
+      href: pteMockHref(meta.kind),
+      label: meta.kind === 'full' ? 'Full Mock Test' : `${meta.shortLabel} Test`,
+      icon: meta.icon,
+      sublabel: meta.blurb,
+      badge: meta.kind === 'full' ? '2h' : undefined,
+      group: meta.kind === 'full' ? 'Full Mock Test' : 'Sectional Tests',
+    })),
   ];
 }
 

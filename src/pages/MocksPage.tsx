@@ -19,6 +19,12 @@ import { READING_MOCK_HREF } from '@/components/layout/sidebar/navigation';
 const MockExamRunner = lazy(() => import('@/components/mocks/MockExamRunner'));
 const ScoreReport = lazy(() => import('@/components/mocks/ScoreReport'));
 const FullMockPanel = lazy(() => import('@/components/mocks/FullMockPanel'));
+const PteMockCenter = lazy(() => import('@/components/pteMock/PteMockCenter'));
+const PteMockHistory = lazy(() => import('@/components/pteMock/PteMockHistory'));
+
+const PTE_MOCK_ATTEMPT_IDS = new Set([
+  'mock-pte-full', 'mock-pte-speaking', 'mock-pte-writing', 'mock-pte-reading', 'mock-pte-listening',
+]);
 
 export default function MocksPage() {
   const navigate = useNavigate();
@@ -37,6 +43,9 @@ export default function MocksPage() {
   const mocks = mocksQuery.data?.mocks ?? [];
   const pastAttempts = attemptsQuery.data?.attempts ?? [];
   const loading = mocksQuery.isPending || attemptsQuery.isPending;
+  // PTE mock tests have their own history (PteMockHistory), with the full
+  // report behind each row; their attempt rows are not listed a second time.
+  const otherAttempts = pastAttempts.filter(a => !PTE_MOCK_ATTEMPT_IDS.has(a.mockId));
   const loadError = mocksQuery.error ?? attemptsQuery.error;
 
   const addAttempt = useCallback(
@@ -164,6 +173,16 @@ export default function MocksPage() {
     );
   }
 
+  // PTE runs every mock — the full test and the four sectional tests — on its
+  // own test player, which reports on the 10-90 scale.
+  if (activeExam === 'PTE' && activeTab === 'catalog') {
+    return (
+      <Suspense fallback={<AppPageSkeleton />}>
+        <PteMockCenter header={header} />
+      </Suspense>
+    );
+  }
+
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
       {header}
@@ -171,12 +190,29 @@ export default function MocksPage() {
       {loading ? (
         <MocksPageSkeleton bare />
       ) : activeTab === 'reports' ? (
-        <ScoreReportList
-          attempts={pastAttempts}
-          mocks={mocks}
-          onReview={setReviewAttempt}
-          onBrowseCatalog={() => navigate('/mocks?tab=catalog')}
-        />
+        <div className="space-y-6">
+          {activeExam === 'PTE' && (
+            <section className="space-y-2">
+              <h2 className="font-display text-base font-bold text-foreground">PTE mock tests</h2>
+              <Suspense fallback={<MocksPageSkeleton bare />}>
+                <PteMockHistory />
+              </Suspense>
+            </section>
+          )}
+          {(activeExam !== 'PTE' || otherAttempts.length > 0) && (
+            <section className="space-y-2">
+              {activeExam === 'PTE' && (
+                <h2 className="font-display text-base font-bold text-foreground">Other mock results</h2>
+              )}
+              <ScoreReportList
+                attempts={otherAttempts}
+                mocks={mocks}
+                onReview={setReviewAttempt}
+                onBrowseCatalog={() => navigate('/mocks?tab=catalog')}
+              />
+            </section>
+          )}
+        </div>
       ) : (
         <MockStartPanel
           mock={startableMock}

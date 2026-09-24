@@ -18,6 +18,6 @@ describe('supported PTE speaking tasks', () => {
     expect(SYLLABUS.PTE.speaking).toEqual(expected);
     const practice = buildSections('PTE', () => {}).find(section => section.id === 'practice');
     expect(practice?.items.filter(item => item.group === 'Speaking').map(item => item.label))
-      .toEqual([...expected, 'Speaking Mock Test']);
+      .toEqual([...expected, 'Speaking Sectional Test']);
   });
 });

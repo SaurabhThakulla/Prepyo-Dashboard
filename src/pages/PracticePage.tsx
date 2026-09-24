@@ -1,7 +1,7 @@
 import { subTestsLeft } from '@/lib/subscriptions';
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import {
   Mic,
@@ -54,6 +54,7 @@ const AdminQuestionAuthoring = lazy(() => import('@/components/admin/AdminQuesti
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
 import { matchesTypeKey, typeLabel } from '@/lib/syllabus';
+import { pteMockHref } from '@/lib/pteMock/catalog';
 import { loadMistakeTask } from '@/lib/mistakePractice';
 import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
 import { useAICapabilities } from '@/lib/hooks/useAICapabilities';
@@ -607,6 +608,9 @@ function PracticePageContent() {
             exam={activeExam}
           />
         </Suspense>
+      ) : searchParams.get('mock') && activeExam === 'PTE' && !isAdmin(user) ? (
+        // Every PTE sectional test runs on the PTE test player.
+        <Navigate to={pteMockHref(selectedSkill)} replace />
       ) : isReading && searchParams.get('mock') && !isPremiumUser(user) ? (
         <Suspense fallback={<PracticePageSkeleton />}>
           <PracticeMockPaywall skill={selectedSkill} exam={activeExam} />

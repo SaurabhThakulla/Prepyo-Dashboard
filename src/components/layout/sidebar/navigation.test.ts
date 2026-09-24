@@ -51,15 +51,36 @@ describe('the reading section of the practice menu', () => {
     expect(mock?.sublabel).toContain('3 full passages');
   });
 
-  it('keeps the paper under reading practice for PTE too', () => {
+  it('sends every PTE skill to its sectional test on the PTE test player', () => {
     const items =
       buildSections('PTE', () => { }, null, [READING_TYPES.fillBlanksR], 4).find(
         s => s.id === 'practice',
       )?.items ?? [];
-    const mock = items.find(item => item.label === 'Reading Mock Test');
 
-    expect(mock?.href).toBe('/practice?skill=reading&mock=1');
-    expect(mock?.sublabel).toContain('4 full passages');
+    for (const [skill, group] of [['reading', 'Reading'], ['speaking', 'Speaking'], ['writing', 'Writing'], ['listening', 'Listening']]) {
+      const mock = items.find(item => item.label === `${group} Sectional Test`);
+      expect(mock?.href).toBe(`/mocks/pte/${skill}`);
+      expect(mock?.group).toBe(group);
+    }
+    expect(items.map(item => item.label)).not.toContain('Reading Mock Test');
+  });
+
+  it('groups the PTE mock menu into the full test and the sectional tests', () => {
+    const mock = buildSections('PTE', () => { }).find(s => s.id === 'mock')?.items ?? [];
+    const full = mock.filter(item => item.group === 'Full Mock Test');
+    const sectional = mock.filter(item => item.group === 'Sectional Tests');
+
+    expect(full.map(item => item.href)).toEqual(['/mocks/pte/full']);
+    expect(sectional.map(item => item.href)).toEqual([
+      '/mocks/pte/speaking', '/mocks/pte/writing', '/mocks/pte/reading', '/mocks/pte/listening',
+    ]);
+    expect(mock.find(item => item.href === '/mocks?tab=reports')).toBeDefined();
+  });
+
+  it('leaves the IELTS mock menu as it was', () => {
+    const mock = buildSections('IELTS', () => { }).find(s => s.id === 'mock')?.items ?? [];
+    expect(mock.some(item => item.href?.startsWith('/mocks/pte'))).toBe(false);
+    expect(mock[0].label).toBe('Full Mock Simulator');
   });
 
   it('hides the paper when there is no blueprint or nothing to build it from', () => {

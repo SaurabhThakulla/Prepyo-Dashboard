@@ -129,6 +129,13 @@ questions, countdown, answers, submitting — lives in
 [useMockExam](src/lib/hooks/useMockExam.ts). Each screen is its own component
 in `components/mocks/`.
 
+PTE mock tests follow the same split on their own route
+(`/mocks/pte/:kind`): [PteMockPage](src/pages/PteMockPage.tsx) picks the
+screen, [usePteTestRunner](src/lib/hooks/usePteTestRunner.ts) holds the live
+paper, and each task is drawn by a component in
+[components/pteMock/items](src/components/pteMock/items). The server owns the
+order, every clock and the score — see `Prepyo-Backend/docs/pte-mock.md`.
+
 Rules of thumb:
 
 - More than ~250 lines, or more than ~5 `useState` calls → look for a split.

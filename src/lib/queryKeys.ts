@@ -41,6 +41,11 @@ export const queryKeys = {
   /** The learner's live reading paper, if they have one. */
   readingMockSession: (exam: ExamType) => ['reading', 'mock', exam] as const,
 
+  /** PTE mock tests: what can be taken, what has been, and one report. */
+  pteMockCatalog: () => ['pte-mocks', 'catalog'] as const,
+  pteMockHistory: () => ['pte-mocks', 'history'] as const,
+  pteMockReport: (sessionId: string) => ['pte-mocks', 'report', sessionId] as const,
+
   evaluations: (limit: number) => ['evaluations', limit] as const,
 
   subscriptionPlans: () => ['subscription-plans'] as const,
