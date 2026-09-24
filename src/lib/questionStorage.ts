@@ -96,8 +96,7 @@ export function resetTaskPracticeRecords(exam: string, questionIds: string[]) {
 }
 
 /**
- * Deterministically generates a clean APEUni-like question number (e.g., #1433)
- * using the question's ID or index if none is embedded in the title.
+ * Returns sequential question numbers (1, 2, 3...) or extracts embedded #number from title.
  */
 export function formatQuestionDisplayNumber(questionId: string, title?: string, fallbackIndex = 0): number {
   if (title) {
@@ -108,10 +107,5 @@ export function formatQuestionDisplayNumber(questionId: string, title?: string, 
     if (qNumMatch) return parseInt(qNumMatch[1], 10);
   }
 
-  // Derive stable 3-4 digit number from questionId
-  let hash = 0;
-  for (let i = 0; i < questionId.length; i++) {
-    hash = (hash * 31 + questionId.charCodeAt(i)) >>> 0;
-  }
-  return 1000 + (hash % 900) + (fallbackIndex % 50);
+  return fallbackIndex + 1;
 }

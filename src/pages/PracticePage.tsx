@@ -17,7 +17,17 @@ import {
   LayoutList,
   PanelRight,
   Sparkles,
+  PlayCircle,
+  AlertTriangle,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -52,7 +62,7 @@ import type { Delivery } from '@/lib/delivery';
 import { useProgressStage } from '@/lib/hooks/useProgressStage';
 import { loadCompleted, saveCompleted, unlockedIndex } from '@/lib/practiceProgress';
 import QuestionDrawer from '@/components/practice/QuestionDrawer';
-import { recordQuestionAttempt } from '@/lib/questionStorage';
+import { recordQuestionAttempt, formatQuestionDisplayNumber } from '@/lib/questionStorage';
 
 function getSubtaskTitle(exam: ExamType, skill: SkillType, typeKey?: string | null, mistakeId?: string): string {
   if (mistakeId) return 'Targeted Mistake Practice';
@@ -142,6 +152,7 @@ function PracticePageContent() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pendingQuestionToStart, setPendingQuestionToStart] = useState<Question | null>(null);
 
   const drawerParam = searchParams.get('drawer');
   const [isDrawerOpen, setIsDrawerOpen] = useState(
@@ -700,7 +711,7 @@ function PracticePageContent() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => handleSelectQuestionFromDrawer(questions[0])}
+                    onClick={() => setPendingQuestionToStart(questions[0])}
                     className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
                   >
                     <span>Start First Question</span>
@@ -1039,13 +1050,100 @@ function PracticePageContent() {
           currentQuestionId={currentQuestion?.id}
           completedIds={completedIds}
           isLoading={loading}
-          onSelectQuestion={handleSelectQuestionFromDrawer}
+          onSelectQuestion={question => setPendingQuestionToStart(question)}
           onResetCompleted={() => {
             setCompletedIds([]);
             saveCompleted(activeExam, selectedSkill, typeParam, []);
           }}
         />
       )}
+
+      {/* Confirmation Dialog before starting a question */}
+      <Dialog
+        open={pendingQuestionToStart !== null}
+        onOpenChange={open => {
+          if (!open) setPendingQuestionToStart(null);
+        }}
+      >
+        <DialogContent className="max-w-[400px] gap-0 p-6 sm:p-7 text-center rounded-2xl">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-teal-500/10 ring-8 ring-teal-500/5">
+            <PlayCircle className="h-6 w-6 text-teal-600 dark:text-teal-400" />
+          </div>
+
+          <DialogHeader className="space-y-1.5 sm:text-center">
+            <DialogTitle className="text-lg font-bold leading-snug">
+              Do you want to start this question?
+            </DialogTitle>
+            {pendingQuestionToStart && (() => {
+              const pIdx = questions.findIndex(q => q.id === pendingQuestionToStart.id);
+              const pNum = formatQuestionDisplayNumber(pendingQuestionToStart.id, pendingQuestionToStart.title, pIdx >= 0 ? pIdx : 0);
+              const pTitle = pendingQuestionToStart.title
+                ? pendingQuestionToStart.title.replace(/^#\d+[:\s-]*/i, '').replace(/^question\s*\d+[:\s-]*/i, '')
+                : `Question #${pNum}`;
+              return (
+                <DialogDescription className="text-xs sm:text-sm font-medium text-muted-foreground">
+                  <span className="font-bold text-foreground">#{pNum}</span> {pTitle}
+                </DialogDescription>
+              );
+            })()}
+          </DialogHeader>
+
+          <div className="mt-4 space-y-3">
+            {hasStarted && !result && currentQuestion && currentQuestion.id !== pendingQuestionToStart?.id && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300 text-left space-y-1">
+                <p className="font-bold flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  Active attempt in progress
+                </p>
+                <p className="text-[11px] leading-relaxed">
+                  Starting this new question will end your current attempt and discard any unsaved progress.
+                </p>
+              </div>
+            )}
+
+            {Boolean(user?.subscription?.unlimited) ? (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Ready to practice? Your timers and recording will begin immediately upon starting.
+              </p>
+            ) : (
+              <div className="rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 p-3 text-xs space-y-1 text-left">
+                <p className="font-semibold text-amber-800 dark:text-amber-200">
+                  Starting this question will cost <span className="font-bold">1 practice credit</span>.
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {Number.isFinite(subTestsRemaining)
+                    ? `${subTestsRemaining} credits remaining today.`
+                    : 'Credits will be deducted from your daily allowance.'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="mt-6 grid grid-cols-2 gap-3 sm:flex-none">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 w-full rounded-xl font-medium cursor-pointer"
+              onClick={() => setPendingQuestionToStart(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="h-10 w-full rounded-xl font-bold bg-teal-600 hover:bg-teal-700 text-white cursor-pointer shadow-md"
+              onClick={() => {
+                if (!pendingQuestionToStart) return;
+                const q = pendingQuestionToStart;
+                setPendingQuestionToStart(null);
+                setIsDrawerOpen(false);
+                handleSelectQuestionFromDrawer(q);
+              }}
+            >
+              {Boolean(user?.subscription?.unlimited) ? 'Start Question' : 'Start (1 Credit)'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

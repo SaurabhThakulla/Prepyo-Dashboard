@@ -100,9 +100,11 @@ export default function QuestionDrawer({
     const qLower = searchQuery.trim().toLowerCase();
     if (qLower) {
       const qNum = qLower.replace('#', '');
-      result = result.filter((q, idx) => {
-        const dispNum = String(formatQuestionDisplayNumber(q.id, q.title, idx));
+      result = result.filter(q => {
+        const origIdx = questions.indexOf(q);
+        const dispNum = String(formatQuestionDisplayNumber(q.id, q.title, origIdx >= 0 ? origIdx : 0));
         return (
+          dispNum === qNum ||
           dispNum.includes(qNum) ||
           q.title?.toLowerCase().includes(qLower) ||
           q.prompt?.toLowerCase().includes(qLower) ||
@@ -118,13 +120,13 @@ export default function QuestionDrawer({
       result = result.filter(q => !completedIds.includes(q.id) && (scoresMap[q.id]?.attemptsCount ?? 0) === 0);
     }
 
-    // Sorting by number descending
+    // Sorting by question order ascending (1, 2, 3...)
     result.sort((a, b) => {
       const idxA = questions.indexOf(a);
       const idxB = questions.indexOf(b);
-      const numA = formatQuestionDisplayNumber(a.id, a.title, idxA);
-      const numB = formatQuestionDisplayNumber(b.id, b.title, idxB);
-      return numB - numA;
+      const numA = formatQuestionDisplayNumber(a.id, a.title, idxA >= 0 ? idxA : 0);
+      const numB = formatQuestionDisplayNumber(b.id, b.title, idxB >= 0 ? idxB : 0);
+      return numA - numB;
     });
 
     return result;
@@ -342,7 +344,8 @@ export default function QuestionDrawer({
             </div>
           ) : (
             displayedQuestions.map((question, idx) => {
-              const displayNumber = formatQuestionDisplayNumber(question.id, question.title, idx);
+              const origIdx = questions.indexOf(question);
+              const displayNumber = formatQuestionDisplayNumber(question.id, question.title, origIdx >= 0 ? origIdx : idx);
               const isSelected = currentQuestionId === question.id;
               const isDone = completedIds.includes(question.id) || (scoresMap[question.id]?.attemptsCount ?? 0) > 0;
               const record = scoresMap[question.id];
