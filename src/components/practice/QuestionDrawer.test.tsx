@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import QuestionDrawer from './QuestionDrawer';
 import { Question } from '@/lib/types';
-import { toggleQuestionBookmark, recordQuestionAttempt } from '@/lib/questionStorage';
+import { recordQuestionAttempt } from '@/lib/questionStorage';
 
 describe('QuestionDrawer Component', () => {
   const mockQuestions: Question[] = [
@@ -151,7 +151,7 @@ describe('QuestionDrawer Component', () => {
     expect(onSelect).toHaveBeenCalledWith(mockQuestions[0]);
   });
 
-  it('toggles question bookmarks and displays bookmark icon', async () => {
+  it('renders question card action button without bookmark button or empty dash', async () => {
     render(
       <QuestionDrawer
         isOpen={true}
@@ -167,10 +167,12 @@ describe('QuestionDrawer Component', () => {
     );
 
     const card = screen.getByText(/Black Hole/i).closest('.group');
-    const bookmarkBtn = card?.querySelector('button[title*="bookmark"]') as HTMLButtonElement;
-    expect(bookmarkBtn).toBeDefined();
-    fireEvent.click(bookmarkBtn);
-    expect(bookmarkBtn.getAttribute('title')).toBe('Remove bookmark');
+    expect(card).toBeDefined();
+    // Practice button is present
+    expect(screen.getAllByText('Practice').length).toBeGreaterThan(0);
+    // Bookmark button is removed
+    const bookmarkBtn = card?.querySelector('button[title*="bookmark"]');
+    expect(bookmarkBtn).toBeNull();
   });
 
   it('displays recorded user score and practice attempt count', () => {

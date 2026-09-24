@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import {
   Search,
   X,
-  Bookmark,
   ChevronRight,
   ChevronLeft,
   ArrowUpDown,
@@ -17,8 +16,6 @@ import { Question, ExamType, SkillType } from '@/lib/types';
 import { getTaskMetadata } from '@/lib/taskMetadata';
 import {
   formatQuestionDisplayNumber,
-  getBookmarkedIds,
-  toggleQuestionBookmark,
   getExamQuestionRecords,
   resetTaskPracticeRecords,
   QuestionRecord,
@@ -61,8 +58,6 @@ export default function QuestionDrawer({
 }: QuestionDrawerProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
-
-  const [bookmarkedSet, setBookmarkedSet] = useState<Set<string>>(() => getBookmarkedIds());
   const [scoresMap, setScoresMap] = useState<Record<string, QuestionRecord>>(() => getExamQuestionRecords(exam));
 
   // Infinite scroll windowing
@@ -73,7 +68,6 @@ export default function QuestionDrawer({
   // Re-read local storage records when drawer opens or questions change
   useEffect(() => {
     if (isOpen) {
-      setBookmarkedSet(getBookmarkedIds());
       setScoresMap(getExamQuestionRecords(exam));
     }
   }, [isOpen, exam, completedIds]);
@@ -84,13 +78,6 @@ export default function QuestionDrawer({
   }, [searchQuery, activeFilter, questions]);
 
   const taskMeta = useMemo(() => getTaskMetadata(exam, skill, typeKey, isMock), [exam, skill, typeKey, isMock]);
-
-  // Handle bookmark toggle
-  const handleToggleBookmark = useCallback((qId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    toggleQuestionBookmark(qId);
-    setBookmarkedSet(getBookmarkedIds());
-  }, []);
 
   // Filter & sort questions
   const filteredQuestions = useMemo(() => {
@@ -170,6 +157,7 @@ export default function QuestionDrawer({
   return (
     <>
       {/* Floating Sideway Toggle Button (visible always, matches coral pill in APEUni screenshot) */}
+      {/* Floating Sideway Toggle Button (uses brand color) */}
       <button
         type="button"
         id="question-drawer-toggle"
@@ -178,8 +166,8 @@ export default function QuestionDrawer({
         aria-label={isOpen ? 'Collapse Questions List' : 'Browse Questions List'}
         className={`fixed top-1/2 -translate-y-1/2 z-50 transition-all duration-300 flex items-center justify-center shadow-xl active:scale-95 group ${
           isOpen
-            ? 'right-[calc(100vw-36px)] sm:right-[544px] md:right-[604px] lg:right-[664px] xl:right-[704px] bg-[#ff4d4f] hover:bg-[#ff383b] text-white w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 border-white dark:border-slate-800'
-            : 'right-2 sm:right-3 bg-[#ff4d4f] hover:bg-[#ff383b] text-white w-10 h-10 sm:w-11 sm:h-11 rounded-full hover:scale-105 shadow-rose-500/30'
+            ? 'hidden sm:flex sm:right-[544px] md:right-[604px] lg:right-[664px] xl:right-[704px] bg-primary hover:bg-primary/90 text-white w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 border-white dark:border-slate-800 shadow-primary/30'
+            : 'right-2 sm:right-3 bg-primary hover:bg-primary/90 text-white w-10 h-10 sm:w-11 sm:h-11 rounded-full hover:scale-105 shadow-primary/30'
         }`}
       >
         {isOpen ? (
@@ -201,38 +189,38 @@ export default function QuestionDrawer({
         <div
           role="presentation"
           onClick={onClose}
-          className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40 lg:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40 lg:hidden transition-opacity duration-300"
         />
       )}
 
-      {/* Sliding Sideways Drawer Panel */}
+      {/* Sliding Sideways Drawer Panel (inset-y-0 full height, no top gap) */}
       <aside
         id="question-drawer-panel"
         aria-label="Practice Questions Drawer"
-        className={`fixed top-14 right-0 bottom-0 w-full sm:w-[560px] md:w-[620px] lg:w-[680px] xl:w-[720px] max-w-full bg-white dark:bg-[#0f141f] border-l border-slate-200 dark:border-white/10 shadow-2xl z-40 flex flex-col transition-transform duration-300 ease-out ${
+        className={`fixed inset-y-0 right-0 w-full sm:w-[560px] md:w-[620px] lg:w-[680px] xl:w-[720px] max-w-full bg-white dark:bg-[#0f141f] border-l border-slate-200 dark:border-white/10 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
         }`}
       >
         {/* 1. Header Section */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-white/5 space-y-3.5 bg-white dark:bg-[#111622] shrink-0">
-          <div className="flex items-center justify-between gap-3">
+        <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-white/5 space-y-3 bg-white dark:bg-[#111622] shrink-0">
+          <div className="flex items-center justify-between gap-2.5">
             {/* Task Info Pill */}
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
               <div
-                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center font-black text-sm tracking-tight shrink-0 shadow-xs ${taskMeta.color}`}
+                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-black text-xs sm:text-sm tracking-tight shrink-0 shadow-xs ${taskMeta.color}`}
               >
                 {taskMeta.code}
               </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white truncate">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h2 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white truncate max-w-[200px] sm:max-w-none">
                     {taskMeta.name}
                   </h2>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 shrink-0">
                     {exam}
                   </span>
                 </div>
-                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
                   {taskMeta.scoreWeight}
                 </p>
               </div>
@@ -242,7 +230,7 @@ export default function QuestionDrawer({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors shrink-0"
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors shrink-0 cursor-pointer"
               title="Close drawer"
             >
               <X className="w-5 h-5" />
@@ -271,13 +259,13 @@ export default function QuestionDrawer({
           </div>
         </div>
 
-        {/* 2. Filter Tabs: All Questions, Done, Remaining */}
-        <div className="px-4 py-2.5 border-b border-slate-100 dark:border-white/5 bg-slate-50/80 dark:bg-[#131926] shrink-0">
-          <div className="grid grid-cols-3 gap-2">
+        {/* 2. Filter Tabs: All, Done, Remaining (mobile responsive) */}
+        <div className="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-slate-100 dark:border-white/5 bg-slate-50/80 dark:bg-[#131926] shrink-0">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
             {[
-              { id: 'all' as const, label: 'All Questions', count: questions.length },
-              { id: 'done' as const, label: 'Done', count: doneCount },
-              { id: 'remaining' as const, label: 'Remaining', count: Math.max(0, questions.length - doneCount) },
+              { id: 'all' as const, label: 'All', fullLabel: 'All Questions', count: questions.length },
+              { id: 'done' as const, label: 'Done', fullLabel: 'Done', count: doneCount },
+              { id: 'remaining' as const, label: 'Remaining', fullLabel: 'Remaining', count: Math.max(0, questions.length - doneCount) },
             ].map(tab => {
               const active = activeFilter === tab.id;
               return (
@@ -285,13 +273,14 @@ export default function QuestionDrawer({
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveFilter(tab.id)}
-                  className={`py-2 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  className={`py-1.5 sm:py-2 px-1.5 sm:px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer ${
                     active
-                      ? 'bg-teal-500 text-white shadow-xs'
+                      ? 'bg-primary text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/5 bg-white dark:bg-white/5 border border-slate-200/60 dark:border-white/5'
                   }`}
                 >
-                  <span className="truncate">{tab.label}</span>
+                  <span className="sm:hidden">{tab.label}</span>
+                  <span className="hidden sm:inline truncate">{tab.fullLabel}</span>
                   <span
                     className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold shrink-0 ${
                       active
@@ -349,7 +338,6 @@ export default function QuestionDrawer({
               const isSelected = currentQuestionId === question.id;
               const isDone = completedIds.includes(question.id) || (scoresMap[question.id]?.attemptsCount ?? 0) > 0;
               const record = scoresMap[question.id];
-              const isBookmarked = bookmarkedSet.has(question.id);
 
               // Clean title (remove redundant "#1234" prefix if present)
               const displayTitle = question.title
@@ -405,53 +393,39 @@ export default function QuestionDrawer({
                     </div>
                   </div>
 
-                  {/* Right Column: Score, Practice Button, Bookmark Icon */}
-                  <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-                    {/* Score display */}
-                    <div className="text-right min-w-[50px]">
-                      {record?.score !== undefined ? (
+                  {/* Right Column: Score, Practice Button (no bookmark, no dash) */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Score display (only shown if question has a score or is marked done) */}
+                    {record?.score !== undefined ? (
+                      <div className="text-right">
                         <span className="text-xs font-bold font-mono text-slate-800 dark:text-slate-200">
                           {record.score}
                           <span className="text-[10px] font-normal text-slate-400">/{record.maxScore ?? (exam === 'PTE' ? 90 : 9)}</span>
                         </span>
-                      ) : isDone ? (
+                      </div>
+                    ) : isDone ? (
+                      <div className="text-right">
                         <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center justify-end gap-1">
                           <CheckCircle2 className="w-3 h-3" />
                           Done
                         </span>
-                      ) : (
-                        <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
-                      )}
-                    </div>
+                      </div>
+                    ) : null}
 
-                    {/* Practice * N Pill Button (matches APEUni's Practice * 1 button) */}
+                    {/* Practice * N Pill Button */}
                     <button
                       type="button"
                       onClick={e => {
                         e.stopPropagation();
                         onSelectQuestion(question);
                       }}
-                      className={`text-xs font-bold px-2.5 py-1 rounded-md transition-all ${
+                      className={`text-xs font-bold px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                         isDone
-                          ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800/40 hover:bg-teal-500 hover:text-white'
-                          : 'bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-teal-500 hover:text-white'
+                          ? 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white'
+                          : 'bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-primary hover:text-white'
                       }`}
                     >
                       {record?.attemptsCount ? `Practice * ${record.attemptsCount}` : 'Practice'}
-                    </button>
-
-                    {/* Bookmark Toggle */}
-                    <button
-                      type="button"
-                      onClick={e => handleToggleBookmark(question.id, e)}
-                      title={isBookmarked ? 'Remove bookmark' : 'Bookmark question'}
-                      className={`p-1 rounded-lg transition-colors ${
-                        isBookmarked
-                          ? 'text-teal-600 dark:text-teal-400'
-                          : 'text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-300'
-                      }`}
-                    >
-                      <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-current' : ''}`} />
                     </button>
                   </div>
                 </div>
