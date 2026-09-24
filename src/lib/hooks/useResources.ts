@@ -69,13 +69,29 @@ export function useMistakes(
   });
 }
 
+// The server's largest page. A skill can hold more questions than this (IELTS
+// Speaking has over 300), so callers read every page, not just the first.
 const QUESTION_PAGE_SIZE = 200;
+const QUESTION_MAX_PAGES = 20;
+
+/** Every question of a skill, read a page at a time. */
+export async function fetchAllQuestions(exam: ExamType, skill: SkillType): Promise<{ questions: Question[] }> {
+  const all: Question[] = [];
+  for (let page = 0; page < QUESTION_MAX_PAGES; page++) {
+    const data = await api.get<{ questions: Question[] }>('/questions', {
+      exam, skill, limit: QUESTION_PAGE_SIZE, offset: page * QUESTION_PAGE_SIZE,
+    });
+    const batch = data.questions ?? [];
+    all.push(...batch);
+    if (batch.length < QUESTION_PAGE_SIZE) break;
+  }
+  return { questions: all };
+}
 
 export function useQuestions(exam: ExamType, skill: SkillType) {
   return useQuery({
     queryKey: queryKeys.questions(exam, skill),
-    queryFn: () =>
-      api.get<{ questions: Question[] }>('/questions', { exam, skill, limit: QUESTION_PAGE_SIZE }),
+    queryFn: () => fetchAllQuestions(exam, skill),
   });
 }
 

@@ -12,7 +12,7 @@ import {
   Award,
   Filter,
 } from 'lucide-react';
-import { Question, ExamType, SkillType } from '@/lib/types';
+import { ExamType, SkillType } from '@/lib/types';
 import { getTaskMetadata } from '@/lib/taskMetadata';
 import {
   formatQuestionDisplayNumber,
@@ -21,7 +21,15 @@ import {
   QuestionRecord,
 } from '@/lib/questionStorage';
 
-interface QuestionDrawerProps {
+/** What a row needs: a question, or a reading passage (reading is practised by passage). */
+export interface DrawerItem {
+  id: string;
+  title: string;
+  prompt?: string;
+  difficulty?: string;
+}
+
+interface QuestionDrawerProps<T extends DrawerItem> {
   isOpen: boolean;
   onToggle: () => void;
   onClose: () => void;
@@ -29,11 +37,11 @@ interface QuestionDrawerProps {
   skill: SkillType;
   typeKey?: string | null;
   isMock?: boolean;
-  questions: Question[];
+  questions: T[];
   currentQuestionId?: string | null;
   completedIds: string[];
   isLoading?: boolean;
-  onSelectQuestion: (question: Question) => void;
+  onSelectQuestion: (question: T) => void;
   onResetCompleted?: () => void;
 }
 
@@ -41,7 +49,7 @@ type FilterTab = 'all' | 'done' | 'remaining';
 
 const PAGE_SIZE = 20;
 
-export default function QuestionDrawer({
+export default function QuestionDrawer<T extends DrawerItem>({
   isOpen,
   onToggle,
   onClose,
@@ -55,7 +63,7 @@ export default function QuestionDrawer({
   isLoading = false,
   onSelectQuestion,
   onResetCompleted,
-}: QuestionDrawerProps) {
+}: QuestionDrawerProps<T>) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [scoresMap, setScoresMap] = useState<Record<string, QuestionRecord>>(() => getExamQuestionRecords(exam));

@@ -38,6 +38,9 @@ export const queryKeys = {
 
   /** The reading task-type menu. Content, so it is the same for everyone. */
   readingTypes: (exam: ExamType) => ['reading', 'types', exam] as const,
+  /** The passages the practice list offers for a family of task types. */
+  readingPracticePassages: (exam: ExamType, typeIds: string[]) =>
+    ['reading', 'practice-passages', exam, [...typeIds].sort().join(',')] as const,
   /** The learner's live reading paper, if they have one. */
   readingMockSession: (exam: ExamType) => ['reading', 'mock', exam] as const,
 

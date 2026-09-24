@@ -21,6 +21,8 @@ interface ReadingPracticePanelProps {
   initialTypeKey?: string;
   mistakeId?: string;
   exam?: ExamType;
+  /** A passage chosen from the practice list; Start deals that one. */
+  passageId?: string;
 }
 
 /**
@@ -106,7 +108,7 @@ function labelForTypeKey(key?: string) {
  * Left pane: Reading passage with centered title and continuous natural paragraphs.
  * Right pane: Question notes completion card with inline inputs and circled numbers.
  */
-export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam }: ReadingPracticePanelProps) {
+export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, passageId }: ReadingPracticePanelProps) {
   const { user, activeExam: contextExam, refreshUser, setIsTutorOpen, setTutorContextPrompt, activeTestSession, setActiveTestSession } = useApp();
   const activeExam = exam ?? contextExam;
   const resolution = useMistakeResolution(mistakeId);
@@ -161,7 +163,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam }
         return;
       }
 
-      const dealtSet = await deal(targetId ?? '', mistakeId);
+      const dealtSet = await deal(targetId ?? '', mistakeId, passageId);
       if (!dealtSet) {
         return;
       }
@@ -196,7 +198,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam }
     } finally {
       setIsStarting(false);
     }
-  }, [isStarting, isSessionActive, types, typesQuery, initialTypeKey, currentTypeId, deal, activeExam, refreshUser, setActiveTestSession, handleStop, toast, mistakeId]);
+  }, [isStarting, isSessionActive, types, typesQuery, initialTypeKey, currentTypeId, deal, activeExam, refreshUser, setActiveTestSession, handleStop, toast, mistakeId, passageId]);
 
   const handleCheck = async () => {
     try {

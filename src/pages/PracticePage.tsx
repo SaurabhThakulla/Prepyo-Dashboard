@@ -1,5 +1,5 @@
 import { subTestsLeft } from '@/lib/subscriptions';
-import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
@@ -53,6 +53,9 @@ const AdminReadingAuthoring = lazy(() => import('@/components/admin/AdminReading
 const AdminQuestionAuthoring = lazy(() => import('@/components/admin/AdminQuestionAuthoring'));
 import MockPaperDrawer from '@/components/practice/MockPaperDrawer';
 import { useMockPapers } from '@/lib/hooks/useMockPapers';
+import { useReadingPracticePassages } from '@/lib/hooks/useReading';
+import { fetchAllQuestions } from '@/lib/hooks/useResources';
+import { familyOf, typeIdsFor } from '@/lib/readingTypes';
 import { pteReportHref } from '@/lib/pteMock/catalog';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
@@ -81,7 +84,6 @@ function getSubtaskTitle(exam: ExamType, skill: SkillType, typeKey?: string | nu
   return `${exam} ${skillName} Practice`;
 }
 
-const QUESTION_LIMIT = 200;
 import { useToast } from '@/components/ui/toast';
 
 const GRADING: Record<SkillType, 'deterministic' | 'ai' | 'speech'> = {
@@ -161,6 +163,17 @@ function PracticePageContent() {
   const isMockMode = Boolean(searchParams.get('mock'));
   const { data: mockPapers = [], isLoading: mockPapersLoading } = useMockPapers(activeExam, selectedSkill, undefined, isMockMode);
 
+  // Reading is practised by passage, not by single question, so its list is
+  // the passages practice deals for the task (and its family).
+  const readingList = selectedSkill === 'reading' && !isMockMode && !mistakeId && !isAdmin(user);
+  const readingFamily = useMemo(
+    () => [...new Set(typeIdsFor(typeParam).flatMap(familyOf))],
+    [typeParam],
+  );
+  const readingPassagesQuery = useReadingPracticePassages(activeExam, readingFamily, readingList);
+  const readingPassages = readingPassagesQuery.data?.passages ?? [];
+  const passageParam = searchParams.get('passage');
+
   const drawerParam = searchParams.get('drawer');
   const [isDrawerOpen, setIsDrawerOpen] = useState(
     () => (isMockMode && !searchParams.get('paper')) || drawerParam === 'open' || drawerParam === '1',
@@ -176,11 +189,7 @@ function PracticePageContent() {
     if (mistakeId) return;
     setLoading(true);
     try {
-      const data = await api.get<{ questions: Question[] }>('/questions', {
-        exam: activeExam,
-        skill: selectedSkill,
-        limit: QUESTION_LIMIT,
-      });
+      const data = await fetchAllQuestions(activeExam, selectedSkill);
       const all = data.questions ?? [];
       const list = typeParam
         ? all.filter(question => {
@@ -302,11 +311,7 @@ function PracticePageContent() {
       if (!targetQuestion || qList.length === 0) {
         const data = mistakeId
           ? await loadMistakeTask(mistakeId, activeExam, selectedSkill).then(task => ({ questions: [task.question] }))
-          : await api.get<{ questions: Question[] }>('/questions', {
-            exam: activeExam,
-            skill: selectedSkill,
-            limit: QUESTION_LIMIT,
-          });
+          : await fetchAllQuestions(activeExam, selectedSkill);
 
         const all = data.questions ?? [];
         const list = typeParam && !mistakeId
@@ -645,10 +650,11 @@ function PracticePageContent() {
       ) : isReading ? (
         <Suspense fallback={<ReadingPracticeSkeleton />}>
           <ReadingPracticePanel
-            key={`${activeExam}-${selectedSkill}-${typeParam || 'default'}`}
+            key={`${activeExam}-${selectedSkill}-${typeParam || 'default'}-${passageParam || 'any'}`}
             initialTypeKey={typeParam ?? undefined}
             mistakeId={mistakeId}
             exam={activeExam}
+            passageId={passageParam ?? undefined}
           />
         </Suspense>
       ) : isAdminUser ? (
@@ -1080,7 +1086,35 @@ function PracticePageContent() {
         />
       )}
 
-      {!isAdminUser && !mistakeId && !isMockMode && (
+      {readingList && (
+        <QuestionDrawer
+          isOpen={isDrawerOpen}
+          onToggle={() => setIsDrawerOpen(prev => !prev)}
+          onClose={() => setIsDrawerOpen(false)}
+          exam={activeExam}
+          skill={selectedSkill}
+          typeKey={typeParam}
+          isMock={false}
+          questions={readingPassages.map(passage => ({
+            id: passage.id,
+            title: passage.title,
+            prompt: passage.topic,
+            difficulty: passage.difficulty,
+          }))}
+          currentQuestionId={passageParam}
+          completedIds={readingPassages.filter(passage => passage.practisedAt).map(passage => passage.id)}
+          isLoading={readingPassagesQuery.isPending && readingFamily.length > 0}
+          onSelectQuestion={passage => {
+            const next = new URLSearchParams(searchParams);
+            next.set('passage', passage.id);
+            next.delete('drawer');
+            setSearchParams(next);
+            setIsDrawerOpen(false);
+          }}
+        />
+      )}
+
+      {!isAdminUser && !mistakeId && !isMockMode && !readingList && (
         <QuestionDrawer
           isOpen={isDrawerOpen}
           onToggle={() => setIsDrawerOpen(prev => !prev)}

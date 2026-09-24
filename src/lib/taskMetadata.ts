@@ -1,4 +1,5 @@
 import { ExamType, SkillType } from './types';
+import { typeLabel } from './syllabus';
 
 export interface TaskMeta {
   code: string;
@@ -229,7 +230,8 @@ const IELTS_TASK_META: Record<string, TaskMeta> = {
     bgLight: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
     scoreWeight: 'Weight: 33% of Writing Band',
   },
-  opinionagreeordisagree: {
+  // The key as the sidebar links it: "or" is dropped like "and" and "the".
+  opinionagreedisagree: {
     code: 'W-T2',
     name: 'Opinion / Agree or Disagree (Task 2)',
     skill: 'writing',
@@ -279,8 +281,9 @@ export function getTaskMetadata(
 
   return {
     code: initial,
+    // The syllabus name ("True / False / Not Given"), not the squashed link key.
     name: typeKey
-      ? typeKey.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      ? typeLabel(exam, skill, typeKey) ?? typeKey.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
       : `${exam} ${skill} Practice`,
     skill,
     color: skillInfo.color,

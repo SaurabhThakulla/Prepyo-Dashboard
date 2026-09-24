@@ -19,6 +19,7 @@ import { READING_MOCK_HREF } from '@/components/layout/sidebar/navigation';
 const MockExamRunner = lazy(() => import('@/components/mocks/MockExamRunner'));
 const ScoreReport = lazy(() => import('@/components/mocks/ScoreReport'));
 const FullMockPanel = lazy(() => import('@/components/mocks/FullMockPanel'));
+const IeltsMockCenter = lazy(() => import('@/components/mocks/IeltsMockCenter'));
 const PteMockCenter = lazy(() => import('@/components/pteMock/PteMockCenter'));
 const PteMockHistory = lazy(() => import('@/components/pteMock/PteMockHistory'));
 
@@ -104,13 +105,18 @@ export default function MocksPage() {
         .then(data => {
           if (data?.attempt) setReviewAttempt(data.attempt);
         })
-        .catch(() => {});
+        .catch(err => {
+          toast.error('Could not open that result', errorMessage(err));
+          navigate('/mocks', { replace: true });
+        });
     }
   }, [reviewParam, pastAttempts, reviewAttempt]);
 
   const leaveReport = () => {
     exam.exit();
     setReviewAttempt(null);
+    // A report opened by link (?review=) would open again from the link.
+    if (reviewParam) navigate('/mocks', { replace: true });
   };
 
   if (exam.outcome) {
@@ -178,12 +184,19 @@ export default function MocksPage() {
       </div>
   );
 
-  // IELTS has a four-skill full mock with an overall band, run section by
-  // section by the section mocks.
+  // IELTS has a four-skill full mock with an overall band, plus sectional mock
+  // tests. If view=full, run the full mock; otherwise show the IELTS Mock Test Centre.
   if (activeExam === 'IELTS' && activeTab === 'catalog') {
+    if (searchParams.get('view') === 'full') {
+      return (
+        <Suspense fallback={<AppPageSkeleton />}>
+          <FullMockPanel header={header} />
+        </Suspense>
+      );
+    }
     return (
       <Suspense fallback={<AppPageSkeleton />}>
-        <FullMockPanel header={header} />
+        <IeltsMockCenter header={header} />
       </Suspense>
     );
   }

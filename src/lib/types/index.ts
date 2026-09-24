@@ -350,6 +350,19 @@ export interface ReadingTaskType {
   questionCount: number;
 }
 
+/** A passage the practice list offers for a reading task type. */
+export interface ReadingPracticePassage {
+  id: string;
+  title: string;
+  topic?: string;
+  difficulty: string;
+  wordCount: number;
+  /** Questions of the chosen task type on this passage. */
+  questionCount: number;
+  /** When this learner last practised it, if ever. */
+  practisedAt?: string;
+}
+
 /** One generated reading paper. `sets` is filled only when it is being sat. */
 export interface ReadingMockSession {
   id: string;

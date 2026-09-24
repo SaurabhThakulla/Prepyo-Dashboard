@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
@@ -15,6 +15,7 @@ import {
   PracticeAttempt,
   Question,
   ReadingMockSession,
+  ReadingPracticePassage,
   ReadingSet,
   ReadingTaskType,
 } from '@/lib/types';
@@ -27,6 +28,22 @@ import {
  * not return them. They come from `/api/v1/reading` with their passage attached,
  * which is what these hooks talk to.
  */
+
+/**
+ * The passages practice can deal for a family of task types, for the practice
+ * list. Re-order Paragraphs has none, so its list is empty.
+ */
+export function useReadingPracticePassages(exam: ExamType, typeIds: string[], enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.readingPracticePassages(exam, typeIds),
+    queryFn: () => {
+      const params = new URLSearchParams({ exam });
+      for (const id of typeIds) params.append('typeId', id);
+      return api.get<{ passages: ReadingPracticePassage[] }>(`/reading/practice/passages?${params}`);
+    },
+    enabled: enabled && typeIds.length > 0,
+  });
+}
 
 /** The practice menu: which task types exist, and how much is behind each. */
 export function useReadingTypes(exam: ExamType, enabled = true) {
@@ -63,6 +80,7 @@ export interface ReadingAnswerResult {
  */
 export function useReadingPractice(exam: ExamType) {
   const toast = useToast();
+  const queryClient = useQueryClient();
   const { refreshUser } = useApp();
 
   const [set, setSet] = useState<ReadingSet | null>(null);
@@ -74,7 +92,7 @@ export function useReadingPractice(exam: ExamType) {
   const [startedAt, setStartedAt] = useState(() => Date.now());
 
   const deal = useCallback(
-    async (typeId: string, mistakeId?: string): Promise<ReadingSet | null> => {
+    async (typeId: string, mistakeId?: string, passageId?: string): Promise<ReadingSet | null> => {
       setDealing(true);
       setDealError(null);
       try {
@@ -85,11 +103,16 @@ export function useReadingPractice(exam: ExamType) {
           typeId,
           // The whole heading, so a passage hands over every set behind it.
           typeIds: familyOf(typeId),
+          // A passage chosen from the practice list; otherwise the server
+          // deals the one practised least recently.
+          ...(passageId ? { passageId } : {}),
         });
         setSet(data.set);
         setAnswers({});
         setResults({});
         setStartedAt(Date.now());
+        // The practice list marks the passage just dealt as practised.
+        void queryClient.invalidateQueries({ queryKey: ['reading', 'practice-passages'] });
         return data.set;
       } catch (err) {
         setSet(null);
@@ -104,7 +127,7 @@ export function useReadingPractice(exam: ExamType) {
         setDealing(false);
       }
     },
-    [exam, toast],
+    [exam, queryClient, toast],
   );
 
   const answer = useCallback((questionId: string, patch: Partial<AnswerSubmission>) => {
