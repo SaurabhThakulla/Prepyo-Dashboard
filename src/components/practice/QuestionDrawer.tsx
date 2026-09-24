@@ -157,7 +157,7 @@ export default function QuestionDrawer({
   return (
     <>
       {/* Floating Sideway Toggle Button (visible always, matches coral pill in APEUni screenshot) */}
-      {/* Floating Sideway Toggle Button (uses brand color) */}
+      {/* Floating Sideway Toggle Button (uses brand color, hidden when drawer is open) */}
       <button
         type="button"
         id="question-drawer-toggle"
@@ -166,21 +166,15 @@ export default function QuestionDrawer({
         aria-label={isOpen ? 'Collapse Questions List' : 'Browse Questions List'}
         className={`fixed top-1/2 -translate-y-1/2 z-50 transition-all duration-300 flex items-center justify-center shadow-xl active:scale-95 group ${
           isOpen
-            ? 'hidden sm:flex sm:right-[544px] md:right-[604px] lg:right-[664px] xl:right-[704px] bg-primary hover:bg-primary/90 text-white w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 border-white dark:border-slate-800 shadow-primary/30'
+            ? 'hidden'
             : 'right-2 sm:right-3 bg-primary hover:bg-primary/90 text-white w-10 h-10 sm:w-11 sm:h-11 rounded-full hover:scale-105 shadow-primary/30'
         }`}
       >
-        {isOpen ? (
-          <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
-        ) : (
-          <>
-            <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" />
-            {questions.length > 0 && (
-              <span className="absolute -top-1.5 -left-1.5 bg-blue-600 text-white font-mono text-[10px] font-bold px-1.5 py-0.2 rounded-full border-2 border-white dark:border-slate-900 shadow-xs">
-                {questions.length}
-              </span>
-            )}
-          </>
+        <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" />
+        {questions.length > 0 && (
+          <span className="absolute -top-1.5 -left-1.5 bg-blue-600 text-white font-mono text-[10px] font-bold px-1.5 py-0.2 rounded-full border-2 border-white dark:border-slate-900 shadow-xs">
+            {questions.length}
+          </span>
         )}
       </button>
 
@@ -204,23 +198,23 @@ export default function QuestionDrawer({
         {/* 1. Header Section */}
         <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-white/5 space-y-3 bg-white dark:bg-[#111622] shrink-0">
           <div className="flex items-center justify-between gap-2.5">
-            {/* Task Info Pill */}
+            {/* Task Info Pill: first letter only for logo, clean simple title */}
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
               <div
-                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-black text-xs sm:text-sm tracking-tight shrink-0 shadow-xs ${taskMeta.color}`}
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center font-bold text-xs sm:text-sm bg-primary text-white shrink-0 shadow-xs"
               >
-                {taskMeta.code}
+                {(taskMeta.code || taskMeta.name || 'P').charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h2 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white truncate max-w-[200px] sm:max-w-none">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm sm:text-base font-medium text-slate-900 dark:text-white truncate">
                     {taskMeta.name}
                   </h2>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 shrink-0">
+                  <span className="text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 shrink-0">
                     {exam}
                   </span>
                 </div>
-                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-normal truncate mt-0.5">
                   {taskMeta.scoreWeight}
                 </p>
               </div>
@@ -273,7 +267,7 @@ export default function QuestionDrawer({
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveFilter(tab.id)}
-                  className={`py-1.5 sm:py-2 px-1.5 sm:px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer ${
+                  className={`py-1.5 sm:py-2 px-1.5 sm:px-2 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer ${
                     active
                       ? 'bg-primary text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/5 bg-white dark:bg-white/5 border border-slate-200/60 dark:border-white/5'
@@ -356,37 +350,34 @@ export default function QuestionDrawer({
                 >
                   {/* Left Column: Number, Title, Badges */}
                   <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors truncate">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs sm:text-sm font-normal text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors truncate">
                         #{displayNumber} {displayTitle}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300">
-                        #{displayNumber}
-                      </span>
                       {question.difficulty && (
                         <span
-                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                          className={`text-[10px] font-medium px-1.5 py-0.5 rounded capitalize ${
                             question.difficulty === 'hard'
-                              ? 'bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300'
+                              ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400'
                               : question.difficulty === 'medium'
-                              ? 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
-                              : 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
+                              ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400'
+                              : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400'
                           }`}
                         >
                           {question.difficulty}
                         </span>
                       )}
-                      {/* Shadow tag for speaking tasks matching screenshot */}
+                      {/* Shadow tag for speaking tasks */}
                       {skill === 'speaking' && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-500 text-white">
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
                           Shadow
                         </span>
                       )}
                       {isSelected && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-500 text-white">
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary text-white">
                           Current
                         </span>
                       )}

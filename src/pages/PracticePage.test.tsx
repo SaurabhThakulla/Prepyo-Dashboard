@@ -393,7 +393,7 @@ describe('practice credit lifecycle', () => {
     const start1 = await screen.findByRole('button', { name: 'Start Practice (1 Credit)' });
     expect(api.get).not.toHaveBeenCalled();
     fireEvent.click(start1);
-    expect(await screen.findByText('Task 1 Title')).toBeDefined();
+    expect((await screen.findAllByText('Task 1 Title')).length).toBeGreaterThan(0);
 
     // Submit Task 1
     const textarea = await screen.findByPlaceholderText('Write your response here…');
@@ -415,6 +415,6 @@ describe('practice credit lifecycle', () => {
     const start2 = await screen.findByRole('button', { name: 'Start Practice (1 Credit)' });
     expect(screen.queryByText('Good job')).toBeNull();
     fireEvent.click(start2);
-    expect(await screen.findByText('Task 2 Title')).toBeDefined();
+    expect((await screen.findAllByText('Task 2 Title')).length).toBeGreaterThan(0);
   });
 });
