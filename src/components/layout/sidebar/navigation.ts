@@ -18,6 +18,8 @@ import {
   CreditCard,
   MessageSquareWarning,
   ShieldCheck,
+  Video,
+  Tv,
   LucideIcon,
 } from 'lucide-react';
 import { SYLLABUS, syllabusFor, typeKey } from '@/lib/syllabus';
@@ -32,7 +34,7 @@ import { PTE_MOCK_KINDS, pteMockHref } from '@/lib/pteMock/catalog';
  * link or change a label without touching any rendering code.
  */
 
-export type PrimarySectionId = 'home' | 'practice' | 'aicoach' | 'mock';
+export type PrimarySectionId = 'home' | 'practice' | 'aicoach' | 'mock' | 'tutorials';
 
 export interface SecondaryNavItem {
   href?: string;
@@ -78,6 +80,7 @@ export function getSectionFromPathname(path: string): PrimarySectionId {
   if (path.startsWith('/practice')) return 'practice';
   if (path.startsWith('/mocks') || path.startsWith('/diagnostic')) return 'mock';
   if (path.startsWith('/evaluations')) return 'aicoach';
+  if (path.startsWith('/tutorials') || path.startsWith('/videos')) return 'tutorials';
   return 'home';
 }
 
@@ -314,33 +317,117 @@ export function buildSections(
       title: 'Mock Exam Simulator',
       description: 'Timed full exams with scorecards',
       items: [
-        ...(isPTE
-          ? pteMockItems()
-          : [
-              {
-                href: '/mocks',
-                label: 'Full Mock Simulator',
-                icon: ClipboardCheck,
-                sublabel: 'All four skills with an overall band',
-                badge: '4 skills',
-              },
-            ]),
+        ...(isPTE ? pteMockItems() : ieltsMockItems()),
         {
           href: '/diagnostic',
           label: 'Diagnostic Test',
           icon: Gauge,
           sublabel: 'Short initial baseline test',
           badge: '15 Min',
-          group: isPTE ? 'Results & Baseline' : undefined,
+          group: 'Results & Baseline',
         },
         {
           href: '/mocks?tab=reports',
           label: 'Mock Score Reports',
           icon: ChartColumn,
           sublabel: 'Review previous exam scores',
-          group: isPTE ? 'Results & Baseline' : undefined,
+          group: 'Results & Baseline',
         },
       ],
+    },
+    {
+      id: 'tutorials',
+      label: 'Tutorials',
+      icon: Video,
+      title: `${activeExam} Video Tutorials`,
+      description: 'Masterclass video lessons for every section',
+      items: [
+        {
+          href: '/tutorials',
+          label: `${activeExam} Video Hub`,
+          icon: Tv,
+          sublabel: 'All sections & video masterclasses',
+        },
+        {
+          href: '/tutorials?skill=speaking',
+          label: 'Speaking Lessons',
+          icon: Mic,
+          sublabel: 'Pronunciation, fluency & answer structures',
+          group: 'Section Lessons',
+        },
+        {
+          href: '/tutorials?skill=writing',
+          label: 'Writing Lessons',
+          icon: PenTool,
+          sublabel: 'Task templates, essay structures & grammar',
+          group: 'Section Lessons',
+        },
+        {
+          href: '/tutorials?skill=reading',
+          label: 'Reading Lessons',
+          icon: BookOpen,
+          sublabel: 'Skimming, scanning & tricky question tricks',
+          group: 'Section Lessons',
+        },
+        {
+          href: '/tutorials?skill=listening',
+          label: 'Listening Lessons',
+          icon: Headphones,
+          sublabel: 'Accent practice, note-taking & trap avoidance',
+          group: 'Section Lessons',
+        },
+      ],
+    },
+  ];
+}
+
+/**
+ * The IELTS mock tests in three groups: full test simulator, sectional tests
+ * for each skill, and results. Mirrors the PTE mock menu layout.
+ */
+function ieltsMockItems(): SecondaryNavItem[] {
+  return [
+    {
+      href: '/mocks',
+      label: 'IELTS Mock Test Centre',
+      icon: Timer,
+      sublabel: 'Every test, your progress and results',
+    },
+    {
+      href: '/mocks?view=full',
+      label: 'Full Mock Test',
+      icon: ClipboardCheck,
+      sublabel: 'All four skills with an overall band',
+      badge: '3h',
+      group: 'Full Mock Test',
+    },
+    {
+      href: SPEAKING_MOCK_HREF,
+      label: 'Speaking Test',
+      icon: Mic,
+      sublabel: 'Full speaking interview, evaluated by AI',
+      group: 'Sectional Tests',
+    },
+    {
+      href: WRITING_MOCK_HREF,
+      label: 'Writing Test',
+      icon: PenTool,
+      sublabel: 'Task 1 & Task 2 with rubric feedback',
+      group: 'Sectional Tests',
+    },
+    {
+      href: READING_MOCK_HREF,
+      label: 'Reading Test',
+      icon: BookOpen,
+      sublabel: 'Academic / GT passages, timed and auto-graded',
+      group: 'Sectional Tests',
+    },
+    {
+      href: LISTENING_MOCK_HREF,
+      label: 'Listening Test',
+      icon: Headphones,
+      sublabel: 'Full listening section, timed and auto-graded',
+      group: 'Sectional Tests',
     },
   ];
 }
@@ -385,6 +472,19 @@ export function isNavItemActive(
 ): boolean {
   if (!item.href) return false;
 
+  if (item.href.startsWith('/tutorials')) {
+    if (pathname !== '/tutorials') return false;
+    const itemSkill = item.href.includes('skill=') ? item.href.split('skill=')[1]?.split('&')[0] : null;
+    const currentSkill = searchParams.get('skill');
+    if (!itemSkill) return !currentSkill;
+    return itemSkill === currentSkill;
+  }
+
+  if (item.href.includes('view=')) {
+    const itemView = item.href.split('view=')[1]?.split('&')[0];
+    return pathname === item.href.split('?')[0] && searchParams.get('view') === itemView;
+  }
+
   if (item.href.includes('skill=')) {
     const itemSkill = item.href.split('skill=')[1]?.split('&')[0];
     const itemType = item.href.split('type=')[1]?.split('&')[0] ?? null;
@@ -404,7 +504,11 @@ export function isNavItemActive(
   }
 
   if (item.href === '/mocks') {
-    return pathname === '/mocks' && (searchParams.get('tab') || 'catalog') === 'catalog';
+    return (
+      pathname === '/mocks' &&
+      (searchParams.get('tab') || 'catalog') === 'catalog' &&
+      !searchParams.get('view')
+    );
   }
 
   // Pairs of routes that mean the same place to a learner.

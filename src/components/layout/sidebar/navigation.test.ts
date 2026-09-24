@@ -77,10 +77,35 @@ describe('the reading section of the practice menu', () => {
     expect(mock.find(item => item.href === '/mocks?tab=reports')).toBeDefined();
   });
 
-  it('leaves the IELTS mock menu as it was', () => {
+  it('groups the IELTS mock menu into full test, sectional tests, and results', () => {
     const mock = buildSections('IELTS', () => { }).find(s => s.id === 'mock')?.items ?? [];
     expect(mock.some(item => item.href?.startsWith('/mocks/pte'))).toBe(false);
-    expect(mock[0].label).toBe('Full Mock Simulator');
+    expect(mock[0].label).toBe('IELTS Mock Test Centre');
+    const full = mock.filter(item => item.group === 'Full Mock Test');
+    const sectional = mock.filter(item => item.group === 'Sectional Tests');
+    expect(full.map(item => item.href)).toEqual(['/mocks?view=full']);
+    expect(sectional.map(item => item.href)).toEqual([
+      '/practice?skill=speaking&mock=1',
+      '/practice?skill=writing&mock=1',
+      '/practice?skill=reading&mock=1',
+      '/practice?skill=listening&mock=1',
+    ]);
+    expect(mock.find(item => item.href === '/mocks?tab=reports')).toBeDefined();
+    expect(mock.find(item => item.href === '/diagnostic')).toBeDefined();
+  });
+
+  it('includes the tutorials primary section with all section lessons', () => {
+    const sections = buildSections('IELTS', () => { });
+    const tutorials = sections.find(s => s.id === 'tutorials');
+    expect(tutorials).toBeDefined();
+    expect(tutorials?.label).toBe('Tutorials');
+    expect(tutorials?.items.map(i => i.href)).toEqual([
+      '/tutorials',
+      '/tutorials?skill=speaking',
+      '/tutorials?skill=writing',
+      '/tutorials?skill=reading',
+      '/tutorials?skill=listening',
+    ]);
   });
 
   it('hides the paper when there is no blueprint or nothing to build it from', () => {
@@ -156,28 +181,29 @@ describe('which menu item is lit', () => {
     return items.filter(item => isNavItemActive(item, pathname, searchParams)).map(item => item.label);
   };
 
-  it('lights the reading mock, not the full mock, while the paper is open', () => {
-    expect(lit('/practice?skill=reading&mock=1')).toEqual(['Reading Mock Test']);
+  it('lights the reading mock while the paper is open', () => {
+    expect(lit('/practice?skill=reading&mock=1')).toEqual(['Reading Mock Test', 'Reading Test']);
   });
 
   it('lights the speaking mock while the speaking mock is open', () => {
-    expect(lit('/practice?skill=speaking&mock=1')).toEqual(['Speaking Mock Test']);
+    expect(lit('/practice?skill=speaking&mock=1')).toEqual(['Speaking Mock Test', 'Speaking Test']);
   });
 
   it('lights the writing mock while the writing mock is open', () => {
-    expect(lit('/practice?skill=writing&mock=1')).toEqual(['Writing Mock Test']);
+    expect(lit('/practice?skill=writing&mock=1')).toEqual(['Writing Mock Test', 'Writing Test']);
   });
 
   it('lights the listening mock while the listening mock is open', () => {
-    expect(lit('/practice?skill=listening&mock=1')).toEqual(['Listening Mock Test']);
+    expect(lit('/practice?skill=listening&mock=1')).toEqual(['Listening Mock Test', 'Listening Test']);
   });
 
   it('does not light the reading mock on plain reading practice', () => {
     expect(lit('/practice?skill=reading')).not.toContain('Reading Mock Test');
   });
 
-  it('still lights the full mock on the catalogue', () => {
-    expect(lit('/mocks')).toEqual(['Full Mock Simulator']);
+  it('lights the mock test centre on the catalogue, and full mock on view=full', () => {
+    expect(lit('/mocks')).toEqual(['IELTS Mock Test Centre']);
+    expect(lit('/mocks?view=full')).toEqual(['Full Mock Test']);
   });
 });
 
