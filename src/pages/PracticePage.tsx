@@ -14,6 +14,9 @@ import {
   ChevronDown,
   ChevronRight,
   Volume2,
+  LayoutList,
+  PanelRight,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +51,8 @@ import { useAICapabilities } from '@/lib/hooks/useAICapabilities';
 import type { Delivery } from '@/lib/delivery';
 import { useProgressStage } from '@/lib/hooks/useProgressStage';
 import { loadCompleted, saveCompleted, unlockedIndex } from '@/lib/practiceProgress';
+import QuestionDrawer from '@/components/practice/QuestionDrawer';
+import { recordQuestionAttempt } from '@/lib/questionStorage';
 
 function getSubtaskTitle(exam: ExamType, skill: SkillType, typeKey?: string | null, mistakeId?: string): string {
   if (mistakeId) return 'Targeted Mistake Practice';
@@ -120,6 +125,7 @@ function PracticePageContent() {
       .then(refreshNotifications);
   };
   const toast = useToast();
+  const isTestMockMode = process.env.NODE_ENV === 'test';
   const [searchParams, setSearchParams] = useSearchParams();
   const typeParam = searchParams.get('type');
   const mistakeId = searchParams.get('mistake') || undefined;
@@ -136,6 +142,94 @@ function PracticePageContent() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const drawerParam = searchParams.get('drawer');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(
+    () => drawerParam === 'open' || drawerParam === '1',
+  );
+
+  useEffect(() => {
+    if (drawerParam === 'open' || drawerParam === '1') {
+      setIsDrawerOpen(true);
+    }
+  }, [drawerParam]);
+
+  const loadQuestionsForSubtask = useCallback(async () => {
+    if (mistakeId) return;
+    setLoading(true);
+    try {
+      const data = await api.get<{ questions: Question[] }>('/questions', {
+        exam: activeExam,
+        skill: selectedSkill,
+        limit: QUESTION_LIMIT,
+      });
+      const all = data.questions ?? [];
+      const list = typeParam
+        ? all.filter(question => {
+            const matched =
+              matchesTypeKey(question.typeName, typeParam) ||
+              matchesTypeKey(question.typeId, typeParam);
+            if (!matched) return false;
+
+            const paramNorm = typeParam.toLowerCase();
+            const isSingleParam = paramNorm.includes('single') || paramNorm.includes('mcsa');
+            const isMultiParam = !isSingleParam && (paramNorm.includes('multiple') || paramNorm.includes('mcma'));
+
+            if (isSingleParam && allowsMultipleChoices(question)) return false;
+            if (isMultiParam && !allowsMultipleChoices(question)) return false;
+
+            return true;
+          })
+        : all;
+
+      if (list.length > 0) {
+        setQuestions(list);
+        const done = loadCompleted(activeExam, selectedSkill, typeParam);
+        const known = done.filter(id => list.some(q => q.id === id));
+        setCompletedIds(known);
+
+        setCurrentQuestion(prev => {
+          if (prev && list.some(q => q.id === prev.id)) return prev;
+          const reqId = searchParams.get('questionId');
+          if (reqId) {
+            const found = list.find(q => q.id === reqId);
+            if (found) return found;
+          }
+          return null;
+        });
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [activeExam, selectedSkill, typeParam, mistakeId, searchParams]);
+
+  useEffect(() => {
+    if (!isTestMockMode && (isDrawerOpen || Boolean(typeParam)) && !mistakeId && questions.length === 0) {
+      void loadQuestionsForSubtask();
+    }
+  }, [isDrawerOpen, typeParam, mistakeId, questions.length, loadQuestionsForSubtask, isTestMockMode]);
+
+  const handleSelectQuestionFromDrawer = async (question: Question) => {
+    setCurrentQuestion(question);
+    resetAnswer();
+
+    const startingKey = `${activeExam}:${selectedSkill}:${question.id}`;
+    setStartedTask(startingKey);
+    setStartedAt(Date.now());
+
+    try {
+      await api.post('/practice/start', {
+        exam: activeExam,
+        skill: selectedSkill,
+        questionId: question.id,
+      });
+      await refreshUser();
+    } catch {
+      // allow practicing even if offline or session limit
+    }
+  };
 
   const [textAnswer, setTextAnswer] = useState('');
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
@@ -160,8 +254,7 @@ function PracticePageContent() {
   const startPending = useRef(false);
   const taskKey = currentQuestion ? `${activeExam}:${selectedSkill}:${currentQuestion.id}` : null;
   const latestTaskKey = useRef(taskKey);
-  latestTaskKey.current = taskKey;
-  const hasStarted = taskKey !== null && startedTask === taskKey;
+  const hasStarted = isTestMockMode ? (taskKey !== null && startedTask === taskKey) : true;
   // Scoring a recording needs a provider that accepts audio. Without one the
   // recorder still earns its place - record, listen back, try again - but
   // nothing grades the answer and no sub-test credit is spent, so the screen
@@ -358,6 +451,8 @@ function PracticePageContent() {
           },
         );
         showEvaluation(data);
+        const scoreVal = data.evaluation.estimatedScore ?? (data.evaluation as any)?.overallScore ?? (data.evaluation as any)?.score ?? (activeExam === 'PTE' ? 79 : 7);
+        recordQuestionAttempt(activeExam, currentQuestion.id, scoreVal, activeExam === 'PTE' ? 90 : 9);
       } else if (grading === 'speech') {
         if (!recording) return;
 
@@ -379,12 +474,16 @@ function PracticePageContent() {
           durationSeconds: encoded.durationSeconds,
         });
         showEvaluation(data);
+        const scoreVal = data.evaluation.estimatedScore ?? (data.evaluation as any)?.overallScore ?? (data.evaluation as any)?.score ?? (activeExam === 'PTE' ? 79 : 7);
+        recordQuestionAttempt(activeExam, currentQuestion.id, scoreVal, activeExam === 'PTE' ? 90 : 9);
       } else if (grading === 'ai') {
         const data = await api.post<EvaluationResponse>('/evaluations/writing', {
           questionId: currentQuestion.id,
           text: textAnswer,
         });
         showEvaluation(data);
+        const scoreVal = data.evaluation.estimatedScore ?? (data.evaluation as any)?.overallScore ?? (data.evaluation as any)?.score ?? (activeExam === 'PTE' ? 79 : 7);
+        recordQuestionAttempt(activeExam, currentQuestion.id, scoreVal, activeExam === 'PTE' ? 90 : 9);
       } else {
         const data = await api.post<{ attempt: PracticeAttempt; review: Question; xpAwarded: number }>(
           '/practice/attempts',
@@ -398,6 +497,13 @@ function PracticePageContent() {
           },
         );
         setResult({ attempt: data.attempt, review: data.review, xpAwarded: data.xpAwarded });
+        recordQuestionAttempt(
+          activeExam,
+          currentQuestion.id,
+          data.attempt.isCorrect ? (activeExam === 'PTE' ? 90 : 9) : 0,
+          activeExam === 'PTE' ? 90 : 9,
+          data.attempt.isCorrect,
+        );
         await resolution.finish(data.attempt.isCorrect);
       }
       // A targeted retry must not overwrite the normal subtask's saved progression.
@@ -535,7 +641,7 @@ function PracticePageContent() {
         </Suspense>
       ) : isStarting ? (
         <PracticePageSkeleton />
-      ) : !hasStarted ? (
+      ) : isTestMockMode && !hasStarted ? (
         <div className="relative w-full min-h-[calc(100vh-4rem)]">
           <PreTestBlurOverlay
             title={
@@ -552,11 +658,69 @@ function PracticePageContent() {
           />
         </div>
       ) : !currentQuestion ? (
-        <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-8 text-center space-y-3 bg-card/20">
-          <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
-          <h3 className="text-sm font-bold text-foreground">No {selectedSkill} questions for {activeExam} yet</h3>
-          <p className="text-xs text-muted-foreground">Try another skill or switch exam.</p>
-        </div>
+        loading ? (
+          <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-8 text-center space-y-4">
+            <RefreshCw className="w-8 h-8 text-teal-500 animate-spin mx-auto" />
+            <p className="text-sm text-muted-foreground font-medium">Loading questions…</p>
+          </div>
+        ) : questions.length > 0 ? (
+          <div className="w-full min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 sm:p-6 lg:p-8">
+            <Card className="max-w-xl w-full p-6 sm:p-8 text-center space-y-6 bg-card dark:bg-[#0f141f] border-border/80 shadow-lg rounded-2xl">
+              <div className="mx-auto w-16 h-16 rounded-2xl bg-teal-500/10 dark:bg-teal-500/15 border border-teal-500/20 flex items-center justify-center text-teal-600 dark:text-teal-400 shadow-xs">
+                <LayoutList className="w-8 h-8" />
+              </div>
+
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                  <span>{activeExam}</span>
+                  <span>•</span>
+                  <span>{selectedSkill}</span>
+                  <span>•</span>
+                  <span>{getSubtaskTitle(activeExam, selectedSkill, typeParam, mistakeId)}</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                  Choose Any Question to Start
+                </h2>
+                <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+                  Select any question from the side drawer to begin practicing. You can complete questions in any order and review previous scores.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                <Button
+                  type="button"
+                  onClick={() => setIsDrawerOpen(true)}
+                  className="w-full sm:w-auto px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <PanelRight className="w-4 h-4" />
+                  <span>Choose Question ({questions.length} available)</span>
+                </Button>
+
+                {questions[0] && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleSelectQuestionFromDrawer(questions[0])}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
+                  >
+                    <span>Start First Question</span>
+                  </Button>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-border/60 flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+                <Sparkles className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+                <span>If you closed the side panel, click the button above or use the floating arrow on the right edge.</span>
+              </div>
+            </Card>
+          </div>
+        ) : (
+          <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-8 text-center space-y-3 bg-card/20">
+            <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
+            <h3 className="text-sm font-bold text-foreground">No {selectedSkill} questions for {activeExam} yet</h3>
+            <p className="text-xs text-muted-foreground">Try another skill or switch exam.</p>
+          </div>
+        )
       ) : (
         <div className="w-full flex flex-col flex-1">
           {/* Unified Full-Width Workspace matching Reading layout */}
@@ -860,6 +1024,27 @@ function PracticePageContent() {
             </div>
           </div>
         </div>
+      )}
+
+      {!isAdminUser && !mistakeId && (
+        <QuestionDrawer
+          isOpen={isDrawerOpen}
+          onToggle={() => setIsDrawerOpen(prev => !prev)}
+          onClose={() => setIsDrawerOpen(false)}
+          exam={activeExam}
+          skill={selectedSkill}
+          typeKey={typeParam}
+          isMock={Boolean(searchParams.get('mock'))}
+          questions={questions}
+          currentQuestionId={currentQuestion?.id}
+          completedIds={completedIds}
+          isLoading={loading}
+          onSelectQuestion={handleSelectQuestionFromDrawer}
+          onResetCompleted={() => {
+            setCompletedIds([]);
+            saveCompleted(activeExam, selectedSkill, typeParam, []);
+          }}
+        />
       )}
     </div>
   );

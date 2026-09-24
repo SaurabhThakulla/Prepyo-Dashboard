@@ -422,7 +422,7 @@ export default function SubscriptionPage() {
                   <div className="font-display text-3xl sm:text-4xl font-black text-foreground pt-1">
                     NPR 999
                   </div>
-                  <div className="text-[11px] text-muted-foreground font-medium">One-time · 97 days</div>
+                  <div className="text-[11px] text-muted-foreground font-medium">One-time · 33 days</div>
                 </div>
                 {rows.map((row, idx) => (
                   <div

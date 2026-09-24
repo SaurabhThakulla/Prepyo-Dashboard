@@ -120,7 +120,7 @@ export default function PtePracticeHub({ onSelectTask, activeTypeKey }: PtePract
       return;
     }
     const key = typeKey(taskName);
-    navigate(`/practice?skill=${skill}&type=${key}`);
+    navigate(`/practice?skill=${skill}&type=${key}&drawer=open`);
   };
 
   return (

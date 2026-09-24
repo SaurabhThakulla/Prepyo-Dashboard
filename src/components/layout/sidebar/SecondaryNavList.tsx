@@ -405,10 +405,15 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
   );
 
   if (item.href) {
+    const toHref =
+      item.href.startsWith('/practice') && (item.href.includes('type=') || item.href.includes('mock='))
+        ? (item.href.includes('drawer=') ? item.href : `${item.href}&drawer=open`)
+        : item.href;
+
     return (
       <Link
         ref={ref as React.Ref<HTMLAnchorElement>}
-        to={item.href}
+        to={toHref}
         onClick={onNavigate}
         className={className}
       >
