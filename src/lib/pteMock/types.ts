@@ -152,7 +152,8 @@ export interface PteCatalogEntry {
   estimatedMinutes: number;
   missing: string[];
   available: boolean;
-  cost: { kind: 'full_mock' | 'sub_tests'; credits: number };
+  /** What starting it spends: a full mock from the plan, or sub-tests plus AI gradings. */
+  cost: { kind: 'full_mock' | 'sub_tests'; credits: number; gradings?: number };
   live?: { id: string; current: number; totalItems: number; createdAt: string };
   latest?: PteHistoryEntry;
 }

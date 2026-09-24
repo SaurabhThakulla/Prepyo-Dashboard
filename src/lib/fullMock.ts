@@ -69,9 +69,8 @@ export function sectionLabel(skill: FullMockSkill): string {
   return FULL_MOCK_SECTIONS.find(section => section.skill === skill)?.label ?? skill;
 }
 
-/** Full mocks left in the plan; Infinity when unlimited. */
-export function fullMocksLeft(sub?: { unlimited?: boolean; totalMockTestsAllowed: number; mockTestsUsed: number } | null): number {
+/** Full mocks left in the plan. Every plan counts them, unlimited ones included. */
+export function fullMocksLeft(sub?: { totalMockTestsAllowed: number; mockTestsUsed: number } | null): number {
   if (!sub) return 0;
-  if (sub.unlimited) return Number.POSITIVE_INFINITY;
   return Math.max(0, (sub.totalMockTestsAllowed ?? 0) - (sub.mockTestsUsed ?? 0));
 }

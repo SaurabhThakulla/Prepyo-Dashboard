@@ -1724,9 +1724,8 @@ function PlanCard({
   const brand = formatPlanName(plan.id);
   const perks = [
     plan.unlimited ? 'Unlimited practice sub-tests' : `${plan.subTestsPerDay} practice sub-tests a day`,
-    plan.unlimited
-      ? 'Unlimited full mock exams'
-      : `${plan.mockTestsIncluded} full mock exam${plan.mockTestsIncluded === 1 ? '' : 's'}${free ? '' : ` included`}`,
+    `${(plan.aiGradingsPerPeriod ?? 0).toLocaleString('en-US')} AI gradings${plan.aiGradingsPeriod === 'day' ? ' a day' : ''} for speaking & writing`,
+    `${plan.mockTestsIncluded} full mock exam${plan.mockTestsIncluded === 1 ? '' : 's'}${free ? '' : ` included`}`,
     free ? 'Free forever' : `${days} days of access${plan.bonusDays ? ` (incl. ${plan.bonusDays} bonus)` : ''}`,
   ];
 

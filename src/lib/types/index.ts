@@ -77,9 +77,22 @@ export interface SubscriptionState {
   totalMockTestsAllowed: number;
   mockTestsUsed: number;
   bonusDays: number;
-  /** None of the limits above apply. */
+  /** Daily practice sub-tests are not limited. Full mocks and AI gradings are always counted. */
   unlimited?: boolean;
+  /**
+   * AI gradings: speaking and writing answers the AI marks, from a pool per
+   * plan period (the calendar month on the free plan). Used may be fractional:
+   * a word-matched Read Aloud or Repeat Sentence answer costs a fifth.
+   */
+  aiGradingsUsed?: number;
+  aiGradingsLimit?: number;
+  /** The date the pool starts again (YYYY-MM-DD). */
+  aiGradingsRenewOn?: string;
+  /** How often the pool renews: daily at midnight, each plan term, or monthly. */
+  aiGradingsPeriod?: AIGradingsPeriod;
 }
+
+export type AIGradingsPeriod = 'day' | 'plan' | 'month';
 
 export interface UserProfile {
   id: string;
@@ -617,7 +630,10 @@ export interface SubscriptionPlan {
   aiEvaluationsPerDay?: number;
   mockTestsIncluded: number;
   isPopular: boolean;
-  /** No daily sub-test, mock or tutor limit; the numbers above are not shown. */
+  /** Speaking and writing answers the AI may mark per aiGradingsPeriod. */
+  aiGradingsPerPeriod?: number;
+  aiGradingsPeriod?: AIGradingsPeriod;
+  /** No daily sub-test or tutor limit. Full mocks and AI gradings are counted on every plan. */
   unlimited?: boolean;
 }
 

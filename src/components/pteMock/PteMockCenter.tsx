@@ -155,7 +155,10 @@ function SectionCard({ entry, onOpen, onReport }: { entry: PteCatalogEntry; onOp
       </div>
       <div className="flex items-center justify-between text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatMinutes(entry.estimatedMinutes)}</span>
-        <span>{entry.availableItems} items · {entry.cost.credits} sub-tests</span>
+        <span>
+          {entry.availableItems} items · {entry.cost.credits} sub-tests
+          {entry.cost.gradings ? ` · ${entry.cost.gradings} gradings` : ''}
+        </span>
       </div>
       <Button onClick={onOpen} disabled={!entry.available && !entry.live} variant={entry.live ? 'default' : 'outline'} className="w-full gap-1.5 font-bold">
         {entry.live ? 'Resume' : entry.available ? 'Start' : 'Not available yet'} {entry.available || entry.live ? <ArrowRight className="h-4 w-4" /> : null}

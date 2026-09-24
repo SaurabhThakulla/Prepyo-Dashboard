@@ -249,7 +249,9 @@ export default function PteMockIntro({ entry, serverTranscription, starting, onS
                 <p className="text-[11px] text-center text-muted-foreground">
                   {entry.cost.kind === 'full_mock'
                     ? 'Uses one full mock test from your plan.'
-                    : `Uses ${entry.cost.credits} of your daily practice sub-tests.`}{' '}
+                    : `Uses ${entry.cost.credits} of your daily practice sub-tests${
+                        entry.cost.gradings ? ` and ${entry.cost.gradings} AI gradings` : ''
+                      }.`}{' '}
                   A test you have started carries on at no extra cost.
                 </p>
               )}

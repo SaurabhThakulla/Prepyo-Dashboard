@@ -12,7 +12,7 @@ import { SubscriptionPlan } from '@/lib/types';
 import { errorMessage } from '@/lib/api';
 import { formatExamDate } from '@/lib/dates';
 import { useSubscriptionPlans } from '@/lib/hooks/useResources';
-import { formatPlanName, limitLabel } from '@/lib/subscriptions';
+import { DEFAULT_PLANS, formatGradings, formatPlanName, gradingsLeft, gradingsPeriodLabel, limitLabel } from '@/lib/subscriptions';
 import QRPaymentCheckoutDialog from '@/components/subscription/QRPaymentCheckoutDialog';
 import QueuedPlansCard from '@/components/subscription/QueuedPlansCard';
 
@@ -40,58 +40,13 @@ export default function SubscriptionPage() {
     ? errorMessage(plansQuery.error, 'Could not load plans.')
     : null;
 
-  const freePlan = plans.find(p => p.id === 'free') ?? {
-    id: 'free' as const,
-    name: 'Suru',
-    priceNPR: 0,
-    durationMonths: 0,
-    durationDays: 0,
-    bonusDays: 0,
-    features: ['Core practice tasks', '5 practice sub-tests per day', '1 full mock exam'],
-    subTestsPerDay: 5,
-    mockTestsIncluded: 1,
-    isPopular: false,
-  };
-
-  const weeklyPlan = plans.find(p => p.id === 'weekly') ?? {
-    id: 'weekly' as const,
-    name: 'Abhyas',
-    priceNPR: 99,
-    durationMonths: 0,
-    durationDays: 7,
-    bonusDays: 0,
-    features: ['7 days access', '40 practice sub-tests per day', '10 section mock tests / week', '2 full mock exams'],
-    subTestsPerDay: 40,
-    mockTestsIncluded: 2,
-    isPopular: false,
-  };
-
-  const proPlan = plans.find(p => p.id === 'pro') ?? {
-    id: 'pro' as const,
-    name: 'Taiyari',
-    priceNPR: 299,
-    durationMonths: 1,
-    durationDays: 30,
-    bonusDays: 3,
-    features: ['33 days access', '50 practice sub-tests per day', '20 section mock tests / month', '5 full mock exams'],
-    subTestsPerDay: 50,
-    mockTestsIncluded: 5,
-    isPopular: true,
-  };
-
-  const elitePlan = plans.find(p => p.id === 'elite') ?? {
-    id: 'elite' as const,
-    name: 'Udaan',
-    priceNPR: 999,
-    durationMonths: 1,
-    durationDays: 30,
-    bonusDays: 3,
-    features: ['33 days full access', 'Unlimited practice sub-tests', 'Unlimited full mock exams', 'Unlimited AI tutor', 'Priority evaluation queue'],
-    subTestsPerDay: 60,
-    mockTestsIncluded: 10,
-    isPopular: false,
-    unlimited: true,
-  };
+  // Shown only until the server's plans arrive; the server's are what checkout charges.
+  const planFor = (id: SubscriptionPlan['id']) =>
+    plans.find(p => p.id === id) ?? DEFAULT_PLANS.find(p => p.id === id)!;
+  const freePlan = planFor('free');
+  const weeklyPlan = planFor('weekly');
+  const proPlan = planFor('pro');
+  const elitePlan = planFor('elite');
 
   const handleOpenCheckout = (plan: SubscriptionPlan) => {
     setSelectedPlan({ ...plan, name: formatPlanName(plan.name || plan.id) });
@@ -114,18 +69,32 @@ export default function SubscriptionPage() {
       elite: limitLabel(elitePlan.subTestsPerDay, elitePlan.unlimited),
     },
     {
+      label: (
+        <span>
+          AI gradings{' '}
+          <Badge variant="success" className="ml-1 px-1.5 py-0 text-[9px] align-middle">New</Badge>
+        </span>
+      ),
+      rowKey: 'ai-gradings',
+      free: `${formatGradings(freePlan.aiGradingsPerPeriod ?? 0)} / ${gradingsPeriodLabel(freePlan)}`,
+      weekly: `${formatGradings(weeklyPlan.aiGradingsPerPeriod ?? 0)} / ${gradingsPeriodLabel(weeklyPlan)}`,
+      pro: `${formatGradings(proPlan.aiGradingsPerPeriod ?? 0)} / ${gradingsPeriodLabel(proPlan)}`,
+      elite: `${formatGradings(elitePlan.aiGradingsPerPeriod ?? 0)} / ${gradingsPeriodLabel(elitePlan)}`,
+    },
+    {
       label: 'Section mock tests',
+      rowKey: 'section-mocks',
       free: dashMark,
-      weekly: '10 / week',
-      pro: '20 / calendar month',
-      elite: elitePlan.unlimited ? 'Unlimited' : '40 / calendar month',
+      weekly: checkMark,
+      pro: checkMark,
+      elite: checkMark,
     },
     {
       label: 'Full mock exams',
       free: `${freePlan.mockTestsIncluded} lifetime`,
       weekly: String(weeklyPlan.mockTestsIncluded),
       pro: `${proPlan.mockTestsIncluded} / calendar month`,
-      elite: elitePlan.unlimited ? 'Unlimited' : `${elitePlan.mockTestsIncluded} / calendar month`,
+      elite: `${elitePlan.mockTestsIncluded} / calendar month`,
     },
     {
       label: 'AI tutor messages',
@@ -223,11 +192,23 @@ export default function SubscriptionPage() {
                 <div>
                   <span className="text-[9px] sm:text-[10px] text-muted-foreground block uppercase font-bold">Mocks used</span>
                   <span className="font-extrabold text-foreground text-sm">
-                    {user.subscription.unlimited
-                      ? `${user.subscription.mockTestsUsed} · Unlimited`
-                      : `${user.subscription.mockTestsUsed} / ${user.subscription.totalMockTestsAllowed}`}
+                    {`${user.subscription.mockTestsUsed} / ${user.subscription.totalMockTestsAllowed}`}
                   </span>
                 </div>
+                {user.subscription.aiGradingsLimit != null && (
+                  <div>
+                    <span className="text-[9px] sm:text-[10px] text-muted-foreground block uppercase font-bold">AI gradings</span>
+                    <span className="font-extrabold text-foreground text-sm">
+                      {formatGradings(user.subscription.aiGradingsUsed ?? 0)} / {formatGradings(user.subscription.aiGradingsLimit)}
+                    </span>
+                    <span className="block text-[9px] sm:text-[10px] text-muted-foreground">
+                      {formatGradings(gradingsLeft(user.subscription))} left
+                      {user.subscription.aiGradingsPeriod === 'day'
+                        ? ' · resets at midnight'
+                        : user.subscription.aiGradingsRenewOn && ` · renews ${formatExamDate(user.subscription.aiGradingsRenewOn)}`}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}

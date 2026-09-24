@@ -4,7 +4,8 @@ import { ArrowRight, Gift } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { UserProfile } from '@/lib/types';
-import { formatPlanName } from '@/lib/subscriptions';
+import { formatExamDate } from '@/lib/dates';
+import { formatPlanName, gradingsLeft } from '@/lib/subscriptions';
 
 interface CurrentPlanCardProps {
   user?: UserProfile | null;
@@ -50,11 +51,14 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
   const mocksLimit = sub.totalMockTestsAllowed;
   const mocksRemaining = Math.max(0, mocksLimit - mocksUsed);
 
+  const gradingsLimit = sub.aiGradingsLimit ?? 0;
+  const gradingsRemaining = Math.floor(gradingsLeft(sub));
+
   return (
     <div className="relative w-full overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-shadow duration-300 hover:shadow-md dark:border-white/10 dark:bg-[#12161c] sm:p-6">
       <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-gradient-to-br from-primary/10 via-indigo-500/10 to-transparent blur-3xl" />
 
-      <div className="relative z-10 grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-center">
+      <div className="relative z-10 grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-center">
         {/* Plan */}
         <div className="flex min-w-0 items-center gap-4">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-indigo-600 text-white shadow-md shadow-primary/20">
@@ -119,10 +123,24 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
         />
 
         <QuotaGauge
+          title="AI gradings"
+          remaining={gradingsRemaining}
+          limit={gradingsLimit}
+          period={sub.aiGradingsPeriod === 'day' ? 'today' : sub.aiGradingsPeriod === 'month' ? 'this month' : 'this plan'}
+          hint={
+            sub.aiGradingsPeriod === 'day'
+              ? 'Speaking & writing · resets at midnight'
+              : sub.aiGradingsRenewOn
+                ? `Speaking & writing · renews ${formatExamDate(sub.aiGradingsRenewOn)}`
+                : 'Speaking & writing'
+          }
+          accent="text-emerald-500"
+        />
+
+        <QuotaGauge
           title="Full mock tests"
           remaining={mocksRemaining}
           limit={mocksLimit}
-          unlimited={sub.unlimited}
           period={isFree ? 'in total' : 'this month'}
           hint={isFree ? 'Included with your account' : 'Renews on the 1st'}
           accent="text-violet-500"
@@ -236,7 +254,7 @@ function PlanBadgeIcon({ className }: { className?: string }) {
 function CurrentPlanCardSkeleton() {
   return (
     <div className="relative w-full animate-pulse overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs dark:border-white/10 dark:bg-[#12161c] sm:p-6">
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-center">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-center">
         <div className="flex min-w-0 items-center gap-4">
           <div className="h-14 w-14 rounded-2xl bg-muted" />
           <div className="space-y-2">
@@ -245,7 +263,7 @@ function CurrentPlanCardSkeleton() {
             <div className="h-3 w-28 rounded bg-muted" />
           </div>
         </div>
-        {[0, 1].map(i => (
+        {[0, 1, 2].map(i => (
           <div key={i} className="flex items-center gap-4 rounded-xl bg-muted/30 p-3.5">
             <div className="h-14 w-14 rounded-full bg-muted" />
             <div className="space-y-2">
