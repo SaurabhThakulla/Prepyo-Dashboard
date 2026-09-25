@@ -161,7 +161,7 @@ export default function SecondaryNavList({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto py-2 space-y-1">
+    <div className="flex-1 overflow-y-auto py-0 space-y-0">
       {!items[0]?.group && (
         <div className="px-4 py-1.5 bg-slate-200/80 dark:bg-slate-800/70 text-slate-900 dark:text-slate-100 border-y border-slate-300/80 dark:border-slate-700/60 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -176,11 +176,11 @@ export default function SecondaryNavList({
       )}
 
       <TooltipProvider delayDuration={120}>
-        <div className="space-y-1">
+        <div className="space-y-0">
           {groups.map((group, groupIndex) => {
             if (!group.name) {
               return (
-                <div key={`ungrouped-${groupIndex}`} className="space-y-0.5">
+                <div key={`ungrouped-${groupIndex}`} className="space-y-0">
                   {group.items.map((item, idx) => (
                     <TooltipItem
                       key={`${item.href ?? item.label}-${idx}`}
@@ -197,7 +197,7 @@ export default function SecondaryNavList({
             const isCollapsed = Boolean(collapsedGroups[group.name]) && !isGroupActive;
 
             return (
-              <div key={`group-${group.name}-${groupIndex}`} className="space-y-0.5">
+              <div key={`group-${group.name}-${groupIndex}`} className="space-y-0">
                 <GroupHeading
                   groupName={group.name}
                   groupHref={group.groupHref}
@@ -208,7 +208,7 @@ export default function SecondaryNavList({
                 />
 
                 {!isCollapsed && (
-                  <div className="space-y-0.5 pt-0.5 pb-0.5">
+                  <div className="space-y-0">
                     {group.items.map((item, idx) => (
                       <TooltipItem
                         key={`${item.href ?? item.label}-${idx}`}
@@ -360,10 +360,10 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
 ) {
   const Icon = getSubtopicIcon(item.label, item.icon);
 
-  const className = `group flex items-center justify-between w-full text-left pl-[22px] pr-3.5 py-2 rounded-none text-xs transition-colors duration-150 border ${
+  const className = `group flex items-center justify-between w-full text-left pl-[22px] pr-3.5 py-2 rounded-none text-xs transition-colors duration-150 border-b border-slate-100/60 dark:border-white/5 ${
     isActive
-      ? 'border-transparent bg-slate-100 dark:bg-white/10 text-foreground dark:text-white font-semibold shadow-xs'
-      : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-slate-100/60 dark:hover:bg-white/5 font-medium'
+      ? 'bg-slate-100 dark:bg-white/10 text-foreground dark:text-white font-semibold shadow-xs'
+      : 'text-muted-foreground hover:text-foreground hover:bg-slate-100/60 dark:hover:bg-white/5 font-medium'
   }`;
 
   const content = (

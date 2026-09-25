@@ -202,11 +202,22 @@ export function usePracticeSession() {
       await refreshUser();
     } catch (err) {
       if (err instanceof ApiError && err.isAIUnavailable) {
-        toast.error('Scoring is unavailable right now', 'Your answer was saved. Please try again in a few minutes.');
+        toast.error(
+          'Internet connection issue',
+          'Your internet connection seems slow or disconnected. Your question is saved in your Mistake Bank so you can retry once your internet connection is restored.',
+        );
+      } else if (err instanceof ApiError && (err.code === 'network_error' || err.status === 0)) {
+        toast.error(
+          'Network connection error',
+          'Your internet connection is not stable right now. You can check your Mistake Bank to retry once your connection is resolved.',
+        );
       } else if (err instanceof ApiError && err.isLimitReached) {
         toast.warning('Daily sub-test limit reached', errorMessage(err));
       } else {
-        toast.error('Could not submit your answer', errorMessage(err));
+        toast.error(
+          'Internet connection issue',
+          'Could not complete scoring due to an internet or connection interruption. You can check your Mistake Bank to retry once your connection is resolved.',
+        );
       }
     } finally {
       setSubmitting(false);

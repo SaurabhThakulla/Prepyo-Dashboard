@@ -45,13 +45,13 @@ export default function AppSidebar({
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<PrimarySectionId>(() =>
-    getSectionFromPathname(pathname),
+    getSectionFromPathname(pathname, searchParams),
   );
 
   // Follow the URL, so arriving at a page by any route selects its section.
   useEffect(() => {
-    setActiveSection(getSectionFromPathname(pathname));
-  }, [pathname]);
+    setActiveSection(getSectionFromPathname(pathname, searchParams));
+  }, [pathname, searchParams]);
 
   // Reading headings are only worth showing when the bank has something behind
   // them, so the menu is checked against the same list the practice page deals

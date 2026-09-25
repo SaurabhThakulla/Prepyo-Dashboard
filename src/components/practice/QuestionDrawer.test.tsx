@@ -273,4 +273,45 @@ describe('QuestionDrawer Component', () => {
     expect(cards.length).toBe(20);
     expect(screen.getByText(/Scroll for more/i)).toBeDefined();
   });
+
+  it('renders realistic skeleton loader when isLoading is true and suppresses empty state', () => {
+    const { rerender } = render(
+      <QuestionDrawer
+        isOpen={true}
+        onToggle={vi.fn()}
+        onClose={vi.fn()}
+        exam="PTE"
+        skill="speaking"
+        typeKey="readaloud"
+        questions={[]}
+        completedIds={[]}
+        isLoading={true}
+        onSelectQuestion={vi.fn()}
+      />,
+    );
+
+    // Shows skeleton loading status
+    expect(screen.getByRole('status', { name: /loading questions/i })).toBeDefined();
+    // Does NOT show empty state while loading
+    expect(screen.queryByText(/no questions found/i)).toBeNull();
+
+    // When loading finishes with 0 questions, it shows the empty state
+    rerender(
+      <QuestionDrawer
+        isOpen={true}
+        onToggle={vi.fn()}
+        onClose={vi.fn()}
+        exam="PTE"
+        skill="speaking"
+        typeKey="readaloud"
+        questions={[]}
+        completedIds={[]}
+        isLoading={false}
+        onSelectQuestion={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('status', { name: /loading questions/i })).toBeNull();
+    expect(screen.getByText(/no questions found/i)).toBeDefined();
+  });
 });

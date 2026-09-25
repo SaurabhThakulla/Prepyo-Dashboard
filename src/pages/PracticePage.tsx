@@ -55,6 +55,8 @@ import MockPaperDrawer from '@/components/practice/MockPaperDrawer';
 import { useMockPapers } from '@/lib/hooks/useMockPapers';
 import { useReadingPracticePassages } from '@/lib/hooks/useReading';
 import { fetchAllQuestions } from '@/lib/hooks/useResources';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
 import { familyOf, typeIdsFor } from '@/lib/readingTypes';
 import { pteReportHref } from '@/lib/pteMock/catalog';
 import { api, ApiError, errorMessage } from '@/lib/api';
@@ -154,18 +156,26 @@ function PracticePageContent() {
       ? skillParam
       : 'reading';
 
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [pendingQuestionToStart, setPendingQuestionToStart] = useState<Question | null>(null);
-
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const isMockMode = Boolean(searchParams.get('mock'));
+  const drawerParam = searchParams.get('drawer');
+  const readingList = selectedSkill === 'reading' && !isMockMode && !mistakeId && !isAdmin(user);
+
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+  const [loading, setLoading] = useState(
+    () => !mistakeId && !readingList && Boolean(typeParam || drawerParam === 'open' || drawerParam === '1'),
+  );
+  const [pendingQuestionToStart, setPendingQuestionToStart] = useState<Question | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(
+    () => (isMockMode && !searchParams.get('paper')) || drawerParam === 'open' || drawerParam === '1',
+  );
+
   const { data: mockPapers = [], isLoading: mockPapersLoading } = useMockPapers(activeExam, selectedSkill, undefined, isMockMode);
 
   // Reading is practised by passage, not by single question, so its list is
   // the passages practice deals for the task (and its family).
-  const readingList = selectedSkill === 'reading' && !isMockMode && !mistakeId && !isAdmin(user);
   const readingFamily = useMemo(
     () => [...new Set(typeIdsFor(typeParam).flatMap(familyOf))],
     [typeParam],
@@ -173,11 +183,6 @@ function PracticePageContent() {
   const readingPassagesQuery = useReadingPracticePassages(activeExam, readingFamily, readingList);
   const readingPassages = readingPassagesQuery.data?.passages ?? [];
   const passageParam = searchParams.get('passage');
-
-  const drawerParam = searchParams.get('drawer');
-  const [isDrawerOpen, setIsDrawerOpen] = useState(
-    () => (isMockMode && !searchParams.get('paper')) || drawerParam === 'open' || drawerParam === '1',
-  );
 
   useEffect(() => {
     if (drawerParam === 'open' || drawerParam === '1') {
@@ -189,7 +194,11 @@ function PracticePageContent() {
     if (mistakeId) return;
     setLoading(true);
     try {
-      const data = await fetchAllQuestions(activeExam, selectedSkill);
+      const data = await queryClient.fetchQuery({
+        queryKey: queryKeys.questions(activeExam, selectedSkill),
+        queryFn: () => fetchAllQuestions(activeExam, selectedSkill),
+        staleTime: 5 * 60_000,
+      });
       const all = data.questions ?? [];
       const list = typeParam
         ? all.filter(question => {
@@ -209,28 +218,26 @@ function PracticePageContent() {
           })
         : all;
 
-      if (list.length > 0) {
-        setQuestions(list);
-        const done = loadCompleted(activeExam, selectedSkill, typeParam);
-        const known = done.filter(id => list.some(q => q.id === id));
-        setCompletedIds(known);
+      setQuestions(list);
+      const done = loadCompleted(activeExam, selectedSkill, typeParam);
+      const known = done.filter(id => list.some(q => q.id === id));
+      setCompletedIds(known);
 
-        setCurrentQuestion(prev => {
-          if (prev && list.some(q => q.id === prev.id)) return prev;
-          const reqId = searchParams.get('questionId');
-          if (reqId) {
-            const found = list.find(q => q.id === reqId);
-            if (found) return found;
-          }
-          return null;
-        });
-      }
+      setCurrentQuestion(prev => {
+        if (prev && list.some(q => q.id === prev.id)) return prev;
+        const reqId = searchParams.get('questionId');
+        if (reqId) {
+          const found = list.find(q => q.id === reqId);
+          if (found) return found;
+        }
+        return list[0] ?? null;
+      });
     } catch {
       // ignore
     } finally {
       setLoading(false);
     }
-  }, [activeExam, selectedSkill, typeParam, mistakeId, searchParams]);
+  }, [activeExam, selectedSkill, typeParam, mistakeId, searchParams, queryClient]);
 
   useEffect(() => {
     if (!isTestMockMode && (isDrawerOpen || Boolean(typeParam)) && !mistakeId && questions.length === 0) {
@@ -533,12 +540,32 @@ function PracticePageContent() {
       if (!mistakeId) markComplete(currentQuestion.id);
       await refreshUser();
     } catch (err) {
+      if (currentQuestion && !mistakeId) {
+        recordQuestionAttempt(
+          activeExam,
+          currentQuestion.id,
+          0,
+          activeExam === 'PTE' ? 90 : 9,
+          false,
+        );
+      }
       if (err instanceof ApiError && err.isAIUnavailable) {
-        toast.error('Scoring is unavailable right now', 'Your answer was saved. Please try again in a few minutes.');
+        toast.error(
+          'Internet connection issue',
+          'Your internet connection seems slow or disconnected. Your question is saved in your Mistake Bank so you can retry once your internet connection is restored.',
+        );
+      } else if (err instanceof ApiError && (err.code === 'network_error' || err.status === 0)) {
+        toast.error(
+          'Network connection error',
+          'Your internet connection is not stable right now. You can check your Mistake Bank to retry once your connection is resolved.',
+        );
       } else if (err instanceof ApiError && err.isLimitReached) {
         toast.warning('Daily sub-test limit reached', errorMessage(err));
       } else {
-        toast.error('Could not submit your answer', errorMessage(err));
+        toast.error(
+          'Internet connection issue',
+          'Could not complete scoring due to an internet or connection interruption. You can check your Mistake Bank to retry once your connection is resolved.',
+        );
       }
     } finally {
       setSubmitting(false);
@@ -1103,7 +1130,12 @@ function PracticePageContent() {
           }))}
           currentQuestionId={passageParam}
           completedIds={readingPassages.filter(passage => passage.practisedAt).map(passage => passage.id)}
-          isLoading={readingPassagesQuery.isPending && readingFamily.length > 0}
+          isLoading={
+            readingPassagesQuery.isLoading ||
+            readingPassagesQuery.isPending ||
+            (readingPassagesQuery.isFetching && readingPassages.length === 0) ||
+            (readingFamily.length === 0 && Boolean(typeParam))
+          }
           onSelectQuestion={passage => {
             const next = new URLSearchParams(searchParams);
             next.set('passage', passage.id);
@@ -1126,7 +1158,7 @@ function PracticePageContent() {
           questions={questions}
           currentQuestionId={currentQuestion?.id}
           completedIds={completedIds}
-          isLoading={loading}
+          isLoading={loading || (questions.length === 0 && Boolean(typeParam) && !mistakeId)}
           onSelectQuestion={question => setPendingQuestionToStart(question)}
           onResetCompleted={() => {
             setCompletedIds([]);

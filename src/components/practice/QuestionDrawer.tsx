@@ -20,6 +20,7 @@ import {
   resetTaskPracticeRecords,
   QuestionRecord,
 } from '@/lib/questionStorage';
+import { Skeleton } from '@/components/ui/skeleton';
 
 /** What a row needs: a question, or a reading passage (reading is practised by passage). */
 export interface DrawerItem {
@@ -290,7 +291,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
                         : 'bg-slate-200/80 dark:bg-white/10 text-slate-600 dark:text-slate-400'
                     }`}
                   >
-                    {tab.count}
+                    {isLoading ? '…' : tab.count}
                   </span>
                 </button>
               );
@@ -300,18 +301,47 @@ export default function QuestionDrawer<T extends DrawerItem>({
 
         {/* 4. Stats Summary Strip */}
         <div className="px-4 py-2 bg-slate-50 dark:bg-[#131926] border-b border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 shrink-0">
-          <div>
-            Done <span className="font-bold text-teal-600 dark:text-teal-400">{doneCount}</span>, Found{' '}
-            <span className="font-bold text-slate-800 dark:text-white">{filteredQuestions.length}</span> Questions
-          </div>
+          {isLoading ? (
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+              <span className="text-slate-400 dark:text-slate-500">Loading {taskMeta.name} questions…</span>
+            </div>
+          ) : (
+            <div>
+              Done <span className="font-bold text-teal-600 dark:text-teal-400">{doneCount}</span>, Found{' '}
+              <span className="font-bold text-slate-800 dark:text-white">{filteredQuestions.length}</span> Questions
+            </div>
+          )}
         </div>
 
         {/* 5. Infinite Scroll Questions List */}
         <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-white/5">
           {isLoading ? (
-            <div className="p-8 text-center space-y-3">
-              <div className="w-8 h-8 border-3 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-xs text-slate-500">Loading {taskMeta.name} questions…</p>
+            <div className="divide-y divide-slate-100 dark:divide-white/5" role="status" aria-label="Loading questions">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={`drawer-skeleton-${i}`}
+                  className="px-4 sm:px-5 py-3.5 flex items-center justify-between gap-3 animate-pulse"
+                >
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Skeleton
+                        className="h-4 bg-slate-200/80 dark:bg-slate-800 rounded"
+                        style={{ width: `${Math.max(40, 75 - ((i * 11) % 35))}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Skeleton className="h-3.5 w-12 rounded bg-slate-100 dark:bg-slate-800/60" />
+                      {skill === 'speaking' && (
+                        <Skeleton className="h-3.5 w-12 rounded bg-slate-100 dark:bg-slate-800/60" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Skeleton className="h-7 w-20 rounded-full bg-slate-200/70 dark:bg-slate-800/70" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : displayedQuestions.length === 0 ? (
             <div className="p-10 text-center space-y-3">

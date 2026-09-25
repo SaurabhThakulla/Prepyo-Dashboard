@@ -76,7 +76,9 @@ const PRACTICE_SKILLS: { skill: SkillType; label: string; icon: LucideIcon; subl
 ];
 
 /** Which primary section a URL belongs to. */
-export function getSectionFromPathname(path: string): PrimarySectionId {
+export function getSectionFromPathname(path: string, searchParams?: URLSearchParams | string): PrimarySectionId {
+  const params = typeof searchParams === 'string' ? new URLSearchParams(searchParams) : searchParams;
+  if (params?.get('mock') || params?.get('view') === 'full') return 'mock';
   if (path.startsWith('/practice')) return 'practice';
   if (path.startsWith('/mocks') || path.startsWith('/diagnostic')) return 'mock';
   if (path.startsWith('/evaluations')) return 'aicoach';

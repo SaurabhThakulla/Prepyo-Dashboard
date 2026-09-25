@@ -86,11 +86,22 @@ export default function EvaluationsPage() {
     } catch (err) {
       if (err instanceof ApiError && err.isAIUnavailable) {
         setUnavailable(true);
-        toast.error('Scoring is unavailable right now', errorMessage(err));
+        toast.error(
+          'Internet connection issue',
+          'Your internet connection seems slow or disconnected. Your answer is preserved, and you can check your Mistake Bank to retry once your connection is restored.',
+        );
+      } else if (err instanceof ApiError && (err.code === 'network_error' || err.status === 0)) {
+        toast.error(
+          'Network connection error',
+          'Could not reach the server due to a network interruption. Please check your connection or retry from your Mistake Bank later.',
+        );
       } else if (err instanceof ApiError && err.isLimitReached) {
         toast.warning('Daily limit reached', errorMessage(err));
       } else {
-        toast.error('Could not score your response', errorMessage(err));
+        toast.error(
+          'Internet connection issue',
+          'Could not score your response due to a connection issue. You can check your Mistake Bank to retry once your connection is restored.',
+        );
       }
     } finally {
       setLoading(false);
