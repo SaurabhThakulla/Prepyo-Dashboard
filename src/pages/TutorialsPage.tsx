@@ -202,11 +202,7 @@ export default function TutorialsPage() {
                     type="button"
                     onClick={() => setViewMode('standard')}
                     title="Standard View (Split layout)"
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                      viewMode === 'standard'
-                        ? 'bg-primary text-white shadow-sm font-semibold'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-muted"
                   >
                     <Layout className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Standard</span>
@@ -216,11 +212,7 @@ export default function TutorialsPage() {
                     type="button"
                     onClick={() => setViewMode('theater')}
                     title="Big Screen (Theater wide view)"
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                      viewMode === 'theater'
-                        ? 'bg-primary text-white shadow-sm font-semibold'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all bg-primary text-white shadow-sm font-semibold"
                   >
                     <Tv className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Big Screen</span>
@@ -355,11 +347,7 @@ export default function TutorialsPage() {
                         type="button"
                         onClick={() => setViewMode('standard')}
                         title="Standard View (Split layout)"
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                          viewMode === 'standard'
-                            ? 'bg-primary text-white shadow-sm font-semibold'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                        }`}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all bg-primary text-white shadow-sm font-semibold"
                       >
                         <Layout className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Standard</span>
@@ -369,11 +357,7 @@ export default function TutorialsPage() {
                         type="button"
                         onClick={() => setViewMode('theater')}
                         title="Big Screen (Theater wide view)"
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                          viewMode === 'theater'
-                            ? 'bg-primary text-white shadow-sm font-semibold'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                        }`}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-muted"
                       >
                         <Tv className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Big Screen</span>
