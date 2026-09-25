@@ -60,6 +60,11 @@ interface AppContextType {
   setIsTutorOpen: (open: boolean) => void;
   tutorContextPrompt: string;
   setTutorContextPrompt: (prompt: string) => void;
+  /** A question the coach drawer sends by itself as soon as it opens. */
+  tutorQuestion: string | null;
+  /** Opens the coach on a fresh conversation about `context` and asks `question`. */
+  askTutor: (context: string, question: string) => void;
+  clearTutorQuestion: () => void;
 
   activeTestSession: ActiveTestSession | null;
   setActiveTestSession: (session: ActiveTestSession | null) => void;
@@ -101,6 +106,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const [isTutorOpen, setIsTutorOpen] = useState(false);
   const [tutorContextPrompt, setTutorContextPrompt] = useState('');
+  const [tutorQuestion, setTutorQuestion] = useState<string | null>(null);
+  const askTutor = useCallback((context: string, question: string) => {
+    setTutorContextPrompt(context);
+    setTutorQuestion(question);
+    setIsTutorOpen(true);
+  }, []);
+  const clearTutorQuestion = useCallback(() => setTutorQuestion(null), []);
   const [theme, setThemeState] = useState<'light' | 'dark'>('light');
   const [activeTestSession, setActiveTestSession] = useState<ActiveTestSession | null>(null);
 
@@ -408,6 +420,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setIsTutorOpen,
         tutorContextPrompt,
         setTutorContextPrompt,
+        tutorQuestion,
+        askTutor,
+        clearTutorQuestion,
         theme,
         setTheme,
         toggleTheme,

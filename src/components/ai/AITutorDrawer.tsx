@@ -11,7 +11,7 @@ interface ChatMessage {
 }
 
 export default function AITutorDrawer() {
-  const { isTutorOpen, setIsTutorOpen, activeExam, tutorContextPrompt } = useApp();
+  const { isTutorOpen, setIsTutorOpen, activeExam, tutorContextPrompt, tutorQuestion, clearTutorQuestion } = useApp();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // The greeting follows the exam currently selected, and is shown only: it is
   // not part of the conversation sent to the coach.
@@ -47,12 +47,12 @@ export default function AITutorDrawer() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isTutorOpen, setIsTutorOpen]);
 
-  const handleSend = async (textToSend?: string) => {
+  const handleSend = async (textToSend?: string, history: ChatMessage[] = messages) => {
     const text = textToSend || input;
     if (!text.trim() || loading) return;
 
     const userMsg: ChatMessage = { role: 'user', content: text };
-    const newMessages = [...messages, userMsg];
+    const newMessages = [...history, userMsg];
     setMessages(newMessages);
     setInput('');
     setLoading(true);
@@ -75,6 +75,17 @@ export default function AITutorDrawer() {
       setLoading(false);
     }
   };
+
+  // A question asked from elsewhere in the app (such as "Explain my mistake")
+  // starts a new conversation about its own context, then sends itself.
+  useEffect(() => {
+    if (!isTutorOpen || !tutorQuestion || loading) return;
+    const question = tutorQuestion;
+    clearTutorQuestion();
+    void handleSend(question, []);
+    // handleSend is recreated each render; only a new question should trigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTutorOpen, tutorQuestion]);
 
   const quickPrompts = activeExam === 'PTE' ? [
     'Give me the 90/90 Describe Image template',

@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { wordDiff } from '@/lib/wordDiff';
 import type { PracticeResult } from '@/lib/hooks/usePracticeSession';
 import type { Evaluation, ExamType, PracticeAttempt, Question } from '@/lib/types';
+import ExplainMistake from './ExplainMistake';
 
 /**
  * What came back from grading. Two shapes, because the two paths differ:
@@ -126,6 +127,8 @@ function DeterministicResult({ attempt, review, xpAwarded }: { attempt: Practice
           <p className="text-sm leading-relaxed text-foreground">{review.explanation}</p>
         </div>
       )}
+
+      {review && !attempt.isCorrect && <ExplainMistake attempt={attempt} review={review} />}
     </Card>
   );
 }
