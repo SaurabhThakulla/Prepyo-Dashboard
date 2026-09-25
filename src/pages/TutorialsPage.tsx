@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
-  Video,
   Mic,
   PenTool,
   BookOpen,
@@ -126,23 +125,7 @@ export default function TutorialsPage() {
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-8 pb-16 max-w-7xl mx-auto">
-      {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Video className="h-5 w-5" />
-            </span>
-            <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
-              Video Tutorials & Masterclasses
-            </h1>
-          </div>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-2xl">
-            Watch proven exam strategies, template breakdowns, and scoring secrets for Speaking, Writing, Reading, and
-            Listening.
-          </p>
-        </div>
-      </div>
+
 
       {/* ── Filters & Search Bar ── */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">

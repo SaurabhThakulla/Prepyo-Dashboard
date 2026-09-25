@@ -20,7 +20,6 @@ describe('TutorialsPage component', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Video Tutorials & Masterclasses')).toBeDefined();
     expect(screen.getByPlaceholderText('Search strategies, topics...')).toBeDefined();
     expect(screen.getByText('Key Exam Strategies')).toBeDefined();
   });
