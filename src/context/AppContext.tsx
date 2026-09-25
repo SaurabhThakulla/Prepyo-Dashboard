@@ -90,7 +90,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadedNotifications = useRef(NOTIFICATION_PAGE);
   const notificationsRef = useRef(notifications);
   notificationsRef.current = notifications;
-  const [activeExam, setActiveExamState] = useState<ExamType>('PTE');
+  const [activeExam, setActiveExamState] = useState<ExamType>(() => {
+    try {
+      const saved = localStorage.getItem('prepyo-active-exam');
+      if (saved === 'IELTS' || saved === 'PTE') return saved;
+    } catch {
+      // ignore
+    }
+    return 'PTE';
+  });
   const [isTutorOpen, setIsTutorOpen] = useState(false);
   const [tutorContextPrompt, setTutorContextPrompt] = useState('');
   const [theme, setThemeState] = useState<'light' | 'dark'>('light');
@@ -152,7 +160,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const applyUser = useCallback((next: UserProfile) => {
     setUser(next);
-    setActiveExamState(next.targetExam);
+    if (next.targetExam === 'IELTS' || next.targetExam === 'PTE') {
+      setActiveExamState(next.targetExam);
+      try {
+        localStorage.setItem('prepyo-active-exam', next.targetExam);
+      } catch {
+        // ignore
+      }
+    }
   }, []);
 
   const refreshNotifications = useCallback(async () => {
@@ -272,6 +287,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setActiveExam = useCallback(
     async (exam: ExamType) => {
       setActiveExamState(exam);
+      try {
+        localStorage.setItem('prepyo-active-exam', exam);
+      } catch {
+        // ignore
+      }
       if (!user) return;
       try {
         await updateProfile({ targetExam: exam });
@@ -279,6 +299,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Put the switch back where it was rather than showing a preference
         // that was never saved.
         setActiveExamState(user.targetExam);
+        try {
+          localStorage.setItem('prepyo-active-exam', user.targetExam);
+        } catch {
+          // ignore
+        }
         console.error('Failed to change target exam:', err);
       }
     },

@@ -147,7 +147,7 @@ function PracticePageContent() {
   const typeParam = searchParams.get('type');
   const mistakeId = searchParams.get('mistake') || undefined;
   const linkedExam = searchParams.get('exam');
-  const activeExam = mistakeId && (linkedExam === 'IELTS' || linkedExam === 'PTE') ? linkedExam : contextExam;
+  const activeExam = (linkedExam === 'IELTS' || linkedExam === 'PTE') ? linkedExam : contextExam;
   const resolution = useMistakeResolution(mistakeId);
 
   const skillParam = searchParams.get('skill') as SkillType | null;
@@ -288,7 +288,7 @@ function PracticePageContent() {
   const startPending = useRef(false);
   const taskKey = currentQuestion ? `${activeExam}:${selectedSkill}:${currentQuestion.id}` : null;
   const latestTaskKey = useRef(taskKey);
-  const hasStarted = isTestMockMode ? (taskKey !== null && startedTask === taskKey) : true;
+  const hasStarted = Boolean(taskKey && startedTask === taskKey);
   // Scoring a recording needs a provider that accepts audio. Without one the
   // recorder still earns its place - record, listen back, try again - but
   // nothing grades the answer and no sub-test credit is spent, so the screen
@@ -695,7 +695,7 @@ function PracticePageContent() {
         </Suspense>
       ) : isStarting ? (
         <PracticePageSkeleton />
-      ) : isTestMockMode && !hasStarted ? (
+      ) : !hasStarted ? (
         <div className="relative w-full min-h-[calc(100vh-4rem)]">
           <PreTestBlurOverlay
             title={
