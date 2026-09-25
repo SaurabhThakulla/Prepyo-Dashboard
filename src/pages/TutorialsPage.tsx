@@ -195,6 +195,67 @@ export default function TutorialsPage() {
                 />
               </div>
 
+              {/* Player Controls Bar below video on bottom left */}
+              <div className="px-5 py-2.5 bg-muted/20 border-b border-border/60 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1 bg-card p-1 rounded-xl border border-border shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('standard')}
+                    title="Standard View (Split layout)"
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                      viewMode === 'standard'
+                        ? 'bg-primary text-white shadow-sm font-semibold'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <Layout className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Standard</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('theater')}
+                    title="Big Screen (Theater wide view)"
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                      viewMode === 'theater'
+                        ? 'bg-primary text-white shadow-sm font-semibold'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <Tv className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Big Screen</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('mini')}
+                    title="Mini Player (Watch freely while browsing)"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    <PictureInPicture className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Mini Player</span>
+                  </button>
+
+                  <a
+                    href={`https://www.youtube.com/watch?v=${activeVideo.youtubeId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Watch directly on YouTube"
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    <span className="hidden md:inline text-[11px]">YouTube</span>
+                  </a>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
+                    <Play className="h-3 w-3 fill-primary" />
+                    Now Playing
+                  </span>
+                </div>
+              </div>
+
               {/* Lesson Metadata & Quick Action underneath wide player */}
               <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 bg-card">
                 <div className="lg:col-span-8 space-y-4">
@@ -274,15 +335,79 @@ export default function TutorialsPage() {
           {viewMode === 'standard' && (
             <Card className="overflow-hidden border-border bg-card shadow-md transition-all duration-300">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
-                {/* Left: Responsive 16:9 Embedded YouTube Player */}
-                <div className="lg:col-span-8 bg-black aspect-video relative flex items-center justify-center">
-                  <iframe
-                    src={`https://www.youtube-nocookie.com/embed/${activeVideo.youtubeId}?autoplay=0&rel=0&modestbranding=1`}
-                    title={activeVideo.title}
-                    className="w-full h-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
+                {/* Left: Responsive 16:9 Embedded YouTube Player + Controls at the bottom left space */}
+                <div className="lg:col-span-8 flex flex-col justify-between bg-card">
+                  <div className="w-full bg-black aspect-video relative flex items-center justify-center">
+                    <iframe
+                      src={`https://www.youtube-nocookie.com/embed/${activeVideo.youtubeId}?autoplay=0&rel=0&modestbranding=1`}
+                      title={activeVideo.title}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
+
+                  {/* Bottom-left controls below video player */}
+                  <div className="p-3 bg-muted/20 border-t border-border/60 flex flex-wrap items-center justify-between gap-2">
+                    {/* Buttons on bottom left */}
+                    <div className="flex items-center gap-1 bg-card p-1 rounded-xl border border-border shadow-sm">
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('standard')}
+                        title="Standard View (Split layout)"
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                          viewMode === 'standard'
+                            ? 'bg-primary text-white shadow-sm font-semibold'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        <Layout className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Standard</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('theater')}
+                        title="Big Screen (Theater wide view)"
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                          viewMode === 'theater'
+                            ? 'bg-primary text-white shadow-sm font-semibold'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        <Tv className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Big Screen</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('mini')}
+                        title="Mini Player (Watch freely while browsing)"
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-muted"
+                      >
+                        <PictureInPicture className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Mini Player</span>
+                      </button>
+
+                      <a
+                        href={`https://www.youtube.com/watch?v=${activeVideo.youtubeId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Watch directly on YouTube"
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        <span className="hidden md:inline text-[11px]">YouTube</span>
+                      </a>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
+                        <Play className="h-3 w-3 fill-primary" />
+                        Now Playing
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Right: Lesson Metadata & Quick Action */}
@@ -386,73 +511,6 @@ export default function TutorialsPage() {
                 </Button>
               </div>
             </Card>
-          )}
-
-          {/* Player controls bar: Screen Size & Freedom View Controls (docked at bottom of video) */}
-          {viewMode !== 'mini' && (
-            <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-1">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
-                  <Play className="h-3 w-3 fill-primary" />
-                  Now Playing
-                </span>
-                <span className="text-xs text-muted-foreground hidden sm:inline truncate max-w-md">
-                  {activeVideo.title}
-                </span>
-              </div>
-
-              {/* Screen Size Controls (YT style: Big Screen vs Standard vs Mini) */}
-              <div className="flex items-center gap-1 bg-card/90 backdrop-blur-sm p-1 rounded-xl border border-border shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('standard')}
-                  title="Standard View (Split layout)"
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                    viewMode === 'standard'
-                      ? 'bg-primary text-white shadow-sm font-semibold'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
-                >
-                  <Layout className="h-3.5 w-3.5" />
-                  <span className="hidden md:inline">Standard</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setViewMode('theater')}
-                  title="Big Screen (Theater wide view)"
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                    viewMode === 'theater'
-                      ? 'bg-primary text-white shadow-sm font-semibold'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
-                >
-                  <Tv className="h-3.5 w-3.5" />
-                  <span className="hidden md:inline">Big Screen</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setViewMode('mini')}
-                  title="Mini Player (Watch freely while browsing)"
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-muted"
-                >
-                  <PictureInPicture className="h-3.5 w-3.5" />
-                  <span className="hidden md:inline">Mini Player</span>
-                </button>
-
-                <a
-                  href={`https://www.youtube.com/watch?v=${activeVideo.youtubeId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Watch directly on YouTube"
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  <span className="hidden lg:inline text-[11px]">YouTube</span>
-                </a>
-              </div>
-            </div>
           )}
         </div>
       )}

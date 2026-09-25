@@ -3,6 +3,7 @@ import { useApp } from '@/context/AppContext';
 import { Bot, Send, X, Sparkles, RefreshCw, Zap, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api, ApiError, errorMessage } from '@/lib/api';
+import TutorText from './TutorText';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -11,12 +12,13 @@ interface ChatMessage {
 
 export default function AITutorDrawer() {
   const { isTutorOpen, setIsTutorOpen, activeExam, tutorContextPrompt } = useApp();
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: 'assistant',
-      content: `Namaste! 🙏 I am your **Prepyo AI Coach** for **${activeExam} Academic**.\n\nAsk me for 79+ / Band 8.0 scoring templates, essay breakdowns, grammar rules, or advice on your weak areas!`,
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // The greeting follows the exam currently selected, and is shown only: it is
+  // not part of the conversation sent to the coach.
+  const greeting: ChatMessage = {
+    role: 'assistant',
+    content: `Namaste! 🙏 I am your **Prepyo AI Coach** for **${activeExam}**.\n\nAsk me about ${activeExam} tasks, scoring, templates, grammar, or advice on your weak areas.`,
+  };
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -152,7 +154,7 @@ export default function AITutorDrawer() {
 
         {/* Message Thread */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((m, i) => (
+          {[greeting, ...messages].map((m, i) => (
             <div
               key={i}
               className={`flex flex-col animate-in fade-in-50 slide-in-from-bottom-2 duration-300 ${
@@ -177,7 +179,11 @@ export default function AITutorDrawer() {
                     : 'bg-background/90 border border-border text-foreground rounded-tl-none prose prose-invert'
                 }`}
               >
-                <div className="whitespace-pre-line">{m.content}</div>
+                {m.role === 'assistant' ? (
+                  <TutorText text={m.content} />
+                ) : (
+                  <div className="whitespace-pre-line">{m.content}</div>
+                )}
               </div>
             </div>
           ))}
