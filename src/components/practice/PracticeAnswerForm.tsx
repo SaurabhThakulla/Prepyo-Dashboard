@@ -42,7 +42,7 @@ export default function PracticeAnswerForm({
           // Remounting per question drops any half-finished take and releases
           // the microphone when the learner moves on.
           key={question.id}
-          prepSeconds={question.prepTimeSeconds ?? 0}
+          prepSeconds={Math.max(10, question.prepTimeSeconds ?? 10)}
           maxSeconds={question.timeLimitSeconds}
           disabled={submitting || result !== null}
           onRecorded={session.setRecording}

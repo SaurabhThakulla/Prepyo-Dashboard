@@ -885,7 +885,7 @@ function PracticePageContent() {
                     )}
                     <AudioRecorder
                       key={currentQuestion.id}
-                      prepSeconds={currentQuestion.prepTimeSeconds ?? 0}
+                      prepSeconds={Math.max(10, currentQuestion.prepTimeSeconds ?? 10)}
                       maxSeconds={currentQuestion.timeLimitSeconds}
                       disabled={submitting || result !== null || waitingForPrompt}
                       autoStart
