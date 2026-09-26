@@ -656,19 +656,19 @@ function PracticePageContent() {
         </Suspense>
       ) : isReading && searchParams.get('mock') ? (
         <Suspense fallback={<ReadingPracticeSkeleton />}>
-          <ReadingMockPanel key={activeExam} />
+          <ReadingMockPanel key={`${activeExam}-${searchParams.get('paper') || 'default'}`} />
         </Suspense>
       ) : searchParams.get('mock') && selectedSkill === 'speaking' && activeExam === 'IELTS' && !isAdmin(user) ? (
         <Suspense fallback={<PracticePageSkeleton />}>
-          <SpeakingMockPanel key="speaking-mock" />
+          <SpeakingMockPanel key={`speaking-mock-${searchParams.get('paper') || 'default'}`} />
         </Suspense>
       ) : searchParams.get('mock') && selectedSkill === 'listening' && activeExam === 'IELTS' && !isAdmin(user) ? (
         <Suspense fallback={<PracticePageSkeleton />}>
-          <ListeningMockPanel key="listening-mock" />
+          <ListeningMockPanel key={`listening-mock-${searchParams.get('paper') || 'default'}`} />
         </Suspense>
       ) : searchParams.get('mock') && selectedSkill === 'writing' && activeExam === 'IELTS' && !isAdmin(user) ? (
         <Suspense fallback={<PracticePageSkeleton />}>
-          <WritingMockPanel key={`writing-mock-${ieltsModuleOf(user)}`} />
+          <WritingMockPanel key={`writing-mock-${ieltsModuleOf(user)}-${searchParams.get('paper') || 'default'}`} />
         </Suspense>
       ) : searchParams.get('mock') ? (
         <Suspense fallback={<PracticePageSkeleton />}>

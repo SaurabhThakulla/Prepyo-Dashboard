@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMockPapers } from '@/lib/hooks/useMockPapers';
 import { pteReportHref } from '@/lib/pteMock/catalog';
 import { PteCatalogEntry } from '@/lib/pteMock/types';
+import { MockPaperItem } from '@/lib/types';
 import MockPaperList from '@/components/mocks/MockPaperList';
 
 interface Props {
@@ -116,6 +117,29 @@ export default function PteMockIntro({ entry, serverTranscription, starting, onS
     }
   };
 
+  const handleStartPaper = async (paper: MockPaperItem) => {
+    setSelectedPaperId(paper.id);
+    let currentMic = mic;
+    if (needsMic && !currentMic) {
+      unlockAudio();
+      if (!TestMicrophone.supported()) {
+        setMicError('This browser cannot record audio. Use Chrome or Edge on a computer.');
+        return;
+      }
+      try {
+        const m = new TestMicrophone();
+        await m.open();
+        setMic(m);
+        currentMic = m;
+      } catch {
+        setMicError('Microphone access was refused. Allow the microphone for this site and try again.');
+        return;
+      }
+    }
+    handedOver.current = true;
+    onStart(currentMic, paper.id);
+  };
+
   const micHeard = peak >= TestMicrophone.VOICE_LEVEL;
   const ready = !needsMic || (mic !== null && micHeard);
   const resuming = Boolean(entry.live);
@@ -188,15 +212,13 @@ export default function PteMockIntro({ entry, serverTranscription, starting, onS
                   selectedPaperId={selectedPaperId}
                   exam="PTE"
                   section={entry.kind}
-                  // A row only picks the test; the button below starts it, after
-                  // the equipment check, as every other start does.
-                  onStart={paper => setSelectedPaperId(paper.id)}
-                  onResume={paper => setSelectedPaperId(paper.id)}
+                  onStart={paper => void handleStartPaper(paper)}
+                  onResume={paper => void handleStartPaper(paper)}
                   onReview={paper => {
                     const id = paper.lastAttemptSessionId || paper.sessionId;
                     if (id) navigate(pteReportHref(id));
                   }}
-                  onRetake={paper => setSelectedPaperId(paper.id)}
+                  onRetake={paper => void handleStartPaper(paper)}
                 />
               </div>
             </div>
