@@ -56,8 +56,10 @@ describe('IELTS module syllabus', () => {
     expect(academic).not.toContain('Write a letter');
     expect(general).toContain('Write a letter');
     expect(general).not.toContain('Describe the figure');
-    // Task 2 is the same paper in both modules.
-    expect(academic).toContain('Opinion / Agree or Disagree');
-    expect(general).toContain('Opinion / Agree or Disagree');
+    // Task 2 is the same paper in both modules, and offers every essay type.
+    for (const type of ['Opinion / Agree or Disagree', 'Discuss Both Views', 'Advantages / Disadvantages', 'Problem / Solution', 'Cause / Effect', 'Two-Part Question']) {
+      expect(academic).toContain(type);
+      expect(general).toContain(type);
+    }
   });
 });

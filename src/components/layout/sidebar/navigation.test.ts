@@ -138,6 +138,11 @@ describe('the practice menu for an admin', () => {
       'Describe the figure',
       'Write a letter',
       'Opinion / Agree or Disagree',
+      'Discuss Both Views',
+      'Advantages / Disadvantages',
+      'Problem / Solution',
+      'Cause / Effect',
+      'Two-Part Question',
     ]);
     // Reading shows all syllabus topics for admin even when no available reading types are passed
     expect(ieltsItems.filter(item => item.group === 'Reading').map(i => i.label)).toEqual([
@@ -233,6 +238,16 @@ describe('mock tests for all practice skills', () => {
   });
 });
 
+// Every IELTS Writing Task 2 essay type, in syllabus order.
+const TASK2_TYPES = [
+  'Opinion / Agree or Disagree',
+  'Discuss Both Views',
+  'Advantages / Disadvantages',
+  'Problem / Solution',
+  'Cause / Effect',
+  'Two-Part Question',
+];
+
 describe('the IELTS writing menu for a learner', () => {
   const writing = (module?: 'academic' | 'general_training') =>
     (buildSections('IELTS', () => { }, { role: 'suru', targetExam: 'IELTS', targetModule: module } as unknown as UserProfile)
@@ -241,9 +256,9 @@ describe('the IELTS writing menu for a learner', () => {
       .map(item => item.label);
 
   it('offers Academic learners the figure and General Training learners the letter', () => {
-    expect(writing('academic')).toEqual(['Describe the figure', 'Opinion / Agree or Disagree']);
-    expect(writing('general_training')).toEqual(['Write a letter', 'Opinion / Agree or Disagree']);
+    expect(writing('academic')).toEqual(['Describe the figure', ...TASK2_TYPES]);
+    expect(writing('general_training')).toEqual(['Write a letter', ...TASK2_TYPES]);
     // A profile from before modules existed is Academic.
-    expect(writing(undefined)).toEqual(['Describe the figure', 'Opinion / Agree or Disagree']);
+    expect(writing(undefined)).toEqual(['Describe the figure', ...TASK2_TYPES]);
   });
 });

@@ -42,6 +42,26 @@
             {
               "name": "Opinion / Agree or Disagree",
               "simpleDescription": "Write a 250-word essay stating your point of view on a topic"
+            },
+            {
+              "name": "Discuss Both Views",
+              "simpleDescription": "Task 2: discuss two opposing views and give your own opinion in at least 250 words"
+            },
+            {
+              "name": "Advantages / Disadvantages",
+              "simpleDescription": "Task 2: weigh the advantages and disadvantages of a trend in at least 250 words"
+            },
+            {
+              "name": "Problem / Solution",
+              "simpleDescription": "Task 2: explain the problems a situation causes and suggest solutions in at least 250 words"
+            },
+            {
+              "name": "Cause / Effect",
+              "simpleDescription": "Task 2: explain the causes of a trend and its effects in at least 250 words"
+            },
+            {
+              "name": "Two-Part Question",
+              "simpleDescription": "Task 2: answer two direct questions about a topic in at least 250 words"
             }
           ]
         },

@@ -33,6 +33,11 @@ import {
   ClipboardCheck,
   LayoutGrid,
   ChartColumn,
+  Scale,
+  MessagesSquare,
+  Lightbulb,
+  GitFork,
+  ListOrdered,
   LucideIcon,
 } from 'lucide-react';
 import { SecondaryNavItem } from './navigation';
@@ -76,6 +81,11 @@ function getSubtopicIcon(label: string, fallbackIcon: LucideIcon): LucideIcon {
   // Writing subtopics
   if (norm.includes('describe the figure') || norm.includes('describe image')) return Image;
   if (norm.includes('agree or disagree') || norm.includes('opinion')) return PenLine;
+  if (norm.includes('discuss both views')) return MessagesSquare;
+  if (norm.includes('advantages')) return Scale;
+  if (norm.includes('problem / solution')) return Lightbulb;
+  if (norm.includes('cause / effect')) return GitFork;
+  if (norm.includes('two-part')) return ListOrdered;
   if (norm.includes('summarize written') || norm.includes('summarize')) return FileText;
   if (norm.includes('essay')) return PenTool;
 

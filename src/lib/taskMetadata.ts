@@ -239,6 +239,48 @@ const IELTS_TASK_META: Record<string, TaskMeta> = {
     bgLight: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
     scoreWeight: 'Weight: 67% of Writing Band',
   },
+  // The other Task 2 essay types. The test sets one of them, so each carries
+  // the same Task 2 weight.
+  discussbothviews: {
+    code: 'W-T2',
+    name: 'Discuss Both Views (Task 2)',
+    skill: 'writing',
+    color: 'bg-emerald-600 text-white',
+    bgLight: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+    scoreWeight: 'Weight: 67% of Writing Band',
+  },
+  advantagesdisadvantages: {
+    code: 'W-T2',
+    name: 'Advantages / Disadvantages (Task 2)',
+    skill: 'writing',
+    color: 'bg-emerald-600 text-white',
+    bgLight: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+    scoreWeight: 'Weight: 67% of Writing Band',
+  },
+  problemsolution: {
+    code: 'W-T2',
+    name: 'Problem / Solution (Task 2)',
+    skill: 'writing',
+    color: 'bg-emerald-600 text-white',
+    bgLight: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+    scoreWeight: 'Weight: 67% of Writing Band',
+  },
+  causeeffect: {
+    code: 'W-T2',
+    name: 'Cause / Effect (Task 2)',
+    skill: 'writing',
+    color: 'bg-emerald-600 text-white',
+    bgLight: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+    scoreWeight: 'Weight: 67% of Writing Band',
+  },
+  twopartquestion: {
+    code: 'W-T2',
+    name: 'Two-Part Question (Task 2)',
+    skill: 'writing',
+    color: 'bg-emerald-600 text-white',
+    bgLight: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+    scoreWeight: 'Weight: 67% of Writing Band',
+  },
 };
 
 export function getTaskMetadata(
