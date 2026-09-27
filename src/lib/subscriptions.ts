@@ -35,10 +35,10 @@ export const DEFAULT_PLANS: SubscriptionPlan[] = [
     durationMonths: 0,
     durationDays: 0,
     bonusDays: 0,
-    features: ['Core practice tasks', '5 practice sub-tests per day', '10 AI gradings per month', '1 full mock exam'],
+    features: ['Core practice tasks', 'Limited AI gradings for speaking & writing', 'Limited full mock exams', 'Limited AI tutor'],
     subTestsPerDay: 5,
     mockTestsIncluded: 1,
-    aiGradingsPerPeriod: 10,
+    aiGradingsPerPeriod: 5,
     aiGradingsPeriod: 'month',
     isPopular: false,
   },
@@ -49,10 +49,16 @@ export const DEFAULT_PLANS: SubscriptionPlan[] = [
     durationMonths: 0,
     durationDays: 7,
     bonusDays: 0,
-    features: ['7 days access', '40 practice sub-tests per day', '110 AI gradings for speaking & writing', '2 full mock exams'],
+    features: [
+      '7 days access',
+      'Standard daily practice',
+      'Standard AI gradings for speaking & writing',
+      'Standard full mock exams',
+      'Standard AI tutor',
+    ],
     subTestsPerDay: 40,
     mockTestsIncluded: 2,
-    aiGradingsPerPeriod: 110,
+    aiGradingsPerPeriod: 70,
     aiGradingsPeriod: 'plan',
     isPopular: false,
   },
@@ -63,10 +69,16 @@ export const DEFAULT_PLANS: SubscriptionPlan[] = [
     durationMonths: 1,
     durationDays: 30,
     bonusDays: 3,
-    features: ['33 days access', '50 practice sub-tests per day', '22 AI gradings per day for speaking & writing', '5 full mock exams / month'],
+    features: [
+      '33 days access',
+      'Extended daily practice',
+      'Extended AI gradings for speaking & writing',
+      'Extended full mock exams',
+      'Extended AI tutor',
+    ],
     subTestsPerDay: 50,
-    mockTestsIncluded: 5,
-    aiGradingsPerPeriod: 22,
+    mockTestsIncluded: 4,
+    aiGradingsPerPeriod: 8,
     aiGradingsPeriod: 'day',
     isPopular: true,
   },
@@ -80,19 +92,41 @@ export const DEFAULT_PLANS: SubscriptionPlan[] = [
     features: [
       '33 days full access',
       'Unlimited practice sub-tests',
-      '1,100 AI gradings for speaking & writing',
-      '20 full mock exams / month',
-      'Unlimited AI tutor',
+      'Maximum AI gradings for speaking & writing',
+      'Maximum full mock exams',
+      'Maximum AI tutor',
       'Priority evaluation queue',
     ],
     subTestsPerDay: 60,
-    mockTestsIncluded: 20,
-    aiGradingsPerPeriod: 1100,
+    mockTestsIncluded: 12,
+    aiGradingsPerPeriod: 600,
     aiGradingsPeriod: 'plan',
     isPopular: false,
     unlimited: true,
   },
 ];
+
+/**
+ * How much of an allowance a plan has, as a word rather than a number:
+ * learners compare plans by tier, and exact limits can change without
+ * rewriting what they read.
+ */
+export const PLAN_USAGE_TIERS: Record<SubscriptionTier, string> = {
+  free: 'Limited',
+  weekly: 'Standard',
+  pro: 'Extended',
+  elite: 'Maximum',
+};
+
+export function planUsageTier(planId?: string | null): string {
+  return PLAN_USAGE_TIERS[(planId ?? 'free') as SubscriptionTier] ?? 'Limited';
+}
+
+/** Share of an allowance used, 0-100 and whole. An empty allowance counts as used up. */
+export function usagePercent(used: number, limit: number): number {
+  if (!Number.isFinite(limit) || limit <= 0) return 100;
+  return Math.min(100, Math.max(0, Math.round((used / limit) * 100)));
+}
 
 export const PLAN_TAGLINES: Record<SubscriptionTier, string> = {
   free: 'Start',

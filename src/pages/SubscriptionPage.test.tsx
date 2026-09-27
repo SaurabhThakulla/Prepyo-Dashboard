@@ -16,7 +16,7 @@ describe('mobile subscription cards', () => {
     render(<SubscriptionPage />);
     const cards = within(screen.getByLabelText('Subscription plans'));
     expect(cards.getAllByRole('heading')).toHaveLength(4);
-    expect(cards.getAllByText('Practice sub-tests per day')).toHaveLength(4);
+    expect(cards.getAllByText('Practice tasks')).toHaveLength(4);
     expect((cards.getByRole('button', { name: 'Current Plan' }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByRole('region', { name: /Plan comparison/ })).toBeDefined();
   });

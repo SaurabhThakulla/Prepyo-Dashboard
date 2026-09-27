@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useApp } from '@/context/AppContext';
 import { SubscriptionPlan, SubscriptionState } from '@/lib/types';
 import { api, errorMessage } from '@/lib/api';
-import { formatPlanName } from '@/lib/subscriptions';
+import { formatPlanName, planUsageTier } from '@/lib/subscriptions';
 import { useToast } from '@/components/ui/toast';
 import { PAYMENT_METHODS, PaymentMethod } from '@/lib/paymentMethods';
 import {
@@ -192,10 +192,8 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
                 {planTitle} · {totalDays} days ·{' '}
-                {selectedPlan.unlimited ? 'unlimited sub-tests' : `${selectedPlan.subTestsPerDay} sub-tests a day`} ·{' '}
-                {(selectedPlan.aiGradingsPerPeriod ?? 0).toLocaleString('en-US')} AI gradings
-                {selectedPlan.aiGradingsPeriod === 'day' ? ' a day' : ''} ·{' '}
-                {selectedPlan.mockTestsIncluded} full mocks
+                {selectedPlan.unlimited ? 'unlimited sub-tests' : `${planUsageTier(selectedPlan.id).toLowerCase()} practice`} ·{' '}
+                {planUsageTier(selectedPlan.id).toLowerCase()} AI gradings & full mocks
               </DialogDescription>
               <div className="mt-3 flex items-end justify-between gap-3">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground pb-0.5">

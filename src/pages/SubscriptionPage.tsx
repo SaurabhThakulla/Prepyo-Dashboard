@@ -12,7 +12,7 @@ import { SubscriptionPlan } from '@/lib/types';
 import { errorMessage } from '@/lib/api';
 import { formatExamDate } from '@/lib/dates';
 import { useSubscriptionPlans } from '@/lib/hooks/useResources';
-import { DEFAULT_PLANS, formatGradings, formatPlanName, gradingsLeft, gradingsPeriodLabel, limitLabel } from '@/lib/subscriptions';
+import { DEFAULT_PLANS, formatPlanName, usagePercent } from '@/lib/subscriptions';
 import QRPaymentCheckoutDialog from '@/components/subscription/QRPaymentCheckoutDialog';
 import QueuedPlansCard from '@/components/subscription/QueuedPlansCard';
 
@@ -62,24 +62,18 @@ export default function SubscriptionPage() {
 
   const rows: ComparisonRow[] = [
     {
-      label: 'Practice sub-tests per day',
-      free: limitLabel(freePlan.subTestsPerDay, freePlan.unlimited),
-      weekly: limitLabel(weeklyPlan.subTestsPerDay, weeklyPlan.unlimited),
-      pro: limitLabel(proPlan.subTestsPerDay, proPlan.unlimited),
-      elite: limitLabel(elitePlan.subTestsPerDay, elitePlan.unlimited),
+      label: 'Practice tasks',
+      free: 'Limited',
+      weekly: 'Standard',
+      pro: 'Extended',
+      elite: <span className="font-bold">Unlimited</span>,
     },
     {
-      label: (
-        <span>
-          AI gradings{' '}
-          <Badge variant="success" className="ml-1 px-1.5 py-0 text-[9px] align-middle">New</Badge>
-        </span>
-      ),
-      rowKey: 'ai-gradings',
-      free: `${formatGradings(freePlan.aiGradingsPerPeriod ?? 0)} / ${gradingsPeriodLabel(freePlan)}`,
-      weekly: `${formatGradings(weeklyPlan.aiGradingsPerPeriod ?? 0)} / ${gradingsPeriodLabel(weeklyPlan)}`,
-      pro: `${formatGradings(proPlan.aiGradingsPerPeriod ?? 0)} / ${gradingsPeriodLabel(proPlan)}`,
-      elite: `${formatGradings(elitePlan.aiGradingsPerPeriod ?? 0)} / ${gradingsPeriodLabel(elitePlan)}`,
+      label: 'AI gradings',
+      free: 'Limited',
+      weekly: 'Standard',
+      pro: 'Extended',
+      elite: 'Maximum',
     },
     {
       label: 'Section mock tests',
@@ -91,17 +85,17 @@ export default function SubscriptionPage() {
     },
     {
       label: 'Full mock exams',
-      free: `${freePlan.mockTestsIncluded} lifetime`,
-      weekly: String(weeklyPlan.mockTestsIncluded),
-      pro: `${proPlan.mockTestsIncluded} / calendar month`,
-      elite: `${elitePlan.mockTestsIncluded} / calendar month`,
+      free: 'Limited',
+      weekly: 'Standard',
+      pro: 'Extended',
+      elite: 'Maximum',
     },
     {
-      label: 'AI tutor messages',
-      free: '10 / day',
-      weekly: '100 / day',
-      pro: '100 / day',
-      elite: elitePlan.unlimited ? 'Unlimited' : '100 / day',
+      label: 'AI tutor',
+      free: 'Limited',
+      weekly: 'Standard',
+      pro: 'Extended',
+      elite: 'Maximum',
     },
     {
       label: 'Sentence-level rewrites',
@@ -121,15 +115,22 @@ export default function SubscriptionPage() {
       label: 'Bonus prep days',
       free: dashMark,
       weekly: dashMark,
-      pro: `+${proPlan.bonusDays || 3} days`,
-      elite: `+${elitePlan.bonusDays} days`,
+      pro: '+3 days',
+      elite: '+3 days',
+    },
+    {
+      label: 'Priority evaluation',
+      free: dashMark,
+      weekly: dashMark,
+      pro: dashMark,
+      elite: checkMark,
     },
     {
       label: 'Access duration',
       free: 'Lifetime',
-      weekly: `${weeklyPlan.durationDays || 7} days`,
-      pro: `${(proPlan.durationDays || 30) + (proPlan.bonusDays || 3)} days`,
-      elite: `${(elitePlan.durationDays || elitePlan.durationMonths * 30) + elitePlan.bonusDays} days`,
+      weekly: '7 days',
+      pro: '33 days',
+      elite: '33 days',
     },
   ];
 
@@ -185,27 +186,26 @@ export default function SubscriptionPage() {
                   <span className="text-[9px] sm:text-[10px] text-muted-foreground block uppercase font-bold">Sub-tests today</span>
                   <span className="font-extrabold text-foreground text-sm">
                     {user.subscription.unlimited
-                      ? `${user.subscription.dailySubTestsUsed} · Unlimited`
-                      : `${user.subscription.dailySubTestsUsed} / ${user.subscription.dailySubTestsLimit}`}
+                      ? 'Unlimited'
+                      : `${usagePercent(user.subscription.dailySubTestsUsed, user.subscription.dailySubTestsLimit)}% used`}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[9px] sm:text-[10px] text-muted-foreground block uppercase font-bold">Mocks used</span>
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground block uppercase font-bold">Full mocks</span>
                   <span className="font-extrabold text-foreground text-sm">
-                    {`${user.subscription.mockTestsUsed} / ${user.subscription.totalMockTestsAllowed}`}
+                    {`${usagePercent(user.subscription.mockTestsUsed, user.subscription.totalMockTestsAllowed)}% used`}
                   </span>
                 </div>
                 {user.subscription.aiGradingsLimit != null && (
                   <div>
                     <span className="text-[9px] sm:text-[10px] text-muted-foreground block uppercase font-bold">AI gradings</span>
                     <span className="font-extrabold text-foreground text-sm">
-                      {formatGradings(user.subscription.aiGradingsUsed ?? 0)} / {formatGradings(user.subscription.aiGradingsLimit)}
+                      {usagePercent(user.subscription.aiGradingsUsed ?? 0, user.subscription.aiGradingsLimit)}% used
                     </span>
                     <span className="block text-[9px] sm:text-[10px] text-muted-foreground">
-                      {formatGradings(gradingsLeft(user.subscription))} left
                       {user.subscription.aiGradingsPeriod === 'day'
-                        ? ' · resets at midnight'
-                        : user.subscription.aiGradingsRenewOn && ` · renews ${formatExamDate(user.subscription.aiGradingsRenewOn)}`}
+                        ? 'Resets at midnight'
+                        : user.subscription.aiGradingsRenewOn && `Renews ${formatExamDate(user.subscription.aiGradingsRenewOn)}`}
                     </span>
                   </div>
                 )}
