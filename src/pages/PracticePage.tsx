@@ -120,7 +120,7 @@ export default function PracticePage() {
 function PracticePageContent() {
   const {
     user, activeExam: contextExam, refreshUser, setIsTutorOpen, setTutorContextPrompt, setActiveTestSession,
-    markNotificationAsRead, refreshNotifications,
+    markNotificationAsRead, refreshNotifications, closeTutorialVideo,
   } = useApp();
   const mounted = useRef(true);
   useEffect(() => {
@@ -246,6 +246,7 @@ function PracticePageContent() {
   }, [isDrawerOpen, typeParam, mistakeId, questions.length, loadQuestionsForSubtask, isTestMockMode]);
 
   const handleSelectQuestionFromDrawer = async (question: Question) => {
+    closeTutorialVideo?.();
     setCurrentQuestion(question);
     resetAnswer();
 
@@ -306,6 +307,7 @@ function PracticePageContent() {
   const subTestsRemaining = subTestsLeft(user?.subscription);
 
   const handleStart = async () => {
+    closeTutorialVideo?.();
     if (hasStarted || startPending.current || isStarting) return;
     startPending.current = true;
     setIsStarting(true);
