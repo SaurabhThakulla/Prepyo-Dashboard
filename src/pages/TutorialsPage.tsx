@@ -33,14 +33,26 @@ export type PlayerViewMode = 'standard' | 'theater' | 'mini';
 export default function TutorialsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { activeExam } = useApp();
+  const {
+    activeExam,
+    activeTutorialVideo,
+    setActiveTutorialVideo,
+    tutorialViewMode,
+    setTutorialViewMode,
+  } = useApp();
 
   const skillParam = searchParams.get('skill') as SkillType | null;
   const videoParam = searchParams.get('video');
 
   const [selectedSkill, setSelectedSkill] = useState<SkillType | 'all'>(skillParam || 'all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<PlayerViewMode>('standard');
+  const viewMode = tutorialViewMode;
+  const setViewMode = (mode: PlayerViewMode) => {
+    if (activeVideo && (!activeTutorialVideo || activeTutorialVideo.id !== activeVideo.id)) {
+      setActiveTutorialVideo(activeVideo);
+    }
+    setTutorialViewMode(mode);
+  };
   const playerRef = useRef<HTMLDivElement>(null);
 
   // Sync skillParam with internal state if query param changes
@@ -58,6 +70,10 @@ export default function TutorialsPage() {
   // Filter video list specifically for the user's exam without requiring manual selection
   const filteredVideos = useMemo(() => {
     return TUTORIAL_VIDEOS.filter(video => {
+      // Strictly full-length masterclasses only (exclude shorts or reels)
+      if (video.isFullLength === false) {
+        return false;
+      }
       // Strictly match user's exam (or shared videos)
       if (video.exam !== currentExam && video.exam !== 'both') {
         return false;
@@ -81,6 +97,9 @@ export default function TutorialsPage() {
 
   // Active / featured video
   const activeVideo: TutorialVideo | null = useMemo(() => {
+    if (activeTutorialVideo && (activeTutorialVideo.exam === currentExam || activeTutorialVideo.exam === 'both')) {
+      return activeTutorialVideo;
+    }
     if (videoParam) {
       const found = TUTORIAL_VIDEOS.find(
         v => v.id === videoParam && (v.exam === currentExam || v.exam === 'both'),
@@ -88,9 +107,17 @@ export default function TutorialsPage() {
       if (found) return found;
     }
     return filteredVideos[0] ?? null;
-  }, [videoParam, filteredVideos, currentExam]);
+  }, [activeTutorialVideo, videoParam, filteredVideos, currentExam]);
+
+  // Sync active video to global state on initial load if not yet populated
+  useEffect(() => {
+    if (!activeTutorialVideo && activeVideo) {
+      setActiveTutorialVideo(activeVideo);
+    }
+  }, [activeTutorialVideo, activeVideo, setActiveTutorialVideo]);
 
   const selectVideo = (video: TutorialVideo) => {
+    setActiveTutorialVideo(video);
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
       next.set('video', video.id);
@@ -181,173 +208,76 @@ export default function TutorialsPage() {
       {/* ── Active Video Player Section ── */}
       {activeVideo && (
         <div ref={playerRef} className="space-y-3">
-          {/* 1. Big Screen Mode (Theater) */}
-          {viewMode === 'theater' && (
-            <Card className="overflow-hidden border-border bg-card shadow-lg transition-all duration-300">
-              {/* Full Width Cinema Player */}
-              <div className="w-full bg-black aspect-video max-h-[72vh] relative flex items-center justify-center">
-                <iframe
-                  src={`https://www.youtube-nocookie.com/embed/${activeVideo.youtubeId}?autoplay=0&rel=0&modestbranding=1`}
-                  title={activeVideo.title}
-                  className="w-full h-full border-0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              </div>
-
-              {/* Player Controls Bar below video on bottom left */}
-              <div className="px-5 py-2.5 bg-muted/20 border-b border-border/60 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-1 bg-card p-1 rounded-xl border border-border shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('standard')}
-                    title="Standard View (Split layout)"
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-muted"
-                  >
-                    <Layout className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Standard</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('theater')}
-                    title="Big Screen (Theater wide view)"
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all bg-primary text-white shadow-sm font-semibold"
-                  >
-                    <Tv className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Big Screen</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('mini')}
-                    title="Mini Player (Watch freely while browsing)"
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-muted"
-                  >
-                    <PictureInPicture className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Mini Player</span>
-                  </button>
-
-                  <a
-                    href={`https://www.youtube.com/watch?v=${activeVideo.youtubeId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Watch directly on YouTube"
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    <span className="hidden md:inline text-[11px]">YouTube</span>
-                  </a>
+          {/* Mini Player Placeholder in Page Flow */}
+          {viewMode === 'mini' && (
+            <Card className="p-5 border-dashed border-primary/30 bg-primary/[0.03] flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <PictureInPicture className="h-5 w-5" />
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
-                    <Play className="h-3 w-3 fill-primary" />
-                    Now Playing
-                  </span>
-                </div>
-              </div>
-
-              {/* Lesson Metadata & Quick Action underneath wide player */}
-              <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 bg-card">
-                <div className="lg:col-span-8 space-y-4">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Badge
-                      variant="secondary"
-                      className="font-bold text-[10px] uppercase bg-primary/10 text-primary border-primary/20"
-                    >
-                      {activeVideo.skill}
-                    </Badge>
-                    <Badge variant="outline" className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {activeVideo.duration}
-                    </Badge>
-                    <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                      {activeVideo.level}
-                    </Badge>
-                  </div>
-
-                  <h2 className="font-display text-xl sm:text-2xl font-extrabold text-foreground leading-snug">
-                    {activeVideo.title}
-                  </h2>
-
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">{activeVideo.instructor}</span>
-                    <span>•</span>
-                    <span>Verified Masterclass</span>
-                  </div>
-
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {activeVideo.description}
+                <div>
+                  <p className="text-sm font-bold text-foreground">
+                    Watching in Mini Player: <span className="text-primary">{activeVideo.title}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    You can freely drag it anywhere on screen or browse all dashboard pages while your video plays.
                   </p>
                 </div>
-
-                <div className="lg:col-span-4 flex flex-col justify-between space-y-4 border-t lg:border-t-0 lg:border-l border-border lg:pl-6 pt-4 lg:pt-0">
-                  {/* Key Takeaways */}
-                  <div className="space-y-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      Key Exam Strategies
-                    </span>
-                    <ul className="space-y-1.5 text-xs text-muted-foreground">
-                      {activeVideo.keyTakeaways.map((takeaway, i) => (
-                        <li key={i} className="flex items-start gap-2 leading-relaxed">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                          <span>{takeaway}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Quick Practice & Mock Buttons */}
-                  <div className="flex flex-col gap-2 pt-2">
-                    <Button
-                      onClick={() => navigate(activeVideo.practiceUrl)}
-                      className="w-full gap-2 font-bold shadow-sm"
-                    >
-                      <span>Practice {activeVideo.skill.toUpperCase()} Questions</span>
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      onClick={() => navigate(activeVideo.mockUrl)}
-                      variant="outline"
-                      size="sm"
-                      className="w-full gap-1.5 font-bold"
-                    >
-                      <Award className="h-3.5 w-3.5 text-primary" />
-                      <span>Open {activeVideo.skill.toUpperCase()} Mock Tests</span>
-                    </Button>
-                  </div>
-                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button size="sm" onClick={() => setViewMode('theater')} className="gap-1.5 text-xs font-semibold">
+                  <Tv className="h-3.5 w-3.5" />
+                  Big Screen
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setViewMode('standard')} className="gap-1.5 text-xs font-semibold">
+                  <Layout className="h-3.5 w-3.5" />
+                  Standard View
+                </Button>
               </div>
             </Card>
           )}
 
-          {/* 2. Standard View (Side-by-side) */}
-          {viewMode === 'standard' && (
-            <Card className="overflow-hidden border-border bg-card shadow-md transition-all duration-300">
+          {/* Embedded Video Player Container (for Standard and Big Screen views) */}
+          {viewMode !== 'mini' && (
+            <div
+              className={`rounded-2xl border border-border bg-card text-card-foreground ${
+                viewMode === 'theater' ? 'shadow-lg' : 'shadow-md'
+              } overflow-hidden transition-all duration-300`}
+            >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
-                {/* Left: Responsive 16:9 Embedded YouTube Player + Controls at the bottom left space */}
-                <div className="lg:col-span-8 flex flex-col justify-between bg-card">
-                  <div className="w-full bg-black aspect-video relative flex items-center justify-center">
-                    <iframe
-                      src={`https://www.youtube-nocookie.com/embed/${activeVideo.youtubeId}?autoplay=0&rel=0&modestbranding=1`}
-                      title={activeVideo.title}
-                      className="w-full h-full border-0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                    />
-                  </div>
+                {/* Video Player Column */}
+                <div
+                  className={
+                    viewMode === 'theater'
+                      ? "lg:col-span-12 flex flex-col bg-card"
+                      : "lg:col-span-8 flex flex-col justify-between bg-card"
+                  }
+                >
+                  {/* 16:9 Persistent Video Slot for Global Player */}
+                  <div
+                    id="tutorial-video-slot"
+                    className={`w-full bg-black aspect-video relative flex items-center justify-center ${
+                      viewMode === 'theater' ? 'max-h-[72vh]' : ''
+                    }`}
+                  />
 
-                  {/* Bottom-left controls below video player */}
-                  <div className="p-3 bg-muted/20 border-t border-border/60 flex flex-wrap items-center justify-between gap-2">
-                    {/* Buttons on bottom left */}
+                  {/* Bottom-left controls below video player (when in standard or theater mode) */}
+                  <div
+                    className={`bg-muted/20 border-border/60 flex flex-wrap items-center justify-between gap-2 ${
+                      viewMode === 'theater' ? 'px-5 py-2.5 border-b' : 'p-3 border-t'
+                    }`}
+                  >
+                    {/* Mode buttons on bottom left */}
                     <div className="flex items-center gap-1 bg-card p-1 rounded-xl border border-border shadow-sm">
                       <button
                         type="button"
                         onClick={() => setViewMode('standard')}
                         title="Standard View (Split layout)"
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all bg-primary text-white shadow-sm font-semibold"
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                          viewMode === 'standard'
+                            ? 'bg-primary text-white shadow-sm font-semibold'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
                       >
                         <Layout className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Standard</span>
@@ -357,7 +287,11 @@ export default function TutorialsPage() {
                         type="button"
                         onClick={() => setViewMode('theater')}
                         title="Big Screen (Theater wide view)"
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-muted"
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                          viewMode === 'theater'
+                            ? 'bg-primary text-white shadow-sm font-semibold'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
                       >
                         <Tv className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Big Screen</span>
@@ -394,173 +328,175 @@ export default function TutorialsPage() {
                   </div>
                 </div>
 
-                {/* Right: Lesson Metadata & Quick Action */}
-                <div className="lg:col-span-4 p-5 sm:p-6 flex flex-col justify-between space-y-4 border-t lg:border-t-0 lg:border-l border-border bg-card/60">
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge
-                        variant="secondary"
-                        className="font-bold text-[10px] uppercase bg-primary/10 text-primary border-primary/20"
+                {/* Lesson Metadata & Quick Action (Theater Mode: Full-width row underneath) */}
+                {viewMode === 'theater' && (
+                  <div className="lg:col-span-12 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 bg-card">
+                    <div className="lg:col-span-8 space-y-4">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge
+                          variant="secondary"
+                          className="font-bold text-[10px] uppercase bg-primary/10 text-primary border-primary/20"
+                        >
+                          {activeVideo.skill}
+                        </Badge>
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {activeVideo.duration}
+                        </Badge>
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                          {activeVideo.level}
+                        </Badge>
+                      </div>
+
+                      <h2 className="font-display text-xl sm:text-2xl font-extrabold text-foreground leading-snug">
+                        {activeVideo.title}
+                      </h2>
+
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground">{activeVideo.instructor}</span>
+                        <span>•</span>
+                        <span>Verified Masterclass</span>
+                      </div>
+
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {activeVideo.description}
+                      </p>
+                    </div>
+
+                    <div className="lg:col-span-4 flex flex-col justify-between space-y-4 border-t lg:border-t-0 lg:border-l border-border lg:pl-6 pt-4 lg:pt-0">
+                      {/* Key Takeaways */}
+                      <div className="space-y-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5 text-primary" />
+                          Key Exam Strategies
+                        </span>
+                        <ul className="space-y-1.5 text-xs text-muted-foreground">
+                          {activeVideo.keyTakeaways.map((takeaway, i) => (
+                            <li key={i} className="flex items-start gap-2 leading-relaxed">
+                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                              <span>{takeaway}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Quick Practice & Mock Buttons */}
+                      <div className="flex flex-col gap-2 pt-2">
+                        <Button
+                          onClick={() => navigate(activeVideo.practiceUrl)}
+                          className="w-full gap-2 font-bold shadow-sm"
+                        >
+                          <span>Practice {activeVideo.skill.toUpperCase()} Questions</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          onClick={() => navigate(activeVideo.mockUrl)}
+                          variant="outline"
+                          size="sm"
+                          className="w-full gap-1.5 font-bold"
+                        >
+                          <Award className="h-3.5 w-3.5 text-primary" />
+                          <span>Open {activeVideo.skill.toUpperCase()} Mock Tests</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lesson Metadata & Quick Action (Standard Mode: Right side column) */}
+                {viewMode === 'standard' && (
+                  <div className="lg:col-span-4 p-5 sm:p-6 flex flex-col justify-between space-y-4 border-t lg:border-t-0 lg:border-l border-border bg-card/60">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge
+                          variant="secondary"
+                          className="font-bold text-[10px] uppercase bg-primary/10 text-primary border-primary/20"
+                        >
+                          {activeVideo.skill}
+                        </Badge>
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {activeVideo.duration}
+                        </Badge>
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                          {activeVideo.level}
+                        </Badge>
+                      </div>
+
+                      <h2 className="font-display text-lg sm:text-xl font-extrabold text-foreground leading-snug">
+                        {activeVideo.title}
+                      </h2>
+
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground">{activeVideo.instructor}</span>
+                        <span>•</span>
+                        <span>Verified Masterclass</span>
+                      </div>
+
+                      <p className="text-xs text-muted-foreground leading-relaxed pt-1">
+                        {activeVideo.description}
+                      </p>
+                    </div>
+
+                    {/* Key Takeaways */}
+                    <div className="space-y-2 pt-2 border-t border-border/50">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-primary" />
+                        Key Exam Strategies
+                      </span>
+                      <ul className="space-y-1.5 text-xs text-muted-foreground">
+                        {activeVideo.keyTakeaways.map((takeaway, i) => (
+                          <li key={i} className="flex items-start gap-2 leading-relaxed">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                            <span>{takeaway}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Quick Practice & Mock Buttons */}
+                    <div className="flex flex-col gap-2 pt-2">
+                      <Button
+                        onClick={() => navigate(activeVideo.practiceUrl)}
+                        className="w-full gap-2 font-bold shadow-sm"
                       >
-                        {activeVideo.skill}
-                      </Badge>
-                      <Badge variant="outline" className="text-[10px] text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {activeVideo.duration}
-                      </Badge>
-                      <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                        {activeVideo.level}
-                      </Badge>
+                        <span>Practice {activeVideo.skill.toUpperCase()} Questions</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        onClick={() => navigate(activeVideo.mockUrl)}
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-1.5 font-bold"
+                      >
+                        <Award className="h-3.5 w-3.5 text-primary" />
+                        <span>Open {activeVideo.skill.toUpperCase()} Mock Tests</span>
+                      </Button>
                     </div>
-
-                    <h2 className="font-display text-lg sm:text-xl font-extrabold text-foreground leading-snug">
-                      {activeVideo.title}
-                    </h2>
-
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <span className="font-semibold text-foreground">{activeVideo.instructor}</span>
-                      <span>•</span>
-                      <span>Verified Masterclass</span>
-                    </div>
-
-                    <p className="text-xs text-muted-foreground leading-relaxed pt-1">
-                      {activeVideo.description}
-                    </p>
                   </div>
-
-                  {/* Key Takeaways */}
-                  <div className="space-y-2 pt-2 border-t border-border/50">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      Key Exam Strategies
-                    </span>
-                    <ul className="space-y-1.5 text-xs text-muted-foreground">
-                      {activeVideo.keyTakeaways.map((takeaway, i) => (
-                        <li key={i} className="flex items-start gap-2 leading-relaxed">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                          <span>{takeaway}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Quick Practice & Mock Buttons */}
-                  <div className="flex flex-col gap-2 pt-2">
-                    <Button
-                      onClick={() => navigate(activeVideo.practiceUrl)}
-                      className="w-full gap-2 font-bold shadow-sm"
-                    >
-                      <span>Practice {activeVideo.skill.toUpperCase()} Questions</span>
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      onClick={() => navigate(activeVideo.mockUrl)}
-                      variant="outline"
-                      size="sm"
-                      className="w-full gap-1.5 font-bold"
-                    >
-                      <Award className="h-3.5 w-3.5 text-primary" />
-                      <span>Open {activeVideo.skill.toUpperCase()} Mock Tests</span>
-                    </Button>
-                  </div>
-                </div>
+                )}
               </div>
-            </Card>
-          )}
-
-          {/* 3. Mini Player Slot Placeholder (when watching in floating player) */}
-          {viewMode === 'mini' && (
-            <Card className="p-5 border-dashed border-primary/30 bg-primary/[0.03] flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <PictureInPicture className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-foreground">
-                    Watching in Mini Player: <span className="text-primary">{activeVideo.title}</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    You can freely scroll and browse all lessons below while your video plays.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Button size="sm" onClick={() => setViewMode('theater')} className="gap-1.5 text-xs font-semibold">
-                  <Tv className="h-3.5 w-3.5" />
-                  Big Screen
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setViewMode('standard')} className="gap-1.5 text-xs font-semibold">
-                  <Layout className="h-3.5 w-3.5" />
-                  Standard View
-                </Button>
-              </div>
-            </Card>
+            </div>
           )}
         </div>
       )}
 
-      {/* Floating Mini Player (docked at bottom-right for free browsing) */}
-      {activeVideo && viewMode === 'mini' && (
-        <aside
-          aria-label="Mini video player"
-          className="fixed bottom-6 right-6 z-50 w-80 sm:w-96 shadow-2xl rounded-2xl border border-border bg-card overflow-hidden animate-in slide-in-from-bottom-5 duration-300"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-3 py-2 bg-muted/90 backdrop-blur-md border-b border-border">
-            <span className="text-xs font-bold truncate max-w-[200px] sm:max-w-[240px] text-foreground">
-              {activeVideo.title}
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setViewMode('theater')}
-                title="Expand to Big Screen"
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
-              >
-                <Tv className="h-3.5 w-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('standard')}
-                title="Standard View"
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
-              >
-                <Layout className="h-3.5 w-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('standard')}
-                title="Close Mini Player"
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-          {/* 16:9 Video */}
-          <div className="aspect-video bg-black relative">
-            <iframe
-              src={`https://www.youtube-nocookie.com/embed/${activeVideo.youtubeId}?autoplay=1&rel=0&modestbranding=1`}
-              title={activeVideo.title}
-              className="w-full h-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
-          </div>
-        </aside>
-      )}
-
       {/* ── Video Catalog Grid ── */}
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h3 className="font-display text-lg font-bold text-foreground">
-              {selectedSkill === 'all'
-                ? 'All Available Lessons'
-                : `${selectedSkill.charAt(0).toUpperCase() + selectedSkill.slice(1)} Video Masterclasses`}
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Showing {filteredVideos.length} {filteredVideos.length === 1 ? 'lesson' : 'lessons'}
+            <div className="flex items-center gap-2">
+              <h3 className="font-display text-lg font-bold text-foreground">
+                {selectedSkill === 'all'
+                  ? 'All Available Lessons'
+                  : `${selectedSkill.charAt(0).toUpperCase() + selectedSkill.slice(1)} Video Masterclasses`}
+              </h3>
+              <Badge variant="outline" className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5">
+                Full-Length Only (12–25 mins)
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Showing {filteredVideos.length} {filteredVideos.length === 1 ? 'lesson' : 'lessons'} • Complete in-depth video walkthroughs without shorts or quick reels.
             </p>
           </div>
         </div>
@@ -631,10 +567,13 @@ export default function TutorialsPage() {
 
                     {/* Content */}
                     <div className="p-4 space-y-2">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <Badge variant="secondary" className="text-[10px] uppercase font-bold px-1.5 py-0">
                           {video.skill}
                         </Badge>
+                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                          Full Masterclass
+                        </span>
                         <span className="text-[10px] text-muted-foreground font-medium">
                           {video.level}
                         </span>

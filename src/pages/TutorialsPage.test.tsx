@@ -4,13 +4,56 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import TutorialsPage from './TutorialsPage';
 
-// Mock AppContext
-vi.mock('@/context/AppContext', () => ({
-  useApp: () => ({
-    activeExam: 'IELTS',
-    user: { id: 'test-user', targetExam: 'IELTS' },
-  }),
-}));
+let globalState = {
+  viewMode: 'standard',
+  activeVideo: null as any,
+  listeners: [] as Array<() => void>,
+};
+
+vi.mock('@/context/AppContext', () => {
+  const React = require('react');
+  return {
+    useApp: () => {
+      const [viewMode, setViewModeState] = React.useState(globalState.viewMode);
+      const [activeVideo, setActiveVideoState] = React.useState(globalState.activeVideo);
+
+      React.useEffect(() => {
+        const listener = () => {
+          setViewModeState(globalState.viewMode);
+          setActiveVideoState(globalState.activeVideo);
+        };
+        globalState.listeners.push(listener);
+        return () => {
+          globalState.listeners = globalState.listeners.filter(l => l !== listener);
+        };
+      }, []);
+
+      const setTutorialViewMode = (mode: string) => {
+        globalState.viewMode = mode;
+        globalState.listeners.forEach(l => l());
+      };
+
+      const setActiveTutorialVideo = (v: any) => {
+        globalState.activeVideo = v;
+        globalState.listeners.forEach(l => l());
+      };
+
+      return {
+        activeExam: 'IELTS',
+        user: { id: 'test-user', targetExam: 'IELTS' },
+        activeTutorialVideo: activeVideo,
+        setActiveTutorialVideo,
+        tutorialViewMode: viewMode,
+        setTutorialViewMode,
+        closeTutorialVideo: () => {
+          globalState.activeVideo = null;
+          globalState.viewMode = 'standard';
+          globalState.listeners.forEach(l => l());
+        },
+      };
+    },
+  };
+});
 
 describe('TutorialsPage component', () => {
   it('renders tutorials page header and active video', () => {
@@ -49,5 +92,34 @@ describe('TutorialsPage component', () => {
     fireEvent.change(searchInput, { target: { value: 'True / False' } });
 
     expect(screen.getAllByText(/True \/ False \/ Not Given/i).length).toBeGreaterThan(0);
+  });
+
+  it('switches between standard, theater, and mini view modes cleanly', () => {
+    render(
+      <MemoryRouter initialEntries={['/tutorials']}>
+        <TutorialsPage />
+      </MemoryRouter>,
+    );
+
+    // Initial controls in Standard mode
+    expect(screen.getByTitle('Big Screen (Theater wide view)')).toBeDefined();
+    expect(screen.getByTitle('Mini Player (Watch freely while browsing)')).toBeDefined();
+
+    // Switch to Big Screen (Theater)
+    const bigScreenButton = screen.getByTitle('Big Screen (Theater wide view)');
+    fireEvent.click(bigScreenButton);
+    expect(globalState.viewMode).toBe('theater');
+
+    // Switch to Mini Player
+    const miniPlayerButton = screen.getByTitle('Mini Player (Watch freely while browsing)');
+    fireEvent.click(miniPlayerButton);
+
+    // On TutorialsPage, switching to mini mode displays the placeholder card
+    expect(screen.getByText(/Watching in Mini Player:/i)).toBeDefined();
+
+    // Switch back to Standard
+    const standardButton = screen.getAllByRole('button', { name: /Standard View/i })[0];
+    fireEvent.click(standardButton);
+    expect(globalState.viewMode).toBe('standard');
   });
 });
