@@ -2,6 +2,9 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { api, ApiError } from '@/lib/api';
 import '@/lib/google';
 import { ExamType, NotificationItem, UserProfile } from '@/lib/types';
+import { TutorialVideo } from '@/data/tutorials';
+
+export type TutorialViewMode = 'standard' | 'theater' | 'mini';
 
 export interface ActiveTestSession {
   isActive: boolean;
@@ -71,6 +74,12 @@ interface AppContextType {
   theme: 'light' | 'dark';
   setTheme: (theme: 'light' | 'dark') => void;
   toggleTheme: () => void;
+
+  activeTutorialVideo: TutorialVideo | null;
+  setActiveTutorialVideo: (video: TutorialVideo | null) => void;
+  tutorialViewMode: TutorialViewMode;
+  setTutorialViewMode: (mode: TutorialViewMode) => void;
+  closeTutorialVideo: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -115,6 +124,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const clearTutorQuestion = useCallback(() => setTutorQuestion(null), []);
   const [theme, setThemeState] = useState<'light' | 'dark'>('light');
   const [activeTestSession, setActiveTestSession] = useState<ActiveTestSession | null>(null);
+
+  const [activeTutorialVideo, setActiveTutorialVideo] = useState<TutorialVideo | null>(null);
+  const [tutorialViewMode, setTutorialViewMode] = useState<TutorialViewMode>('standard');
+  const closeTutorialVideo = useCallback(() => {
+    setActiveTutorialVideo(null);
+    setTutorialViewMode('standard');
+  }, []);
 
   // Warn user if closing tab / refreshing during an ongoing test
   useEffect(() => {
@@ -428,6 +444,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         toggleTheme,
         activeTestSession,
         setActiveTestSession,
+        activeTutorialVideo,
+        setActiveTutorialVideo,
+        tutorialViewMode,
+        setTutorialViewMode,
+        closeTutorialVideo,
       }}
     >
       {children}

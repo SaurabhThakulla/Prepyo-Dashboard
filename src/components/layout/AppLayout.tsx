@@ -21,6 +21,7 @@ import { useClipboardGuard } from '@/lib/hooks/useClipboardGuard';
 import { isAdmin } from '@/lib/types';
 
 const AITutorDrawer = lazy(() => import('@/components/ai/AITutorDrawer'));
+const GlobalMiniPlayer = lazy(() => import('@/components/tutorials/GlobalMiniPlayer'));
 
 const ONBOARDING_PENDING_KEY = 'prepyo_onboarding_pending';
 
@@ -224,6 +225,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <Suspense fallback={null}>
         <AITutorDrawer />
+        <GlobalMiniPlayer />
       </Suspense>
     </div>
 
