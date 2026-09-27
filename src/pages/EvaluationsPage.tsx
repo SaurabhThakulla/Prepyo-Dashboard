@@ -17,6 +17,7 @@ import { api, ApiError, errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { useEvaluationHistory, useQuestions } from '@/lib/hooks/useResources';
 import { queryKeys } from '@/lib/queryKeys';
+import { usagePercent } from '@/lib/subscriptions';
 import { useQueryClient } from '@tanstack/react-query';
 import { EvaluationsPageSkeleton } from '@/components/layout/PageSkeleton';
 
@@ -126,8 +127,8 @@ export default function EvaluationsPage() {
         {subscription && (
           <Badge variant={quotaExhausted ? 'destructive' : 'outline'} className="text-xs px-3 py-1">
             {subscription.unlimited
-              ? `${subscription.dailySubTestsUsed} sub-tests today · Unlimited`
-              : `${subscription.dailySubTestsUsed} / ${subscription.dailySubTestsLimit} sub-tests used today`}
+              ? 'Unlimited sub-tests today'
+              : `${usagePercent(subscription.dailySubTestsUsed, subscription.dailySubTestsLimit)}% of today's sub-tests used`}
           </Badge>
         )}
       </div>

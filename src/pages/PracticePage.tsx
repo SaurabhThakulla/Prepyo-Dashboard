@@ -1,4 +1,4 @@
-import { subTestsLeft } from '@/lib/subscriptions';
+import { subTestsLeft, usagePercent } from '@/lib/subscriptions';
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
@@ -1222,8 +1222,8 @@ function PracticePageContent() {
                   Starting this question will cost <span className="font-bold">1 practice credit</span>.
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  {Number.isFinite(subTestsRemaining)
-                    ? `${subTestsRemaining} credits remaining today.`
+                  {Number.isFinite(subTestsRemaining) && user?.subscription
+                    ? `${usagePercent(user.subscription.dailySubTestsUsed, user.subscription.dailySubTestsLimit)}% of today's credits used.`
                     : 'Credits will be deducted from your daily allowance.'}
                 </p>
               </div>

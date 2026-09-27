@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { UserProfile } from '@/lib/types';
 import { formatExamDate } from '@/lib/dates';
-import { formatPlanName, gradingsLeft } from '@/lib/subscriptions';
+import { formatPlanName, usagePercent } from '@/lib/subscriptions';
 
 interface CurrentPlanCardProps {
   user?: UserProfile | null;
@@ -27,10 +27,10 @@ function describeValidUntil(value?: string): { label: string; daysLeft: number |
 
 type Tone = 'ok' | 'low' | 'out';
 
-/** Low once a fifth or less is left, out at zero. */
-function toneFor(remaining: number, limit: number): Tone {
-  if (remaining <= 0) return 'out';
-  if (limit > 0 && remaining / limit <= 0.2) return 'low';
+/** Low from 80% used, out at 100%. */
+function toneFor(percentUsed: number): Tone {
+  if (percentUsed >= 100) return 'out';
+  if (percentUsed >= 80) return 'low';
   return 'ok';
 }
 
@@ -43,16 +43,13 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
   const isFree = sub.planId === 'free';
   const validity = describeValidUntil(sub.validUntil);
 
-  const subTestsUsed = sub.dailySubTestsUsed ?? sub.dailyEvaluationsUsed ?? 0;
-  const subTestsLimit = sub.dailySubTestsLimit ?? sub.dailyEvaluationsLimit ?? 0;
-  const subTestsRemaining = Math.max(0, subTestsLimit - subTestsUsed);
-
-  const mocksUsed = sub.mockTestsUsed;
-  const mocksLimit = sub.totalMockTestsAllowed;
-  const mocksRemaining = Math.max(0, mocksLimit - mocksUsed);
-
-  const gradingsLimit = sub.aiGradingsLimit ?? 0;
-  const gradingsRemaining = Math.floor(gradingsLeft(sub));
+  // Usage is shown as a share of the allowance, never as counts.
+  const subTestsPercent = usagePercent(
+    sub.dailySubTestsUsed ?? sub.dailyEvaluationsUsed ?? 0,
+    sub.dailySubTestsLimit ?? sub.dailyEvaluationsLimit ?? 0,
+  );
+  const mocksPercent = usagePercent(sub.mockTestsUsed, sub.totalMockTestsAllowed);
+  const gradingsPercent = usagePercent(sub.aiGradingsUsed ?? 0, sub.aiGradingsLimit ?? 0);
 
   return (
     <div className="relative w-full overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-shadow duration-300 hover:shadow-md dark:border-white/10 dark:bg-[#12161c] sm:p-6">
@@ -129,8 +126,7 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-3 border-t border-border/60">
           <QuotaGauge
             title="Practice sub-tests"
-            remaining={subTestsRemaining}
-            limit={subTestsLimit}
+            percentUsed={subTestsPercent}
             unlimited={sub.unlimited}
             period="today"
             hint="Resets at midnight"
@@ -139,8 +135,7 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
 
           <QuotaGauge
             title="AI gradings"
-            remaining={gradingsRemaining}
-            limit={gradingsLimit}
+            percentUsed={gradingsPercent}
             period={sub.aiGradingsPeriod === 'day' ? 'today' : sub.aiGradingsPeriod === 'month' ? 'this month' : 'this plan'}
             hint={
               sub.aiGradingsPeriod === 'day'
@@ -154,8 +149,7 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
 
           <QuotaGauge
             title="Full mock tests"
-            remaining={mocksRemaining}
-            limit={mocksLimit}
+            percentUsed={mocksPercent}
             period={isFree ? 'in total' : 'this month'}
             hint={isFree ? 'Included with your account' : 'Renews on the 1st'}
             accent="text-violet-500"
@@ -168,8 +162,8 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
 
 interface QuotaGaugeProps {
   title: string;
-  remaining: number;
-  limit: number;
+  /** Share of the allowance used, 0-100. */
+  percentUsed: number;
   period: string;
   hint: string;
   /** Text colour class for the ring while there is plenty left. */
@@ -178,11 +172,11 @@ interface QuotaGaugeProps {
   unlimited?: boolean;
 }
 
-/** What is left, as the headline, with a ring that empties as it is used. */
-function QuotaGauge({ title, remaining, limit, period, hint, accent, unlimited = false }: QuotaGaugeProps) {
-  const tone = unlimited ? 'ok' : toneFor(remaining, limit);
-  // An unlimited allowance is drawn as a full ring that never runs down.
-  const fraction = unlimited ? 1 : limit > 0 ? remaining / limit : 0;
+/** The share used, as the headline, with a ring that fills as it is used. */
+function QuotaGauge({ title, percentUsed, period, hint, accent, unlimited = false }: QuotaGaugeProps) {
+  const tone = unlimited ? 'ok' : toneFor(percentUsed);
+  // An unlimited allowance is drawn as a full ring that never runs out.
+  const fraction = unlimited ? 1 : percentUsed / 100;
   const radius = 20;
   const circumference = 2 * Math.PI * radius;
   const ring = tone === 'out' ? 'text-rose-500' : tone === 'low' ? 'text-amber-500' : accent;
@@ -205,7 +199,7 @@ function QuotaGauge({ title, remaining, limit, period, hint, accent, unlimited =
           />
         </svg>
         <span className="absolute inset-0 flex items-center justify-center font-display text-xs sm:text-sm font-extrabold text-foreground">
-          {unlimited ? '∞' : remaining}
+          {unlimited ? '∞' : `${percentUsed}%`}
         </span>
       </div>
 
@@ -216,7 +210,7 @@ function QuotaGauge({ title, remaining, limit, period, hint, accent, unlimited =
             <span className="font-bold text-foreground">Unlimited</span>
           ) : (
             <>
-              <span className="font-bold text-foreground">{remaining}</span> of {limit} left {period}
+              <span className="font-bold text-foreground">{percentUsed}%</span> used {period}
             </>
           )}
         </p>
@@ -229,7 +223,7 @@ function QuotaGauge({ title, remaining, limit, period, hint, accent, unlimited =
                 : 'text-muted-foreground/80'
           }`}
         >
-          {unlimited ? 'No daily limit on your plan' : tone === 'out' ? `None left · ${hint.toLowerCase()}` : tone === 'low' ? `Running low · ${hint.toLowerCase()}` : hint}
+          {unlimited ? 'No daily limit on your plan' : tone === 'out' ? `All used · ${hint.toLowerCase()}` : tone === 'low' ? `Running low · ${hint.toLowerCase()}` : hint}
         </p>
       </div>
     </div>

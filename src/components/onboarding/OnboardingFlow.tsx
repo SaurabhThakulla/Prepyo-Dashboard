@@ -59,6 +59,7 @@ import {
   formatPlanName,
   isPaidTier,
   planAccessDays,
+  planUsageTier,
 } from '@/lib/subscriptions';
 import { ExamType, SkillType, SubscriptionPlan, SubscriptionTier, UserProfile, IELTSModule, IELTS_MODULE_LABEL, ieltsModuleOf } from '@/lib/types';
 import {
@@ -1722,10 +1723,11 @@ function PlanCard({
   const free = plan.priceNPR === 0;
   const days = planAccessDays(plan);
   const brand = formatPlanName(plan.id);
+  const tier = planUsageTier(plan.id);
   const perks = [
-    plan.unlimited ? 'Unlimited practice sub-tests' : `${plan.subTestsPerDay} practice sub-tests a day`,
-    `${(plan.aiGradingsPerPeriod ?? 0).toLocaleString('en-US')} AI gradings${plan.aiGradingsPeriod === 'day' ? ' a day' : ''} for speaking & writing`,
-    `${plan.mockTestsIncluded} full mock exam${plan.mockTestsIncluded === 1 ? '' : 's'}${free ? '' : ` included`}`,
+    plan.unlimited ? 'Unlimited practice sub-tests' : `${tier} daily practice`,
+    `${tier} AI gradings for speaking & writing`,
+    `${tier} full mock exams`,
     free ? 'Free forever' : `${days} days of access${plan.bonusDays ? ` (incl. ${plan.bonusDays} bonus)` : ''}`,
   ];
 
