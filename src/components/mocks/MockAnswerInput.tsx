@@ -8,6 +8,7 @@ import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import { isWordHighlightTask } from '@/lib/listening';
 import { allowsMultipleChoices } from '@/lib/choices';
 import { passageHasGaps } from '@/components/practice/InlineBlankPassage';
+import OptionContent, { hasPictureOptions } from '@/components/practice/OptionContent';
 
 interface MockAnswerInputProps {
   question: Question;
@@ -30,8 +31,8 @@ export default function MockAnswerInput({ question, answer, onChange }: MockAnsw
         onSelectionChange={values => onChange({ selectedOptions: values })}
       />
       {!isWordHighlightTask(question) && question.options && question.options.length > 0 && (
-        <div className="space-y-2">
-          {question.options.map(option => {
+        <div className={hasPictureOptions(question.options) ? 'grid grid-cols-2 gap-2' : 'space-y-2'}>
+          {question.options.map((option, optionIndex) => {
             const checked = selectedOptions.includes(option.id);
             return (
               <label
@@ -52,7 +53,7 @@ export default function MockAnswerInput({ question, answer, onChange }: MockAnsw
                   }
                   className="mt-0.5 rounded border-input text-primary focus:ring-primary h-3.5 w-3.5"
                 />
-                <span className="text-foreground font-medium leading-relaxed">{option.text}</span>
+                <OptionContent option={option} index={optionIndex} />
               </label>
             );
           })}

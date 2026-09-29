@@ -87,7 +87,12 @@ export default function AITutorDrawer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTutorOpen, tutorQuestion]);
 
-  const quickPrompts = activeExam === 'PTE' ? [
+  const quickPrompts = activeExam === 'EPS_TOPIK' ? [
+    'Explain Korean workplace safety signs for EPS-TOPIK',
+    'How do I tell 은/는 and 이/가 apart?',
+    'Common EPS-TOPIK words for factory work',
+    'How to read Korean prices and dates quickly',
+  ] : activeExam === 'PTE' ? [
     'Give me the 90/90 Describe Image template',
     'How to score 79+ in Read Aloud oral fluency?',
     'Summarize Written Text rules & 1-sentence tips',
