@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
+import { SCORE_SCALE } from '@/components/onboarding/onboarding';
+import { EXAM_LABELS, ExamType } from '@/lib/types';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +24,10 @@ interface ExamDateDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+
+/** The target a learner starts from when they have not set one. */
+const TARGET_DEFAULT: Record<ExamType, number> = { PTE: 79, IELTS: 7.5, EPS_TOPIK: 60 };
+
 export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogProps) {
   const { user, activeExam, updateProfile } = useApp();
 
@@ -34,7 +40,7 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
   const [time, setTime] = useState<string>('09:00');
-  const [targetScore, setTargetScore] = useState<number>(user?.targetScore || (activeExam === 'PTE' ? 79 : 7.5));
+  const [targetScore, setTargetScore] = useState<number>(user?.targetScore || TARGET_DEFAULT[activeExam]);
   const [saving, setSaving] = useState<boolean>(false);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
 
@@ -214,11 +220,11 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
               <Target className="w-3.5 h-3.5 text-primary" />
-              <span>Target Score ({activeExam})</span>
+              <span>Target Score ({EXAM_LABELS[activeExam]})</span>
             </label>
             <Input
               type="number"
-              step={activeExam === 'PTE' ? '1' : '0.5'}
+              step={String(SCORE_SCALE[activeExam].step)}
               value={String(targetScore)}
               onChange={(e) => setTargetScore(parseFloat(e.target.value) || 0)}
               className="bg-card dark:bg-[#181c24] border-border dark:border-white/10 text-foreground dark:text-white focus-visible:ring-primary text-xs h-10 rounded-xl"

@@ -1,4 +1,4 @@
-import { ExamType, SkillType, UserProfile, isAdmin } from '@/lib/types';
+import { EXAM_LABELS, ExamType, SkillType, UserProfile, isAdmin } from '@/lib/types';
 
 export type StudyGoal = NonNullable<UserProfile['studyGoal']>;
 export type Destination = NonNullable<UserProfile['destination']>;
@@ -19,6 +19,9 @@ export interface ScoreScale {
 export const SCORE_SCALE: Record<ExamType, ScoreScale> = {
   IELTS: { min: 4, max: 9, step: 0.5, presets: [6, 6.5, 7, 7.5], fallback: 6.5 },
   PTE: { min: 30, max: 90, step: 1, presets: [50, 58, 65, 79], fallback: 65 },
+  // 40 items at 2.5 points. HRD Korea's minimum scores are 30 (fishery), 45
+  // (most industries) and 60 (manufacturing); above that, places go by rank.
+  EPS_TOPIK: { min: 30, max: 100, step: 2.5, presets: [45, 60, 70, 80], fallback: 60 },
 };
 
 export function clampScore(exam: ExamType, score: number): number {
@@ -27,8 +30,12 @@ export function clampScore(exam: ExamType, score: number): number {
   return Math.min(max, Math.max(min, snapped));
 }
 
-export const formatScore = (exam: ExamType, score: number) =>
-  exam === 'IELTS' ? score.toFixed(1) : String(Math.round(score));
+export const formatScore = (exam: ExamType, score: number) => {
+  if (exam === 'IELTS') return score.toFixed(1);
+  // EPS-TOPIK moves in 2.5s, so a half point is a real score, not rounding noise.
+  if (exam === 'EPS_TOPIK') return String(Math.round(score * 2) / 2);
+  return String(Math.round(score));
+};
 
 const IELTS_BANDS: [number, string][] = [
   [9, 'Expert user'],
@@ -41,6 +48,7 @@ const IELTS_BANDS: [number, string][] = [
 
 export function scoreLabel(exam: ExamType, score: number): string {
   if (exam === 'PTE') return `${Math.round(score)} out of 90`;
+  if (exam === 'EPS_TOPIK') return `${formatScore(exam, score)} out of 100`;
   const band = IELTS_BANDS.find(([floor]) => score >= floor);
   return band ? `Band ${band[0]}: ${band[1]}` : '';
 }
@@ -111,6 +119,7 @@ export const DESTINATIONS: { id: Destination; label: string; code: string }[] = 
   { id: 'canada', label: 'Canada', code: 'CA' },
   { id: 'usa', label: 'United States', code: 'US' },
   { id: 'new-zealand', label: 'New Zealand', code: 'NZ' },
+  { id: 'south-korea', label: 'South Korea', code: 'KR' },
   { id: 'other', label: 'Somewhere else', code: '•••' },
 ];
 
@@ -139,7 +148,7 @@ export const destinationLabel = (destination?: Destination) =>
 export const skillLabel = (skill?: SkillType) => FOCUS_SKILLS.find(item => item.id === skill)?.label;
 
 export function planHeadline(user: UserProfile): string {
-  const exam = user.targetExam === 'PTE' ? 'PTE' : 'IELTS';
+  const exam = EXAM_LABELS[user.targetExam] ?? 'IELTS';
   const target = user.targetScore != null ? ` ${formatScore(user.targetExam, user.targetScore)}` : '';
   const place = user.destination && user.destination !== 'other' ? destinationLabel(user.destination) : undefined;
   const parts = [`Aiming for ${exam}${target}`];

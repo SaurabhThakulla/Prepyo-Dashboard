@@ -155,6 +155,16 @@ const EXAM_STYLE: Record<
     wash: 'from-blue-50',
     bar: 'bg-blue-600',
   },
+  // Not offered at onboarding yet (EXAMS lists IELTS and PTE); it stays under
+  // "coming soon" until the question bank is ready. Styled for when it moves.
+  EPS_TOPIK: {
+    facts: ['All 16 official task types', 'Reading & listening'],
+    tile: 'bg-emerald-600 text-white',
+    soft: 'bg-emerald-50 text-emerald-700',
+    ring: 'border-emerald-600 ring-emerald-600/20',
+    wash: 'from-emerald-50',
+    bar: 'bg-emerald-600',
+  },
 };
 
 const UPCOMING_PREPARATIONS: {
@@ -292,6 +302,13 @@ const SKILL_TASKS: Record<ExamType, Record<SkillType, string[]>> = {
     writing: ['Task 1 report', 'Task 2 essay'],
     reading: ['True / False / Not Given', 'Matching headings'],
     listening: ['Form completion', 'Multiple choice'],
+  },
+  // No speaking or writing section; the focus step offers only the two below.
+  EPS_TOPIK: {
+    speaking: [],
+    writing: [],
+    reading: ['Signs & safety notices', 'Fill in the blank'],
+    listening: ['Choose the picture', 'Workplace dialogues'],
   },
 };
 
@@ -2031,6 +2048,7 @@ function DestinationFlag({ id, className }: { id: string; className?: string }) 
         </span>
       );
     case 'korea':
+    case 'south-korea':
       return (
         <span className={containerClass} title="South Korea">
           <KR className="h-full w-full object-cover" />
