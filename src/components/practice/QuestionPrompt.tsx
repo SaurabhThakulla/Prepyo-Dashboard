@@ -3,7 +3,7 @@ import { Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import PromptAudio from '@/components/practice/PromptAudio';
-import { Question, Blank } from '@/lib/types';
+import { Question, Blank, listeningPlays } from '@/lib/types';
 import { isWordHighlightTask } from '@/lib/listening';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
 
@@ -76,7 +76,8 @@ export default function QuestionPrompt({
         audioUrl={question.audioUrl}
         audioTranscript={reviewTranscript ?? question.audioTranscript}
         scriptOnRequest={question.scriptOnRequest}
-        singlePlay={question.exam === 'IELTS' && question.skill === 'listening'}
+        singlePlay={(question.exam === 'IELTS' || question.exam === 'EPS_TOPIK') && question.skill === 'listening'}
+        repeat={listeningPlays(question)}
         title={question.title}
         allowTranscript={allowTranscript}
       />

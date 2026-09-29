@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Volume2, Play, Square, Pause, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
-import { assignVoices, splitSentences, splitTurns } from '@/lib/listeningScript';
+import { assignVoices, FALLBACK_LANG, scriptLanguage, splitSentences, splitTurns } from '@/lib/listeningScript';
 import { browserVoiceBroken, markBrowserVoiceBroken, Playback, playClips, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
 
 interface PromptAudioProps {
@@ -36,6 +36,12 @@ interface PromptAudioProps {
    */
   singlePlay?: boolean;
   /**
+   * How many times one play runs the recording, back to back with a short
+   * pause between. EPS-TOPIK plays every listening item twice; with singlePlay
+   * that is the learner's whole allowance, as in the test.
+   */
+  repeat?: number;
+  /**
    * Where the script is fetched from when it is not carried inline. Defaults
    * to the question's playback endpoint.
    */
@@ -47,7 +53,17 @@ interface PromptAudioProps {
   serverAudioUrl?: string;
 }
 
-const ONCE_NOTE = 'Played once. In the test you hear each recording only once.';
+/** What the panel says before and after a limited play, for one or two runs. */
+function playNotes(repeat: number) {
+  return repeat > 1
+    ? { done: 'Played twice. In the test you hear each recording twice.', ready: 'Press play when you are ready. It plays twice.' }
+    : { done: 'Played once. In the test you hear each recording only once.', ready: 'Press play when you are ready. It plays once.' };
+}
+
+/** The gap between two runs of a repeated recording, as between the test's two plays. */
+const REPEAT_GAP_MS = 1500;
+const PAUSE_SEGMENT = '[[pause]]';
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * The audio a learner listens to before answering.
@@ -67,9 +83,11 @@ export default function PromptAudio({
   onFinished,
   scriptOnRequest = false,
   singlePlay = false,
+  repeat = 1,
   scriptUrl,
   serverAudioUrl,
 }: PromptAudioProps) {
+  const notes = playNotes(repeat);
   const playbackUrl = scriptUrl ?? (questionId ? `/questions/${questionId}/playback` : undefined);
   const spokenUrl = serverAudioUrl ?? (questionId ? `/questions/${questionId}/playback/audio` : undefined);
   const browserVoice = useBrowserVoice();
@@ -179,25 +197,32 @@ export default function PromptAudio({
     // pronounce "beep". All other text is preserved; changing the script would
     // change what the learner hears.
     const turns = splitTurns(text);
-    const voiceFor = assignVoices(turns.map(turn => turn.speaker), window.speechSynthesis.getVoices());
+    const language = scriptLanguage(text);
+    const voiceFor = assignVoices(turns.map(turn => turn.speaker), window.speechSynthesis.getVoices(), language);
     const segments: string[] = [];
     const speakers: (string | null)[] = [];
-    for (const turn of turns) {
-      for (const part of turn.text.split(/(\[beep\])/gi).filter(piece => piece.trim())) {
-        // Chrome cuts long utterances off part-way, so speech goes sentence
-        // by sentence; a beep marker stays a segment of its own.
-        const pieces = /^\[beep\]$/i.test(part.trim()) ? [part] : splitSentences(part);
-        for (const piece of pieces) {
-          segments.push(piece);
-          speakers.push(turn.speaker);
+    for (let round = 0; round < repeat; round++) {
+      if (round > 0) {
+        segments.push(PAUSE_SEGMENT);
+        speakers.push(null);
+      }
+      for (const turn of turns) {
+        for (const part of turn.text.split(/(\[beep\])/gi).filter(piece => piece.trim())) {
+          // Chrome cuts long utterances off part-way, so speech goes sentence
+          // by sentence; a beep marker stays a segment of its own.
+          const pieces = /^\[beep\]$/i.test(part.trim()) ? [part] : splitSentences(part);
+          for (const piece of pieces) {
+            segments.push(piece);
+            speakers.push(turn.speaker);
+          }
         }
       }
     }
     // Where each segment starts, so a word boundary inside one maps onto the
     // whole script for the progress bar.
-    const total = segments.reduce((sum, part) => sum + part.length, 0) || 1;
+    const total = segments.reduce((sum, part) => sum + (part === PAUSE_SEGMENT ? 0 : part.length), 0) || 1;
     const starts: number[] = [];
-    segments.reduce((sum, part, i) => ((starts[i] = sum), sum + part.length), 0);
+    segments.reduce((sum, part, i) => ((starts[i] = sum), sum + (part === PAUSE_SEGMENT ? 0 : part.length)), 0);
     // Whether the voice has said anything yet. A voice that never starts does
     // not work in this browser (Brave's shields can do this), so the server's
     // voice takes over; nothing was heard, so the one play is not used up.
@@ -249,6 +274,10 @@ export default function PromptAudio({
         }
         setProgress(starts[index] / total);
         try {
+          if (segment === PAUSE_SEGMENT) {
+            setTimeout(() => next(index + 1), REPEAT_GAP_MS);
+            return;
+          }
           if (/^\[beep\]$/i.test(segment)) {
             const context = contextRef.current;
             if (!context || context.state !== 'running') { fail(); return; }
@@ -272,11 +301,11 @@ export default function PromptAudio({
           }
           const utterance = new SpeechSynthesisUtterance(segment.trim());
           const voices = window.speechSynthesis.getVoices();
-          const english = voiceFor.get(speakers[index]) ??
-            voices.find(voice => voice.lang.startsWith('en-GB')) ??
-            voices.find(voice => voice.lang.startsWith('en'));
-          if (english) utterance.voice = english;
-          utterance.lang = english?.lang ?? 'en-GB';
+          const voice = voiceFor.get(speakers[index]) ??
+            voices.find(candidate => candidate.lang.startsWith(FALLBACK_LANG[language])) ??
+            voices.find(candidate => candidate.lang.startsWith(language));
+          if (voice) utterance.voice = voice;
+          utterance.lang = voice?.lang ?? FALLBACK_LANG[language];
           utterance.rate = 0.95;
           utterance.onstart = () => {
             anyStarted = true;
@@ -292,7 +321,7 @@ export default function PromptAudio({
       };
       next(0);
     } catch { fail(); }
-  }, [script, scriptOnRequest, playbackUrl, spokenUrl, oncePlayed, cancelPlayback]);
+  }, [script, scriptOnRequest, playbackUrl, spokenUrl, oncePlayed, cancelPlayback, repeat]);
 
   if (audioUrl) {
     return (
@@ -301,6 +330,7 @@ export default function PromptAudio({
         title={title}
         questionId={questionId}
         singlePlay={singlePlay && !allowTranscript}
+        repeat={repeat}
         onFinished={() => onFinishedRef.current?.()}
       />
     );
@@ -308,14 +338,24 @@ export default function PromptAudio({
 
   if (!script && !scriptOnRequest) return null;
 
+  // A device can have voices and still none in the script's language: many
+  // Windows PCs have no Korean voice, and an English one reading Hangul says
+  // nothing a learner can use. The server's voice speaks it instead.
+  const language = script ? scriptLanguage(script) : 'en';
+  const noVoiceForScript =
+    browserVoice === 'ready' &&
+    language !== 'en' &&
+    !window.speechSynthesis.getVoices().some(voice => voice.lang.toLowerCase().startsWith(language));
+
   // A browser that cannot speak gets the same script spoken on the server.
-  if ((!canSpeak || browserVoice === 'none' || voiceFailed) && spokenUrl) {
+  if ((!canSpeak || browserVoice === 'none' || voiceFailed || noVoiceForScript) && spokenUrl) {
     return (
       <ServerSpokenAudio
         listUrl={spokenUrl}
         title={title}
         questionId={questionId}
         singlePlay={singlePlay && !allowTranscript}
+        repeat={repeat}
         onFinished={() => onFinishedRef.current?.()}
         footer={
           allowTranscript && script ? (
@@ -351,11 +391,11 @@ export default function PromptAudio({
         speaking
           ? 'Listen carefully…'
           : oncePlayed
-            ? ONCE_NOTE
+            ? notes.done
             : finished
               ? 'Finished · play it again any time'
               : singlePlay && !allowTranscript
-                ? 'Press play when you are ready. It plays once.'
+                ? notes.ready
                 : "Press play when you're ready"
       }
       onToggle={speaking ? (singlePlay && !allowTranscript ? () => {} : stop) : speak}
@@ -432,6 +472,7 @@ function ServerSpokenAudio({
   title,
   questionId,
   singlePlay,
+  repeat = 1,
   onFinished,
   footer,
 }: {
@@ -439,9 +480,11 @@ function ServerSpokenAudio({
   title: string;
   questionId?: string;
   singlePlay: boolean;
+  repeat?: number;
   onFinished: () => void;
   footer?: React.ReactNode;
 }) {
+  const notes = playNotes(repeat);
   const playbackRef = useRef<Playback | null>(null);
   const run = useRef(0);
   const [playing, setPlaying] = useState(false);
@@ -481,12 +524,18 @@ function ServerSpokenAudio({
       setStarted(true);
       setPlaying(true);
       setFinished(false);
-      const playback = playClips(segments, fraction => {
-        if (current === run.current) setProgress(fraction);
-      });
-      playbackRef.current = playback;
-      await playback.done;
-      if (current !== run.current) return;
+      for (let round = 0; round < repeat; round++) {
+        if (round > 0) {
+          await wait(REPEAT_GAP_MS);
+          if (current !== run.current) return;
+        }
+        const playback = playClips(segments, fraction => {
+          if (current === run.current) setProgress((round + fraction) / repeat);
+        });
+        playbackRef.current = playback;
+        await playback.done;
+        if (current !== run.current) return;
+      }
       setProgress(1);
       setFinished(true);
       onFinished();
@@ -515,11 +564,11 @@ function ServerSpokenAudio({
           : playing
             ? 'Listen carefully…'
             : locked
-              ? ONCE_NOTE
+              ? notes.done
               : finished
                 ? 'Finished · play it again any time'
                 : singlePlay
-                  ? 'Press play when you are ready. It plays once.'
+                  ? notes.ready
                   : "Press play when you're ready"
       }
       onToggle={() => void play()}
@@ -542,21 +591,27 @@ function RecordedAudio({
   title,
   questionId,
   singlePlay = false,
+  repeat = 1,
   onFinished,
 }: {
   src: string;
   title: string;
   questionId?: string;
   singlePlay?: boolean;
+  repeat?: number;
   onFinished: () => void;
 }) {
+  const notes = playNotes(repeat);
   const audioRef = useRef<HTMLAudioElement>(null);
+  // Which run of a repeated recording is playing, from 0.
+  const round = useRef(0);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [finished, setFinished] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    round.current = 0;
     setPlaying(false);
     setProgress(0);
     setFinished(false);
@@ -574,6 +629,7 @@ function RecordedAudio({
       return;
     }
     setError(null);
+    if (finished) round.current = 0;
     audio.play().catch(() => setError("The audio couldn't play. Check your sound is on and try again."));
   };
 
@@ -588,7 +644,19 @@ function RecordedAudio({
           setFinished(false);
         }}
         onPause={() => setPlaying(false)}
-        onEnded={() => {
+        onEnded={event => {
+          if (round.current + 1 < repeat) {
+            // Another run: stay "playing" through the gap so a single-play
+            // recording cannot be restarted in between.
+            round.current += 1;
+            const el = event.currentTarget;
+            setPlaying(true);
+            setTimeout(() => {
+              el.currentTime = 0;
+              el.play().catch(() => setError("The audio couldn't play. Check your sound is on and try again."));
+            }, REPEAT_GAP_MS);
+            return;
+          }
           setPlaying(false);
           setFinished(true);
           setProgress(1);
@@ -596,7 +664,7 @@ function RecordedAudio({
         }}
         onTimeUpdate={event => {
           const el = event.currentTarget;
-          if (el.duration) setProgress(el.currentTime / el.duration);
+          if (el.duration) setProgress((round.current + el.currentTime / el.duration) / repeat);
         }}
         onError={() => setError("The audio couldn't load. Please try again.")}
         className="hidden"
@@ -608,13 +676,13 @@ function RecordedAudio({
           playing
             ? 'Listen carefully…'
             : singlePlay && finished
-              ? ONCE_NOTE
+              ? notes.done
               : finished
                 ? 'Finished · play it again any time'
                 : progress > 0
                   ? 'Paused'
                   : singlePlay
-                    ? 'Press play when you are ready. It plays once.'
+                    ? notes.ready
                     : "Press play when you're ready"
         }
         onToggle={toggle}
