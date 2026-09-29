@@ -71,9 +71,9 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        display: ["Outfit", "Inter", "system-ui", "sans-serif"],
-        reading: ["Lora", "Georgia", "Cambria", "'Times New Roman'", "serif"],
+        sans: ["Inter", "'Noto Sans KR'", "system-ui", "sans-serif"],
+        display: ["Outfit", "Inter", "'Noto Sans KR'", "system-ui", "sans-serif"],
+        reading: ["Lora", "Georgia", "Cambria", "'Times New Roman'", "'Noto Sans KR'", "serif"],
       },
       boxShadow: {
         hero: "0 24px 60px -15px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.05)",
