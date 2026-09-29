@@ -64,8 +64,9 @@ export default function TutorialsPage() {
     }
   }, [skillParam]);
 
-  // Determine user's active exam automatically: PTE or IELTS
-  const currentExam = activeExam === 'IELTS' ? 'IELTS' : 'PTE';
+  // The learner's own exam. EPS-TOPIK has no videos of its own yet, so it
+  // shows only the shared ones rather than borrowing PTE's.
+  const currentExam = activeExam;
 
   // Filter video list specifically for the user's exam without requiring manual selection
   const filteredVideos = useMemo(() => {

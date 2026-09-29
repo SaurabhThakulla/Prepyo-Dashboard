@@ -90,7 +90,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-const DUMMY_ANALYTICS: Record<ExamType, MistakeAnalytics> = {
+const DUMMY_ANALYTICS: Partial<Record<ExamType, MistakeAnalytics>> = {
   PTE: {
     period: 'weekly',
     total: 24,
@@ -150,7 +150,7 @@ const DUMMY_ANALYTICS: Record<ExamType, MistakeAnalytics> = {
   },
 };
 
-const DUMMY_MISTAKES: Record<ExamType, Mistake[]> = {
+const DUMMY_MISTAKES: Partial<Record<ExamType, Mistake[]>> = {
   PTE: [
     {
       id: 'dummy-pte-1',
@@ -295,7 +295,7 @@ export default function MistakesPage() {
   );
 
   const rawMistakes = isSuru
-    ? (DUMMY_MISTAKES[activeExam] ?? DUMMY_MISTAKES.PTE)
+    ? (DUMMY_MISTAKES[activeExam] ?? DUMMY_MISTAKES.PTE ?? [])
     : (data?.mistakes ?? []);
   const analytics = isSuru
     ? (DUMMY_ANALYTICS[activeExam] ?? DUMMY_ANALYTICS.PTE)
