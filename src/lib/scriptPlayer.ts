@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import { assignVoices, splitSentences, splitTurns } from '@/lib/listeningScript';
+import { assignVoices, FALLBACK_LANG, scriptLanguage, splitSentences, splitTurns } from '@/lib/listeningScript';
 
 /**
  * Plays a recording script once, start to finish, without controls: the way an
@@ -76,7 +76,8 @@ export async function browserCanSpeak(timeoutMs = 1500): Promise<boolean> {
 export function speakScript(script: string, onProgress?: (fraction: number) => void): Playback {
   const synth = window.speechSynthesis;
   const turns = splitTurns(script);
-  const voices = assignVoices(turns.map(turn => turn.speaker), synth.getVoices());
+  const language = scriptLanguage(script);
+  const voices = assignVoices(turns.map(turn => turn.speaker), synth.getVoices(), language);
   const pieces = turns.flatMap(turn => splitSentences(turn.text).map(text => ({ speaker: turn.speaker, text })));
   const total = pieces.reduce((sum, piece) => sum + piece.text.length, 0) || 1;
 
@@ -110,12 +111,12 @@ export function speakScript(script: string, onProgress?: (fraction: number) => v
         return;
       }
       const utterance = new SpeechSynthesisUtterance(piece.text);
-      const voice = voices.get(piece.speaker) ?? synth.getVoices().find(v => v.lang.startsWith('en'));
+      const voice = voices.get(piece.speaker) ?? synth.getVoices().find(v => v.lang.startsWith(language));
       if (voice) {
         utterance.voice = voice;
         utterance.lang = voice.lang;
       } else {
-        utterance.lang = 'en-GB';
+        utterance.lang = FALLBACK_LANG[language];
       }
       utterance.rate = 0.95;
       let finished = false;

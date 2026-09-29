@@ -17,14 +17,17 @@ export interface ScriptTurn {
 }
 
 // A label is one or two capitalised words and a colon, at the start of the
-// script or after the end of a sentence.
-const LABEL = /(?:^|(?<=[.!?]["”’)]?)\s+|\n+)([A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+)?):\s+/g;
+// script or after the end of a sentence. Korean scripts label speakers the way
+// EPS-TOPIK's do, with a short Hangul word: "남: … 여: …" (man, woman).
+const SPEAKER = '[A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+)?|[가-힣]{1,4}';
+const LABEL = new RegExp(`(?:^|(?<=[.!?]["”’)]?)\\s+|\\n+)(${SPEAKER}):\\s+`, 'g');
+const OPENS_WITH_LABEL = new RegExp(`^(?:${SPEAKER}):\\s`);
 
 /** Splits a script into turns. Scripts that do not open with a label are one turn. */
 export function splitTurns(script: string): ScriptTurn[] {
   const text = script.trim();
   if (!text) return [];
-  if (!/^[A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+)?:\s/.test(text)) {
+  if (!OPENS_WITH_LABEL.test(text)) {
     return [{ speaker: null, text }];
   }
 
@@ -43,16 +46,29 @@ export function splitTurns(script: string): ScriptTurn[] {
 // dialogue sound as different as the device allows.
 const ACCENT_ORDER = ['en-GB', 'en-AU', 'en-US', 'en-NZ', 'en-IE', 'en-CA', 'en-ZA', 'en-IN'];
 
+export type ScriptLanguage = 'en' | 'ko';
+
+/** The language a script is read in: Korean if it has any Hangul, else English. */
+export function scriptLanguage(script: string): ScriptLanguage {
+  return /[가-힣]/.test(script) ? 'ko' : 'en';
+}
+
+/** The voice language to fall back on when no voice was assigned. */
+export const FALLBACK_LANG: Record<ScriptLanguage, string> = { en: 'en-GB', ko: 'ko-KR' };
+
 /**
  * Chooses a voice for each speaker, in order of first appearance: a new accent
- * for each where possible, then another voice of an accent already used.
+ * for each where possible, then another voice of an accent already used. Only
+ * voices of the script's language are used; an English voice reading Korean
+ * says nothing a learner can use.
  */
 export function assignVoices<V extends { lang: string; name: string }>(
   speakers: (string | null)[],
   voices: V[],
+  language: ScriptLanguage = 'en',
 ): Map<string | null, V | undefined> {
-  const english = voices.filter(voice => voice.lang.toLowerCase().startsWith('en'));
-  const ranked = [...english].sort((a, b) => rank(a.lang) - rank(b.lang));
+  const matching = voices.filter(voice => voice.lang.toLowerCase().startsWith(language));
+  const ranked = [...matching].sort((a, b) => rank(a.lang) - rank(b.lang));
   const byAccent: V[] = [];
   const seenAccents = new Set<string>();
   for (const voice of ranked) {

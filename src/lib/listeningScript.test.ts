@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assignVoices, splitSentences, splitTurns } from './listeningScript';
+import { assignVoices, scriptLanguage, splitSentences, splitTurns } from './listeningScript';
 
 describe('splitTurns', () => {
   it('drops speaker labels and keeps each turn with its speaker', () => {
@@ -24,6 +24,24 @@ describe('splitTurns', () => {
       { speaker: 'Guide', text: 'The main gallery is closed.' },
     ]);
   });
+
+  it('splits Korean dialogues labelled the way EPS-TOPIK scripts are', () => {
+    expect(splitTurns('여: 지금 뭐 해요? 남: 상자를 옮기고 있어요.')).toEqual([
+      { speaker: '여', text: '지금 뭐 해요?' },
+      { speaker: '남', text: '상자를 옮기고 있어요.' },
+    ]);
+  });
+
+  it('reads an unlabelled Korean word as one turn', () => {
+    expect(splitTurns('공장')).toEqual([{ speaker: null, text: '공장' }]);
+  });
+});
+
+describe('scriptLanguage', () => {
+  it('reads a script with Hangul in Korean and anything else in English', () => {
+    expect(scriptLanguage('남: 고향이 어디예요?')).toBe('ko');
+    expect(scriptLanguage('Caller: Which day is it?')).toBe('en');
+  });
 });
 
 describe('assignVoices', () => {
@@ -45,6 +63,18 @@ describe('assignVoices', () => {
   it('never picks a non-English voice', () => {
     const assigned = assignVoices(['A', 'B', 'C', 'D', 'E'], voices);
     for (const voice of assigned.values()) expect(voice?.lang.startsWith('en')).toBe(true);
+  });
+
+  it('gives a Korean script Korean voices only', () => {
+    const withKorean = [...voices, { name: 'Korean one', lang: 'ko-KR' }, { name: 'Korean two', lang: 'ko-KR' }];
+    const assigned = assignVoices(['여', '남'], withKorean, 'ko');
+    expect(assigned.get('여')?.name).toBe('Korean one');
+    expect(assigned.get('남')?.name).toBe('Korean two');
+  });
+
+  it('leaves a Korean script unassigned on a device with no Korean voice', () => {
+    const assigned = assignVoices(['여'], voices, 'ko');
+    expect(assigned.get('여')).toBeUndefined();
   });
 });
 
