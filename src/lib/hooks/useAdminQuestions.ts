@@ -15,6 +15,8 @@ export interface QuestionTypeSpec {
   audio: FieldUse;
   image: FieldUse;
   figure: FieldUse;
+  /** Each choice is a picture (EPS-TOPIK "choose the picture"); its text is the label. */
+  optionImages?: FieldUse;
   prompt: string;
   prepSeconds: number;
   timeLimitSeconds: number;
@@ -50,6 +52,8 @@ export interface AuthoredQuestionDetail {
   imageUrl: string;
   figureData: string;
   options: string[];
+  /** Lines up with `options`: each choice's picture, or ''. */
+  optionImages?: string[];
   correctAnswers: string[];
   blanks: { id: string; options: string[] | null; correctAnswer: string }[];
   modelAnswer: string;

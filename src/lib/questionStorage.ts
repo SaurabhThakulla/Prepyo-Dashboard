@@ -2,6 +2,8 @@
  * Utilities for tracking question practice status, scores, bookmarks, and deterministic display numbering.
  */
 
+import { EXAM_MAX_SCORE, isExamType } from '@/lib/types';
+
 const BOOKMARKS_KEY = 'prepyo-bookmarked-questions';
 const SCORES_PREFIX = 'prepyo-question-scores';
 
@@ -71,7 +73,7 @@ export function recordQuestionAttempt(
     const existing = records[questionId] || { attemptsCount: 0, lastAttemptedAt: Date.now() };
     records[questionId] = {
       score: score !== undefined ? score : existing.score,
-      maxScore: maxScore ?? existing.maxScore ?? (exam === 'PTE' ? 90 : 9),
+      maxScore: maxScore ?? existing.maxScore ?? (isExamType(exam) ? EXAM_MAX_SCORE[exam] : 9),
       attemptsCount: existing.attemptsCount + 1,
       lastAttemptedAt: Date.now(),
       isCorrect: isCorrect !== undefined ? isCorrect : existing.isCorrect,

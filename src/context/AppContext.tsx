@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 import '@/lib/google';
-import { ExamType, NotificationItem, UserProfile } from '@/lib/types';
+import { ExamType, isExamType, NotificationItem, UserProfile } from '@/lib/types';
 import { TutorialVideo } from '@/data/tutorials';
 
 export type TutorialViewMode = 'standard' | 'theater' | 'mini';
@@ -107,7 +107,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [activeExam, setActiveExamState] = useState<ExamType>(() => {
     try {
       const saved = localStorage.getItem('prepyo-active-exam');
-      if (saved === 'IELTS' || saved === 'PTE') return saved;
+      if (isExamType(saved)) return saved;
     } catch {
       // ignore
     }
@@ -188,7 +188,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const applyUser = useCallback((next: UserProfile) => {
     setUser(next);
-    if (next.targetExam === 'IELTS' || next.targetExam === 'PTE') {
+    if (isExamType(next.targetExam)) {
       setActiveExamState(next.targetExam);
       try {
         localStorage.setItem('prepyo-active-exam', next.targetExam);
