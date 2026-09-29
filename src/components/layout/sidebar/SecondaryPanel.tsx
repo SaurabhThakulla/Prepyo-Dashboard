@@ -5,7 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import SecondaryNavList from './SecondaryNavList';
 import { PrimarySectionConfig, SecondaryNavItem } from './navigation';
-import { ExamType, UserProfile, isAdmin } from '@/lib/types';
+import { EXAM_LABELS, ExamType, UserProfile, isAdmin } from '@/lib/types';
 
 interface SecondaryPanelProps {
   section: PrimarySectionConfig;
@@ -86,11 +86,15 @@ export default function SecondaryPanel({
   );
 }
 
-/** The PTE / IELTS pills. Switching here re-generates the practice menu. */
+/**
+ * The exam pills. Switching here re-generates the practice menu. Admin-only,
+ * which is also how EPS-TOPIK is reachable before learners are offered it.
+ */
 function ExamSwitcher({ activeExam, onChange }: { activeExam: ExamType; onChange: (exam: ExamType) => void }) {
   const EXAMS: { exam: ExamType; target: string; activeClass: string }[] = [
     { exam: 'PTE', target: '79+', activeClass: 'bg-primary text-white shadow-sm' },
     { exam: 'IELTS', target: '8.0', activeClass: 'bg-amber-500 text-white shadow-sm' },
+    { exam: 'EPS_TOPIK', target: '60+', activeClass: 'bg-emerald-600 text-white shadow-sm' },
   ];
 
   return (
@@ -103,7 +107,7 @@ function ExamSwitcher({ activeExam, onChange }: { activeExam: ExamType; onChange
             activeExam === exam ? activeClass : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          <span>{exam}</span>
+          <span className="whitespace-nowrap">{EXAM_LABELS[exam]}</span>
           <span className="text-[9px] opacity-75 font-mono">{target}</span>
         </button>
       ))}

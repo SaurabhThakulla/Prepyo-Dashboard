@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { SYLLABUS, syllabusFor, typeKey } from '@/lib/syllabus';
 import { typeIdsFor } from '@/lib/readingTypes';
-import { ExamType, ieltsModuleOf, isAdmin, SkillType, UserProfile } from '@/lib/types';
+import { EXAM_LABELS, ExamType, ieltsModuleOf, isAdmin, SkillType, UserProfile } from '@/lib/types';
 import { PTE_MOCK_KINDS, pteMockHref } from '@/lib/pteMock/catalog';
 
 /**
@@ -102,6 +102,8 @@ export function buildSections(
   hasMistake = false,
 ): PrimarySectionConfig[] {
   const isPTE = activeExam === 'PTE';
+  // EPS-TOPIK has no sectional mocks yet; its full 40-question mock is to come.
+  const isEPS = activeExam === 'EPS_TOPIK';
 
   return [
     {
@@ -178,7 +180,7 @@ export function buildSections(
       id: 'practice',
       label: 'Practice',
       icon: FilePenLine,
-      title: `${activeExam} Practice Studio`,
+      title: `${EXAM_LABELS[activeExam]} Practice Studio`,
       description: 'Exam-format tasks & AI rubric feedback',
       // One heading per skill, one item per task type underneath — the exam's
       // own shape, straight from the syllabus, so PTE and IELTS each list their
@@ -211,8 +213,10 @@ export function buildSections(
         // its links are checked against what the server will actually deal.
         // Undefined means the answer has not arrived yet: show everything
         // rather than blink the menu down to nothing and back.
+        // EPS-TOPIK reading is not on passages, so the passage bank says
+        // nothing about it.
         const offered =
-          skill === 'reading' && availableReadingTypes
+          skill === 'reading' && availableReadingTypes && !isEPS
             ? names.filter(name =>
                 typeIdsFor(typeKey(name)).some(id => availableReadingTypes.includes(id)),
               )
@@ -228,7 +232,9 @@ export function buildSections(
         }));
 
         // Mock tests sit under the same heading as the practice tasks for each skill.
-        // PTE runs every sectional test on its own test player.
+        // PTE runs every sectional test on its own test player. The IELTS mocks
+        // below are IELTS papers, so an EPS-TOPIK heading lists practice only.
+        if (isEPS) return links;
         if (isPTE && links.length > 0) {
           links.push({
             href: pteMockHref(skill),
@@ -319,7 +325,7 @@ export function buildSections(
       title: 'Mock Exam Simulator',
       description: 'Timed full exams with scorecards',
       items: [
-        ...(isPTE ? pteMockItems() : ieltsMockItems()),
+        ...(isEPS ? [] : isPTE ? pteMockItems() : ieltsMockItems()),
         {
           href: '/diagnostic',
           label: 'Diagnostic Test',

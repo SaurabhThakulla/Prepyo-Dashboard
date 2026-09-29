@@ -56,7 +56,7 @@ export default function AppSidebar({
   // Reading headings are only worth showing when the bank has something behind
   // them, so the menu is checked against the same list the practice page deals
   // from. Left undefined until it arrives, which shows every heading.
-  const readingTypes = useReadingTypes(activeExam, Boolean(user));
+  const readingTypes = useReadingTypes(activeExam, Boolean(user) && activeExam !== 'EPS_TOPIK');
   const availableReadingTypes = useMemo(
     () =>
       readingTypes.data

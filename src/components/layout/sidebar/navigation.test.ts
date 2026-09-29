@@ -262,3 +262,46 @@ describe('the IELTS writing menu for a learner', () => {
     expect(writing(undefined)).toEqual(['Describe the figure', ...TASK2_TYPES]);
   });
 });
+
+describe('the EPS-TOPIK practice menu', () => {
+  const practice = (available?: string[]) =>
+    buildSections('EPS_TOPIK', () => { }, null, available).find(section => section.id === 'practice');
+
+  it('has Reading and Listening headings and nothing for speaking or writing', () => {
+    const groups = [...new Set((practice()?.items ?? []).map(item => item.group))];
+    expect(groups).toEqual(['Reading', 'Listening']);
+  });
+
+  it('lists the official subtasks under each heading, with no borrowed IELTS or PTE mocks', () => {
+    const items = practice()?.items ?? [];
+    expect(items.filter(item => item.group === 'Reading').map(item => item.label)).toEqual([
+      'Picture to Word or Sentence',
+      'Correct Underlined Grammar',
+      'Signs, Notices and Charts',
+      'Related Word',
+      'Fill in the Blank',
+      'Word from Description',
+      'Passage Topic',
+      'Matching Statement',
+      'Description to Picture',
+    ]);
+    expect(items.filter(item => item.group === 'Listening').map(item => item.label)).toEqual([
+      'Choose What You Heard',
+      'Listen and Choose Picture',
+      'Choose the Right Reply',
+      'What Comes Next',
+      'Numbers, Dates and Prices',
+      'Picture Question',
+      'Dialogue Comprehension',
+    ]);
+    expect(items.some(item => item.badge === 'MOCK')).toBe(false);
+  });
+
+  it('keeps its reading tasks when the passage bank is empty, since they are not on passages', () => {
+    expect((practice([])?.items ?? []).filter(item => item.group === 'Reading')).toHaveLength(9);
+  });
+
+  it('is titled with the exam name, not its identifier', () => {
+    expect(practice()?.title).toBe('EPS-TOPIK Practice Studio');
+  });
+});
