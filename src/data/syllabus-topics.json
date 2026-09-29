@@ -1,7 +1,7 @@
 {
   "pageName": "Exam Syllabus & Topics",
   "pageRoute": "/practice",
-  "pageDescription": "Complete breakdown of all skills and question task types for IELTS and PTE exams",
+  "pageDescription": "Complete breakdown of all skills and question task types for IELTS, PTE and EPS-TOPIK exams",
   "exams": {
     "IELTS": {
       "name": "International English Language Testing System",
@@ -239,6 +239,104 @@
             {
               "name": "Write from Dictation",
               "simpleDescription": "Listen to a sentence and type every word you hear accurately"
+            }
+          ]
+        }
+      }
+    },
+    "EPS_TOPIK": {
+      "name": "Employment Permit System Test of Proficiency in Korean",
+      "scoringScale": "Score 0 to 100",
+      "skills": {
+        "reading": {
+          "title": "Reading",
+          "description": "Read pictures, signs, notices and short texts from daily life and the workplace, and choose the right answer",
+          "topics": [
+            {
+              "name": "Picture to Word or Sentence",
+              "simpleDescription": "Look at the picture and choose the word or sentence that matches it",
+              "instruction": "다음 그림을 보고 맞는 단어나 문장을 고르십시오."
+            },
+            {
+              "name": "Correct Underlined Grammar",
+              "simpleDescription": "Choose the sentence whose underlined part is correct",
+              "instruction": "다음 중 밑줄 친 부분이 맞는 것은 무엇입니까?"
+            },
+            {
+              "name": "Signs, Notices and Charts",
+              "simpleDescription": "Read a sign, notice or chart and answer the question",
+              "instruction": "다음 글을 읽고 물음에 답하십시오."
+            },
+            {
+              "name": "Related Word",
+              "simpleDescription": "Choose the word or meaning that goes with the given word",
+              "instruction": "다음 단어와 관계있는 것은 무엇입니까?"
+            },
+            {
+              "name": "Fill in the Blank",
+              "simpleDescription": "Choose the word or phrase that best fills the blank",
+              "instruction": "빈칸에 들어갈 가장 알맞은 것을 고르십시오."
+            },
+            {
+              "name": "Word from Description",
+              "simpleDescription": "Read a description and choose the word it describes",
+              "instruction": "다음 설명에 알맞은 어휘를 고르십시오."
+            },
+            {
+              "name": "Passage Topic",
+              "simpleDescription": "Read a short passage and choose what it is about",
+              "instruction": "다음 글을 읽고 무엇에 대한 글인지 고르십시오."
+            },
+            {
+              "name": "Matching Statement",
+              "simpleDescription": "Read a text and choose the statement that matches it",
+              "instruction": "다음 글을 읽고 내용과 같은 것을 고르십시오."
+            },
+            {
+              "name": "Description to Picture",
+              "simpleDescription": "Read a description and choose the matching picture",
+              "instruction": "다음 설명을 읽고 알맞은 그림을 고르십시오."
+            }
+          ]
+        },
+        "listening": {
+          "title": "Listening",
+          "description": "Listen to words, sentences and conversations from daily life and the workplace. Each recording plays twice",
+          "topics": [
+            {
+              "name": "Choose What You Heard",
+              "simpleDescription": "Listen and choose the word or sentence you heard",
+              "instruction": "들은 것을 고르십시오."
+            },
+            {
+              "name": "Listen and Choose Picture",
+              "simpleDescription": "Listen and choose the picture that matches",
+              "instruction": "다음을 듣고 들은 내용과 관계있는 그림을 고르십시오."
+            },
+            {
+              "name": "Choose the Right Reply",
+              "simpleDescription": "Listen to a question and choose the right reply",
+              "instruction": "다음을 듣고 질문에 알맞은 대답을 고르십시오."
+            },
+            {
+              "name": "What Comes Next",
+              "simpleDescription": "Listen and choose what the person says next",
+              "instruction": "다음을 듣고 이어지는 말을 고르십시오."
+            },
+            {
+              "name": "Numbers, Dates and Prices",
+              "simpleDescription": "Listen for a number, date or price and choose the matching picture",
+              "instruction": "다음을 듣고 들은 내용과 관계있는 그림을 고르십시오."
+            },
+            {
+              "name": "Picture Question",
+              "simpleDescription": "Look at the picture, listen to the question and choose the answer",
+              "instruction": "다음을 듣고 질문에 알맞은 대답을 고르십시오."
+            },
+            {
+              "name": "Dialogue Comprehension",
+              "simpleDescription": "Listen to a conversation and answer the question about it",
+              "instruction": "다음을 듣고 질문에 알맞은 대답을 고르십시오."
             }
           ]
         }
