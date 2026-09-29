@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/toast';
 import { useApp } from '@/context/AppContext';
 import { api, errorMessage } from '@/lib/api';
-import { ExamType, SkillType } from '@/lib/types';
+import { EXAM_LABELS, ExamType, SkillType } from '@/lib/types';
 import { AuthoredQuestionDetail, QuestionTypeSpec, useQuestionTypes } from '@/lib/hooks/useAdminQuestions';
 import { matchesTypeKey } from '@/lib/syllabus';
 
@@ -57,6 +57,11 @@ export default function AdminQuestionForm({
   const [imageUrl, setImageUrl] = useState('');
   const [figureData, setFigureData] = useState('');
   const [options, setOptions] = useState<string[]>(['', '', '', '']);
+  // Lines up with options: each choice's picture, for tasks whose choices are pictures.
+  const [optionImages, setOptionImages] = useState<string[]>(['', '', '', '']);
+  const [uploadingOption, setUploadingOption] = useState<number | null>(null);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const audioInputRef = React.useRef<HTMLInputElement>(null);
   const [correct, setCorrect] = useState<number[]>([]);
   const [blanks, setBlanks] = useState<BlankDraft[]>([{ answer: '', choices: '' }]);
   const [modelAnswer, setModelAnswer] = useState('');
@@ -115,6 +120,46 @@ export default function AdminQuestionForm({
     }
   };
 
+  /** Stores a file as a question asset and returns its URL, or null after telling the admin why not. */
+  const uploadAsset = async (file: File, kind: 'image' | 'audio'): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch(`/api/v1/admin/questions/upload-${kind}`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.url) return data.url as string;
+      toast.error('Upload failed', data?.error?.message ?? 'Please try again.');
+    } catch {
+      toast.error('Upload failed', 'Check your connection and try again.');
+    }
+    return null;
+  };
+
+  const handleOptionImage = async (index: number, file: File) => {
+    setUploadingOption(index);
+    const url = await uploadAsset(file, 'image');
+    if (url) setOptionImages(current => current.map((image, i) => (i === index ? url : image)));
+    setUploadingOption(null);
+  };
+
+  const handleAudioFile = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File too large', 'Please choose a recording under 10 MB.');
+      return;
+    }
+    setUploadingAudio(true);
+    const url = await uploadAsset(file, 'audio');
+    if (url) {
+      setAudioUrl(url);
+      toast.success('Recording uploaded', 'Learners will hear this instead of the browser voice.');
+    }
+    setUploadingAudio(false);
+  };
+
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(Boolean(questionId));
@@ -155,7 +200,10 @@ export default function AdminQuestionForm({
         setAudioUrl(question.audioUrl);
         setImageUrl(question.imageUrl);
         setFigureData(question.figureData);
-        if (question.options.length > 0) setOptions(question.options);
+        if (question.options.length > 0) {
+          setOptions(question.options);
+          setOptionImages(question.options.map((_, i) => question.optionImages?.[i] ?? ''));
+        }
         setCorrect(
           question.correctAnswers
             .map(answer => question.options.indexOf(answer))
@@ -213,6 +261,7 @@ export default function AdminQuestionForm({
 
   const removeOption = (index: number) => {
     setOptions(current => current.filter((_, i) => i !== index));
+    setOptionImages(current => current.filter((_, i) => i !== index));
     setCorrect(current => current.filter(i => i !== index).map(i => (i > index ? i - 1 : i)));
   };
 
@@ -243,6 +292,7 @@ export default function AdminQuestionForm({
         imageUrl,
         figureData,
         options: isChoice ? options : [],
+        optionImages: isChoice && spec.optionImages ? options.map((_, i) => optionImages[i] ?? '') : [],
         correctAnswers: isChoice ? correct.map(index => options[index]) : [],
         blanks:
           spec.answer === 'blanks'
@@ -264,7 +314,7 @@ export default function AdminQuestionForm({
       }
       toast.success(
         questionId ? 'Question updated' : publish ? 'Question published' : 'Question saved as a draft',
-        `${spec.typeName} · ${exam}`,
+        `${spec.typeName} · ${EXAM_LABELS[exam]}`,
       );
       onSaved();
     } catch (err) {
@@ -286,7 +336,7 @@ export default function AdminQuestionForm({
               : `New ${spec?.typeName || skill} question`}
           </h1>
           <CardDescription className="text-xs">
-            {exam} · {spec?.typeName || skill} · Learners only see it once it is published.
+            {EXAM_LABELS[exam]} · {spec?.typeName || skill} · Learners only see it once it is published.
           </CardDescription>
         </div>
         <Button type="button" variant="ghost" size="sm" onClick={onCancel} className="font-bold text-xs h-8">
@@ -314,6 +364,7 @@ export default function AdminQuestionForm({
             <select value={exam} onChange={e => setExam(e.target.value as ExamType)} className={SELECT}>
               <option value="IELTS">IELTS</option>
               <option value="PTE">PTE</option>
+              <option value="EPS_TOPIK">EPS-TOPIK</option>
             </select>
           </Field>
           <Field label="Task type" error={fieldErrors.typeId} className="lg:col-span-2">
@@ -348,7 +399,13 @@ export default function AdminQuestionForm({
 
         {spec?.passage && (
           <Field
-            label={skill === 'speaking' ? 'Text the learner reads aloud' : 'Passage the learner summarises'}
+            label={
+              skill === 'speaking'
+                ? 'Text the learner reads aloud'
+                : exam === 'EPS_TOPIK'
+                  ? 'Text the learner reads (a word, sentence or short passage; mark a blank with ( ))'
+                  : 'Passage the learner summarises'
+            }
             optional={spec.passage === 'optional'}
             error={fieldErrors.contextPassage}
           >
@@ -376,14 +433,41 @@ export default function AdminQuestionForm({
               />
             </Field>
             <Field label="Recording URL" optional error={fieldErrors.audioUrl}>
-              <Input
-                value={audioUrl}
-                onChange={e => setAudioUrl(e.target.value)}
-                placeholder="https://…/recording.mp3"
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  value={audioUrl}
+                  onChange={e => setAudioUrl(e.target.value)}
+                  placeholder="https://…/recording.mp3"
+                />
+                <input
+                  ref={audioInputRef}
+                  type="file"
+                  accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/ogg,audio/webm"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) void handleAudioFile(file);
+                    e.target.value = '';
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadingAudio}
+                  onClick={() => audioInputRef.current?.click()}
+                  className="h-9 shrink-0 text-xs font-bold gap-1.5"
+                >
+                  {uploadingAudio ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
+                  <span>Upload</span>
+                </Button>
+              </div>
             </Field>
+            {audioUrl && <audio controls src={audioUrl} className="h-9 w-full" />}
             <p className="-mt-1 text-[11px] text-muted-foreground">
-              Without a recording, the learner&apos;s browser reads the script aloud.
+              {exam === 'EPS_TOPIK'
+                ? 'Without a recording, the browser reads the script in a Korean voice. Label speakers 남: and 여: to give each their own voice.'
+                : 'Without a recording, the learner’s browser reads the script aloud.'}
             </p>
           </div>
         )}
@@ -541,6 +625,12 @@ export default function AdminQuestionForm({
             </span>
             {fieldErrors.options && <p className="text-[11px] text-rose-600">{fieldErrors.options}</p>}
             {fieldErrors.correctAnswers && <p className="text-[11px] text-rose-600">{fieldErrors.correctAnswers}</p>}
+            {fieldErrors.optionImages && <p className="text-[11px] text-rose-600">{fieldErrors.optionImages}</p>}
+            {spec?.optionImages && (
+              <p className="text-[11px] text-muted-foreground">
+                Each choice is a picture. The label is the answer key and the picture&apos;s description for screen readers.
+              </p>
+            )}
             {options.map((option, index) => (
               <div key={index} className="flex items-center gap-2">
                 <input
@@ -554,7 +644,35 @@ export default function AdminQuestionForm({
                 <span className="shrink-0 w-6 h-6 rounded-md bg-primary/10 text-primary font-mono font-bold text-xs flex items-center justify-center border border-primary/20">
                   {String.fromCharCode(65 + index)}
                 </span>
-                <Input value={option} onChange={e => setOption(index, e.target.value)} />
+                {spec?.optionImages && (
+                  <label
+                    className="relative shrink-0 w-12 h-12 rounded-lg border border-dashed border-border bg-muted/20 flex items-center justify-center cursor-pointer overflow-hidden hover:border-primary/50"
+                    title="Upload this option's picture"
+                  >
+                    {uploadingOption === index ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    ) : optionImages[index] ? (
+                      <img src={optionImages[index]} alt="" className="w-full h-full object-contain" />
+                    ) : (
+                      <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                    )}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                      className="hidden"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) void handleOptionImage(index, file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                )}
+                <Input
+                  value={option}
+                  onChange={e => setOption(index, e.target.value)}
+                  placeholder={spec?.optionImages ? 'Picture label, e.g. 망치 (learners never see it)' : undefined}
+                />
                 {options.length > 2 && (
                   <button
                     type="button"
@@ -572,7 +690,10 @@ export default function AdminQuestionForm({
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setOptions(current => [...current, ''])}
+                onClick={() => {
+                  setOptions(current => [...current, '']);
+                  setOptionImages(current => [...current, '']);
+                }}
                 className="text-xs font-bold h-7"
               >
                 <Plus className="w-3.5 h-3.5 mr-1.5" />

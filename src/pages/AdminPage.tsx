@@ -197,14 +197,12 @@ export default function AdminPage() {
           icon={Activity}
           color="text-indigo-400"
         />
-        {/* No exam type, no questions, nothing to count. Shown so the plan is
-            visible, muted so it cannot be mistaken for a live figure. */}
         <StatCard
-          label="Japanese questions"
-          value="—"
-          note="Coming soon"
-          icon={Sparkles}
-          color="text-muted-foreground"
+          label="EPS-TOPIK (Korean) questions"
+          value={questionsFor('EPS_TOPIK').toLocaleString()}
+          note={`${share(questionsFor('EPS_TOPIK'), examTotal)} of the question bank`}
+          icon={Activity}
+          color="text-emerald-500"
         />
       </div>
 

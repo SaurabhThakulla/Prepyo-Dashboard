@@ -264,6 +264,7 @@ export default function AdminUsersPanel() {
                     >
                       <option value="PTE">PTE</option>
                       <option value="IELTS">IELTS</option>
+                      <option value="EPS_TOPIK">EPS-TOPIK</option>
                     </select>
                   </td>
                   <td className="py-2.5 pr-3 text-right font-semibold text-foreground">

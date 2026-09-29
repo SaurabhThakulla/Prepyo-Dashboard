@@ -6,7 +6,7 @@ import { Card, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { api, errorMessage } from '@/lib/api';
-import { ExamType, SkillType } from '@/lib/types';
+import { EXAM_LABELS, ExamType, SkillType } from '@/lib/types';
 import { AuthoredQuestionSummary, useQuestionBank, useQuestionTypes } from '@/lib/hooks/useAdminQuestions';
 import { AdminPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Chips } from '@/components/admin/AdminReadingBank';
@@ -141,7 +141,7 @@ export default function AdminQuestionBank({
             <Badge variant="destructive">Admin</Badge>
             {exam !== 'all' && (
               <Badge variant="outline" className="font-semibold text-xs">
-                {exam}
+                {EXAM_LABELS[exam]}
               </Badge>
             )}
             {taskTitle && typeKeyFilter !== 'all' && (
@@ -179,9 +179,10 @@ export default function AdminQuestionBank({
             value={exam}
             onChange={setExam}
             options={[
-              { value: 'all', label: 'Both exams' },
+              { value: 'all', label: 'All exams' },
               { value: 'IELTS', label: 'IELTS' },
               { value: 'PTE', label: 'PTE' },
+              { value: 'EPS_TOPIK', label: 'EPS-TOPIK' },
             ]}
           />
           <Chips
@@ -212,7 +213,7 @@ export default function AdminQuestionBank({
           <ClipboardList className="w-8 h-8 text-muted-foreground mx-auto" />
           <p className="text-sm font-bold text-foreground">
             {taskTitle
-              ? `No ${taskTitle} questions found${exam !== 'all' ? ` for ${exam}` : ''}`
+              ? `No ${taskTitle} questions found${exam !== 'all' ? ` for ${EXAM_LABELS[exam]}` : ''}`
               : questions.length === 0
                 ? `No ${skill} questions yet`
                 : 'Nothing matches those filters'}
@@ -282,7 +283,7 @@ export default function AdminQuestionBank({
             <div className="p-3 rounded-xl bg-muted/60 border border-border/60 space-y-2">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <Badge variant="outline" className="text-[10px]">
-                  {questionToDelete.exam}
+                  {EXAM_LABELS[questionToDelete.exam] ?? questionToDelete.exam}
                 </Badge>
                 <Badge variant="secondary" className="text-[10px]">
                   {questionToDelete.typeName}
@@ -361,7 +362,7 @@ function QuestionCard({
     <div className="rounded-2xl border border-border/80 bg-card p-4 space-y-3 shadow-xs">
       <div className="flex items-center gap-1.5 flex-wrap">
         <Badge variant="outline" className="text-[9px]">
-          {question.exam}
+          {EXAM_LABELS[question.exam] ?? question.exam}
         </Badge>
         {question.isPublished ? (
           <Badge className="text-[9px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
