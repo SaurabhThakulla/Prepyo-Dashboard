@@ -16,4 +16,11 @@ describe('getTaskMetadata', () => {
       expect(meta.code).toBe('W-T2');
     }
   });
+
+  it('describes every EPS-TOPIK subtask with its place in the test', () => {
+    const meta = getTaskMetadata('EPS_TOPIK', 'listening', typeKey('Listen and Choose Picture'));
+    expect(meta).toMatchObject({ code: 'L2', name: 'Listen and Choose Picture', skill: 'listening' });
+    expect(meta.scoreWeight).toContain('23–28');
+    expect(getTaskMetadata('EPS_TOPIK', 'reading', typeKey('Picture to Word or Sentence')).code).toBe('R1');
+  });
 });

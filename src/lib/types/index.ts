@@ -5,8 +5,28 @@
 // empty list means the learner has not generated that data yet, and the UI says
 // so rather than substituting a number.
 
-export type ExamType = 'PTE' | 'IELTS';
+export type ExamType = 'PTE' | 'IELTS' | 'EPS_TOPIK';
 export type SkillType = 'speaking' | 'writing' | 'reading' | 'listening';
+
+/** Every exam, in the order they are offered. */
+export const EXAM_TYPES: ExamType[] = ['IELTS', 'PTE', 'EPS_TOPIK'];
+
+/** How an exam is named on screen. `EPS_TOPIK` is an identifier, not a name. */
+export const EXAM_LABELS: Record<ExamType, string> = {
+  IELTS: 'IELTS',
+  PTE: 'PTE',
+  EPS_TOPIK: 'EPS-TOPIK',
+};
+
+export const isExamType = (value: unknown): value is ExamType =>
+  typeof value === 'string' && (EXAM_TYPES as string[]).includes(value);
+
+/** The top of each exam's reporting scale. */
+export const EXAM_MAX_SCORE: Record<ExamType, number> = { IELTS: 9, PTE: 90, EPS_TOPIK: 100 };
+
+/** How many times a listening item's recording runs per play: EPS-TOPIK plays each one twice. */
+export const listeningPlays = (question: { exam: ExamType; skill: SkillType }): number =>
+  question.exam === 'EPS_TOPIK' && question.skill === 'listening' ? 2 : 1;
 
 export type SubscriptionTier = 'free' | 'weekly' | 'pro' | 'elite';
 
@@ -30,6 +50,10 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 export type PaidTier = Exclude<SubscriptionTier, 'free'>;
 
 export const ALL_SKILLS: SkillType[] = ['speaking', 'writing', 'reading', 'listening'];
+
+/** The skills an exam tests. Matches models.SkillsFor: EPS-TOPIK has no speaking or writing. */
+export const skillsFor = (exam: ExamType): SkillType[] =>
+  exam === 'EPS_TOPIK' ? ['reading', 'listening'] : ALL_SKILLS;
 
 /** Width of one level in XP. Levels start at 1. Matches models.XPPerLevel. */
 export const XP_PER_LEVEL = 400;
@@ -138,7 +162,7 @@ export interface UserProfile {
   /** Null until the learner finishes or skips onboarding; absent on servers that predate it. */
   onboardingCompletedAt?: string | null;
   studyGoal?: 'university' | 'migration' | 'work' | 'other';
-  destination?: 'australia' | 'uk' | 'canada' | 'usa' | 'new-zealand' | 'other';
+  destination?: 'australia' | 'uk' | 'canada' | 'usa' | 'new-zealand' | 'south-korea' | 'other';
   priorAttempt?: 'first' | 'retake';
   previousScore?: number | null;
   focusSkill?: SkillType;
@@ -194,6 +218,8 @@ export interface ExamVersion {
 export interface QuestionOption {
   id: string;
   text: string;
+  /** Set when the option is a picture (EPS-TOPIK "choose the picture"); `text` is then its label. */
+  imageUrl?: string;
 }
 
 export interface Blank {

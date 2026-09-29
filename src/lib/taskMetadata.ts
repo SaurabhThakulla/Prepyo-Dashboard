@@ -1,5 +1,5 @@
 import { ExamType, SkillType } from './types';
-import { typeLabel } from './syllabus';
+import { typeKey, typeLabel } from './syllabus';
 
 export interface TaskMeta {
   code: string;
@@ -283,6 +283,52 @@ const IELTS_TASK_META: Record<string, TaskMeta> = {
   },
 };
 
+const EPS_READING = {
+  color: 'bg-amber-500 text-white',
+  bgLight: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
+};
+const EPS_LISTENING = {
+  color: 'bg-sky-600 text-white',
+  bgLight: 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300',
+};
+
+/**
+ * EPS-TOPIK's sixteen tasks, keyed the way the sidebar links to them. Where a
+ * task sits in the test follows HRD Korea's 2025 sample paper; Description to
+ * Picture is in the published standard but not that paper, so its share varies.
+ */
+const EPS_TASK_META: Record<string, TaskMeta> = Object.fromEntries(
+  (
+    [
+      ['R1', 'Picture to Word or Sentence', 'reading', 'Test questions 1–4 · 4 of 40'],
+      ['R2', 'Correct Underlined Grammar', 'reading', 'Test questions 5–6 · 2 of 40'],
+      ['R3', 'Signs, Notices and Charts', 'reading', 'Test questions 7 & 10 · 2 of 40'],
+      ['R4', 'Related Word', 'reading', 'Test questions 8–9 · 2 of 40'],
+      ['R5', 'Fill in the Blank', 'reading', 'Test questions 11–16 · 6 of 40'],
+      ['R6', 'Word from Description', 'reading', 'Test question 17 · 1 of 40'],
+      ['R7', 'Passage Topic', 'reading', 'Test question 18 · 1 of 40'],
+      ['R8', 'Matching Statement', 'reading', 'Test questions 19–20 · 2 of 40'],
+      ['R9', 'Description to Picture', 'reading', 'In the official standard · count varies'],
+      ['L1', 'Choose What You Heard', 'listening', 'Test questions 21–22 · 2 of 40'],
+      ['L2', 'Listen and Choose Picture', 'listening', 'Test questions 23–28 · 6 of 40'],
+      ['L3', 'Choose the Right Reply', 'listening', 'Test questions 29–32 · 4 of 40'],
+      ['L4', 'What Comes Next', 'listening', 'Test question 33 · 1 of 40'],
+      ['L5', 'Numbers, Dates and Prices', 'listening', 'Test questions 34–36 · 3 of 40'],
+      ['L6', 'Picture Question', 'listening', 'Test question 37 · 1 of 40'],
+      ['L7', 'Dialogue Comprehension', 'listening', 'Test questions 38–40 · 3 of 40'],
+    ] as const
+  ).map(([code, name, skill, scoreWeight]) => [
+    typeKey(name),
+    { code, name, skill, scoreWeight, ...(skill === 'reading' ? EPS_READING : EPS_LISTENING) },
+  ]),
+);
+
+const TASK_META: Record<ExamType, Record<string, TaskMeta>> = {
+  PTE: PTE_TASK_META,
+  IELTS: IELTS_TASK_META,
+  EPS_TOPIK: EPS_TASK_META,
+};
+
 export function getTaskMetadata(
   exam: ExamType,
   skill: SkillType,
@@ -305,7 +351,7 @@ export function getTaskMetadata(
     .replace(/\b(and|or|the)\b/g, '')
     .replace(/[^a-z0-9]/g, '');
 
-  const map = exam === 'PTE' ? PTE_TASK_META : IELTS_TASK_META;
+  const map = TASK_META[exam] ?? IELTS_TASK_META;
   if (map[cleanKey]) {
     return map[cleanKey];
   }
