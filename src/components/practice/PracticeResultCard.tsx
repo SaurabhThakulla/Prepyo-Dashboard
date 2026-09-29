@@ -49,6 +49,7 @@ function toneFor(fraction: number | null): Tone {
 const SCALE: Record<ExamType, { min: number; max: number; label: string }> = {
   PTE: { min: 10, max: 90, label: 'PTE score' },
   IELTS: { min: 0, max: 9, label: 'IELTS band' },
+  EPS_TOPIK: { min: 0, max: 100, label: 'EPS-TOPIK score' },
 };
 
 /** A progress ring with the headline number in the middle. */

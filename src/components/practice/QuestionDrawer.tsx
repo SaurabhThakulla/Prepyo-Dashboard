@@ -12,7 +12,8 @@ import {
   Award,
   Filter,
 } from 'lucide-react';
-import { ExamType, SkillType } from '@/lib/types';
+import { EXAM_LABELS, EXAM_MAX_SCORE, ExamType, SkillType } from '@/lib/types';
+import { taskInstruction } from '@/lib/syllabus';
 import { getTaskMetadata } from '@/lib/taskMetadata';
 import {
   formatQuestionDisplayNumber,
@@ -87,6 +88,8 @@ export default function QuestionDrawer<T extends DrawerItem>({
   }, [searchQuery, activeFilter, questions]);
 
   const taskMeta = useMemo(() => getTaskMetadata(exam, skill, typeKey, isMock), [exam, skill, typeKey, isMock]);
+  // The exam's own instruction line, where it prints one (EPS-TOPIK's Korean 지시문).
+  const instruction = !isMock && typeKey ? taskInstruction(exam, skill, typeKey) : undefined;
 
   // Filter & sort questions
   const filteredQuestions = useMemo(() => {
@@ -220,12 +223,17 @@ export default function QuestionDrawer<T extends DrawerItem>({
                     {taskMeta.name}
                   </h2>
                   <span className="text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 shrink-0">
-                    {exam}
+                    {EXAM_LABELS[exam]}
                   </span>
                 </div>
                 <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-normal truncate mt-0.5">
                   {taskMeta.scoreWeight}
                 </p>
+                {instruction && (
+                  <p lang="ko" className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 font-medium truncate mt-0.5">
+                    {instruction}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -429,7 +437,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
                       <div className="text-right">
                         <span className="text-xs font-bold font-mono text-slate-800 dark:text-slate-200">
                           {record.score}
-                          <span className="text-[10px] font-normal text-slate-400">/{record.maxScore ?? (exam === 'PTE' ? 90 : 9)}</span>
+                          <span className="text-[10px] font-normal text-slate-400">/{record.maxScore ?? EXAM_MAX_SCORE[exam]}</span>
                         </span>
                       </div>
                     ) : isDone ? (

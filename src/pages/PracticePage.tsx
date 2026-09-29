@@ -35,12 +35,13 @@ import AudioRecorder from '@/components/practice/AudioRecorder';
 import PromptAudio from '@/components/practice/PromptAudio';
 import PracticeResultCard from '@/components/practice/PracticeResultCard';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
+import OptionContent, { hasPictureOptions } from '@/components/practice/OptionContent';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
 import { isWordHighlightTask } from '@/lib/listening';
 import { allowsMultipleChoices } from '@/lib/choices';
 import { minimumWritingWords, writingLengthNote, writingWordCount, writingWordTarget } from '@/lib/writing';
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
-import { Evaluation, ExamType, isAdmin, isPremiumUser, PracticeAttempt, Question, SkillType, ieltsModuleOf } from '@/lib/types';
+import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isPremiumUser, listeningPlays, PracticeAttempt, Question, SkillType, ieltsModuleOf } from '@/lib/types';
 
 const ReadingPracticePanel = lazy(() => import('@/components/reading/ReadingPracticePanel'));
 const ReadingMockPanel = lazy(() => import('@/components/reading/ReadingMockPanel'));
@@ -147,7 +148,7 @@ function PracticePageContent() {
   const typeParam = searchParams.get('type');
   const mistakeId = searchParams.get('mistake') || undefined;
   const linkedExam = searchParams.get('exam');
-  const activeExam = (linkedExam === 'IELTS' || linkedExam === 'PTE') ? linkedExam : contextExam;
+  const activeExam = isExamType(linkedExam) ? linkedExam : contextExam;
   const resolution = useMistakeResolution(mistakeId);
 
   const skillParam = searchParams.get('skill') as SkillType | null;
@@ -160,7 +161,10 @@ function PracticePageContent() {
   const navigate = useNavigate();
   const isMockMode = Boolean(searchParams.get('mock'));
   const drawerParam = searchParams.get('drawer');
-  const readingList = selectedSkill === 'reading' && !isMockMode && !mistakeId && !isAdmin(user);
+  // EPS-TOPIK reading items stand alone rather than sitting on a passage, so
+  // they are dealt one at a time like listening, not from the passage list.
+  const readingList =
+    selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK' && !isMockMode && !mistakeId && !isAdmin(user);
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -424,7 +428,9 @@ function PracticePageContent() {
     setStartedAt(Date.now());
   }, []);
 
-  const isReading = selectedSkill === 'reading';
+  // Passage-based reading (IELTS, PTE). EPS-TOPIK reading items stand alone,
+  // so they are practised and authored like any other single question.
+  const isReading = selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK';
   const isAdminUser = isAdmin(user);
 
   // When switching exam, skill, subtask, or mistake, reset state cleanly without querying backend/database.
@@ -484,7 +490,7 @@ function PracticePageContent() {
         );
         showEvaluation(data);
         const scoreVal = data.evaluation.estimatedScore ?? (data.evaluation as any)?.overallScore ?? (data.evaluation as any)?.score ?? (activeExam === 'PTE' ? 79 : 7);
-        recordQuestionAttempt(activeExam, currentQuestion.id, scoreVal, activeExam === 'PTE' ? 90 : 9);
+        recordQuestionAttempt(activeExam, currentQuestion.id, scoreVal, EXAM_MAX_SCORE[activeExam]);
       } else if (grading === 'speech') {
         if (!recording) return;
 
@@ -507,7 +513,7 @@ function PracticePageContent() {
         });
         showEvaluation(data);
         const scoreVal = data.evaluation.estimatedScore ?? (data.evaluation as any)?.overallScore ?? (data.evaluation as any)?.score ?? (activeExam === 'PTE' ? 79 : 7);
-        recordQuestionAttempt(activeExam, currentQuestion.id, scoreVal, activeExam === 'PTE' ? 90 : 9);
+        recordQuestionAttempt(activeExam, currentQuestion.id, scoreVal, EXAM_MAX_SCORE[activeExam]);
       } else if (grading === 'ai') {
         const data = await api.post<EvaluationResponse>('/evaluations/writing', {
           questionId: currentQuestion.id,
@@ -515,7 +521,7 @@ function PracticePageContent() {
         });
         showEvaluation(data);
         const scoreVal = data.evaluation.estimatedScore ?? (data.evaluation as any)?.overallScore ?? (data.evaluation as any)?.score ?? (activeExam === 'PTE' ? 79 : 7);
-        recordQuestionAttempt(activeExam, currentQuestion.id, scoreVal, activeExam === 'PTE' ? 90 : 9);
+        recordQuestionAttempt(activeExam, currentQuestion.id, scoreVal, EXAM_MAX_SCORE[activeExam]);
       } else {
         const data = await api.post<{ attempt: PracticeAttempt; review: Question; xpAwarded: number }>(
           '/practice/attempts',
@@ -532,8 +538,8 @@ function PracticePageContent() {
         recordQuestionAttempt(
           activeExam,
           currentQuestion.id,
-          data.attempt.isCorrect ? (activeExam === 'PTE' ? 90 : 9) : 0,
-          activeExam === 'PTE' ? 90 : 9,
+          data.attempt.isCorrect ? EXAM_MAX_SCORE[activeExam] : 0,
+          EXAM_MAX_SCORE[activeExam],
           data.attempt.isCorrect,
         );
         await resolution.finish(data.attempt.isCorrect);
@@ -547,7 +553,7 @@ function PracticePageContent() {
           activeExam,
           currentQuestion.id,
           0,
-          activeExam === 'PTE' ? 90 : 9,
+          EXAM_MAX_SCORE[activeExam],
           false,
         );
       }
@@ -835,8 +841,10 @@ function PracticePageContent() {
                   scriptOnRequest={currentQuestion.scriptOnRequest}
                   singlePlay={
                     (currentQuestion.exam === 'IELTS' && currentQuestion.skill === 'listening') ||
-                    (currentQuestion.exam === 'PTE' && (currentQuestion.skill === 'listening' || currentQuestion.skill === 'speaking'))
+                    (currentQuestion.exam === 'PTE' && (currentQuestion.skill === 'listening' || currentQuestion.skill === 'speaking')) ||
+                    (currentQuestion.exam === 'EPS_TOPIK' && currentQuestion.skill === 'listening')
                   }
+                  repeat={listeningPlays(currentQuestion)}
                   title={currentQuestion.title}
                   allowTranscript={result !== null}
                   onFinished={() => setHeardPromptFor(currentQuestion.id)}
@@ -933,7 +941,8 @@ function PracticePageContent() {
                 {!isWordHighlightTask(currentQuestion) && currentQuestion.options && currentQuestion.options.length > 0 && (
                   <div className="space-y-2.5 pt-2">
                     <h4 className="text-xs font-bold text-foreground">Choose your answer:</h4>
-                    {currentQuestion.options.map(opt => {
+                    <div className={hasPictureOptions(currentQuestion.options) ? 'grid grid-cols-2 gap-2.5' : 'space-y-2.5'}>
+                    {currentQuestion.options.map((opt, optIndex) => {
                       const checked = selectedOptions.includes(opt.id);
                       return (
                         <label
@@ -954,10 +963,11 @@ function PracticePageContent() {
                             }
                             className="mt-0.5 rounded border-input text-primary focus:ring-primary h-4 w-4"
                           />
-                          <span className="text-foreground font-medium leading-relaxed">{opt.text}</span>
+                          <OptionContent option={opt} index={optIndex} />
                         </label>
                       );
                     })}
+                    </div>
                   </div>
                 )}
 

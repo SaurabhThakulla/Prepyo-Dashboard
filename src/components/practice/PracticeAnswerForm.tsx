@@ -12,6 +12,7 @@ import { Question } from '@/lib/types';
 import { minimumWritingWords, writingLengthNote, writingWordCount, writingWordTarget } from '@/lib/writing';
 import { usePracticeSession } from '@/lib/hooks/usePracticeSession';
 import { passageHasGaps } from '@/components/practice/InlineBlankPassage';
+import OptionContent, { hasPictureOptions } from '@/components/practice/OptionContent';
 
 interface PracticeAnswerFormProps {
   question: Question;
@@ -79,7 +80,8 @@ export default function PracticeAnswerForm({
       {!isWordHighlightTask(question) && question.options && question.options.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-xs font-bold text-foreground">Choose your answer:</h4>
-          {question.options.map(option => {
+          <div className={hasPictureOptions(question.options) ? 'grid grid-cols-2 gap-2' : 'space-y-2'}>
+          {question.options.map((option, optionIndex) => {
             const checked = session.selectedOptions.includes(option.id);
             return (
               <label
@@ -109,10 +111,11 @@ export default function PracticeAnswerForm({
                     className="mt-0.5 border-input text-primary focus:ring-primary h-3.5 w-3.5"
                   />
                 )}
-                <span className="text-foreground font-medium leading-relaxed">{option.text}</span>
+                <OptionContent option={option} index={optionIndex} />
               </label>
             );
           })}
+          </div>
         </div>
       )}
 
