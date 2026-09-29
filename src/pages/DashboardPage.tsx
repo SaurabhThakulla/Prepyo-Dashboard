@@ -5,32 +5,44 @@ import ExamCountdown from '@/components/dashboard/ExamCountdown';
 import SkillQuestionCard from '@/components/dashboard/SkillQuestionCard';
 import PracticeStudioPanel, { SkillRow } from '@/components/dashboard/PracticeStudioPanel';
 import CurrentPlanCard from '@/components/dashboard/CurrentPlanCard';
-import { planHeadline } from '@/components/onboarding/onboarding';
+import { formatScore, planHeadline } from '@/components/onboarding/onboarding';
 import { useDashboardSummary } from '@/lib/hooks/useDashboardSummary';
 import { daysUntilExam, formatExamDate } from '@/lib/dates';
-import { ExamType, ProgressSummary, SkillType } from '@/lib/types';
+import { EXAM_LABELS, EXAM_MAX_SCORE, ExamType, ProgressSummary, SkillType, skillsFor } from '@/lib/types';
 import { DashboardPageSkeleton } from '@/components/layout/PageSkeleton';
 
+const SKILL_SUBTITLES: Record<ExamType, Partial<Record<SkillType, string>>> = {
+  PTE: {
+    speaking: 'Read aloud, describe image',
+    writing: 'Essay, summarise written text',
+    reading: 'Fill in the blanks, multiple choice',
+    listening: 'Dictation, summarise spoken text',
+  },
+  IELTS: {
+    speaking: 'Part 1, 2, 3 questions',
+    writing: 'Task 1 & Task 2',
+    reading: 'Passages 1–3',
+    listening: 'Sections 1–4',
+  },
+  EPS_TOPIK: {
+    reading: 'Pictures, signs, notices & short texts',
+    listening: 'Words, replies & workplace dialogues',
+  },
+};
+
 function buildSkillRows(exam: ExamType, progress: ProgressSummary | null): SkillRow[] {
-  const isPTE = exam === 'PTE';
   const bySkill = new Map((progress?.skills ?? []).map(row => [row.skill, row]));
 
-  const subtitles: Record<SkillType, string> = {
-    speaking: isPTE ? 'Read aloud, describe image' : 'Part 1, 2, 3 questions',
-    writing: isPTE ? 'Essay, summarise written text' : 'Task 1 & Task 2',
-    reading: isPTE ? 'Fill in the blanks, multiple choice' : 'Passages 1–3',
-    listening: isPTE ? 'Dictation, summarise spoken text' : 'Sections 1–4',
-  };
-
-  return (['speaking', 'writing', 'reading', 'listening'] as SkillType[]).map(skill => {
+  // Only the skills the exam has: EPS-TOPIK shows Reading and Listening alone.
+  return skillsFor(exam).map(skill => {
     const row = bySkill.get(skill);
-    const max = isPTE ? 90 : 9;
-    const band = (value: number) => (isPTE ? String(Math.round(value)) : value.toFixed(1));
+    const max = EXAM_MAX_SCORE[exam];
+    const band = (value: number) => formatScore(exam, value);
     const hasScore = row != null && row.estimate != null;
 
     return {
       name: skill.charAt(0).toUpperCase() + skill.slice(1),
-      sub: subtitles[skill],
+      sub: SKILL_SUBTITLES[exam][skill] ?? '',
       scoreText: hasScore ? `${band(row!.estimate!)}/${band(max)}` : '',
       percent: hasScore ? Math.round((row!.estimate! / max) * 100) : 0,
       href: `/practice?skill=${skill}`,
@@ -63,7 +75,7 @@ export default function DashboardPage() {
             Namaste, {userName}
           </h1>
           <p className="text-xs text-muted-foreground mt-1 font-medium">
-            {user ? planHeadline(user) : `Preparing for ${activeExam}`}
+            {user ? planHeadline(user) : `Preparing for ${EXAM_LABELS[activeExam]}`}
           </p>
         </div>
 
@@ -75,7 +87,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4">
-        {(['speaking', 'writing', 'reading', 'listening'] as SkillType[]).map(skill => {
+        {skillsFor(activeExam).map(skill => {
           const row = skillProgress.get(skill);
           return (
             <SkillQuestionCard
