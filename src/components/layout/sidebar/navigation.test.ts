@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildSections, isNavItemActive } from '@/components/layout/sidebar/navigation';
+import { buildSections, getSectionFromPathname, isNavItemActive } from '@/components/layout/sidebar/navigation';
+import { completeLesson, EMPTY_PROGRESS, LearnProgress } from '@/lib/learn/progress';
 import { READING_TYPES } from '@/lib/readingTypes';
 import { UserProfile } from '@/lib/types';
 
@@ -303,5 +304,55 @@ describe('the EPS-TOPIK practice menu', () => {
 
   it('is titled with the exam name, not its identifier', () => {
     expect(practice()?.title).toBe('EPS-TOPIK Practice Studio');
+  });
+});
+
+describe('the Learn Korean menu', () => {
+  const learn = (progress?: LearnProgress) =>
+    buildSections('EPS_TOPIK', () => { }, null, undefined, 0, false, progress).find(s => s.id === 'learn');
+
+  it('sits right after Practice for EPS-TOPIK, and nowhere for IELTS or PTE', () => {
+    expect(buildSections('EPS_TOPIK', () => { }).map(s => s.id)).toEqual(['home', 'practice', 'learn', 'aicoach', 'mock', 'tutorials']);
+    expect(buildSections('IELTS', () => { }).some(s => s.id === 'learn')).toBe(false);
+    expect(buildSections('PTE', () => { }).some(s => s.id === 'learn')).toBe(false);
+  });
+
+  it('leads with the path, then one heading per unit with its lessons', () => {
+    const items = learn()?.items ?? [];
+    expect(items[0]).toMatchObject({ href: '/learn', label: 'My Path' });
+    expect([...new Set(items.slice(1).map(i => i.group))]).toEqual([
+      'Unit 1 · Hangul',
+      'Unit 2 · Basic Korean',
+      'Unit 3 · EPS Vocabulary',
+      'Unit 4 · Daily Life',
+      'Unit 5 · EPS-TOPIK',
+    ]);
+    // The path, four units of five lessons, and sixteen exam tasks.
+    expect(items).toHaveLength(1 + 20 + 16);
+    expect(items[1]).toMatchObject({ href: '/learn/hangul/vowels', groupHref: '/learn?unit=hangul' });
+    expect(items.find(i => i.href === '/learn/eps-topik/l2')?.label).toBe('L2 · Listen and Choose Picture');
+  });
+
+  it('marks done lessons and says what opens a locked one', () => {
+    const before = learn()?.items ?? [];
+    expect(before.find(i => i.href === '/learn/hangul/consonants')?.sublabel).toContain('Locked');
+
+    const { progress } = completeLesson(EMPTY_PROGRESS, 'hangul', 'vowels', 0);
+    const after = learn(progress)?.items ?? [];
+    expect(after.find(i => i.href === '/learn/hangul/vowels')?.badge).toBe('Done');
+    expect(after.find(i => i.href === '/learn/hangul/consonants')?.sublabel).not.toContain('Locked');
+    expect(after[0].sublabel).toContain('15 XP');
+  });
+
+  it('selects the Learn section on course pages and lights the open lesson', () => {
+    expect(getSectionFromPathname('/learn')).toBe('learn');
+    expect(getSectionFromPathname('/learn/hangul/vowels')).toBe('learn');
+    const items = learn()?.items ?? [];
+    const lit = (url: string) => {
+      const { pathname, searchParams } = new URL(url, 'http://localhost');
+      return items.filter(item => isNavItemActive(item, pathname, searchParams)).map(item => item.label);
+    };
+    expect(lit('/learn/hangul/vowels')).toEqual(['Vowels']);
+    expect(lit('/learn')).toEqual(['My Path']);
   });
 });

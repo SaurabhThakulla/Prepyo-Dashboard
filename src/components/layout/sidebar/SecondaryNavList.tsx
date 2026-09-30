@@ -53,6 +53,7 @@ interface SecondaryNavListProps {
 /** Returns the icon appropriate for the main topic/skill group. */
 function getGroupIcon(groupName?: string): LucideIcon {
   const norm = (groupName ?? '').toLowerCase();
+  if (norm.startsWith('unit ')) return GraduationCap;
   if (norm.includes('full mock')) return ClipboardCheck;
   if (norm.includes('sectional')) return LayoutGrid;
   if (norm.includes('result')) return ChartColumn;
@@ -368,7 +369,9 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
   { item, isActive, onNavigate },
   ref,
 ) {
-  const Icon = getSubtopicIcon(item.label, item.icon);
+  // Course lessons carry their state (done, open, locked) in the icon, so a
+  // topic icon picked from the label must not replace it.
+  const Icon = item.href?.startsWith('/learn') ? item.icon : getSubtopicIcon(item.label, item.icon);
 
   const className = `group flex items-center justify-between w-full text-left pl-[22px] pr-3.5 py-2 rounded-none text-xs transition-colors duration-150 border-b border-slate-100/60 dark:border-white/5 ${
     isActive

@@ -63,6 +63,7 @@ import { pteReportHref } from '@/lib/pteMock/catalog';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
 import { matchesTypeKey, typeLabel } from '@/lib/syllabus';
+import { taskLessonHref } from '@/data/learnKorean';
 import { pteMockHref } from '@/lib/pteMock/catalog';
 import { loadMistakeTask } from '@/lib/mistakePractice';
 import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
@@ -717,6 +718,11 @@ function PracticePageContent() {
             subTestsRemaining={subTestsRemaining}
             isStarting={isStarting}
             onStart={handleStart}
+            beginner={
+              activeExam === 'EPS_TOPIK'
+                ? { taskHref: taskLessonHref(selectedSkill, typeParam), courseHref: '/learn' }
+                : undefined
+            }
           />
         </div>
       ) : !currentQuestion ? (

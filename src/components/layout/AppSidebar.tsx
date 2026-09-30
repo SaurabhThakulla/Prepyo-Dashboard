@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { useReadingTypes } from '@/lib/hooks/useReading';
+import { useLearnProgress } from '@/lib/hooks/useLearnProgress';
 import ReportIssueDialog from '@/components/support/ReportIssueDialog';
 import PrimaryIconRail from './sidebar/PrimaryIconRail';
 import SecondaryPanel from './sidebar/SecondaryPanel';
@@ -66,6 +67,7 @@ export default function AppSidebar({
   );
 
   const hasMistake = Boolean(searchParams.get('mistake'));
+  const { progress: learnProgress } = useLearnProgress();
   const sections = buildSections(
     activeExam,
     () => setIsTutorOpen(true),
@@ -73,6 +75,7 @@ export default function AppSidebar({
     availableReadingTypes,
     readingTypes.data?.mockPassageCount ?? 0,
     hasMistake,
+    learnProgress,
   );
   const currentSection = sections.find(section => section.id === activeSection) ?? sections[0];
 

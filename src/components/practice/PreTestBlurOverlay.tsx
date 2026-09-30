@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, RefreshCw, AlertCircle, Sparkles, ShieldAlert, ArrowRight } from 'lucide-react';
+import { Play, RefreshCw, AlertCircle, Sparkles, ShieldAlert, ArrowRight, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
@@ -18,6 +18,8 @@ interface PreTestBlurOverlayProps {
   credits?: number;
   /** Button text, when "Start Practice" is the wrong word (a mock test). */
   startLabel?: string;
+  /** For beginners: where this task is explained, and where the course starts. */
+  beginner?: { taskHref?: string; courseHref: string };
 }
 
 /**
@@ -34,6 +36,7 @@ export default function PreTestBlurOverlay({
   loading = false,
   credits = 1,
   startLabel = 'Start Practice',
+  beginner,
 }: PreTestBlurOverlayProps) {
   const isUnlimited = !Number.isFinite(subTestsRemaining);
   const hasCredits = isUnlimited || subTestsRemaining >= credits;
@@ -141,6 +144,29 @@ export default function PreTestBlurOverlay({
             </Button>
           )}
         </div>
+
+        {beginner && (
+          <div className="flex items-start gap-3 rounded-xl border border-sky-200 dark:border-sky-900/60 bg-sky-50 dark:bg-sky-950/30 p-3.5 text-left">
+            <GraduationCap className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+            <div className="space-y-1 text-xs">
+              <p className="font-semibold text-foreground">New to Korean?</p>
+              <p className="text-muted-foreground leading-relaxed">
+                {beginner.taskHref && (
+                  <>
+                    <Link to={beginner.taskHref} className="font-semibold text-sky-700 dark:text-sky-300 hover:underline">
+                      Learn how this task works
+                    </Link>{' '}
+                    in two minutes, or{' '}
+                  </>
+                )}
+                <Link to={beginner.courseHref} className="font-semibold text-sky-700 dark:text-sky-300 hover:underline">
+                  {beginner.taskHref ? 'start from the alphabet' : 'Start from the alphabet'}
+                </Link>{' '}
+                with short lessons.
+              </p>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );

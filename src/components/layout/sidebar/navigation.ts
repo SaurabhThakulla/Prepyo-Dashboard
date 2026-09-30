@@ -20,8 +20,15 @@ import {
   ShieldCheck,
   Video,
   Tv,
+  GraduationCap,
+  Route,
+  CheckCircle2,
+  Lock,
+  PlayCircle,
   LucideIcon,
 } from 'lucide-react';
+import { COURSE, lessonHref } from '@/data/learnKorean';
+import { EMPTY_PROGRESS, LearnProgress, lessonState } from '@/lib/learn/progress';
 import { SYLLABUS, syllabusFor, typeKey } from '@/lib/syllabus';
 import { typeIdsFor } from '@/lib/readingTypes';
 import { EXAM_LABELS, ExamType, ieltsModuleOf, isAdmin, SkillType, UserProfile } from '@/lib/types';
@@ -34,7 +41,7 @@ import { PTE_MOCK_KINDS, pteMockHref } from '@/lib/pteMock/catalog';
  * link or change a label without touching any rendering code.
  */
 
-export type PrimarySectionId = 'home' | 'practice' | 'aicoach' | 'mock' | 'tutorials';
+export type PrimarySectionId = 'home' | 'practice' | 'learn' | 'aicoach' | 'mock' | 'tutorials';
 
 export interface SecondaryNavItem {
   href?: string;
@@ -80,6 +87,7 @@ export function getSectionFromPathname(path: string, searchParams?: URLSearchPar
   const params = typeof searchParams === 'string' ? new URLSearchParams(searchParams) : searchParams;
   if (params?.get('mock') || params?.get('view') === 'full') return 'mock';
   if (path.startsWith('/practice')) return 'practice';
+  if (path.startsWith('/learn')) return 'learn';
   if (path.startsWith('/mocks') || path.startsWith('/diagnostic')) return 'mock';
   if (path.startsWith('/evaluations')) return 'aicoach';
   if (path.startsWith('/tutorials') || path.startsWith('/videos')) return 'tutorials';
@@ -100,6 +108,7 @@ export function buildSections(
   availableReadingTypes?: string[],
   mockPassageCount = 0,
   hasMistake = false,
+  learnProgress: LearnProgress = EMPTY_PROGRESS,
 ): PrimarySectionConfig[] {
   const isPTE = activeExam === 'PTE';
   // EPS-TOPIK has no sectional mocks yet; its full 40-question mock is to come.
@@ -290,6 +299,8 @@ export function buildSections(
         return links;
       }),
     },
+    // The beginner course is Korean from the alphabet up, so only EPS-TOPIK has it.
+    ...(isEPS ? [learnSection(learnProgress)] : []),
     {
       id: 'aicoach',
       label: 'AI Coach',
@@ -461,6 +472,45 @@ function pteMockItems(): SecondaryNavItem[] {
       group: meta.kind === 'full' ? 'Full Mock Test' : 'Sectional Tests',
     })),
   ];
+}
+
+/**
+ * The beginner Korean course: the path first, then one heading per unit with
+ * its lessons under it, the way Practice lists skills and their task types.
+ * Each lesson shows whether it is done, open or still locked.
+ */
+function learnSection(progress: LearnProgress): PrimarySectionConfig {
+  const total = COURSE.reduce((sum, unit) => sum + unit.lessons.length, 0);
+  const done = Object.keys(progress.completed).length;
+  return {
+    id: 'learn',
+    label: 'Learn',
+    icon: GraduationCap,
+    title: 'Learn Korean',
+    description: 'Hangul to exam-ready, one small lesson at a time',
+    items: [
+      {
+        href: '/learn',
+        label: 'My Path',
+        icon: Route,
+        sublabel: `${progress.xp} XP · ${done} of ${total} lessons done`,
+      },
+      ...COURSE.flatMap(unit =>
+        unit.lessons.map((lesson, i): SecondaryNavItem => {
+          const state = lessonState(progress, unit, i);
+          return {
+            href: lessonHref(unit.id, lesson.id),
+            label: lesson.title,
+            icon: state === 'done' ? CheckCircle2 : state === 'locked' ? Lock : PlayCircle,
+            sublabel: state === 'locked' ? `Locked · finish “${unit.lessons[i - 1].title}” first` : lesson.summary,
+            badge: state === 'done' ? 'Done' : undefined,
+            group: `Unit ${unit.number} · ${unit.title}`,
+            groupHref: `/learn?unit=${unit.id}`,
+          };
+        }),
+      ),
+    ],
+  };
 }
 
 /**
