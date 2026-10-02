@@ -332,6 +332,13 @@ export default function PromptAudio({
         singlePlay={singlePlay && !allowTranscript}
         repeat={repeat}
         onFinished={() => onFinishedRef.current?.()}
+        footer={
+          allowTranscript && script ? (
+            <p className="text-xs text-foreground italic leading-relaxed border-t border-border pt-2 whitespace-pre-line">
+              &ldquo;{script}&rdquo;
+            </p>
+          ) : null
+        }
       />
     );
   }
@@ -593,6 +600,7 @@ function RecordedAudio({
   singlePlay = false,
   repeat = 1,
   onFinished,
+  footer,
 }: {
   src: string;
   title: string;
@@ -600,6 +608,8 @@ function RecordedAudio({
   singlePlay?: boolean;
   repeat?: number;
   onFinished: () => void;
+  /** Shown under the player, as the transcript is once the answer is in. */
+  footer?: React.ReactNode;
 }) {
   const notes = playNotes(repeat);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -689,7 +699,14 @@ function RecordedAudio({
         disabled={singlePlay && started && !playing}
         toggleLabel={playing ? `Pause ${title}` : `Play ${title}`}
         toggleIcon={playing && !singlePlay ? 'pause' : 'play'}
-        footer={error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+        footer={
+          (error || footer) && (
+            <>
+              {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+              {footer}
+            </>
+          )
+        }
       />
     </>
   );

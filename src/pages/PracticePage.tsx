@@ -33,6 +33,7 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import AudioRecorder from '@/components/practice/AudioRecorder';
 import PromptAudio from '@/components/practice/PromptAudio';
+import KoreanHelp from '@/components/practice/KoreanHelp';
 import PracticeResultCard from '@/components/practice/PracticeResultCard';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import OptionContent, { hasPictureOptions } from '@/components/practice/OptionContent';
@@ -855,6 +856,19 @@ function PracticePageContent() {
                   allowTranscript={result !== null}
                   onFinished={() => setHeardPromptFor(currentQuestion.id)}
                 />
+
+                {currentQuestion.exam === 'EPS_TOPIK' && (currentQuestion.hasTranslation || result?.review?.audioTranslation) && (
+                  <KoreanHelp
+                    key={`help-${currentQuestion.id}-${result?.review?.audioTranslation ? 'review' : 'question'}`}
+                    questionId={currentQuestion.id}
+                    premium={isPremiumUser(user)}
+                    initial={
+                      result?.review?.audioTranslation
+                        ? { text: result.review.audioTranslation, audioUrl: result.review.translationAudioUrl }
+                        : undefined
+                    }
+                  />
+                )}
 
                 {currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && (
                   passageHasGaps(currentQuestion.contextPassage) ? (

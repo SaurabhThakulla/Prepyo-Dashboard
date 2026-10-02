@@ -241,6 +241,14 @@ export interface Question {
   contextPassage?: string;
   audioUrl?: string;
   audioTranscript?: string;
+  /**
+   * The listening script in English, and a recording of it, for a learner who
+   * did not follow the Korean. Only review responses carry them.
+   */
+  audioTranslation?: string;
+  translationAudioUrl?: string;
+  /** An English version exists; premium learners can open it with Help. */
+  hasTranslation?: boolean;
   imageUrl?: string;
   prepTimeSeconds?: number;
   timeLimitSeconds: number;
