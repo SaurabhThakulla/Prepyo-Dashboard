@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 import '@/lib/google';
 import { ExamType, isExamType, NotificationItem, UserProfile } from '@/lib/types';
@@ -204,7 +204,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         limit: loadedNotifications.current,
         offset: 0,
       });
-      setNotifications(data.notifications ?? []);
+      // This runs every minute. Keeping the old list when nothing changed
+      // keeps the context value the same, so the app does not re-render.
+      const next = data.notifications ?? [];
+      setNotifications(prev => (sameNotifications(prev, next) ? prev : next));
       setUnreadCount(data.unreadCount ?? 0);
       setNotificationTotal(data.pagination?.total ?? 0);
     } catch (err) {
@@ -213,7 +216,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!(err instanceof ApiError && err.isUnauthorized)) {
         console.error('Failed to load notifications:', err);
       }
-      setNotifications([]);
+      setNotifications(prev => (prev.length === 0 ? prev : []));
       setUnreadCount(0);
       setNotificationTotal(0);
     }
@@ -409,51 +412,65 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const hasMoreNotifications = notifications.length < notificationTotal;
 
-  return (
-    <AppContext.Provider
-      value={{
-        user,
-        loading,
-        isAuthenticated: user !== null,
-        signInWithGoogle,
-        signInAsAdmin,
-        logout,
-        refreshUser,
-        notifications,
-        unreadCount,
-        hasMoreNotifications,
-        refreshNotifications,
-        loadMoreNotifications,
-        markNotificationAsRead,
-        markAllNotificationsAsRead,
-        deleteNotification,
-        clearAllNotifications,
-        activeExam,
-        setActiveExam,
-        updateProfile,
-        completeOnboarding,
-        isTutorOpen,
-        setIsTutorOpen,
-        tutorContextPrompt,
-        setTutorContextPrompt,
-        tutorQuestion,
-        askTutor,
-        clearTutorQuestion,
-        theme,
-        setTheme,
-        toggleTheme,
-        activeTestSession,
-        setActiveTestSession,
-        activeTutorialVideo,
-        setActiveTutorialVideo,
-        tutorialViewMode,
-        setTutorialViewMode,
-        closeTutorialVideo,
-      }}
-    >
-      {children}
-    </AppContext.Provider>
+  // Built once per change rather than on every render: 40-odd components read
+  // this context, and a new object each render re-rendered them all.
+  const value = useMemo<AppContextType>(
+    () => ({
+      user,
+      loading,
+      isAuthenticated: user !== null,
+      signInWithGoogle,
+      signInAsAdmin,
+      logout,
+      refreshUser,
+      notifications,
+      unreadCount,
+      hasMoreNotifications,
+      refreshNotifications,
+      loadMoreNotifications,
+      markNotificationAsRead,
+      markAllNotificationsAsRead,
+      deleteNotification,
+      clearAllNotifications,
+      activeExam,
+      setActiveExam,
+      updateProfile,
+      completeOnboarding,
+      isTutorOpen,
+      setIsTutorOpen,
+      tutorContextPrompt,
+      setTutorContextPrompt,
+      tutorQuestion,
+      askTutor,
+      clearTutorQuestion,
+      theme,
+      setTheme,
+      toggleTheme,
+      activeTestSession,
+      setActiveTestSession,
+      activeTutorialVideo,
+      setActiveTutorialVideo,
+      tutorialViewMode,
+      setTutorialViewMode,
+      closeTutorialVideo,
+    }),
+    [
+      user, loading, signInWithGoogle, signInAsAdmin, logout, refreshUser,
+      notifications, unreadCount, hasMoreNotifications, refreshNotifications, loadMoreNotifications,
+      markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllNotifications,
+      activeExam, setActiveExam, updateProfile, completeOnboarding,
+      isTutorOpen, tutorContextPrompt, tutorQuestion, askTutor, clearTutorQuestion,
+      theme, setTheme, toggleTheme,
+      activeTestSession, activeTutorialVideo, tutorialViewMode, closeTutorialVideo,
+    ],
   );
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+}
+
+/** Whether two notification lists would render the same. */
+function sameNotifications(a: NotificationItem[], b: NotificationItem[]): boolean {
+  return a.length === b.length && JSON.stringify(a) === JSON.stringify(b);
 }
 
 export function useApp() {
