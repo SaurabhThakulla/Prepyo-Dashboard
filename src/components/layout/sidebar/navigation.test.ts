@@ -356,3 +356,24 @@ describe('the Learn Korean menu', () => {
     expect(lit('/learn')).toEqual(['My Path']);
   });
 });
+
+// EPS-TOPIK tests reading and listening only, so the tutorials menu offers
+// no speaking or writing lessons, and names the exam the way people write it.
+describe('the tutorials menu', () => {
+  const tutorials = (exam: 'IELTS' | 'PTE' | 'EPS_TOPIK') =>
+    buildSections(exam, () => { }, null).find(section => section.id === 'tutorials')!;
+
+  it('lists only the sections EPS-TOPIK tests', () => {
+    const menu = tutorials('EPS_TOPIK');
+    expect(menu.items.map(item => item.label)).toEqual(['EPS-TOPIK Video Hub', 'Reading Lessons', 'Listening Lessons']);
+    expect(menu.title).toBe('EPS-TOPIK Video Tutorials');
+  });
+
+  it('keeps all four sections for IELTS and PTE', () => {
+    for (const exam of ['IELTS', 'PTE'] as const) {
+      expect(tutorials(exam).items.filter(item => item.group === 'Section Lessons').map(item => item.label)).toEqual([
+        'Speaking Lessons', 'Writing Lessons', 'Reading Lessons', 'Listening Lessons',
+      ]);
+    }
+  });
+});

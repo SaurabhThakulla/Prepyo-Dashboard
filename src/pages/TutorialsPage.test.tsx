@@ -141,6 +141,10 @@ describe('TutorialsPage for EPS-TOPIK', () => {
       expect(screen.queryByText(/Summarize Spoken Text/)).toBeNull();
       expect(screen.queryByText(/IELTS Speaking/)).toBeNull();
       expect(screen.queryByText(/Mock Tests/)).toBeNull();
+      // EPS-TOPIK has no speaking or writing section to filter by.
+      expect(screen.queryByRole('button', { name: /^Speaking/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Writing/ })).toBeNull();
+      expect(screen.getByRole('button', { name: /^Reading/ })).toBeTruthy();
     } finally {
       mockExam = 'IELTS';
     }

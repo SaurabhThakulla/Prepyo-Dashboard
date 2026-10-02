@@ -31,7 +31,7 @@ import { COURSE, lessonHref } from '@/data/learnKorean';
 import { EMPTY_PROGRESS, LearnProgress, lessonState } from '@/lib/learn/progress';
 import { SYLLABUS, syllabusFor, typeKey } from '@/lib/syllabus';
 import { typeIdsFor } from '@/lib/readingTypes';
-import { EXAM_LABELS, ExamType, ieltsModuleOf, isAdmin, SkillType, UserProfile } from '@/lib/types';
+import { EXAM_LABELS, ExamType, ieltsModuleOf, isAdmin, SkillType, skillsFor, UserProfile } from '@/lib/types';
 import { PTE_MOCK_KINDS, pteMockHref } from '@/lib/pteMock/catalog';
 
 /**
@@ -358,15 +358,16 @@ export function buildSections(
       id: 'tutorials',
       label: 'Tutorials',
       icon: Video,
-      title: `${activeExam} Video Tutorials`,
+      title: `${EXAM_LABELS[activeExam]} Video Tutorials`,
       description: 'Masterclass video lessons for every section',
       items: [
         {
           href: '/tutorials',
-          label: `${activeExam} Video Hub`,
+          label: `${EXAM_LABELS[activeExam]} Video Hub`,
           icon: Tv,
           sublabel: 'All sections & video masterclasses',
         },
+        ...[
         {
           href: '/tutorials?skill=speaking',
           label: 'Speaking Lessons',
@@ -395,6 +396,7 @@ export function buildSections(
           sublabel: 'Accent practice, note-taking & trap avoidance',
           group: 'Section Lessons',
         },
+        ].filter(item => skillsFor(activeExam).some(skill => item.href.endsWith(`skill=${skill}`))),
       ],
     },
   ];

@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { TUTORIAL_VIDEOS, TutorialVideo } from '@/data/tutorials';
-import { SkillType } from '@/lib/types';
+import { SkillType, skillsFor } from '@/lib/types';
 
 export type PlayerViewMode = 'standard' | 'theater' | 'mini';
 
@@ -142,13 +142,15 @@ export default function TutorialsPage() {
     });
   };
 
-  const skillTabs: { id: SkillType | 'all'; label: string; icon: React.ReactNode }[] = [
+  const allSkillTabs: { id: SkillType | 'all'; label: string; icon: React.ReactNode }[] = [
     { id: 'all', label: 'All Lessons', icon: <Layers className="w-3.5 h-3.5" /> },
     { id: 'speaking', label: 'Speaking', icon: <Mic className="w-3.5 h-3.5" /> },
     { id: 'writing', label: 'Writing', icon: <PenTool className="w-3.5 h-3.5" /> },
     { id: 'reading', label: 'Reading', icon: <BookOpen className="w-3.5 h-3.5" /> },
     { id: 'listening', label: 'Listening', icon: <Headphones className="w-3.5 h-3.5" /> },
   ];
+  // Only the skills this exam tests: EPS-TOPIK has no speaking or writing.
+  const skillTabs = allSkillTabs.filter(tab => tab.id === 'all' || skillsFor(currentExam).includes(tab.id));
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-8 pb-16 max-w-7xl mx-auto">
