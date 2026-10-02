@@ -47,9 +47,14 @@ export default function GlobalMiniPlayer() {
     }
   }, [isTestActive, activeTutorialVideo, closeTutorialVideo]);
 
+  // The player is mounted on every page, but there is nothing to place until a
+  // video is open. The watchers below run only then: polling the page while no
+  // video plays costs battery on every screen, most on cheap phones.
+  const showing = Boolean(activeTutorialVideo) && !isTestActive;
+
   // Detect ANY right-side slide-over drawer (AI Tutor, QuestionDrawer, MockPaperDrawer, NotificationDrawer, etc.)
   useEffect(() => {
-    if (typeof document === 'undefined') return;
+    if (typeof document === 'undefined' || !showing) return;
 
     const checkRightDrawers = () => {
       // 1. AI Tutor Drawer
@@ -106,7 +111,7 @@ export default function GlobalMiniPlayer() {
       observer?.disconnect();
       clearInterval(interval);
     };
-  }, [isTutorOpen]);
+  }, [isTutorOpen, showing]);
 
   // Track window resize
   useEffect(() => {
@@ -131,7 +136,7 @@ export default function GlobalMiniPlayer() {
 
   // Track embedded slot on TutorialsPage when in standard or theater mode
   useEffect(() => {
-    if (pathname !== '/tutorials' || tutorialViewMode === 'mini') {
+    if (!showing || pathname !== '/tutorials' || tutorialViewMode === 'mini') {
       setSlotRect(null);
       return;
     }
@@ -161,7 +166,7 @@ export default function GlobalMiniPlayer() {
       window.removeEventListener('resize', updateSlot);
       window.removeEventListener('scroll', updateSlot);
     };
-  }, [pathname, tutorialViewMode]);
+  }, [pathname, tutorialViewMode, showing]);
 
   // Handle Mouse / Touch Dragging
   const handleStartDrag = (clientX: number, clientY: number) => {

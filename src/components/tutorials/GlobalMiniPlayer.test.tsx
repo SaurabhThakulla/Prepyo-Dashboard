@@ -203,3 +203,32 @@ describe('GlobalMiniPlayer component', () => {
     document.body.removeChild(leftSidebar);
   });
 });
+
+describe('GlobalMiniPlayer watchers', () => {
+  it('starts no timers and no page observer while no video is open', () => {
+    mockLocation = '/tutorials';
+    mockTutorialViewMode = 'standard';
+    mockIsTutorOpen = false;
+    mockActiveTestSession = null;
+    mockActiveTutorialVideo = null;
+    const setInterval = vi.spyOn(window, 'setInterval');
+    const observe = vi.spyOn(MutationObserver.prototype, 'observe');
+    const { container } = render(<MemoryRouter><GlobalMiniPlayer /></MemoryRouter>);
+    expect(container.innerHTML).toBe('');
+    expect(setInterval).not.toHaveBeenCalled();
+    expect(observe).not.toHaveBeenCalled();
+    setInterval.mockRestore();
+    observe.mockRestore();
+  });
+
+  it('watches the page once a video is open', () => {
+    mockLocation = '/dashboard';
+    mockTutorialViewMode = 'mini';
+    mockActiveTestSession = null;
+    mockActiveTutorialVideo = { id: 'v', title: 'A video', youtubeId: 'yt' };
+    const setInterval = vi.spyOn(window, 'setInterval');
+    render(<MemoryRouter><GlobalMiniPlayer /></MemoryRouter>);
+    expect(setInterval).toHaveBeenCalled();
+    setInterval.mockRestore();
+  });
+});
