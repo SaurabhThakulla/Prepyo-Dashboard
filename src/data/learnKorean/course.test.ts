@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { COURSE, findLesson, taskLessonHref } from '@/data/learnKorean';
 import { getTaskMetadata } from '@/lib/taskMetadata';
 import { SYLLABUS, taskInstruction, typeKey } from '@/lib/syllabus';
+import { LEARN_AUDIO } from './audio';
 
 const lessons = COURSE.flatMap(unit => unit.lessons.map(lesson => ({ unit, lesson })));
 
@@ -77,5 +78,23 @@ describe('finding a lesson', () => {
     expect(findLesson('hangul', 'vowels')?.lesson.title).toBe('Vowels');
     expect(findLesson('hangul', 'nope')).toBeUndefined();
     expect(findLesson('nope', 'vowels')).toBeUndefined();
+  });
+});
+
+describe('the course audio', () => {
+  it('has a stored recording for every word and phrase the course speaks', () => {
+    const spoken = new Set<string>();
+    for (const { lesson } of lessons) {
+      for (const ex of lesson.exercises) {
+        if (ex.kind === 'teach') spoken.add((ex.speak ?? ex.ko).trim());
+        if (ex.kind === 'choice' && ex.speak) spoken.add(ex.speak.trim());
+        if (ex.kind === 'taskIntro' && lesson.practice) {
+          const instruction = taskInstruction('EPS_TOPIK', lesson.practice.skill, lesson.practice.typeKey);
+          if (instruction) spoken.add(instruction.trim());
+        }
+      }
+    }
+    // New or changed course text needs: voicegen.py learn --ts ../prepyo/src/data/learnKorean/audio.ts
+    expect([...spoken].filter(text => !LEARN_AUDIO[text])).toEqual([]);
   });
 });
