@@ -4,6 +4,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import TutorialsPage from './TutorialsPage';
 
+// The learner's exam; a test may switch it.
+let mockExam = 'IELTS';
+
 let globalState = {
   viewMode: 'standard',
   activeVideo: null as any,
@@ -39,8 +42,8 @@ vi.mock('@/context/AppContext', () => {
       };
 
       return {
-        activeExam: 'IELTS',
-        user: { id: 'test-user', targetExam: 'IELTS' },
+        activeExam: mockExam,
+        user: { id: 'test-user', targetExam: mockExam },
         activeTutorialVideo: activeVideo,
         setActiveTutorialVideo,
         tutorialViewMode: viewMode,
@@ -121,5 +124,25 @@ describe('TutorialsPage component', () => {
     const standardButton = screen.getAllByRole('button', { name: /Standard View/i })[0];
     fireEvent.click(standardButton);
     expect(globalState.viewMode).toBe('standard');
+  });
+});
+
+describe('TutorialsPage for EPS-TOPIK', () => {
+  it('shows the Korean videos, not PTE or IELTS ones, and no mock button', () => {
+    mockExam = 'EPS_TOPIK';
+    globalState = { viewMode: 'standard', activeVideo: null, listeners: [] };
+    try {
+      render(
+        <MemoryRouter initialEntries={['/tutorials']}>
+          <TutorialsPage />
+        </MemoryRouter>,
+      );
+      expect(screen.getAllByText('EPS-TOPIK 600 Korean Vocabulary').length).toBeGreaterThan(0);
+      expect(screen.queryByText(/Summarize Spoken Text/)).toBeNull();
+      expect(screen.queryByText(/IELTS Speaking/)).toBeNull();
+      expect(screen.queryByText(/Mock Tests/)).toBeNull();
+    } finally {
+      mockExam = 'IELTS';
+    }
   });
 });

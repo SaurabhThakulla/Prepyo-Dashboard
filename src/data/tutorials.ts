@@ -4,7 +4,7 @@ export interface TutorialVideo {
   id: string;
   title: string;
   youtubeId: string;
-  exam: 'IELTS' | 'PTE' | 'both';
+  exam: 'IELTS' | 'PTE' | 'EPS_TOPIK' | 'both';
   skill: SkillType;
   duration: string;
   isFullLength: boolean;
@@ -14,7 +14,8 @@ export interface TutorialVideo {
   description: string;
   keyTakeaways: string[];
   practiceUrl: string;
-  mockUrl: string;
+  /** Absent where the exam has no mock tests yet, as for EPS-TOPIK. */
+  mockUrl?: string;
 }
 
 export const TUTORIAL_VIDEOS: TutorialVideo[] = [
@@ -357,5 +358,227 @@ export const TUTORIAL_VIDEOS: TutorialVideo[] = [
     ],
     practiceUrl: '/practice?skill=listening',
     mockUrl: '/mocks/pte/listening',
+  },
+
+  // ── EPS-TOPIK ── No mock tests yet, so no mockUrl.
+  {
+    id: 'eps-listening-textbook-1-60',
+    title: 'EPS-TOPIK Textbook: All Listening, Chapters 1–60',
+    youtubeId: 'jZmPO-oDHls',
+    exam: 'EPS_TOPIK',
+    skill: 'listening',
+    duration: '1:41:44',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'Tapeendra 22',
+    level: 'All Levels',
+    description:
+      'Every listening exercise from the 60 chapters of the EPS-TOPIK standard textbook in one sitting. Use it as a full listening workout once you know the basics.',
+    keyTakeaways: [
+      'Covers the listening for all 60 textbook chapters, in order.',
+      'Good for daily ear training: play one stretch of chapters at a time.',
+      'Pair it with Prepyo\'s listening practice to test what you heard.',
+    ],
+    practiceUrl: '/practice?exam=EPS_TOPIK&skill=listening',
+  },
+  {
+    id: 'eps-listening-model-set-1',
+    title: 'EPS-TOPIK Listening Test 2025: Model Set 1',
+    youtubeId: 'Jic0WXgOT9g',
+    exam: 'EPS_TOPIK',
+    skill: 'listening',
+    duration: '13:32',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'EPS Aspirant',
+    level: 'Exam Practice',
+    description:
+      'A model listening set in the style of the computer-based EPS-TOPIK, with 20 questions to answer as you go.',
+    keyTakeaways: [
+      'Twenty listening questions, as in the listening half of the real test.',
+      'Pause after each question to check your answer before moving on.',
+      'Repeat the set a week later to see how much more you follow.',
+    ],
+    practiceUrl: '/practice?exam=EPS_TOPIK&skill=listening',
+  },
+  {
+    id: 'eps-listening-roshan-set-9',
+    title: 'EPS-TOPIK Exam 2025: Listening Set 9',
+    youtubeId: 'puLkAiOe9b8',
+    exam: 'EPS_TOPIK',
+    skill: 'listening',
+    duration: '23:55',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'Roshan Acharya (Abante Korean Bhasa, Kathmandu)',
+    level: 'Exam Practice',
+    description:
+      'A Kathmandu-based Korean teacher works through a full EPS-TOPIK listening set, including picture questions.',
+    keyTakeaways: [
+      'Walks through a complete listening set question by question.',
+      'Includes picture-based items like those in the real test.',
+      'Try each question yourself first, then watch the explanation.',
+    ],
+    practiceUrl: '/practice?exam=EPS_TOPIK&skill=listening',
+  },
+  {
+    id: 'eps-listening-40-questions-tips',
+    title: 'How to Get All 40 Questions Right: 8 Tips',
+    youtubeId: 'gZlIaXS1Sq8',
+    exam: 'EPS_TOPIK',
+    skill: 'listening',
+    duration: '14:05',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'Learn EPS With Arun Sir',
+    level: 'All Levels',
+    description:
+      'Eight tips, in Nepali, for answering every one of the 40 EPS-TOPIK questions under exam conditions.',
+    keyTakeaways: [
+      'The EPS-TOPIK has 40 questions: 20 reading and 20 listening.',
+      'Explained in Nepali for learners preparing from Nepal.',
+      'Watch before a timed practice set, then apply the tips.',
+    ],
+    practiceUrl: '/practice?exam=EPS_TOPIK&skill=listening',
+  },
+  {
+    id: 'eps-reading-roshan-set-4',
+    title: 'EPS-TOPIK Exam 2025: Reading Set 4',
+    youtubeId: 'NZJCQ-jyd0I',
+    exam: 'EPS_TOPIK',
+    skill: 'reading',
+    duration: '44:40',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'Roshan Acharya (Abante Korean Bhasa, Kathmandu)',
+    level: 'Exam Practice',
+    description:
+      'A full EPS-TOPIK reading set solved and explained by a Kathmandu-based Korean teacher.',
+    keyTakeaways: [
+      'Works through every question of a complete reading set.',
+      'Answer each item yourself before the explanation.',
+      'Practise the same task types on Prepyo afterwards.',
+    ],
+    practiceUrl: '/practice?exam=EPS_TOPIK&skill=reading',
+  },
+  {
+    id: 'eps-reading-roshan-set-2',
+    title: 'EPS-TOPIK Exam 2025: Reading Set 2',
+    youtubeId: '_nJMQgaKX9w',
+    exam: 'EPS_TOPIK',
+    skill: 'reading',
+    duration: '32:11',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'Roshan Acharya (Abante Korean Bhasa, Kathmandu)',
+    level: 'Exam Practice',
+    description:
+      'Another complete EPS-TOPIK reading set, worked through question by question.',
+    keyTakeaways: [
+      'A second full reading set in the test\'s style.',
+      'Useful after Set 4 to check you can apply the same approach.',
+      'Pause on any question you get wrong and work out why.',
+    ],
+    practiceUrl: '/practice?exam=EPS_TOPIK&skill=reading',
+  },
+  {
+    id: 'eps-hangul-in-10-minutes',
+    title: 'Learn to Read the Korean Alphabet (Hangul) in 10 Minutes',
+    youtubeId: 'rBDrM1VPJX0',
+    exam: 'EPS_TOPIK',
+    skill: 'reading',
+    duration: '12:49',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'Real Korean with Morning',
+    level: 'Beginner',
+    description:
+      'A quick first look at how Hangul works, for complete beginners who have never read Korean.',
+    keyTakeaways: [
+      'Start here if you cannot read Korean yet.',
+      'Explains how letters combine into syllable blocks.',
+      'Follow up with the Hangul unit in Prepyo\'s Learn Korean course.',
+    ],
+    practiceUrl: '/practice?exam=EPS_TOPIK&skill=reading',
+  },
+  {
+    id: 'eps-hangul-full-course',
+    title: 'Learn to Read Korean: Full Hangeul Course (1 hour)',
+    youtubeId: 'uNDf0V06m0w',
+    exam: 'EPS_TOPIK',
+    skill: 'reading',
+    duration: '1:01:52',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'Talk To Me In Korean',
+    level: 'Beginner',
+    description:
+      'A complete one-hour course on reading Hangul, from basic vowels and consonants to compound vowels.',
+    keyTakeaways: [
+      'Basic vowels, basic consonants, more consonants and compound vowels, in order.',
+      'Chapters let you jump back to any part you find hard.',
+      'Reading Hangul comes before every EPS-TOPIK question.',
+    ],
+    practiceUrl: '/practice?exam=EPS_TOPIK&skill=reading',
+  },
+  {
+    id: 'eps-600-vocabulary',
+    title: 'EPS-TOPIK 600 Korean Vocabulary',
+    youtubeId: 'XX6QpPBIWb0',
+    exam: 'EPS_TOPIK',
+    skill: 'reading',
+    duration: '2:16:46',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'LET\'S SPEAK KOREAN',
+    level: 'Beginner',
+    description:
+      '600 essential words for the EPS-TOPIK. Each word is said three times so you can listen and repeat.',
+    keyTakeaways: [
+      'Every word is repeated three times: listen, then say it aloud.',
+      'Builds the vocabulary that reading and listening questions rely on.',
+      'Play a short section each day rather than all at once.',
+    ],
+    practiceUrl: '/practice?exam=EPS_TOPIK&skill=reading',
+  },
+  {
+    id: 'eps-factory-phrases',
+    title: '100 Must-Know Korean Phrases for Factory Workers',
+    youtubeId: 'OW2oK-5xseQ',
+    exam: 'EPS_TOPIK',
+    skill: 'reading',
+    duration: '22:20',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'All About Korea',
+    level: 'Beginner',
+    description:
+      'Everyday phrases foreign workers use in Korean factories and manufacturing jobs, the workplace setting much of the EPS-TOPIK is about.',
+    keyTakeaways: [
+      'Phrases used daily in manufacturing and factory work.',
+      'Covers workplace situations the EPS-TOPIK asks about.',
+      'Useful for the test and for your first weeks at work in Korea.',
+    ],
+    practiceUrl: '/practice?exam=EPS_TOPIK&skill=reading',
+  },
+  {
+    id: 'eps-10-tips-to-pass',
+    title: '10 Key Points I Used to Pass the Korean Language Test',
+    youtubeId: 'jEHoUBtmjqk',
+    exam: 'EPS_TOPIK',
+    skill: 'reading',
+    duration: '17:08',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'RAKAL BOMZAN',
+    level: 'All Levels',
+    description:
+      'A learner who passed the EPS-TOPIK shares, in Nepali, the ten things that helped them prepare.',
+    keyTakeaways: [
+      'Advice from someone who has passed the test.',
+      'Explained in Nepali for learners preparing from Nepal.',
+      'Use it to plan your study routine before the exam.',
+    ],
+    practiceUrl: '/practice?exam=EPS_TOPIK&skill=reading',
   },
 ];

@@ -64,8 +64,7 @@ export default function TutorialsPage() {
     }
   }, [skillParam]);
 
-  // The learner's own exam. EPS-TOPIK has no videos of its own yet, so it
-  // shows only the shared ones rather than borrowing PTE's.
+  // The learner's own exam: its own videos plus the shared ones.
   const currentExam = activeExam;
 
   // Filter video list specifically for the user's exam without requiring manual selection
@@ -390,8 +389,9 @@ export default function TutorialsPage() {
                           <span>Practice {activeVideo.skill.toUpperCase()} Questions</span>
                           <ArrowRight className="h-4 w-4" />
                         </Button>
+                        {activeVideo.mockUrl && (
                         <Button
-                          onClick={() => navigate(activeVideo.mockUrl)}
+                          onClick={() => navigate(activeVideo.mockUrl!)}
                           variant="outline"
                           size="sm"
                           className="w-full gap-1.5 font-bold"
@@ -399,6 +399,7 @@ export default function TutorialsPage() {
                           <Award className="h-3.5 w-3.5 text-primary" />
                           <span>Open {activeVideo.skill.toUpperCase()} Mock Tests</span>
                         </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -464,8 +465,9 @@ export default function TutorialsPage() {
                         <span>Practice {activeVideo.skill.toUpperCase()} Questions</span>
                         <ArrowRight className="h-4 w-4" />
                       </Button>
+                      {activeVideo.mockUrl && (
                       <Button
-                        onClick={() => navigate(activeVideo.mockUrl)}
+                        onClick={() => navigate(activeVideo.mockUrl!)}
                         variant="outline"
                         size="sm"
                         className="w-full gap-1.5 font-bold"
@@ -473,6 +475,7 @@ export default function TutorialsPage() {
                         <Award className="h-3.5 w-3.5 text-primary" />
                         <span>Open {activeVideo.skill.toUpperCase()} Mock Tests</span>
                       </Button>
+                      )}
                     </div>
                   </div>
                 )}
