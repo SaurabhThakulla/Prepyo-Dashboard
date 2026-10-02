@@ -137,7 +137,7 @@ describe('TutorialsPage for EPS-TOPIK', () => {
           <TutorialsPage />
         </MemoryRouter>,
       );
-      expect(screen.getAllByText('EPS-TOPIK 600 Korean Vocabulary').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Korean Vocabulary for the EPS-TOPIK Exam').length).toBeGreaterThan(0);
       expect(screen.queryByText(/Summarize Spoken Text/)).toBeNull();
       expect(screen.queryByText(/IELTS Speaking/)).toBeNull();
       expect(screen.queryByText(/Mock Tests/)).toBeNull();
