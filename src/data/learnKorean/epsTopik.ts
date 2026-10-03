@@ -206,7 +206,7 @@ function taskLessons(skill: 'reading' | 'listening', prefix: 'R' | 'L'): Lesson[
 
 export const EPS_TOPIK: Unit = {
   id: 'eps-topik',
-  number: 5,
+  number: 9,
   title: 'EPS-TOPIK',
   description: 'Every task in the test, one lesson each: what it is, how to answer it, and a few easy questions in its style.',
   emoji: '🎯',

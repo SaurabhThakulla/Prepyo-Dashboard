@@ -2,7 +2,7 @@ import { Unit } from './types';
 
 export const DAILY_LIFE: Unit = {
   id: 'daily-life',
-  number: 4,
+  number: 5,
   title: 'Daily Life',
   description: 'Get by outside work: shopping, getting around, the hospital, the bank and food.',
   emoji: '🛒',

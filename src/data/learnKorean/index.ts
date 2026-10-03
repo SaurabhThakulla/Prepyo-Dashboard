@@ -2,14 +2,36 @@ import { BASIC } from './basic';
 import { DAILY_LIFE } from './dailyLife';
 import { EPS_TOPIK } from './epsTopik';
 import { EPS_VOCAB } from './epsVocab';
+import { GRAMMAR } from './grammar';
 import { HANGUL } from './hangul';
+import { CONSTRUCTION, FARMING, FISHERY } from './industries';
+import { MORE_BASIC, MORE_DAILY_LIFE, MORE_EPS_VOCAB } from './moreWords';
 import { Lesson, Unit } from './types';
+import { withListening } from './vocab';
 import { matchesTypeKey } from '@/lib/syllabus';
 
 export type { Exercise, Lesson, Unit } from './types';
 
-/** The whole course, in the order it is taught. */
-export const COURSE: Unit[] = [HANGUL, BASIC, EPS_VOCAB, DAILY_LIFE, EPS_TOPIK];
+const extend = (unit: Unit, more: Lesson[]): Unit => ({ ...unit, lessons: [...unit.lessons, ...more] });
+
+/**
+ * The whole course, in the order it is taught. Every unit except the exam
+ * tasks gets extra listening questions (see withListening), since half of the
+ * test is listening.
+ */
+export const COURSE: Unit[] = [
+  ...[
+    HANGUL,
+    extend(BASIC, MORE_BASIC),
+    GRAMMAR,
+    extend(EPS_VOCAB, MORE_EPS_VOCAB),
+    extend(DAILY_LIFE, MORE_DAILY_LIFE),
+    CONSTRUCTION,
+    FARMING,
+    FISHERY,
+  ].map(withListening),
+  EPS_TOPIK,
+];
 
 /** A lesson's key in saved progress: "unit/lesson". */
 export const lessonKey = (unitId: string, lessonId: string) => `${unitId}/${lessonId}`;

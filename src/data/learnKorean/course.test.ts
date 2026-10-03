@@ -7,14 +7,43 @@ import { LEARN_AUDIO } from './audio';
 const lessons = COURSE.flatMap(unit => unit.lessons.map(lesson => ({ unit, lesson })));
 
 describe('the beginner Korean course', () => {
-  it('has the five units, in order, with five lessons each before the exam tasks', () => {
-    expect(COURSE.map(unit => unit.title)).toEqual(['Hangul', 'Basic Korean', 'EPS Vocabulary', 'Daily Life', 'EPS-TOPIK']);
-    expect(COURSE.slice(0, 4).map(unit => unit.lessons.map(l => l.title))).toEqual([
-      ['Vowels', 'Consonants', 'Syllables', 'Reading', 'First words'],
-      ['Greetings', 'People', 'Common words', 'Verbs', 'Simple sentences'],
-      ['Numbers & time', 'Workplace', 'Tools', 'Machines', 'Safety'],
-      ['Shopping', 'Transport', 'Hospital', 'Bank', 'Food'],
+  it('runs from the alphabet through grammar, everyday and industry words to the exam tasks', () => {
+    expect(COURSE.map(unit => unit.title)).toEqual([
+      'Hangul',
+      'Basic Korean',
+      'Grammar Essentials',
+      'EPS Vocabulary',
+      'Daily Life',
+      'Construction',
+      'Agriculture & Livestock',
+      'Fishery',
+      'EPS-TOPIK',
     ]);
+    expect(COURSE.map(unit => unit.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    // The first lessons of the original units keep their place, so saved progress still lines up.
+    expect(COURSE.find(u => u.id === 'basic')!.lessons.slice(0, 5).map(l => l.title)).toEqual([
+      'Greetings', 'People', 'Common words', 'Verbs', 'Simple sentences',
+    ]);
+    expect(COURSE.find(u => u.id === 'eps-vocab')!.lessons.slice(0, 5).map(l => l.title)).toEqual([
+      'Numbers & time', 'Workplace', 'Tools', 'Machines', 'Safety',
+    ]);
+  });
+
+  it('teaches a working vocabulary of about 600 words and phrases', () => {
+    const taught = new Set(
+      lessons.flatMap(({ lesson }) => lesson.exercises.filter(ex => ex.kind === 'teach').map(ex => (ex.kind === 'teach' ? ex.ko : ''))),
+    );
+    expect(taught.size).toBeGreaterThanOrEqual(550);
+  });
+
+  it('trains the ear in every lesson outside the exam-task unit', () => {
+    for (const { unit, lesson } of lessons) {
+      if (unit.id === 'eps-topik') continue;
+      const heard = lesson.exercises.filter(ex => ex.kind === 'choice' && ex.listenOnly).length;
+      // Four words make a fair listening choice; a lesson of sound-building cards has fewer.
+      const words = lesson.exercises.filter(ex => ex.kind === 'teach' && !/[·→+=]/.test(ex.ko)).length;
+      expect(heard, `${unit.id}/${lesson.id}`).toBeGreaterThanOrEqual(words >= 4 ? 2 : 1);
+    }
   });
 
   it('gives every unit and lesson a unique id', () => {

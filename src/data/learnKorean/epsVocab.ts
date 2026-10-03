@@ -2,7 +2,7 @@ import { Unit } from './types';
 
 export const EPS_VOCAB: Unit = {
   id: 'eps-vocab',
-  number: 3,
+  number: 4,
   title: 'EPS Vocabulary',
   description: 'The work words the test is full of: numbers, time, the workplace, tools, machines and safety.',
   emoji: '🏭',
