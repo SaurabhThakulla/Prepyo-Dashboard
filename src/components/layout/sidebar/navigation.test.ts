@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildSections, getSectionFromPathname, isNavItemActive } from '@/components/layout/sidebar/navigation';
+import { COURSE } from '@/data/learnKorean';
 import { completeLesson, EMPTY_PROGRESS, LearnProgress } from '@/lib/learn/progress';
 import { READING_TYPES } from '@/lib/readingTypes';
 import { UserProfile } from '@/lib/types';
@@ -317,19 +318,24 @@ describe('the Learn Korean menu', () => {
     expect(buildSections('PTE', () => { }).some(s => s.id === 'learn')).toBe(false);
   });
 
-  it('leads with the path, then one heading per unit with its lessons', () => {
+  it('leads with the path and word review, then one heading per unit with its lessons', () => {
     const items = learn()?.items ?? [];
     expect(items[0]).toMatchObject({ href: '/learn', label: 'My Path' });
-    expect([...new Set(items.slice(1).map(i => i.group))]).toEqual([
+    expect(items[1]).toMatchObject({ href: '/learn/review', label: 'Review words' });
+    expect([...new Set(items.slice(2).map(i => i.group))]).toEqual([
       'Unit 1 · Hangul',
       'Unit 2 · Basic Korean',
-      'Unit 3 · EPS Vocabulary',
-      'Unit 4 · Daily Life',
-      'Unit 5 · EPS-TOPIK',
+      'Unit 3 · Grammar Essentials',
+      'Unit 4 · EPS Vocabulary',
+      'Unit 5 · Daily Life',
+      'Unit 6 · Construction',
+      'Unit 7 · Agriculture & Livestock',
+      'Unit 8 · Fishery',
+      'Unit 9 · EPS-TOPIK',
     ]);
-    // The path, four units of five lessons, and sixteen exam tasks.
-    expect(items).toHaveLength(1 + 20 + 16);
-    expect(items[1]).toMatchObject({ href: '/learn/hangul/vowels', groupHref: '/learn?unit=hangul' });
+    // The path, the review, and every lesson of every unit.
+    expect(items).toHaveLength(2 + COURSE.reduce((sum, unit) => sum + unit.lessons.length, 0));
+    expect(items[2]).toMatchObject({ href: '/learn/hangul/vowels', groupHref: '/learn?unit=hangul' });
     expect(items.find(i => i.href === '/learn/eps-topik/l2')?.label).toBe('L2 · Listen and Choose Picture');
   });
 

@@ -1,17 +1,21 @@
 import React, { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, Check, Flame, Lock, Star, Zap } from 'lucide-react';
+import { ArrowRight, Check, Flame, Lock, RotateCcw, Star, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { COURSE, lessonHref, type Unit } from '@/data/learnKorean';
 import { useLearnProgress } from '@/lib/hooks/useLearnProgress';
-import { lessonState, nextLesson, unitDoneCount } from '@/lib/learn/progress';
+import { dueCount, learnedWords, lessonState, nextLesson, unitDoneCount } from '@/lib/learn/progress';
 
 /** Each unit's colours. Written out in full so Tailwind keeps every class. */
 const UNIT_STYLE: Record<string, { banner: string; node: string; ring: string }> = {
   hangul: { banner: 'from-sky-500 to-sky-600', node: 'bg-sky-500 border-sky-700', ring: 'ring-sky-300' },
   basic: { banner: 'from-violet-500 to-violet-600', node: 'bg-violet-500 border-violet-700', ring: 'ring-violet-300' },
   'eps-vocab': { banner: 'from-amber-500 to-orange-500', node: 'bg-amber-500 border-amber-700', ring: 'ring-amber-300' },
+  grammar: { banner: 'from-indigo-500 to-indigo-600', node: 'bg-indigo-500 border-indigo-700', ring: 'ring-indigo-300' },
   'daily-life': { banner: 'from-emerald-500 to-emerald-600', node: 'bg-emerald-500 border-emerald-700', ring: 'ring-emerald-300' },
+  construction: { banner: 'from-yellow-500 to-amber-600', node: 'bg-yellow-500 border-yellow-700', ring: 'ring-yellow-300' },
+  farming: { banner: 'from-lime-500 to-green-600', node: 'bg-lime-500 border-lime-700', ring: 'ring-lime-300' },
+  fishery: { banner: 'from-cyan-500 to-blue-600', node: 'bg-cyan-500 border-cyan-700', ring: 'ring-cyan-300' },
   'eps-topik': { banner: 'from-rose-500 to-rose-600', node: 'bg-rose-500 border-rose-700', ring: 'ring-rose-300' },
 };
 
@@ -29,6 +33,8 @@ export default function LearnKoreanPage() {
   const { progress, streak } = useLearnProgress();
   const upNext = nextLesson(progress);
   const doneCount = Object.keys(progress.completed).length;
+  const known = learnedWords(progress).length;
+  const due = dueCount(progress);
   const focusUnit = searchParams.get('unit');
 
   useEffect(() => {
@@ -66,6 +72,23 @@ export default function LearnKoreanPage() {
               <ArrowRight className="ml-1 h-4 w-4" />
             </Link>
           </Button>
+        )}
+        {known >= 4 && (
+          <Link
+            to="/learn/review"
+            className="flex items-center gap-3 rounded-2xl border-2 border-violet-200 bg-violet-50 px-4 py-3 text-left transition-colors hover:bg-violet-100 dark:border-violet-900 dark:bg-violet-950/40 dark:hover:bg-violet-950/70"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-white">
+              <RotateCcw className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-foreground">Review your words</span>
+              <span className="block text-xs text-muted-foreground">
+                {due > 0 ? `${due} of ${known} words are due. A quick round keeps them fresh.` : `All ${known} words are fresh. Review any time for extra practice.`}
+              </span>
+            </span>
+            <ArrowRight className="h-4 w-4 shrink-0 text-violet-600" />
+          </Link>
         )}
       </section>
 

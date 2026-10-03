@@ -28,7 +28,7 @@ import {
   LucideIcon,
 } from 'lucide-react';
 import { COURSE, lessonHref } from '@/data/learnKorean';
-import { EMPTY_PROGRESS, LearnProgress, lessonState } from '@/lib/learn/progress';
+import { dueCount, EMPTY_PROGRESS, LearnProgress, learnedWords, lessonState } from '@/lib/learn/progress';
 import { SYLLABUS, syllabusFor, typeKey } from '@/lib/syllabus';
 import { typeIdsFor } from '@/lib/readingTypes';
 import { EXAM_LABELS, ExamType, ieltsModuleOf, isAdmin, SkillType, skillsFor, UserProfile } from '@/lib/types';
@@ -497,6 +497,12 @@ function learnSection(progress: LearnProgress): PrimarySectionConfig {
         icon: Route,
         sublabel: `${progress.xp} XP · ${done} of ${total} lessons done`,
       },
+      {
+        href: '/learn/review',
+        label: 'Review words',
+        icon: RotateCcw,
+        sublabel: reviewSublabel(progress),
+      },
       ...COURSE.flatMap(unit =>
         unit.lessons.map((lesson, i): SecondaryNavItem => {
           const state = lessonState(progress, unit, i);
@@ -513,6 +519,13 @@ function learnSection(progress: LearnProgress): PrimarySectionConfig {
       ),
     ],
   };
+}
+
+function reviewSublabel(progress: LearnProgress): string {
+  const known = learnedWords(progress).length;
+  if (known < 4) return 'Opens once you have learned a few words';
+  const due = dueCount(progress);
+  return due > 0 ? `${due} of ${known} words due` : `All ${known} words fresh`;
 }
 
 /**
