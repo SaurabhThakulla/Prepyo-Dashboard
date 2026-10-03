@@ -13,7 +13,9 @@ import {
   Crown,
   Flame,
   Globe,
+  GraduationCap,
   Headphones,
+  Languages,
   Lightbulb,
   Lock,
   LucideIcon,
@@ -61,7 +63,7 @@ import {
   planAccessDays,
   planUsageTier,
 } from '@/lib/subscriptions';
-import { ExamType, SkillType, SubscriptionPlan, SubscriptionTier, UserProfile, IELTSModule, IELTS_MODULE_LABEL, ieltsModuleOf } from '@/lib/types';
+import { EXAM_LABELS, ExamType, SkillType, SubscriptionPlan, SubscriptionTier, UserProfile, IELTSModule, IELTS_MODULE_LABEL, ieltsModuleOf, skillsFor } from '@/lib/types';
 import {
   DAILY_MINUTES,
   DESTINATIONS,
@@ -101,7 +103,7 @@ const IELTS_MODULE_CHOICES: { id: IELTSModule; blurb: string }[] = [
 ];
 
 const STEPS = [
-  { id: 'welcome', pill: 'Your IELTS & PTE Copilot', label: 'Welcome', tagline: "Let's build a plan that fits you." },
+  { id: 'welcome', pill: 'Your Exam Copilot', label: 'Welcome', tagline: "Let's build a plan that fits you." },
   { id: 'exam', pill: 'Your Target', label: 'Your exam', tagline: 'Everything in Prepyo adapts to your exam.' },
   { id: 'goal', pill: 'Your Target', label: 'Your goal', tagline: 'Knowing why keeps you going on the hard days.' },
   { id: 'destination', pill: 'Your Target', label: 'Destination', tagline: 'Your score is a ticket somewhere. Where to?' },
@@ -110,14 +112,19 @@ const STEPS = [
   { id: 'date', pill: 'Exam Date', label: 'Exam date', tagline: 'A deadline turns a plan into a habit.' },
   { id: 'focus', pill: 'Focus Skill', label: 'Focus skill', tagline: 'Your hardest skill is your biggest opportunity.' },
   { id: 'daily', pill: 'Daily Routine', label: 'Daily time', tagline: 'Small daily sessions beat weekend cramming.' },
-  { id: 'plan', pill: 'Your Plan', label: 'Choose a plan', tagline: 'Start free, or unlock more practice and mocks.' },
+  { id: 'plan', pill: 'Your Plan', label: 'Choose a plan', tagline: 'Start free, and unlock more whenever you need it.' },
   { id: 'tour', pill: 'Your Toolkit', label: 'Your toolkit', tagline: 'Everything you need, in one place.' },
   { id: 'ready', pill: 'All Set', label: 'All set', tagline: "You're ready. Let the practice begin." },
 ] as const;
 
 type StepId = (typeof STEPS)[number]['id'];
 
-const QUESTION_COUNT = 9;
+// EPS-TOPIK is the Korean test for the Employment Permit System: the goal is
+// always work and the destination always South Korea, so those two questions
+// are answered for the learner rather than asked.
+const EPS_ANSWERED: StepId[] = ['goal', 'destination'];
+const stepsFor = (exam: ExamType | null) =>
+  exam === 'EPS_TOPIK' ? STEPS.filter(step => !EPS_ANSWERED.includes(step.id)) : STEPS;
 
 const EXAMS: { id: ExamType; name: string; scale: string; blurb: string }[] = [
   {
@@ -132,7 +139,16 @@ const EXAMS: { id: ExamType; name: string; scale: string; blurb: string }[] = [
     scale: 'Scores 10–90',
     blurb: 'Computer-based exam with fast, consistent scoring.',
   },
+  {
+    id: 'EPS_TOPIK',
+    name: 'EPS-TOPIK',
+    scale: 'Scores 0–100',
+    blurb: 'The Korean test for work in South Korea under the Employment Permit System.',
+  },
 ];
+
+/** The ends of each exam's scale, drawn under its card. */
+const SCALE_ENDS: Record<ExamType, [string, string]> = { IELTS: ['0', '9'], PTE: ['10', '90'], EPS_TOPIK: ['0', '100'] };
 
 /** Exam-step look, and what Prepyo gives you for each exam (not claims about the exam itself). */
 const EXAM_STYLE: Record<
@@ -155,8 +171,6 @@ const EXAM_STYLE: Record<
     wash: 'from-blue-50',
     bar: 'bg-blue-600',
   },
-  // Not offered at onboarding yet (EXAMS lists IELTS and PTE); it stays under
-  // "coming soon" until the question bank is ready. Styled for when it moves.
   EPS_TOPIK: {
     facts: ['All 16 official task types', 'Reading & listening'],
     tile: 'bg-emerald-600 text-white',
@@ -172,15 +186,8 @@ const UPCOMING_PREPARATIONS: {
   name: string;
   scale: string;
   blurb: string;
-  flagCode: 'KR' | 'JP' | 'DE';
+  flagCode: 'JP' | 'DE';
 }[] = [
-  {
-    id: 'korean',
-    name: 'Korean',
-    scale: 'EPS-TOPIK',
-    blurb: 'EPS employment permit test & TOPIK preparation for South Korea.',
-    flagCode: 'KR',
-  },
   {
     id: 'japanese',
     name: 'Japanese',
@@ -312,6 +319,12 @@ const SKILL_TASKS: Record<ExamType, Record<SkillType, string[]>> = {
   },
 };
 
+/** What each skill means in EPS-TOPIK, in place of the IELTS/PTE wording. */
+const EPS_SKILL_DETAIL: Partial<Record<SkillType, string>> = {
+  reading: 'Hangul, signs, notices and short workplace texts',
+  listening: 'Everyday and workplace Korean, each recording heard twice',
+};
+
 /** How each daily amount feels, shown under the time. */
 const DAILY_PACE: Record<number, string> = {
   15: 'Light',
@@ -382,9 +395,44 @@ const FEATURES: Feature[] = [
   },
 ];
 
+/** The toolkit for EPS-TOPIK: no speaking, writing or mock tests yet, and a Korean course. */
+const EPS_FEATURES: Feature[] = [
+  {
+    ...FEATURES[0],
+    tag: 'Reading & listening',
+    text: 'Drill all 16 EPS-TOPIK task types, one question at a time.',
+    highlights: [
+      'Every official reading and listening task type',
+      'Marked instantly, with the answer explained',
+      'Listening plays twice, as in the test',
+    ],
+  },
+  {
+    icon: GraduationCap,
+    title: 'Learn Korean',
+    tag: 'From zero',
+    text: 'A short-lesson course from Hangul to the EPS-TOPIK tasks.',
+    highlights: ['Read Hangul, then everyday and workplace words', 'Every word has a recording you can play'],
+    where: 'Learn Korean, in the sidebar',
+    accent: { tile: 'bg-violet-600 text-white', soft: 'bg-violet-50 text-violet-600', glow: 'from-violet-100' },
+  },
+  {
+    icon: Languages,
+    title: 'Help in English',
+    tag: 'Premium',
+    text: "Didn't catch the Korean? Hear and read it in English.",
+    highlights: ['On every Korean listening question', 'Text and audio, side by side with the Korean'],
+    where: 'On each listening question',
+    accent: { tile: 'bg-sky-600 text-white', soft: 'bg-sky-50 text-sky-600', glow: 'from-sky-100' },
+  },
+  ...FEATURES.slice(2),
+];
+
+const featuresFor = (exam: ExamType) => (exam === 'EPS_TOPIK' ? EPS_FEATURES : FEATURES);
+
 const CONFETTI_COLORS = ['#1b40a7', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#1d4ed8'];
 
-const examName = (exam: ExamType) => (exam === 'PTE' ? 'PTE Academic' : 'IELTS');
+const examName = (exam: ExamType) => (exam === 'PTE' ? 'PTE Academic' : EXAM_LABELS[exam]);
 
 export default function OnboardingFlow({
   user,
@@ -431,7 +479,9 @@ export default function OnboardingFlow({
   const [paymentSubmitted, setPaymentSubmitted] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
-  const step = STEPS[stepIndex];
+  const steps = stepsFor(exam);
+  const step = steps[stepIndex];
+  const eps = exam === 'EPS_TOPIK';
   const firstName = user.name?.trim().split(/\s+/)[0] || 'there';
   const chosen: ExamType = exam ?? 'PTE';
   const scale = SCORE_SCALE[chosen];
@@ -477,7 +527,7 @@ export default function OnboardingFlow({
   }, [stepIndex]);
 
   const go = (next: number) => {
-    if (next < 0 || next >= STEPS.length || next === stepIndex) return;
+    if (next < 0 || next >= steps.length || next === stepIndex) return;
     setDirection(next > stepIndex ? 1 : -1);
     setStepIndex(next);
   };
@@ -503,6 +553,15 @@ export default function OnboardingFlow({
         : SCORE_SCALE[next].fallback,
     );
     setPreviousScore(SCORE_SCALE[next].presets[0]);
+    if (next === 'EPS_TOPIK') {
+      setGoal('work');
+      setDestination('south-korea');
+    } else if (exam === 'EPS_TOPIK') {
+      setGoal(null);
+      setDestination(null);
+    }
+    // A skill this exam does not test cannot stay chosen.
+    if (focus && !skillsFor(next).includes(focus)) setFocus(null);
   };
 
   const finish = async (path: string) => {
@@ -537,18 +596,18 @@ export default function OnboardingFlow({
     }
   };
 
-  const progress = `${((stepIndex + 1) / STEPS.length) * 100}%`;
+  const progress = `${((stepIndex + 1) / steps.length) * 100}%`;
   const slide = direction === 1 ? 'motion-safe:slide-in-from-right-8' : 'motion-safe:slide-in-from-left-8';
 
   return (
     <OnboardingLayout>
-      <OnboardingSidebar steps={STEPS} stepIndex={stepIndex} />
+      <OnboardingSidebar steps={steps} stepIndex={stepIndex} />
 
       {/* Main Flow Content Container */}
       <div className="flex min-w-0 flex-1 flex-col justify-between overflow-y-auto">
         <OnboardingProgress
           current={stepIndex + 1}
-          total={STEPS.length}
+          total={steps.length}
           progress={progress}
           onExit={preview ? onDone : undefined}
         />
@@ -578,13 +637,13 @@ export default function OnboardingFlow({
                         </span>
                       </h2>
                       <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-500 sm:text-base">
-                        Welcome to Prepyo. Answer {QUESTION_COUNT} quick questions and we&apos;ll build a study plan
+                        Welcome to Prepyo. Answer a few quick questions and we&apos;ll build a study plan
                         around your exam, your goals and your schedule.
                       </p>
 
                       <div className="mt-6 flex flex-wrap gap-2">
                         {[
-                          { icon: Target, label: `${QUESTION_COUNT} questions` },
+                          { icon: Target, label: 'A few questions' },
                           { icon: Clock, label: 'About 2 minutes' },
                           { icon: ShieldCheck, label: 'Free to start' },
                         ].map(item => (
@@ -630,7 +689,7 @@ export default function OnboardingFlow({
 
                 {/* Step 2: Exam */}
                 {step.id === 'exam' && (
-                  <div className="w-full max-w-2xl space-y-6">
+                  <div className="w-full max-w-3xl space-y-6">
                     <QuestionHeader
                       badge={step.pill}
                       headingRef={headingRef}
@@ -638,7 +697,7 @@ export default function OnboardingFlow({
                       subtitle="Your practice, mock tests and scoring are all built around it."
                     />
 
-                    <div className="grid gap-3.5 sm:grid-cols-2">
+                    <div className="grid gap-3.5 sm:grid-cols-3">
                       {EXAMS.map(option => {
                         const style = EXAM_STYLE[option.id];
                         const selected = option.id === exam;
@@ -690,9 +749,9 @@ export default function OnboardingFlow({
                                 ))}
                               </span>
                               <span className="mt-1.5 flex justify-between text-[10px] font-bold text-slate-400">
-                                <span>{ielts ? '0' : '10'}</span>
+                                <span>{SCALE_ENDS[option.id][0]}</span>
                                 <span className={selected ? 'text-slate-700' : ''}>{option.scale}</span>
-                                <span>{ielts ? '9' : '90'}</span>
+                                <span>{SCALE_ENDS[option.id][1]}</span>
                               </span>
                             </span>
 
@@ -747,7 +806,7 @@ export default function OnboardingFlow({
                         Coming soon
                       </span>
                       {UPCOMING_PREPARATIONS.map(option => {
-                        const FlagComponent = option.flagCode === 'KR' ? KR : option.flagCode === 'JP' ? JP : DE;
+                        const FlagComponent = option.flagCode === 'JP' ? JP : DE;
                         return (
                           <span
                             key={option.id}
@@ -1133,8 +1192,10 @@ export default function OnboardingFlow({
                     <div className="flex max-w-xl items-start gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm">
                       <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
                       <p className="text-xs leading-relaxed text-slate-600">
-                        Not sure? Aim for the {unit} your university, visa or registration body asks for. You can
-                        change it any time in Profile.
+                        {eps
+                          ? 'Not sure? HRD Korea sets a minimum score for each industry, and places above it go by rank, so a higher score gives you a better chance.'
+                          : `Not sure? Aim for the ${unit} your university, visa or registration body asks for.`}{' '}
+                        You can change it any time in Profile.
                       </p>
                     </div>
                   </div>
@@ -1289,7 +1350,7 @@ export default function OnboardingFlow({
                     />
 
                     <div className="grid gap-3.5 sm:grid-cols-2">
-                      {FOCUS_SKILLS.map(option => {
+                      {FOCUS_SKILLS.filter(option => skillsFor(chosen).includes(option.id)).map(option => {
                         const style = SKILL_STYLE[option.id];
                         const Icon = style.icon;
                         const selected = focus === option.id;
@@ -1330,7 +1391,7 @@ export default function OnboardingFlow({
                                 {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
                               </span>
                             </span>
-                            <span className="relative order-3 mt-1 block text-xs leading-relaxed text-slate-500">{option.detail}</span>
+                            <span className="relative order-3 mt-1 block text-xs leading-relaxed text-slate-500">{(eps && EPS_SKILL_DETAIL[option.id]) || option.detail}</span>
 
                             <span className="relative order-4 mt-4 flex flex-wrap gap-1.5">
                               {SKILL_TASKS[chosen][option.id].map(task => (
@@ -1444,7 +1505,11 @@ export default function OnboardingFlow({
                       badge={step.pill}
                       headingRef={headingRef}
                       title="Choose how you want to prepare"
-                      subtitle="Start free, or unlock more daily practice and full mock tests. You can upgrade any time."
+                      subtitle={
+                        eps
+                          ? 'Start free, or unlock more daily practice and Help in English. You can upgrade any time.'
+                          : 'Start free, or unlock more daily practice and full mock tests. You can upgrade any time.'
+                      }
                     />
 
                     <div className="grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1452,6 +1517,7 @@ export default function OnboardingFlow({
                         <PlanCard
                           key={plan.id}
                           plan={plan}
+                          exam={chosen}
                           index={index}
                           selected={planId === plan.id}
                           current={plan.id === currentPaidPlan}
@@ -1514,7 +1580,7 @@ export default function OnboardingFlow({
                       badge={step.pill}
                       headingRef={headingRef}
                       title="Your Prepyo toolkit"
-                      subtitle="Six tools that work together to get you to your target. Pick one to see how it helps."
+                      subtitle={`${featuresFor(chosen).length === 7 ? 'Seven' : 'Six'} tools that work together to get you to your target. Pick one to see how it helps.`}
                     />
 
                     <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
@@ -1524,7 +1590,7 @@ export default function OnboardingFlow({
                         aria-orientation="vertical"
                         className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1"
                       >
-                        {FEATURES.map((item, index) => {
+                        {featuresFor(chosen).map((item, index) => {
                           const Icon = item.icon;
                           const selected = index === feature;
                           return (
@@ -1565,7 +1631,11 @@ export default function OnboardingFlow({
                         })}
                       </div>
 
-                      <ToolkitPanel index={feature} onNext={() => setFeature((feature + 1) % FEATURES.length)} />
+                      <ToolkitPanel
+                        features={featuresFor(chosen)}
+                        index={feature}
+                        onNext={() => setFeature((feature + 1) % featuresFor(chosen).length)}
+                      />
                     </div>
                   </div>
                 )}
@@ -1595,7 +1665,9 @@ export default function OnboardingFlow({
                         <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-500 sm:text-base">
                           {needsPayment && selectedPlan && !paymentSubmitted
                             ? `One last step: pay for ${formatPlanName(selectedPlan.id)} and your plan is ready on your dashboard.`
-                            : "Your plan is ready and waiting on your dashboard. A quick diagnostic test is the best place to start."}
+                            : eps
+                              ? 'Your plan is ready and waiting on your dashboard. Start with the Learn Korean course, or go straight to practice questions.'
+                              : "Your plan is ready and waiting on your dashboard. A quick diagnostic test is the best place to start."}
                         </p>
                       </div>
 
@@ -1660,12 +1732,12 @@ export default function OnboardingFlow({
                       ) : (
                         <div className="flex flex-col gap-2.5 sm:flex-row">
                           <Button
-                            onClick={() => void finish('/diagnostic')}
+                            onClick={() => void finish(eps ? '/learn' : '/diagnostic')}
                             disabled={saving}
                             className="h-12 gap-2 rounded-full bg-blue-600 px-7 text-sm font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700"
                           >
                             <Sparkles className="h-4 w-4" />
-                            Take the diagnostic test
+                            {eps ? 'Start Learn Korean' : 'Take the diagnostic test'}
                           </Button>
                           <Button
                             variant="outline"
@@ -1724,6 +1796,7 @@ export default function OnboardingFlow({
 
 function PlanCard({
   plan,
+  exam,
   index,
   selected,
   current,
@@ -1731,6 +1804,7 @@ function PlanCard({
   onSelect,
 }: {
   plan: SubscriptionPlan;
+  exam: ExamType;
   index: number;
   selected: boolean;
   current: boolean;
@@ -1741,12 +1815,14 @@ function PlanCard({
   const days = planAccessDays(plan);
   const brand = formatPlanName(plan.id);
   const tier = planUsageTier(plan.id);
-  const perks = [
-    plan.unlimited ? 'Unlimited practice sub-tests' : `${tier} daily practice`,
-    `${tier} AI gradings for speaking & writing`,
-    `${tier} full mock exams`,
-    free ? 'Free forever' : `${days} days of access${plan.bonusDays ? ` (incl. ${plan.bonusDays} bonus)` : ''}`,
-  ];
+  const access = free ? 'Free forever' : `${days} days of access${plan.bonusDays ? ` (incl. ${plan.bonusDays} bonus)` : ''}`;
+  const practice = plan.unlimited ? 'Unlimited practice sub-tests' : `${tier} daily practice`;
+  // EPS-TOPIK has no speaking, writing or mock tests yet, so its plans are
+  // told apart by Help in English, which only paid plans include.
+  const perks =
+    exam === 'EPS_TOPIK'
+      ? [practice, 'The full Learn Korean course', free ? 'Upgrade any time for Help in English' : 'Help in English on Korean listening', access]
+      : [practice, `${tier} AI gradings for speaking & writing`, `${tier} full mock exams`, access];
 
   return (
     <OptionCard
@@ -1944,9 +2020,9 @@ function PlanSummary({
   );
 }
 
-function ToolkitPanel({ index, onNext }: { index: number; onNext: () => void }) {
-  const active = FEATURES[index];
-  const next = FEATURES[(index + 1) % FEATURES.length];
+function ToolkitPanel({ features, index, onNext }: { features: Feature[]; index: number; onNext: () => void }) {
+  const active = features[index];
+  const next = features[(index + 1) % features.length];
   const Icon = active.icon;
   const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -1968,7 +2044,7 @@ function ToolkitPanel({ index, onNext }: { index: number; onNext: () => void }) 
           <Icon className="h-7 w-7" />
         </span>
         <span className="font-display text-xs font-bold tabular-nums text-slate-300">
-          {pad(index + 1)} / {pad(FEATURES.length)}
+          {pad(index + 1)} / {pad(features.length)}
         </span>
       </div>
 

@@ -191,3 +191,65 @@ describe('the first-run onboarding', () => {
     expect(completeOnboarding).toHaveBeenCalledTimes(2);
   });
 });
+
+// EPS-TOPIK is for work in South Korea, tests reading and listening only, and
+// has no diagnostic or mock tests yet: the flow skips the goal and destination
+// questions, offers only its two skills, and starts the learner on the course.
+describe('onboarding for EPS-TOPIK', () => {
+  it('offers EPS-TOPIK as an exam, not as coming soon', async () => {
+    const user = userEvent.setup();
+    renderFlow();
+    await user.click(screen.getByRole('button', { name: /let's go/i }));
+    expect(screen.getByRole('button', { name: /^EPS-TOPIK/ })).toBeDefined();
+    expect(screen.queryByText('Korean')).toBeNull();
+  });
+
+  it('walks the Korean path and saves work in South Korea', async () => {
+    const user = userEvent.setup();
+    const onDone = renderFlow();
+
+    await user.click(screen.getByRole('button', { name: /let's go/i }));
+    await user.click(screen.getByRole('button', { name: /^EPS-TOPIK/ }));
+    await next(user);
+
+    // Straight to experience: goal and destination are already answered.
+    expect(screen.getByRole('heading', { name: /taken EPS-TOPIK before/i })).toBeDefined();
+    await user.click(screen.getByRole('button', { name: /first attempt/i }));
+    await next(user);
+
+    expect(screen.getByText(/minimum score for each industry/i)).toBeDefined();
+    await user.click(screen.getByRole('button', { name: '60' }));
+    await next(user);
+    await user.click(screen.getByRole('button', { name: /not booked yet/i }));
+    await next(user);
+
+    expect(screen.queryByRole('button', { name: /^speaking/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^writing/i })).toBeNull();
+    await user.click(screen.getByRole('button', { name: /^listening/i }));
+    await next(user);
+    await user.click(screen.getByRole('button', { name: /^45 min/ }));
+    await next(user);
+
+    expect(screen.queryByText(/AI gradings for speaking/i)).toBeNull();
+    expect(screen.getAllByText(/Help in English/).length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('button', { name: /^start\s*normal/i }));
+    await next(user);
+
+    expect(screen.getByRole('tab', { name: /Learn Korean/ })).toBeDefined();
+    expect(screen.queryByRole('tab', { name: /Mock tests/ })).toBeNull();
+    await user.click(screen.getByRole('button', { name: /see my plan/i }));
+
+    await user.click(screen.getByRole('button', { name: /start learn korean/i }));
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+    expect(completeOnboarding).toHaveBeenCalledWith({
+      targetExam: 'EPS_TOPIK',
+      targetScore: 60,
+      studyGoal: 'work',
+      destination: 'south-korea',
+      priorAttempt: 'first',
+      focusSkill: 'listening',
+      dailyMinutes: 45,
+    });
+    expect(screen.getByText('Landed on /learn')).toBeDefined();
+  }, 20000);
+});
