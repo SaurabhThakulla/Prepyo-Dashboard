@@ -127,3 +127,37 @@ describe('AppLayout active test session protection', () => {
     await waitFor(() => expect(onNavButton).toHaveBeenCalledTimes(1));
   });
 });
+
+describe('the phone tab bar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.activeTestSession = null;
+  });
+
+  const renderAt = (route: string) =>
+    render(
+      <MemoryRouter initialEntries={[route]}>
+        <AppLayout>
+          <div>Screen</div>
+        </AppLayout>
+      </MemoryRouter>,
+    );
+
+  it('shows the five tabs and lights the current one', () => {
+    renderAt('/practice/tasks');
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(nav.querySelectorAll('a')).toHaveLength(5);
+    expect(screen.getByRole('link', { name: 'Practice' }).getAttribute('aria-current')).toBe('page');
+  });
+
+  it('steps aside while a task is running', () => {
+    mocks.activeTestSession = { isActive: true, title: 'PTE Speaking Task' };
+    renderAt('/practice?skill=speaking');
+    expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull();
+  });
+
+  it('steps aside on a lesson', () => {
+    renderAt('/learn/unit-1/lesson-1');
+    expect(screen.queryByRole('navigation', { name: 'Main' })).toBeNull();
+  });
+});

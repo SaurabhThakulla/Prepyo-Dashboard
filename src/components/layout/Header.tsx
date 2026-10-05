@@ -44,7 +44,7 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-16 w-full min-w-0 items-center justify-between gap-2 border-b border-border bg-card/80 px-2 sm:px-6 backdrop-blur-xl transition-colors">
+      <header className="sticky top-0 z-30 hidden lg:flex h-16 w-full min-w-0 items-center justify-between gap-2 border-b border-border bg-card/80 px-2 sm:px-6 backdrop-blur-xl transition-colors">
 
         {/* Left: Sidebar Toggle & Breadcrumb */}
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">

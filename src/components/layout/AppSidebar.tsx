@@ -1,13 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
-import { useReadingTypes } from '@/lib/hooks/useReading';
-import { useLearnProgress } from '@/lib/hooks/useLearnProgress';
 import ReportIssueDialog from '@/components/support/ReportIssueDialog';
 import PrimaryIconRail from './sidebar/PrimaryIconRail';
 import SecondaryPanel from './sidebar/SecondaryPanel';
+import { useNavSections } from './sidebar/useNavSections';
 import {
-  buildSections,
   getSectionFromPathname,
   isNavItemActive,
   PrimarySectionId,
@@ -54,29 +52,7 @@ export default function AppSidebar({
     setActiveSection(getSectionFromPathname(pathname, searchParams));
   }, [pathname, searchParams]);
 
-  // Reading headings are only worth showing when the bank has something behind
-  // them, so the menu is checked against the same list the practice page deals
-  // from. Left undefined until it arrives, which shows every heading.
-  const readingTypes = useReadingTypes(activeExam, Boolean(user) && activeExam !== 'EPS_TOPIK');
-  const availableReadingTypes = useMemo(
-    () =>
-      readingTypes.data
-        ? readingTypes.data.types.filter(type => type.questionCount > 0).map(type => type.typeId)
-        : undefined,
-    [readingTypes.data],
-  );
-
-  const hasMistake = Boolean(searchParams.get('mistake'));
-  const { progress: learnProgress } = useLearnProgress();
-  const sections = buildSections(
-    activeExam,
-    () => setIsTutorOpen(true),
-    user,
-    availableReadingTypes,
-    readingTypes.data?.mockPassageCount ?? 0,
-    hasMistake,
-    learnProgress,
-  );
+  const sections = useNavSections();
   const currentSection = sections.find(section => section.id === activeSection) ?? sections[0];
 
   useEffect(() => {
@@ -129,7 +105,7 @@ export default function AppSidebar({
       )}
 
       <div
-        className={`fixed top-0 h-dvh left-0 z-40 flex transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 h-dvh left-0 z-40 hidden lg:flex transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >

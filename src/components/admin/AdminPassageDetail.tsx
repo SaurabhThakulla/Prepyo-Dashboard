@@ -273,7 +273,7 @@ export default function AdminPassageDetail({
       )}
 
       {drafts.length > 0 && (
-        <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-border/70 bg-background/95 backdrop-blur py-3">
+        <div className="sticky bottom-[var(--mobile-nav-h,0px)] flex items-center justify-between gap-3 border-t border-border/70 bg-background/95 backdrop-blur py-3">
           <p className="text-[11px] text-muted-foreground">
             {drafts.length} new set{drafts.length === 1 ? '' : 's'} · {draftQuestions} question
             {draftQuestions === 1 ? '' : 's'} not saved yet

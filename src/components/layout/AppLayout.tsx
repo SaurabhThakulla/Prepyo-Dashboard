@@ -1,5 +1,5 @@
 import React, { useState, lazy, Suspense, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigationType } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/ui/toast';
 import { LogOut } from 'lucide-react';
@@ -14,6 +14,10 @@ import {
 } from '@/components/ui/dialog';
 import AppSidebar from './AppSidebar';
 import Header from './Header';
+import MobileTopBar from './mobile/MobileTopBar';
+import MobileTabBar from './mobile/MobileTabBar';
+import MobileCoachButton from './mobile/MobileCoachButton';
+import { isFocusRoute } from './mobile/mobileNav';
 import RequireAuth from '@/components/auth/RequireAuth';
 import { shouldShowOnboarding } from '@/components/onboarding/onboarding';
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
@@ -38,12 +42,20 @@ const PROTECTED_PREFIXES = [
   '/diagnostic',
   '/reports',
   '/admin',
+  '/me',
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
+  const navigationType = useNavigationType();
   const { user, loading, activeTestSession, setActiveTestSession } = useApp();
   const toast = useToast();
+
+  // A new screen opens at its top, as it does in an app. Going back (POP)
+  // leaves the browser to put you where you were.
+  useEffect(() => {
+    if (navigationType !== 'POP') window.scrollTo(0, 0);
+  }, [pathname, navigationType]);
 
   useClipboardGuard(!isAdmin(user), () =>
     toast.info('Pasting is turned off', 'Type your answer yourself, the way you will in the exam.'),
@@ -191,9 +203,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // On a phone the tab bar steps aside for a running task and for screens
+  // that take the whole phone. `--mobile-nav-h` is the room it takes, for the
+  // page's bottom padding and anything else pinned to the bottom.
+  const showTabBar = !activeTestSession?.isActive && !isFocusRoute(pathname);
+
   return (
     <>
-    <div onClickCapture={handleContainerClickCapture} className="min-h-screen bg-background text-foreground flex flex-col transition-colors duration-200">
+    <div
+      onClickCapture={handleContainerClickCapture}
+      className={`${showTabBar ? '[--mobile-nav-h:calc(4rem+env(safe-area-inset-bottom))]' : '[--mobile-nav-h:0px]'} lg:[--mobile-nav-h:0px] min-h-screen bg-background text-foreground flex flex-col transition-colors duration-200`}
+    >
       <AppSidebar
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
@@ -206,6 +226,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         className={`${isSecondaryOpen ? 'lg:pl-[384px]' : 'lg:pl-16'
           } flex w-full min-w-0 flex-col min-h-screen transition-[padding] duration-300 ease-in-out`}
       >
+        <MobileTopBar />
         <Header
           isSecondaryOpen={isSecondaryOpen}
           onToggleSidebar={() => {
@@ -218,10 +239,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           }}
         />
 
-        <main className="flex-1 w-full min-w-0 p-0 flex flex-col min-h-0">
+        <main className="flex-1 w-full min-w-0 p-0 pb-[var(--mobile-nav-h)] flex flex-col min-h-0">
           {isProtected ? <RequireAuth>{children}</RequireAuth> : children}
         </main>
       </div>
+
+      {showTabBar && <MobileTabBar />}
+      {showTabBar && <MobileCoachButton />}
 
       <Suspense fallback={null}>
         <AITutorDrawer />

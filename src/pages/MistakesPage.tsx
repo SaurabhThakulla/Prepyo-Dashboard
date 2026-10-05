@@ -712,7 +712,7 @@ export default function MistakesPage() {
       {/* Premium Upgrade Modal Overlay for Suru Users (Fixed & Non-movable) */}
       {/* ======================================================================= */}
       {isSuru && (
-        <div className="fixed inset-x-0 top-16 bottom-0 z-20 flex justify-center items-start pt-6 sm:pt-10 px-4 pointer-events-none lg:left-[var(--sidebar-offset,384px)] transition-[left] duration-300">
+        <div className="fixed inset-x-0 top-14 lg:top-16 bottom-[var(--mobile-nav-h,0px)] z-20 flex justify-center items-start pt-6 sm:pt-10 px-4 pointer-events-none lg:left-[var(--sidebar-offset,384px)] transition-[left] duration-300">
           <div className="pointer-events-auto w-full max-w-lg bg-card/95 backdrop-blur-md border border-border/90 shadow-2xl rounded-3xl p-5 sm:p-7 text-center space-y-4 overflow-hidden">
             {/* Ambient radiant glow */}
             <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-72 bg-gradient-to-br from-amber-500/25 via-blue-500/15 to-transparent rounded-full blur-3xl pointer-events-none" />
