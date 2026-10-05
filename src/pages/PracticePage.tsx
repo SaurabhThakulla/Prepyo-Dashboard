@@ -634,6 +634,39 @@ function PracticePageContent() {
     resetAnswer();
   };
 
+  // Next question starts the next one straight away, as reading does, instead
+  // of going back through the start screen. It still spends its credit; if
+  // that is refused (limit reached), the start screen is shown so the learner
+  // sees why.
+  const goToNextQuestion = async () => {
+    const next = questions[currentIndex + 1];
+    if (!next || startPending.current) return;
+    closeTutorialVideo?.();
+    startPending.current = true;
+    setIsStarting(true);
+    setCurrentQuestion(next);
+    resetAnswer();
+    try {
+      await api.post('/practice/start', {
+        exam: activeExam,
+        skill: selectedSkill,
+        questionId: next.id,
+      });
+      setStartedTask(`${activeExam}:${selectedSkill}:${next.id}`);
+      setStartedAt(Date.now());
+      await refreshUser();
+    } catch (err) {
+      if (err instanceof ApiError && err.isLimitReached) {
+        toast.warning('Daily limit reached', 'You have reached your daily sub-test allowance.');
+      } else {
+        toast.error('Could not start the next question', errorMessage(err));
+      }
+    } finally {
+      startPending.current = false;
+      setIsStarting(false);
+    }
+  };
+
   const restartSet = () => {
     setCompletedIds([]);
     saveCompleted(activeExam, selectedSkill, typeParam, []);
@@ -1067,7 +1100,8 @@ function PracticePageContent() {
                 </div>
               ) : result ? (
                 <Button
-                  onClick={() => goToIndex(currentIndex + 1)}
+                  onClick={() => void goToNextQuestion()}
+                  disabled={isStarting}
                   size="default"
                   className="font-bold gap-2 text-xs rounded-xl h-10 px-5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                 >

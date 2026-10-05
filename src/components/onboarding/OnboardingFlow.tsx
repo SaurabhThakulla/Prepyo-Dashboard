@@ -421,7 +421,7 @@ const EPS_FEATURES: Feature[] = [
     title: 'Help in English',
     tag: 'Premium',
     text: "Didn't catch the Korean? Hear and read it in English.",
-    highlights: ['On every Korean listening question', 'Text and audio, side by side with the Korean'],
+    highlights: ['On every Korean practice question', 'Text and audio, side by side with the Korean'],
     where: 'On each listening question',
     accent: { tile: 'bg-sky-600 text-white', soft: 'bg-sky-50 text-sky-600', glow: 'from-sky-100' },
   },

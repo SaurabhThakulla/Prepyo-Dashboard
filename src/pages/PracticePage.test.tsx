@@ -276,11 +276,13 @@ describe('practice bank indicators', () => {
     }
     fireEvent.click(submit);
     fireEvent.click(await screen.findByRole('button', { name: 'Next question' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Start Practice (1 Credit)' }));
+    // Next opens the next task directly, still paying for it, with no start screen in between.
     expect(await screen.findByText('Second task')).toBeDefined();
-    expect(api.post).toHaveBeenLastCalledWith('/practice/start', {
+    await waitFor(() => expect(api.post).toHaveBeenLastCalledWith('/practice/start', {
       exam, skill, questionId: 'task-1',
-    });
+    }));
+    expect(await screen.findByRole('button', { name: skill === 'speaking' ? 'Submit recording' : 'Submit Answer' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Start Practice (1 Credit)' })).toBeNull();
   });
 });
 

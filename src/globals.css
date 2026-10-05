@@ -186,18 +186,6 @@ select option {
 .animate-qr-laser {
   animation: qr-scanner-beam 2.6s ease-in-out infinite;
 }
-/* Copy/paste guard (see useClipboardGuard): nothing is selectable except the
-   fields a learner types into, so they can still select and fix their own text. */
-html[data-clipboard-guard] body {
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-html[data-clipboard-guard] :is(input, textarea, [contenteditable='true'], [contenteditable='']) {
-  -webkit-user-select: text;
-  user-select: text;
-}
-
 /* Listening waveform (PromptAudio): each bar breathes on its own delay while audio plays. */
 @keyframes voice-bar {
   0%, 100% { transform: scaleY(0.35); }

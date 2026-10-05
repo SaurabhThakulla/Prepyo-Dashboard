@@ -11,10 +11,16 @@ interface EnglishVersionProps {
 }
 
 /**
- * What a Korean listening item said, in English, for a learner who did not
- * follow it. Shown only after the answer is in: the script is the answer key,
- * and hearing it in English first would turn listening into translation.
+ * A Korean question in English, for a learner who did not follow it: what was
+ * said or written, the question and the choices, labelled as they are
+ * ("Woman:", "Text:", "Choices:"). Premium learners can open it at any time;
+ * after answering it also comes with the review.
  */
+/** "A. Yes. B. No." → ["A. Yes.", "B. No."], one line per choice. */
+export function splitChoices(text: string): string[] {
+  return text.split(/\s+(?=[B-D]\.\s)/);
+}
+
 export default function EnglishVersion({ text, audioUrl }: EnglishVersionProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const speech = useRef<Playback | null>(null);
@@ -88,12 +94,23 @@ export default function EnglishVersion({ text, audioUrl }: EnglishVersionProps) 
         />
       )}
       <div className="space-y-1 text-xs sm:text-sm leading-relaxed text-foreground">
-        {turns.map((turn, i) => (
-          <p key={i}>
-            {turn.speaker && <span className="font-bold">{turn.speaker}: </span>}
-            {turn.text}
-          </p>
-        ))}
+        {turns.map((turn, i) =>
+          turn.speaker === 'Choices' ? (
+            <div key={i}>
+              <span className="font-bold">Choices:</span>
+              <ul className="mt-0.5 space-y-0.5">
+                {splitChoices(turn.text).map(choice => (
+                  <li key={choice}>{choice}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p key={i}>
+              {turn.speaker && <span className="font-bold">{turn.speaker}: </span>}
+              {turn.text}
+            </p>
+          ),
+        )}
       </div>
       {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
     </div>

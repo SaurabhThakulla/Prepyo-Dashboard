@@ -106,6 +106,33 @@ describe('QuestionDrawer Component', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('closes when clicking outside the drawer on every screen size, but not inside it', () => {
+    const onClose = vi.fn();
+    render(
+      <QuestionDrawer
+        isOpen={true}
+        onToggle={vi.fn()}
+        onClose={onClose}
+        exam="PTE"
+        skill="speaking"
+        typeKey="readaloud"
+        questions={mockQuestions}
+        completedIds={[]}
+        onSelectQuestion={vi.fn()}
+      />,
+    );
+
+    const backdrop = document.querySelector('[role="presentation"]') as HTMLElement;
+    // It used to be hidden on large screens, so clicking beside the drawer did nothing there.
+    expect(backdrop.className).not.toMatch(/\blg:hidden\b/);
+
+    fireEvent.click(screen.getByText(/Urban Forests/i));
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(backdrop);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('filters questions by search query', () => {
     render(
       <QuestionDrawer

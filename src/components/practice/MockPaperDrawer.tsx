@@ -57,12 +57,13 @@ export default function MockPaperDrawer({
         )}
       </button>
 
-      {/* Backdrop overlay for mobile */}
+      {/* Clicking anywhere outside the drawer closes it. Dimmed on small
+          screens; invisible on large ones, where the page stays in view. */}
       {isOpen && (
         <div
           role="presentation"
           onClick={onClose}
-          className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40 lg:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40 lg:bg-transparent lg:backdrop-blur-none transition-opacity duration-300"
         />
       )}
 
