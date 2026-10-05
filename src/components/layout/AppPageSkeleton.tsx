@@ -23,6 +23,8 @@ const VARIANT_BY_PATH: Record<string, PageSkeletonVariant> = {
   '/subscription': 'subscription',
   '/diagnostic': 'diagnostic',
   '/admin': 'admin',
+  '/me': 'profile',
+  '/practice/tasks': 'mocks',
 };
 
 export default function AppPageSkeleton() {
@@ -32,7 +34,7 @@ export default function AppPageSkeleton() {
 
   // Reading is its own layout, and which skill practice is showing is in the
   // query string rather than the path.
-  if (pathname.startsWith('/practice')) {
+  if (pathname.startsWith('/practice') && !VARIANT_BY_PATH[pathname]) {
     if (isAdmin(user ?? null)) return <PageSkeleton variant="admin" />;
     if (searchParams.get('skill') === 'reading') return <PageSkeleton variant="reading" />;
     return <PageSkeleton variant="practice" />;

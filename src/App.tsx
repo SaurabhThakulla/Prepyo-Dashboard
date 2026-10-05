@@ -9,6 +9,8 @@ import RedirectIfAuthenticated from '@/components/auth/RedirectIfAuthenticated';
 
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const PracticePage = lazy(() => import('@/pages/PracticePage'));
+const PracticeHubPage = lazy(() => import('@/pages/PracticeHubPage'));
+const MePage = lazy(() => import('@/pages/MePage'));
 const MocksPage = lazy(() => import('@/pages/MocksPage'));
 const PteMockPage = lazy(() => import('@/pages/PteMockPage'));
 const MistakesPage = lazy(() => import('@/pages/MistakesPage'));
@@ -68,6 +70,8 @@ export default function App() {
           }
         />
         <Route path="/practice" element={<Suspense fallback={<AppPageSkeleton />}><PracticePage /></Suspense>} />
+        <Route path="/practice/tasks" element={<Suspense fallback={<AppPageSkeleton />}><PracticeHubPage /></Suspense>} />
+        <Route path="/me" element={<Suspense fallback={<AppPageSkeleton />}><MePage /></Suspense>} />
         <Route path="/mocks" element={<Suspense fallback={<AppPageSkeleton />}><MocksPage /></Suspense>} />
         <Route path="/mocks/pte/report/:sessionId" element={<Suspense fallback={<AppPageSkeleton />}><PteMockPage /></Suspense>} />
         <Route path="/mocks/pte/:kind" element={<Suspense fallback={<AppPageSkeleton />}><PteMockPage /></Suspense>} />
