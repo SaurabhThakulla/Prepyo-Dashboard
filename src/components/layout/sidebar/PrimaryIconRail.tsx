@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import AnimatedLogo from '../AnimatedLogo';
 import { PrimarySectionConfig, PrimarySectionId } from './navigation';
 import { UserProfile } from '@/lib/types';
 
@@ -47,10 +48,10 @@ export default function PrimaryIconRail({
         <Link
           to="/dashboard"
           onClick={onLogoClick}
-          className="flex h-10 w-10 items-center justify-center rounded-2xl overflow-hidden bg-white shadow-md shadow-primary/25 hover:scale-105 transition-transform"
+          className="flex h-10 w-10 items-center justify-center hover:scale-105 transition-transform"
           title="Prepyo — AI Exam Prep"
         >
-          <img src="/prepyo-mark.webp" alt="Prepyo" width={256} height={256} className="h-7 w-7 object-contain" />
+          <AnimatedLogo size={40} />
         </Link>
       </div>
 

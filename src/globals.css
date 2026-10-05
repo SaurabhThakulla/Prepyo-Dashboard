@@ -212,3 +212,50 @@ html.theme-switching *::after {
   animation-duration: 0s !important;
   animation-delay: 0s !important;
 }
+
+/* AnimatedLogo: Danfe and the Prepyo mark take turns, about 4s each, for as
+   long as the logo is on screen. Danfe pops in and blinks; then he spins away
+   and the mark pops into his place; then the mark shrinks and Danfe is back. */
+.logo-danfe { opacity: 0; }
+.logo-danfe .danfe-lid { transform: scaleY(0); transform-box: fill-box; transform-origin: center; }
+
+.logo-danfe.logo-loop { animation: logo-loop-danfe 8s cubic-bezier(0.2, 0.8, 0.2, 1) infinite; }
+.logo-danfe.logo-loop .danfe-lid { animation: logo-loop-blink 8s linear infinite; }
+.logo-mark.logo-loop { animation: logo-loop-mark 8s cubic-bezier(0.2, 0.8, 0.2, 1) infinite; }
+
+@keyframes logo-loop-danfe {
+  0% { opacity: 0; transform: translateY(8px) scale(0.4); }
+  3% { opacity: 1; transform: translateY(0) scale(1.1); }
+  5% { opacity: 1; transform: scale(1); }
+  46% { opacity: 1; transform: scale(1) rotate(0deg); }
+  50% { opacity: 0; transform: scale(0.2) rotate(-14deg); }
+  100% { opacity: 0; transform: scale(0.2); }
+}
+
+/* A double blink about 1.4s in, and a single one at about 3s. */
+@keyframes logo-loop-blink {
+  0%, 16% { transform: scaleY(0); }
+  17% { transform: scaleY(1); }
+  18%, 20% { transform: scaleY(0); }
+  21% { transform: scaleY(1); }
+  22%, 37% { transform: scaleY(0); }
+  38% { transform: scaleY(1); }
+  39%, 100% { transform: scaleY(0); }
+}
+
+@keyframes logo-loop-mark {
+  0%, 49% { opacity: 0; transform: scale(0); }
+  53% { opacity: 1; transform: scale(1.15); }
+  56% { transform: scale(0.94); }
+  59% { opacity: 1; transform: scale(1); }
+  95% { opacity: 1; transform: scale(1); }
+  99%, 100% { opacity: 0; transform: scale(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-danfe.logo-loop,
+  .logo-danfe.logo-loop .danfe-lid,
+  .logo-mark.logo-loop {
+    animation: none;
+  }
+}
