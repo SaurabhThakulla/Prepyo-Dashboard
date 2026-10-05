@@ -90,7 +90,7 @@ export default function SecondaryPanel({
  * The exam pills. Switching here re-generates the practice menu. Admin-only,
  * which is also how EPS-TOPIK is reachable before learners are offered it.
  */
-function ExamSwitcher({ activeExam, onChange }: { activeExam: ExamType; onChange: (exam: ExamType) => void }) {
+export function ExamSwitcher({ activeExam, onChange }: { activeExam: ExamType; onChange: (exam: ExamType) => void }) {
   const EXAMS: { exam: ExamType; target: string; activeClass: string }[] = [
     { exam: 'PTE', target: '79+', activeClass: 'bg-primary text-white shadow-sm' },
     { exam: 'IELTS', target: '8.0', activeClass: 'bg-amber-500 text-white shadow-sm' },
