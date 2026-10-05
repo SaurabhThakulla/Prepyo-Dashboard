@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { AnswerSubmission, MockAttempt, Question, isPremiumUser } from '@/lib/types';
 import { subTestsLeft } from '@/lib/subscriptions';
-import { Playback, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
+import { Playback, playClips, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
 
@@ -236,15 +236,29 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
     setPartsPlayed(played);
     void save(answers, played);
     try {
-      const handle = await playRecording(
-        {
-          scriptUrl: `/listening/mocks/${session.id}/parts/${part.partNo}/script`,
-          audioUrl: `/listening/mocks/${session.id}/parts/${part.partNo}/audio`,
-        },
-        setProgress,
-      );
-      playback.current = handle;
-      await handle.done;
+      // The stored recording, where the part has one; otherwise its script is
+      // read aloud as before. A stored file that fails before a word is heard
+      // falls back to the voice, so the one hearing is not lost.
+      const base = `/listening/mocks/${session.id}/parts/${part.partNo}`;
+      const stored = await api.get<{ url: string }>(`${base}/recording`).then(r => r.url).catch(() => '');
+      let heard = false;
+      if (stored) {
+        const handle = playClips([{ url: stored }], fraction => {
+          heard = heard || fraction > 0;
+          setProgress(fraction);
+        });
+        playback.current = handle;
+        try {
+          await handle.done;
+        } catch (err) {
+          if (err instanceof StoppedError || heard) throw err;
+        }
+      }
+      if (!stored || !heard) {
+        const handle = await playRecording({ scriptUrl: `${base}/script`, audioUrl: `${base}/audio` }, setProgress);
+        playback.current = handle;
+        await handle.done;
+      }
     } catch (err) {
       if (err instanceof StoppedError) return;
       setAudioError("The recording couldn't play. Check your sound and try again, or open Prepyo in Chrome or Edge.");

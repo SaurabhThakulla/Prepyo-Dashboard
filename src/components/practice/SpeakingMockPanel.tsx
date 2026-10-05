@@ -13,7 +13,7 @@ import { Evaluation, MockAttempt, isPremiumUser } from '@/lib/types';
 import { subTestsLeft } from '@/lib/subscriptions';
 import { encodeForUpload } from '@/lib/audio';
 import { AnswerRecorder } from '@/lib/answerRecorder';
-import { Playback, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
+import { Playback, playClips, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
 import PracticeResultCard from '@/components/practice/PracticeResultCard';
@@ -27,7 +27,7 @@ interface CueCard {
   explain: string;
 }
 
-interface Step {
+export interface Step {
   key: string;
   part: number;
   lead?: string;
@@ -35,6 +35,26 @@ interface Step {
   cueCard?: CueCard;
   prepSeconds?: number;
   answerSeconds: number;
+  /** Stored recordings of the lead and the question, where they exist. */
+  leadAudioUrl?: string;
+  questionAudioUrl?: string;
+}
+
+/**
+ * The stored recordings for what the examiner says, or null when any piece
+ * has none and the words must be spoken live instead.
+ */
+export function storedLines(step: Step, say: 'lead' | 'question' | 'all'): string[] | null {
+  const pieces: [string | undefined, string | undefined][] = [];
+  if (say !== 'question') pieces.push([step.lead, step.leadAudioUrl]);
+  if (say !== 'lead') pieces.push([step.question, step.questionAudioUrl]);
+  const urls: string[] = [];
+  for (const [text, url] of pieces) {
+    if (!text?.trim()) continue;
+    if (!url) return null;
+    urls.push(url);
+  }
+  return urls.length ? urls : null;
 }
 
 interface SpokenAnswer {
@@ -194,18 +214,22 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
   }, [phase, countdown]);
 
   /**
-   * The examiner speaks: the browser's voice where it works, otherwise the
-   * server's clips of the same words. `say` picks half of a step's words.
+   * The examiner speaks: the stored recordings of the lines where they exist,
+   * otherwise the browser's voice where it works, otherwise the server's clips
+   * of the same words. `say` picks half of a step's words.
    */
   const speak = useCallback(
-    async (key: string, say: 'lead' | 'question' | 'all', text: string) => {
+    async (step: Step, say: 'lead' | 'question' | 'all', text: string) => {
       const current = run.current;
       if (!text.trim()) return;
       const query = say === 'all' ? '' : `?say=${say}`;
-      const playback = await playRecording({
-        script: text,
-        audioUrl: `/speaking/mocks/${session.id}/steps/${key}/audio${query}`,
-      });
+      const stored = storedLines(step, say);
+      const playback = stored
+        ? playClips(stored.map(url => ({ url })))
+        : await playRecording({
+            script: text,
+            audioUrl: `/speaking/mocks/${session.id}/steps/${step.key}/audio${query}`,
+          });
       if (current !== run.current) {
         playback.stop();
         throw new StoppedError();
@@ -235,14 +259,14 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
       try {
         if (target.cueCard) {
           // The introduction, then a minute to prepare, then "start speaking".
-          await speak(target.key, 'lead', target.lead ?? '');
+          await speak(target, 'lead', target.lead ?? '');
           if (current !== run.current) return;
           setNotes('');
           setCountdown(target.prepSeconds ?? 60);
           setPhase('prep');
           return;
         }
-        await speak(target.key, 'all', [target.lead, target.question].filter(Boolean).join(' '));
+        await speak(target, 'all', [target.lead, target.question].filter(Boolean).join(' '));
       } catch (err) {
         if (err instanceof StoppedError || current !== run.current) return;
         setError("The examiner's voice couldn't play. Read the question below and answer it aloud.");
@@ -257,7 +281,7 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
     if (phase !== 'prep' || countdown > 0 || !step) return;
     const current = run.current;
     setPhase('examiner');
-    speak(step.key, 'question', step.question)
+    speak(step, 'question', step.question)
       .catch(() => {})
       .finally(() => {
         if (current === run.current) record(step.answerSeconds);
