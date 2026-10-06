@@ -67,6 +67,11 @@ describe('TutorialsPage component', () => {
     );
 
     expect(screen.getByPlaceholderText('Search strategies, topics...')).toBeDefined();
+    // The description and strategies start folded away, behind a dropdown.
+    const details = screen.getByRole('button', { name: /About this lesson/ });
+    expect(details.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('Key Exam Strategies')).toBeNull();
+    fireEvent.click(details);
     expect(screen.getByText('Key Exam Strategies')).toBeDefined();
   });
 

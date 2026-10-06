@@ -19,6 +19,7 @@ import {
   Layout,
   PictureInPicture,
   X,
+  ChevronDown,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Badge } from '@/components/ui/badge';
@@ -360,30 +361,12 @@ export default function TutorialsPage() {
                         <span>Verified Masterclass</span>
                       </div>
 
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {activeVideo.description}
-                      </p>
+                      <LessonDetails key={activeVideo.id} video={activeVideo} />
                     </div>
 
-                    <div className="lg:col-span-4 flex flex-col justify-between space-y-4 border-t lg:border-t-0 lg:border-l border-border lg:pl-6 pt-4 lg:pt-0">
-                      {/* Key Takeaways */}
-                      <div className="space-y-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                          <Sparkles className="h-3.5 w-3.5 text-primary" />
-                          Key Exam Strategies
-                        </span>
-                        <ul className="space-y-1.5 text-xs text-muted-foreground">
-                          {activeVideo.keyTakeaways.map((takeaway, i) => (
-                            <li key={i} className="flex items-start gap-2 leading-relaxed">
-                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                              <span>{takeaway}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
+                    <div className="lg:col-span-4 flex flex-col justify-end space-y-4 border-t lg:border-t-0 lg:border-l border-border lg:pl-6 pt-4 lg:pt-0">
                       {/* Quick Practice & Mock Buttons */}
-                      <div className="flex flex-col gap-2 pt-2">
+                      <div className="flex flex-col gap-2">
                         <Button
                           onClick={() => navigate(activeVideo.practiceUrl)}
                           className="w-full gap-2 font-bold shadow-sm"
@@ -437,25 +420,7 @@ export default function TutorialsPage() {
                         <span>Verified Masterclass</span>
                       </div>
 
-                      <p className="text-xs text-muted-foreground leading-relaxed pt-1">
-                        {activeVideo.description}
-                      </p>
-                    </div>
-
-                    {/* Key Takeaways */}
-                    <div className="space-y-2 pt-2 border-t border-border/50">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                        <Sparkles className="h-3.5 w-3.5 text-primary" />
-                        Key Exam Strategies
-                      </span>
-                      <ul className="space-y-1.5 text-xs text-muted-foreground">
-                        {activeVideo.keyTakeaways.map((takeaway, i) => (
-                          <li key={i} className="flex items-start gap-2 leading-relaxed">
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                            <span>{takeaway}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      <LessonDetails key={activeVideo.id} video={activeVideo} />
                     </div>
 
                     {/* Quick Practice & Mock Buttons */}
@@ -605,6 +570,48 @@ export default function TutorialsPage() {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+/**
+ * The lesson's description and key strategies, folded away until asked for.
+ * On a phone they pushed the practice buttons a screen below the video, so
+ * the dropdown starts closed; each new video starts closed again.
+ */
+function LessonDetails({ video }: { video: TutorialVideo }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl border border-border/70 bg-muted/30">
+      <button
+        type="button"
+        onClick={() => setOpen(prev => !prev)}
+        aria-expanded={open}
+        aria-controls={`lesson-details-${video.id}`}
+        className="flex w-full items-center justify-between gap-2 px-3.5 py-3 text-left text-xs font-bold text-foreground [-webkit-tap-highlight-color:transparent]"
+      >
+        <span className="flex items-center gap-1.5">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          About this lesson
+        </span>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div id={`lesson-details-${video.id}`} className="space-y-3 px-3.5 pb-3.5">
+          <p className="text-xs leading-relaxed text-muted-foreground">{video.description}</p>
+          <div className="space-y-2 border-t border-border/50 pt-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-foreground">Key Exam Strategies</span>
+            <ul className="space-y-1.5 text-xs text-muted-foreground">
+              {video.keyTakeaways.map((takeaway, i) => (
+                <li key={i} className="flex items-start gap-2 leading-relaxed">
+                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                  <span>{takeaway}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
