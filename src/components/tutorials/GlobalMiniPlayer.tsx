@@ -285,11 +285,15 @@ export default function GlobalMiniPlayer() {
   // Default docked floating coordinates:
   // - When any slide drawer is open: smoothly animate to left side (24px)
   // - When slide drawer is closed: docked at bottom right (windowWidth - playerWidth - 24px)
+  // A phone has little room to spare, so the player sits closer to the edge.
+  const edge = windowWidth < 640 ? 12 : 24;
   const defaultLeft = isSlideOpen
-    ? 24
-    : Math.max(24, windowWidth - playerWidth - 24);
+    ? edge
+    : Math.max(edge, windowWidth - playerWidth - edge);
 
-  const defaultTop = Math.max(24, windowHeight - playerHeight - 24);
+  // Below lg the phone's tab bar runs along the bottom; dock above it.
+  const bottomClearance = windowWidth < 1024 ? 88 : 24;
+  const defaultTop = Math.max(24, windowHeight - playerHeight - bottomClearance);
 
   let currentX = defaultLeft;
   let currentY = defaultTop;
@@ -337,7 +341,7 @@ export default function GlobalMiniPlayer() {
       className={
         isEmbeddedOnTutorials
           ? 'overflow-hidden bg-black flex flex-col items-center justify-center pointer-events-auto rounded-t-2xl'
-          : `w-80 sm:w-96 shadow-2xl rounded-2xl border border-border bg-card overflow-hidden select-none ${
+          : `w-56 sm:w-80 lg:w-96 shadow-2xl rounded-xl sm:rounded-2xl border border-border bg-card overflow-hidden select-none ${
               isDragging ? 'ring-2 ring-primary shadow-2xl cursor-grabbing' : 'hover:shadow-xl'
             }`
       }
@@ -347,7 +351,7 @@ export default function GlobalMiniPlayer() {
         key="mini-player-header-bar"
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
-        className={`flex items-center justify-between px-3 py-2 bg-muted/95 backdrop-blur-md border-b border-border cursor-grab active:cursor-grabbing select-none w-full ${
+        className={`flex items-center justify-between px-2 py-1.5 sm:px-3 sm:py-2 bg-muted/95 backdrop-blur-md border-b border-border cursor-grab active:cursor-grabbing select-none w-full ${
           isEmbeddedOnTutorials ? 'hidden' : 'flex'
         }`}
         title="Drag to move mini player anywhere on screen"
@@ -365,7 +369,7 @@ export default function GlobalMiniPlayer() {
             type="button"
             onClick={() => navigateToMode('theater')}
             title="Expand to Big Screen"
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
+            className="hidden sm:block p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
           >
             <Tv className="h-3.5 w-3.5" />
           </button>
