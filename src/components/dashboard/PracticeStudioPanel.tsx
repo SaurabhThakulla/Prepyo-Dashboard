@@ -19,7 +19,7 @@ const ACTION_LINK_CLASS =
 
 export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeStudioPanelProps) {
   return (
-    <div className="w-full bg-card dark:bg-[#12161c] border border-border dark:border-white/10 rounded-2xl p-5 sm:p-6 space-y-5 shadow-sm">
+    <div className="w-full bg-card dark:bg-[#12161c] border border-border dark:border-white/10 rounded-2xl p-4 sm:p-6 space-y-4 sm:space-y-5 shadow-sm">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-bold text-foreground">Practice studio</h2>
         <Link
@@ -36,17 +36,17 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
           <span className="sm:pr-24">LATEST SCORE</span>
         </div>
 
-        <div className="space-y-3.5">
+        <div className="space-y-3 sm:space-y-3.5">
           {skills.map(skill => (
-            <div key={skill.name} className="flex flex-col sm:flex-row sm:items-center justify-between py-1 group gap-3">
-              <div className="space-y-0.5 min-w-0 flex-1">
+            <div key={skill.name} className="flex flex-row items-center justify-between py-1 group gap-3">
+              <div className="space-y-0.5 min-w-0 w-20 shrink-0 sm:w-auto sm:shrink sm:flex-1">
                 <div className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
                   {skill.name}
                 </div>
-                <div className="text-[11px] text-muted-foreground font-normal truncate">{skill.sub}</div>
+                <div className="hidden sm:block text-[11px] text-muted-foreground font-normal truncate">{skill.sub}</div>
               </div>
 
-              <div className="flex w-full min-w-0 sm:w-1/2 items-center gap-3 sm:gap-6">
+              <div className="flex flex-1 sm:flex-none min-w-0 sm:w-1/2 items-center gap-3 sm:gap-6">
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <div className="w-full h-1.5 bg-slate-100 dark:bg-zinc-800/90 rounded-full overflow-hidden">
                     <div
@@ -73,7 +73,7 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
         </div>
       </div>
 
-      <div className="pt-5 border-t border-border dark:border-white/5 space-y-3.5">
+      <div className="pt-4 sm:pt-5 border-t border-border dark:border-white/5 space-y-3 sm:space-y-3.5">
         <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
           TESTS &amp; REVIEW
         </div>

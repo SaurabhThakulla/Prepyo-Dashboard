@@ -30,17 +30,17 @@ export default function SkillQuestionCard({
   return (
     <Link
       to={href}
-      className="group block bg-card dark:bg-[#12161c] border border-border/80 dark:border-white/10 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-indigo-500/30 dark:hover:border-indigo-500/30 transition-all duration-200"
+      className="group block bg-card dark:bg-[#12161c] border border-border/80 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md hover:border-indigo-500/30 dark:hover:border-indigo-500/30 transition-all duration-200"
     >
       <div className="flex items-center">
-        <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100/60 dark:border-indigo-800/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-105 transition-transform duration-200">
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100/60 dark:border-indigo-800/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-105 transition-transform duration-200">
           <Icon className="w-5 h-5" />
         </div>
       </div>
 
       {/* Label and Count */}
-      <div className="mt-4 space-y-0.5">
-        <div className="text-[10px] sm:text-[11px] font-bold text-indigo-500/90 dark:text-indigo-400/90 tracking-wider uppercase">
+      <div className="mt-3 sm:mt-4 space-y-0.5">
+        <div className="truncate text-[10px] sm:text-[11px] font-bold text-indigo-500/90 dark:text-indigo-400/90 tracking-wider uppercase">
           {label}
         </div>
         <div className="text-xl sm:text-2xl font-black text-indigo-950 dark:text-white tracking-tight">

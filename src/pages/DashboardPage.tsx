@@ -68,8 +68,8 @@ export default function DashboardPage() {
   const skillProgress = new Map((progress?.skills ?? []).map(row => [row.skill, row]));
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-black text-foreground tracking-tight">
             Namaste, {userName}
@@ -86,7 +86,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 2xl:grid-cols-4 gap-3 sm:gap-4">
         {skillsFor(activeExam).map(skill => {
           const row = skillProgress.get(skill);
           return (

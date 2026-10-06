@@ -17,7 +17,7 @@ export default function ExamCountdown({ examDate, daysLeft, onEdit }: ExamCountd
       tabIndex={0}
       onKeyDown={event => event.key === 'Enter' && onEdit()}
       title="Click to change your exam date and time"
-      className="bg-card dark:bg-[#12161c] border border-border dark:border-white/10 hover:border-primary/50 dark:hover:border-primary/40 rounded-xl px-5 py-2.5 flex items-center divide-x divide-border dark:divide-white/10 gap-5 cursor-pointer transition-all group shadow-sm shrink-0"
+      className="bg-card dark:bg-[#12161c] border border-border dark:border-white/10 hover:border-primary/50 dark:hover:border-primary/40 rounded-xl px-4 py-2 sm:px-5 sm:py-2.5 flex items-center justify-between sm:justify-start divide-x divide-border dark:divide-white/10 gap-5 cursor-pointer transition-all group shadow-sm shrink-0 w-full sm:w-auto"
     >
       <div className="space-y-0.5">
         <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">

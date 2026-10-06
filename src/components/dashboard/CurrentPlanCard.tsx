@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Gift } from 'lucide-react';
+import { ArrowRight, ChevronRight, Gift } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { UserProfile } from '@/lib/types';
@@ -52,7 +52,20 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
   const gradingsPercent = usagePercent(sub.aiGradingsUsed ?? 0, sub.aiGradingsLimit ?? 0);
 
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-shadow duration-300 hover:shadow-md dark:border-white/10 dark:bg-[#12161c] sm:p-6">
+    <>
+    <CompactPlanCard
+      planName={planName}
+      isActive={isActive}
+      isFree={isFree}
+      bonusDays={sub.bonusDays}
+      validity={validity}
+      quotas={[
+        { label: 'Practice', percentUsed: subTestsPercent, unlimited: sub.unlimited },
+        { label: 'AI grading', percentUsed: gradingsPercent },
+        { label: 'Mocks', percentUsed: mocksPercent },
+      ]}
+    />
+    <div className="relative hidden w-full overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-shadow duration-300 hover:shadow-md dark:border-white/10 dark:bg-[#12161c] sm:block sm:p-6">
       <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-gradient-to-br from-primary/10 via-indigo-500/10 to-transparent blur-3xl" />
 
       <div className="relative z-10 space-y-4">
@@ -157,6 +170,100 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
         </div>
       </div>
     </div>
+    </>
+  );
+}
+
+interface CompactPlanCardProps {
+  planName: string;
+  isActive: boolean;
+  isFree: boolean;
+  bonusDays: number;
+  validity: { label: string; daysLeft: number | null } | null;
+  quotas: { label: string; percentUsed: number; unlimited?: boolean }[];
+}
+
+/**
+ * The plan card on a phone. The desktop card's badges, date line and button
+ * wrapped onto five lines at this width, so here the plan is one tappable
+ * row and the three gauges are one strip of numbers.
+ */
+function CompactPlanCard({ planName, isActive, isFree, bonusDays, validity, quotas }: CompactPlanCardProps) {
+  const when = validity
+    ? validity.daysLeft === null
+      ? `Until ${validity.label}`
+      : validity.daysLeft < 0
+        ? `Ended ${validity.label}`
+        : validity.daysLeft === 0
+          ? 'Ends today'
+          : `${validity.daysLeft} day${validity.daysLeft === 1 ? '' : 's'} left · until ${validity.label}`
+    : isFree
+      ? 'Free forever'
+      : 'Active subscription';
+  const endingSoon = validity?.daysLeft != null && validity.daysLeft <= 5;
+
+  return (
+    <Link
+      to="/subscription"
+      className="block rounded-2xl border border-border/80 bg-card p-4 shadow-xs transition-transform active:scale-[0.99] dark:border-white/10 dark:bg-[#12161c] sm:hidden [-webkit-tap-highlight-color:transparent]"
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-white">
+          <PlanBadgeIcon className="h-6 w-6" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="truncate font-display text-base font-extrabold text-foreground">{planName}</span>
+            <span
+              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                isActive
+                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+              {isActive ? 'Active' : 'Expired'}
+            </span>
+          </div>
+          <p className={`truncate text-xs ${endingSoon ? 'font-semibold text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
+            {when}
+          </p>
+        </div>
+        {isFree ? (
+          <span className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground">Upgrade</span>
+        ) : (
+          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+        )}
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 divide-x divide-border/70 rounded-xl bg-muted/50 py-2 dark:bg-zinc-900/60">
+        {quotas.map(quota => {
+          const tone = quota.unlimited ? 'ok' : toneFor(quota.percentUsed);
+          return (
+            <div key={quota.label} className="min-w-0 px-2 text-center">
+              <div
+                className={`font-display text-sm font-extrabold leading-tight ${
+                  tone === 'out'
+                    ? 'text-rose-600 dark:text-rose-400'
+                    : tone === 'low'
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-foreground'
+                }`}
+              >
+                {quota.unlimited ? '∞' : `${quota.percentUsed}%`}
+              </div>
+              <div className="truncate text-[10px] font-medium text-muted-foreground">{quota.label}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {bonusDays > 0 && (
+        <p className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+          <Gift className="h-3 w-3" /> +{bonusDays} bonus day{bonusDays === 1 ? '' : 's'} included
+        </p>
+      )}
+    </Link>
   );
 }
 
