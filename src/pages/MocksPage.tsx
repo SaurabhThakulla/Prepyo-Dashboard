@@ -6,7 +6,7 @@ import { queryKeys } from '@/lib/queryKeys';
 import { Award, FileText } from 'lucide-react';
 import { MocksPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Card } from '@/components/ui/card';
-import { Mock, MockAttempt } from '@/lib/types';
+import { EXAM_LABELS, Mock, MockAttempt } from '@/lib/types';
 import { api, errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { useMocks, useMockAttempts } from '@/lib/hooks/useResources';
@@ -162,11 +162,11 @@ export default function MocksPage() {
   const header = (
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">{activeExam} Mock Exam Center</h1>
+          <h1 className="font-display text-2xl font-bold text-foreground">{EXAM_LABELS[activeExam]} Mock Exam Center</h1>
           <p className="text-xs text-muted-foreground">Timed tests under real exam conditions.</p>
         </div>
 
-        <div className="flex items-center bg-card p-1 rounded-xl border border-border shrink-0">
+        <div role="tablist" aria-label="Mock exams" className="flex w-full sm:w-auto items-center gap-1 rounded-xl bg-muted p-1 shrink-0">
           <TabButton
             isActive={activeTab === 'catalog'}
             onClick={() => navigate('/mocks?tab=catalog')}
@@ -265,15 +265,23 @@ function TabButton({ isActive, onClick, icon, label, count }: TabButtonProps) {
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={isActive}
       onClick={onClick}
-      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-        isActive ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'
+      className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all [-webkit-tap-highlight-color:transparent] ${
+        isActive ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
       }`}
     >
-      {icon}
-      <span>{label}</span>
+      <span className={isActive ? 'text-primary' : ''}>{icon}</span>
+      <span className="whitespace-nowrap">{label}</span>
       {count != null && count > 0 && (
-        <span className="text-[10px] bg-primary-foreground/20 px-1.5 rounded-full font-mono">{count}</span>
+        <span
+          className={`min-w-5 rounded-full px-1.5 text-center text-[11px] font-semibold leading-5 ${
+            isActive ? 'bg-primary text-primary-foreground' : 'bg-foreground/10 text-muted-foreground'
+          }`}
+        >
+          {count}
+        </span>
       )}
     </button>
   );

@@ -77,15 +77,15 @@ export default function IeltsMockCenter({ header }: IeltsMockCenterProps) {
 
       {/* Hero: Full Mock Simulator */}
       <Card className="overflow-hidden shadow-lg border-primary/20">
-        <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-violet-800 p-6 sm:p-8 text-white grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-primary p-5 sm:p-8 text-white grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="lg:col-span-2 space-y-3">
-            <Badge className="bg-white/20 hover:bg-white/25 text-white border-transparent">
+            <Badge className="hidden sm:inline-flex bg-white/20 hover:bg-white/25 text-white border-transparent">
               Recommended · Complete 4-Skill Exam
             </Badge>
             <h2 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight">
               IELTS Full Mock Simulator
             </h2>
-            <p className="text-sm text-white/85 max-w-xl leading-relaxed">
+            <p className="hidden sm:block text-sm text-white/85 max-w-xl leading-relaxed">
               Sit all four sections in test-day sequence: Listening, Reading, Writing, and Speaking. Evaluated across
               every skill to produce an official IELTS 1.0–9.0 overall band prediction with diagnostic feedback.
             </p>
@@ -96,10 +96,10 @@ export default function IeltsMockCenter({ header }: IeltsMockCenterProps) {
               <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1">
                 <ListChecks className="h-3.5 w-3.5" /> 4 Sections
               </span>
-              <span className="rounded-full bg-white/15 px-3 py-1">Listening (30m)</span>
-              <span className="rounded-full bg-white/15 px-3 py-1">Reading (60m)</span>
-              <span className="rounded-full bg-white/15 px-3 py-1">Writing (60m)</span>
-              <span className="rounded-full bg-white/15 px-3 py-1">Speaking (14m)</span>
+              <span className="hidden sm:inline rounded-full bg-white/15 px-3 py-1">Listening (30m)</span>
+              <span className="hidden sm:inline rounded-full bg-white/15 px-3 py-1">Reading (60m)</span>
+              <span className="hidden sm:inline rounded-full bg-white/15 px-3 py-1">Writing (60m)</span>
+              <span className="hidden sm:inline rounded-full bg-white/15 px-3 py-1">Speaking (14m)</span>
             </div>
           </div>
 
@@ -111,7 +111,7 @@ export default function IeltsMockCenter({ header }: IeltsMockCenterProps) {
               <PlayCircle className="h-5 w-5 text-primary" />
               Start Full Mock Test
             </Button>
-            <p className="text-[11px] text-white/75 text-center lg:text-right">
+            <p className="hidden sm:block text-[11px] text-white/75 text-center lg:text-right">
               Uses one full mock test from your plan. Progress is saved between sections.
             </p>
           </div>
