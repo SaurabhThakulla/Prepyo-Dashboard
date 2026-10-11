@@ -6,6 +6,7 @@ import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { api, errorMessage } from '@/lib/api';
+import { localPhone } from '@/lib/phone';
 
 interface PaymentRequest {
   id: string;
@@ -194,7 +195,8 @@ export default function AdminPaymentsPage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
               <Detail label="Gateway" value={payment.gateway} />
-              <Detail label="Phone" value={payment.phoneNumber || '—'} mono />
+              {/* Requests sent before the form dropped country codes still carry "+91…". */}
+              <Detail label="Phone" value={payment.phoneNumber ? localPhone(payment.phoneNumber) : '—'} mono />
               <Detail label="Transaction" value={payment.transactionId} mono />
               <Detail label="Submitted" value={new Date(payment.createdAt).toLocaleDateString()} />
               <Detail

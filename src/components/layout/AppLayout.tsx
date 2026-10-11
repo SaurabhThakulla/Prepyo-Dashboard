@@ -254,7 +254,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
 
     <Dialog open={pendingLeave !== null} onOpenChange={open => { if (!open && !ending) setPendingLeave(null); }}>
-      <DialogContent className="max-w-[380px] gap-0 p-6 sm:p-7 text-center">
+      <DialogContent centered className="max-w-[380px] gap-0 p-6 sm:p-7 text-center">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 ring-8 ring-amber-500/5">
           <LogOut className="h-5 w-5 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
         </div>

@@ -161,11 +161,14 @@ export default function SubscriptionPage() {
           </div>
 
           {user?.subscription && (
-            <div className="flex flex-row items-center justify-between gap-3 sm:gap-4 bg-muted/40 border border-border/80 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 sm:px-4 shrink-0 shadow-xs">
-              <div className="space-y-0.5">
+            // On a phone the plan sits above its usage figures. Side by side, the
+            // figures would not shrink and squeezed the plan name into a column
+            // one letter wide.
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 bg-muted/40 border border-border/80 rounded-xl sm:rounded-2xl p-3.5 sm:px-4 sm:shrink-0 shadow-xs">
+              <div className="min-w-0 space-y-0.5">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Your plan</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-sm text-foreground">{formatPlanName(user.subscription.planName)}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-extrabold text-base sm:text-sm text-foreground whitespace-nowrap">{formatPlanName(user.subscription.planName)}</span>
                   <Badge variant={user.subscription.isActive ? 'success' : 'destructive'} className="text-[10px] font-bold">
                     {user.subscription.isActive ? 'Active' : 'Expired'}
                   </Badge>
@@ -181,8 +184,12 @@ export default function SubscriptionPage() {
                   </p>
                 )}
               </div>
-              <div className="border-l border-border/80 pl-3 sm:pl-4 flex gap-3 sm:gap-5 text-xs font-semibold shrink-0">
-                <div>
+              <div
+                className={`grid ${
+                  user.subscription.aiGradingsLimit != null ? 'grid-cols-3' : 'grid-cols-2'
+                } gap-3 border-t border-border/80 pt-3 text-xs font-semibold sm:flex sm:shrink-0 sm:gap-5 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0`}
+              >
+                <div className="min-w-0">
                   <span className="text-[9px] sm:text-[10px] text-muted-foreground block uppercase font-bold">Sub-tests today</span>
                   <span className="font-extrabold text-foreground text-sm">
                     {user.subscription.unlimited
@@ -190,14 +197,14 @@ export default function SubscriptionPage() {
                       : `${usagePercent(user.subscription.dailySubTestsUsed, user.subscription.dailySubTestsLimit)}% used`}
                   </span>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <span className="text-[9px] sm:text-[10px] text-muted-foreground block uppercase font-bold">Full mocks</span>
                   <span className="font-extrabold text-foreground text-sm">
                     {`${usagePercent(user.subscription.mockTestsUsed, user.subscription.totalMockTestsAllowed)}% used`}
                   </span>
                 </div>
                 {user.subscription.aiGradingsLimit != null && (
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[9px] sm:text-[10px] text-muted-foreground block uppercase font-bold">AI gradings</span>
                     <span className="font-extrabold text-foreground text-sm">
                       {usagePercent(user.subscription.aiGradingsUsed ?? 0, user.subscription.aiGradingsLimit)}% used

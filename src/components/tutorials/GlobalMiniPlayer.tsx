@@ -286,7 +286,8 @@ export default function GlobalMiniPlayer() {
   // - When any slide drawer is open: smoothly animate to left side (24px)
   // - When slide drawer is closed: docked at bottom right (windowWidth - playerWidth - 24px)
   // A phone has little room to spare, so the player sits closer to the edge.
-  const edge = windowWidth < 640 ? 12 : 24;
+  const isPhone = windowWidth < 640;
+  const edge = isPhone ? 12 : 24;
   const defaultLeft = isSlideOpen
     ? edge
     : Math.max(edge, windowWidth - playerWidth - edge);
@@ -313,6 +314,13 @@ export default function GlobalMiniPlayer() {
     currentY = position.y;
   }
 
+  // On a phone the player is a bar across the screen, resting on the tab bar
+  // the way a music app's does: video on the left, title and controls beside
+  // it. CSS places it, so it sits right before its own height is known.
+  const docked = isPhone && !position;
+  const control = `${isPhone ? 'p-2' : 'p-1'} rounded-md text-muted-foreground hover:text-foreground hover:bg-card transition-colors`;
+  const controlIcon = isPhone ? 'h-4 w-4' : 'h-3.5 w-3.5';
+
   return (
     <aside
       ref={playerRef}
@@ -328,7 +336,14 @@ export default function GlobalMiniPlayer() {
               zIndex: 30,
               transition: isDragging ? 'none' : 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
             }
-          : {
+          : docked
+            ? {
+                position: 'fixed',
+                left: `${edge}px`,
+                bottom: 'calc(var(--mobile-nav-h, 0px) + 0.5rem)',
+                zIndex: 60,
+              }
+            : {
               position: 'fixed',
               left: `${currentX}px`,
               top: `${currentY}px`,
@@ -341,7 +356,7 @@ export default function GlobalMiniPlayer() {
       className={
         isEmbeddedOnTutorials
           ? 'overflow-hidden bg-black flex flex-col items-center justify-center pointer-events-auto rounded-t-2xl'
-          : `w-56 sm:w-80 lg:w-96 shadow-2xl rounded-xl sm:rounded-2xl border border-border bg-card overflow-hidden select-none ${
+          : `${isPhone ? 'flex w-[calc(100vw-1.5rem)] flex-row-reverse' : 'w-80 lg:w-96'} shadow-2xl rounded-2xl border border-border bg-card overflow-hidden select-none ${
               isDragging ? 'ring-2 ring-primary shadow-2xl cursor-grabbing' : 'hover:shadow-xl'
             }`
       }
@@ -351,43 +366,47 @@ export default function GlobalMiniPlayer() {
         key="mini-player-header-bar"
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
-        className={`flex items-center justify-between px-2 py-1.5 sm:px-3 sm:py-2 bg-muted/95 backdrop-blur-md border-b border-border cursor-grab active:cursor-grabbing select-none w-full ${
-          isEmbeddedOnTutorials ? 'hidden' : 'flex'
+        className={`bg-muted/95 backdrop-blur-md border-border cursor-grab active:cursor-grabbing select-none ${
+          isEmbeddedOnTutorials
+            ? 'hidden'
+            : isPhone
+              ? 'flex min-w-0 flex-1 flex-col justify-between gap-1 border-l p-2'
+              : 'flex w-full items-center justify-between border-b px-3 py-2'
         }`}
         title="Drag to move mini player anywhere on screen"
       >
-        <div className="flex items-center gap-1.5 min-w-0 pr-2">
-          <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
-          <span className="text-xs font-bold truncate text-foreground">
+        <div className={`flex min-w-0 gap-1.5 ${isPhone ? 'items-start' : 'items-center pr-2'}`}>
+          <GripHorizontal className={`h-3.5 w-3.5 text-muted-foreground/70 shrink-0 ${isPhone ? 'hidden' : ''}`} />
+          <span className={`text-xs font-bold text-foreground ${isPhone ? 'line-clamp-3 leading-snug' : 'truncate'}`}>
             {activeTutorialVideo.title}
           </span>
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className={`flex items-center gap-1 shrink-0 ${isPhone ? 'justify-end' : ''}`}>
           <button
             type="button"
             onClick={() => navigateToMode('theater')}
             title="Expand to Big Screen"
-            className="hidden sm:block p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
+            className={`hidden sm:block ${control}`}
           >
-            <Tv className="h-3.5 w-3.5" />
+            <Tv className={controlIcon} />
           </button>
           <button
             type="button"
             onClick={() => navigateToMode('standard')}
             title="Standard View"
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
+            className={control}
           >
-            <Layout className="h-3.5 w-3.5" />
+            <Layout className={controlIcon} />
           </button>
           <button
             type="button"
             onClick={closeTutorialVideo}
             title="Close Mini Player"
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
+            className={control}
           >
-            <X className="h-3.5 w-3.5" />
+            <X className={controlIcon} />
           </button>
         </div>
       </div>
@@ -395,7 +414,13 @@ export default function GlobalMiniPlayer() {
       {/* 16:9 Persistent Video Player Iframe Container */}
       <div
         key="mini-player-iframe-slot"
-        className={isEmbeddedOnTutorials ? 'w-full h-full relative' : 'aspect-video bg-black relative w-full'}
+        className={
+          isEmbeddedOnTutorials
+            ? 'w-full h-full relative'
+            : isPhone
+              ? 'relative aspect-video w-[200px] shrink-0 bg-black'
+              : 'aspect-video bg-black relative w-full'
+        }
       >
         <iframe
           key={`persistent-yt-player-${activeTutorialVideo.youtubeId}`}

@@ -9,13 +9,17 @@ import { SubscriptionPlan, SubscriptionState } from '@/lib/types';
 import { api, errorMessage } from '@/lib/api';
 import { formatPlanName, planUsageTier } from '@/lib/subscriptions';
 import { useToast } from '@/components/ui/toast';
-import { PAYMENT_METHODS, PaymentMethod } from '@/lib/paymentMethods';
+import { PAYMENT_ACCOUNT, PAYMENT_METHODS, PaymentMethod } from '@/lib/paymentMethods';
+import { localPhone } from '@/lib/phone';
 import {
   Check,
   CheckCircle2,
+  ChevronDown,
+  Copy,
   RefreshCw,
   Download,
   ImageOff,
+  ImagePlus,
   ShieldCheck,
   Clock3,
   X,
@@ -30,6 +34,25 @@ interface Props {
 
 const MAX_PROOF_BYTES = 4 * 1024 * 1024;
 
+// Payments are reviewed as they arrive, so the wait is short. Said in one
+// place so the footer and the confirmation cannot drift apart.
+const REVIEW_TIME = 'usually within minutes';
+
+// On a phone this dialog is a card in the middle of the screen, like on desktop,
+// rather than the bottom sheet other dialogs rise as: each class here undoes one
+// of the sheet's phone-only rules in ui/dialog.
+const PHONE_CENTERED = [
+  'max-sm:inset-x-auto max-sm:bottom-auto max-sm:left-[50%] max-sm:top-[50%]',
+  'max-sm:translate-x-[-50%] max-sm:translate-y-[-50%]',
+  'max-sm:w-[calc(100%-1.5rem)] max-sm:max-h-[calc(100dvh-1.5rem)]',
+  'max-sm:rounded-2xl max-sm:border max-sm:pt-0 max-sm:pb-0 max-sm:before:hidden',
+  'max-sm:data-[state=open]:slide-in-from-bottom-0 max-sm:data-[state=closed]:slide-out-to-bottom-0',
+  'max-sm:data-[state=open]:zoom-in-95 max-sm:data-[state=closed]:zoom-out-95',
+].join(' ');
+
+// 16px on phones: anything smaller makes iOS zoom the page when a field is tapped.
+const FIELD_CLASS = 'h-11 text-base sm:h-10 sm:text-sm';
+
 export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPlan, onSuccess }: Props) {
   const { refreshUser } = useApp();
   const toast = useToast();
@@ -40,8 +63,10 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
   const [proofImage, setProofImage] = useState<string>('');
   const [proofName, setProofName] = useState('');
   const [processing, setProcessing] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const [brokenQr, setBrokenQr] = useState<Record<string, boolean>>({});
+  const [referralOpen, setReferralOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const method = useMemo(
     () => PAYMENT_METHODS.find(m => m.id === methodId) ?? PAYMENT_METHODS[0],
@@ -77,10 +102,22 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
   if (!selectedPlan) return null;
 
   const qrSource = generatedQr[qrKey] || method.qrImage || '';
+  const qrReady = !brokenQr[method.id] && Boolean(qrSource);
 
   const planTitle = formatPlanName(selectedPlan.name || selectedPlan.id);
   const totalDays = (selectedPlan.durationDays || selectedPlan.durationMonths * 30) + selectedPlan.bonusDays;
   const amount = selectedPlan.priceNPR.toLocaleString();
+  const tier = planUsageTier(selectedPlan.id).toLowerCase();
+
+  // The eSewa QR is built from this id, so paying to it by hand reaches the
+  // same account. Only eSewa: the Khalti code is a fixed image, not this number.
+  const payToId = method.buildQrPayload ? PAYMENT_ACCOUNT.phone : '';
+
+  const missing = [
+    !phoneNumber.trim() && 'phone number',
+    !transactionId.trim() && 'transaction ID',
+    !proofImage && 'screenshot',
+  ].filter(Boolean) as string[];
 
   const pickProof = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -106,10 +143,20 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
     setProofName('');
   };
 
+  const copyPayToId = async () => {
+    try {
+      await navigator.clipboard.writeText(payToId);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Could not copy', `The ${method.label} ID is ${payToId}.`);
+    }
+  };
+
   const handleProcessPayment = async () => {
     if (processing) return;
 
-    const phone = phoneNumber.trim();
+    const phone = localPhone(phoneNumber);
     if (!phone || phone.length < 7) {
       toast.error('Phone number required', 'Please enter your contact or wallet phone number.');
       return;
@@ -128,14 +175,14 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
 
     setProcessing(true);
     try {
-      const data = await api.post<{ subscription: SubscriptionState; message: string }>('/subscriptions/confirm', {
+      await api.post<{ subscription: SubscriptionState; message: string }>('/subscriptions/confirm', {
         planId: selectedPlan.id,
         paymentGateway: method.gateway,
         transactionId: txn,
         phoneNumber: phone,
         proofImage,
       });
-      setSuccess(data.message || 'Payment submitted. We will activate your plan once it is checked.');
+      setSuccess(true);
       await refreshUser();
       onSuccess?.();
     } catch (err) {
@@ -147,68 +194,84 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
 
   const handleClose = (open: boolean) => {
     if (!open) {
-      setSuccess(null);
+      setSuccess(false);
       setTransactionId('');
       setPhoneNumber('');
       clearProof();
       setProcessing(false);
+      setReferralOpen(false);
+      setCopied(false);
     }
     onOpenChange(open);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg p-0 overflow-hidden border-border bg-card shadow-2xl">
+      <DialogContent
+        className={`gap-0 overflow-hidden border-border bg-card p-0 shadow-2xl ${PHONE_CENTERED} ${
+          success ? 'sm:max-w-md' : 'sm:max-w-3xl'
+        }`}
+      >
         {success ? (
-          <div className="p-6 sm:p-8 text-center space-y-5">
-            <div className="mx-auto w-14 h-14 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-500">
-              <CheckCircle2 className="w-7 h-7" />
+          <div className="space-y-5 p-6 text-center sm:p-8">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/15 text-emerald-500">
+              <CheckCircle2 className="h-8 w-8" />
             </div>
-            <div className="space-y-1.5">
-              <DialogTitle className="text-xl font-black text-foreground tracking-tight font-display">
+            <div className="space-y-2">
+              <DialogTitle className="font-display text-2xl font-black tracking-tight text-foreground">
                 Payment submitted
               </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground">{success}</DialogDescription>
+              <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+                We will activate your {planTitle} plan as soon as we match the payment, {REVIEW_TIME}. You
+                will get a notification here.
+              </DialogDescription>
             </div>
-            <div className="rounded-xl border border-border/70 bg-muted/30 p-3 text-left space-y-1.5">
+            <div className="space-y-2.5 rounded-2xl border border-border/70 bg-muted/30 p-4 text-left">
               <SummaryRow label="Plan" value={`${planTitle} · ${totalDays} days`} />
               <SummaryRow label="Paid with" value={`${method.label} · NPR ${amount}`} />
-              <SummaryRow label="Phone" value={phoneNumber.trim()} />
+              <SummaryRow label="Phone" value={localPhone(phoneNumber)} />
               <SummaryRow label="Txn ID" value={transactionId.trim()} mono />
             </div>
-            <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-              <Clock3 className="w-3.5 h-3.5" />
-              Usually checked within a few hours.
+            <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+              <Clock3 className="h-4 w-4" />
+              Usually checked within minutes.
             </p>
-            <Button onClick={() => handleClose(false)} className="w-full sm:w-auto px-8 font-bold text-xs h-9">
+            <Button onClick={() => handleClose(false)} size="lg" className="w-full font-bold">
               Done
             </Button>
           </div>
         ) : (
-          <div className="flex flex-col max-h-[calc(100dvh-2rem)] overflow-y-auto">
-            <div className="p-4 sm:p-5 pr-14 sm:pr-16 border-b border-border/70 bg-muted/20">
-              <DialogTitle className="text-base sm:text-lg font-black tracking-tight font-display">
-                Complete your payment
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                {planTitle} · {totalDays} days ·{' '}
-                {selectedPlan.unlimited ? 'unlimited sub-tests' : `${planUsageTier(selectedPlan.id).toLowerCase()} practice`} ·{' '}
-                {planUsageTier(selectedPlan.id).toLowerCase()} AI gradings & full mocks
-              </DialogDescription>
-              <div className="mt-3 flex items-end justify-between gap-3">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground pb-0.5">
-                  Amount to pay
-                </span>
-                <span className="text-2xl font-black text-primary font-display leading-none">NPR {amount}</span>
+          // Header and action bar stay put; only the middle scrolls.
+          <div className="flex max-h-[calc(100dvh-1.5rem)] flex-col sm:max-h-[calc(100dvh-2rem)]">
+            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-muted/20 px-4 py-3 pr-14 sm:items-start sm:gap-4 sm:px-6 sm:py-5 sm:pr-16">
+              <div className="min-w-0">
+                <DialogTitle className="font-display text-base font-black tracking-tight sm:text-xl">
+                  Complete your payment
+                </DialogTitle>
+                {/* A phone has no room for the plan's feature list; the name and length are what matter here. */}
+                <DialogDescription className="mt-0.5 text-xs leading-relaxed text-muted-foreground sm:mt-1 sm:text-sm">
+                  <span className="font-semibold text-foreground">{planTitle}</span> · {totalDays} days
+                  <span className="max-sm:hidden">
+                    {' '}
+                    · {selectedPlan.unlimited ? 'unlimited sub-tests' : `${tier} practice`} · {tier} AI gradings
+                    &amp; full mocks
+                  </span>
+                </DialogDescription>
               </div>
-            </div>
+              <div className="shrink-0 text-right">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  To pay
+                </span>
+                <span className="block whitespace-nowrap font-display text-xl font-black leading-tight text-primary sm:text-3xl">
+                  NPR {amount}
+                </span>
+              </div>
+            </header>
 
-            <div className="p-4 sm:p-5 space-y-4">
-              <ReferralRedeem />
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                  Pay with
-                </p>
+            <div className="grid flex-1 overflow-y-auto overscroll-contain sm:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] sm:divide-x sm:divide-border/70">
+              <section aria-labelledby="pay-step" className="space-y-4 p-4 sm:p-6">
+                <StepHeading id="pay-step" n={1} title={`Pay NPR ${amount}`} />
+
                 <div className="grid grid-cols-2 gap-2">
                   {PAYMENT_METHODS.map(m => (
                     <MethodTab
@@ -219,149 +282,202 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
                     />
                   ))}
                 </div>
-              </div>
 
-              <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 flex flex-col items-center gap-3">
-                <div className="w-full max-w-[240px] rounded-xl bg-white p-3 border border-border shadow-sm">
-                  {brokenQr[method.id] || !qrSource ? (
-                    <div className="aspect-square flex flex-col items-center justify-center gap-1.5 px-3 text-center text-neutral-500">
-                      <ImageOff className="w-6 h-6" />
-                      <span className="text-[10px] font-semibold leading-tight">
-                        {method.label} QR unavailable right now
-                      </span>
-                    </div>
-                  ) : (
-                    <img
-                      src={qrSource}
-                      alt={`${method.label} payment QR code`}
-                      className="w-full h-auto object-contain select-none"
-                      onError={() => setBrokenQr(prev => ({ ...prev, [method.id]: true }))}
-                    />
+                <div className="flex flex-col items-center gap-3 rounded-2xl border border-border/70 bg-muted/20 p-3 sm:p-4">
+                  <div className="w-full max-w-[168px] rounded-2xl border border-border bg-white p-2.5 shadow-sm sm:max-w-[220px] sm:p-3">
+                    {qrReady ? (
+                      <img
+                        src={qrSource}
+                        alt={`${method.label} payment QR code`}
+                        className="h-auto w-full select-none object-contain"
+                        onError={() => setBrokenQr(prev => ({ ...prev, [method.id]: true }))}
+                      />
+                    ) : (
+                      <div className="flex aspect-square flex-col items-center justify-center gap-1.5 px-3 text-center text-neutral-500">
+                        <ImageOff className="h-6 w-6" />
+                        <span className="text-xs font-semibold leading-tight">
+                          {method.label} QR unavailable right now
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-center text-xs leading-relaxed text-muted-foreground">{method.hint}</p>
+
+                  {qrReady && (
+                    <Button asChild variant="outline" className="h-10 w-full gap-2 text-xs font-bold sm:h-9">
+                      <a href={qrSource} download={`prepyo-${method.id}-qr.png`}>
+                        <Download className="h-4 w-4" />
+                        Save QR to scan from your gallery
+                      </a>
+                    </Button>
                   )}
                 </div>
 
-                {!brokenQr[method.id] && qrSource && (
-                  <a
-                    href={qrSource}
-                    download={`prepyo-${method.id}-qr.png`}
-                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-primary hover:underline"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    Save QR to scan from your gallery
-                  </a>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <Step n={1} title={`Send NPR ${amount} from ${method.label}`}>
-                  <p className="text-[11px] text-muted-foreground">{method.hint}</p>
-                </Step>
-
-                <Step n={2} title="Enter your payment details">
-                  <div className="space-y-3">
-                    <div>
-                      <label htmlFor="phone-input" className="block text-[11px] font-bold text-foreground mb-1">
-                        Phone Number <span className="text-rose-500">*</span>
-                      </label>
-                      <Input
-                        id="phone-input"
-                        type="tel"
-                        value={phoneNumber}
-                        onChange={e => setPhoneNumber(e.target.value)}
-                        placeholder="eSewa / Khalti / Contact number · e.g. 98XXXXXXXX"
-                        className="h-9 text-xs"
-                        autoComplete="tel"
-                      />
+                {payToId && (
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 px-3 py-2.5">
+                    <div className="min-w-0">
+                      <span className="block text-[11px] text-muted-foreground">
+                        Or send to this {method.label} ID
+                      </span>
+                      <span className="block font-mono text-sm font-bold text-foreground">{payToId}</span>
+                      <span className="block truncate text-[11px] text-muted-foreground">{PAYMENT_ACCOUNT.name}</span>
                     </div>
-
-                    <div>
-                      <label htmlFor="txn-input" className="block text-[11px] font-bold text-foreground mb-1">
-                        Transaction ID <span className="text-rose-500">*</span>
-                      </label>
-                      <Input
-                        id="txn-input"
-                        value={transactionId}
-                        onChange={e => setTransactionId(e.target.value)}
-                        placeholder="Transaction ID · e.g. TXN-198421"
-                        className="h-9 text-xs font-mono"
-                        autoComplete="off"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-[11px] font-bold text-foreground">
-                          Payment Screenshot <span className="text-rose-500">*</span>
-                        </label>
-                        <span className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded">
-                          Required
-                        </span>
-                      </div>
-                      {proofImage ? (
-                        <div className="flex items-center gap-2.5 p-2 rounded-xl bg-muted/40 border border-border/70">
-                          <img
-                            src={proofImage}
-                            alt="Payment screenshot preview"
-                            className="w-10 h-10 rounded-lg object-cover border border-border"
-                          />
-                          <span className="flex-1 min-w-0 text-[11px] text-foreground truncate">{proofName}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={clearProof}
-                            className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-foreground"
-                            aria-label="Remove screenshot"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <div>
-                          <label
-                            htmlFor="paymentProof"
-                            className="flex items-center justify-center gap-2 h-10 rounded-xl border border-dashed border-rose-300 dark:border-rose-800 bg-rose-50/20 dark:bg-rose-950/20 text-[11px] font-bold text-foreground hover:border-primary/50 cursor-pointer transition-colors"
-                          >
-                            Attach payment screenshot (required)
-                          </label>
-                          <input
-                            id="paymentProof"
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp,image/gif"
-                            onChange={pickProof}
-                            className="sr-only"
-                          />
-                          <p className="mt-1 text-[10px] text-muted-foreground">
-                            Required to verify your payment. Max 4 MB.
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={copyPayToId}
+                      className="h-9 shrink-0 gap-1.5 text-xs font-bold"
+                      aria-label={`Copy ${method.label} ID`}
+                    >
+                      {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                      {copied ? 'Copied' : 'Copy'}
+                    </Button>
                   </div>
-                </Step>
-              </div>
+                )}
+              </section>
+
+              <section
+                aria-labelledby="confirm-step"
+                className="space-y-4 border-t border-border/70 p-4 sm:border-t-0 sm:p-6"
+              >
+                <StepHeading id="confirm-step" n={2} title="Tell us you paid" />
+
+                <Field id="phone-input" label="Your phone number" hint="The number on your wallet, or one we can reach you on.">
+                  <Input
+                    id="phone-input"
+                    type="tel"
+                    inputMode="tel"
+                    value={phoneNumber}
+                    // Autofill offers "+977…" or "+91…"; the country code is dropped as it lands.
+                    onChange={e => setPhoneNumber(localPhone(e.target.value))}
+                    placeholder="98XXXXXXXX"
+                    className={FIELD_CLASS}
+                    autoComplete="tel-national"
+                  />
+                </Field>
+
+                <Field
+                  id="txn-input"
+                  label="Transaction ID"
+                  hint={`Shown on your ${method.label} receipt after you pay.`}
+                >
+                  <Input
+                    id="txn-input"
+                    value={transactionId}
+                    onChange={e => setTransactionId(e.target.value)}
+                    placeholder="e.g. 0A1B2C3"
+                    className={`${FIELD_CLASS} font-mono`}
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                  />
+                </Field>
+
+                <div>
+                  <span className="mb-1.5 block text-xs font-bold text-foreground sm:text-[13px]">
+                    Payment screenshot
+                  </span>
+                  {proofImage ? (
+                    <div className="flex items-center gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-2.5">
+                      <img
+                        src={proofImage}
+                        alt="Payment screenshot preview"
+                        className="h-14 w-14 shrink-0 rounded-lg border border-border object-cover"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                          <Check className="h-3.5 w-3.5" strokeWidth={3} /> Attached
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">{proofName}</span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearProof}
+                        className="h-9 w-9 shrink-0 p-0 text-muted-foreground hover:text-foreground"
+                        aria-label="Remove screenshot"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <label
+                        htmlFor="paymentProof"
+                        className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border bg-muted/20 px-4 py-5 text-center transition-colors hover:border-primary/60 hover:bg-primary/5"
+                      >
+                        <ImagePlus className="h-6 w-6 text-primary" />
+                        <span className="text-sm font-bold text-foreground">Attach payment screenshot</span>
+                        <span className="text-xs text-muted-foreground">
+                          The success screen from {method.label} · up to 4 MB
+                        </span>
+                      </label>
+                      <input
+                        id="paymentProof"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        onChange={pickProof}
+                        className="sr-only"
+                      />
+                    </>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-border/70">
+                  <button
+                    type="button"
+                    onClick={() => setReferralOpen(value => !value)}
+                    aria-expanded={referralOpen}
+                    aria-controls="referral-panel"
+                    className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left text-xs font-bold text-foreground sm:text-[13px]"
+                  >
+                    <span>
+                      Have a friend&apos;s referral code?{' '}
+                      <span className="font-medium text-muted-foreground">Optional</span>
+                    </span>
+                    <ChevronDown
+                      className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+                        referralOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  {referralOpen && (
+                    <div id="referral-panel" className="border-t border-border/70 p-3">
+                      <ReferralRedeem compact />
+                    </div>
+                  )}
+                </div>
+              </section>
             </div>
 
-            <div className="sticky bottom-0 p-4 sm:p-5 pt-3 border-t border-border/70 bg-card/95 backdrop-blur space-y-2">
+            <footer className="shrink-0 border-t border-border/70 bg-card px-4 py-3 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-4">
+              <p className="mb-2 flex items-start gap-1.5 text-xs leading-snug text-muted-foreground sm:mb-0">
+                <ShieldCheck className="mt-px h-4 w-4 shrink-0 text-emerald-500" />
+                <span aria-live="polite">
+                  {missing.length > 0
+                    ? `Still needed: ${missing.join(', ')}.`
+                    : `Your plan starts once we match the payment, ${REVIEW_TIME}.`}
+                </span>
+              </p>
               <Button
                 onClick={handleProcessPayment}
-                disabled={processing || !transactionId.trim() || !phoneNumber.trim() || !proofImage}
-                className="w-full font-bold text-xs h-10 shadow-md disabled:opacity-50"
+                disabled={processing || missing.length > 0}
+                size="lg"
+                className="w-full shrink-0 font-bold shadow-md disabled:opacity-50 sm:w-auto sm:min-w-[13rem]"
               >
                 {processing ? (
                   <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                     Submitting…
                   </>
                 ) : (
                   `I have paid NPR ${amount}`
                 )}
               </Button>
-              <p className="flex items-center justify-center gap-1.5 text-center text-[10px] text-muted-foreground">
-                <ShieldCheck className="w-3 h-3 shrink-0" />
-                Your plan starts once we match the payment — usually within a few hours.
-              </p>
-            </div>
+            </footer>
           </div>
         )}
       </DialogContent>
@@ -383,41 +499,57 @@ function MethodTab({
       type="button"
       onClick={onSelect}
       aria-pressed={active}
-      className={`relative flex items-center gap-2.5 p-2.5 rounded-xl border-2 text-left transition-all ${
+      className={`relative flex min-h-[3.25rem] items-center gap-2.5 rounded-xl border-2 p-2.5 text-left transition-all ${
         active
           ? 'border-primary bg-primary/10 shadow-sm'
-          : 'border-transparent bg-muted/40 hover:bg-muted/60'
+          : 'border-border/60 bg-card hover:border-border hover:bg-muted/40'
       }`}
     >
       <span
-        className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black text-white shrink-0"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-black text-white"
         style={{ backgroundColor: method.accent }}
       >
         {method.short}
       </span>
-      <span className="min-w-0">
-        <span className="block text-xs font-bold text-foreground truncate">{method.label}</span>
-        <span className="block text-[10px] text-muted-foreground truncate">Scan QR</span>
-      </span>
+      <span className="min-w-0 truncate text-sm font-bold text-foreground">{method.label}</span>
       {active && (
-        <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-          <Check className="w-2.5 h-2.5" strokeWidth={3} />
+        <span className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <Check className="h-3 w-3" strokeWidth={3} />
         </span>
       )}
     </button>
   );
 }
 
-function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+function StepHeading({ id, n, title }: { id: string; n: number; title: string }) {
   return (
-    <div className="flex items-start gap-2.5">
-      <span className="shrink-0 w-5 h-5 mt-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold flex items-center justify-center">
+    <h3 id={id} className="flex items-center gap-2.5 text-sm font-black text-foreground sm:text-base">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
         {n}
       </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-foreground mb-1.5">{title}</p>
-        {children}
-      </div>
+      {title}
+    </h3>
+  );
+}
+
+function Field({
+  id,
+  label,
+  hint,
+  children,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-xs font-bold text-foreground sm:text-[13px]">
+        {label}
+      </label>
+      {children}
+      <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{hint}</p>
     </div>
   );
 }
@@ -425,10 +557,10 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
 function SummaryRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+      <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
-      <span className={`text-xs font-semibold text-foreground truncate ${mono ? 'font-mono' : ''}`}>
+      <span className={`truncate text-sm font-semibold text-foreground ${mono ? 'font-mono' : ''}`}>
         {value}
       </span>
     </div>

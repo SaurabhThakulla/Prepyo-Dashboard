@@ -364,7 +364,29 @@ export default function AudioRecorder({
         />
       )}
 
-      <div className="relative flex items-center gap-4 sm:gap-5">
+      <div className="relative flex items-center justify-between gap-3">
+        <span className="flex items-center gap-1.5 whitespace-nowrap text-xs font-bold text-foreground">
+          <Mic className={`h-4 w-4 ${phase === 'recording' ? 'text-rose-500' : 'text-primary'}`} /> Your answer
+        </span>
+        {phase === 'prep' && (
+          <span className="shrink-0 whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-amber-700 dark:text-amber-300">
+            Prepare · {formatDuration(remaining)}
+          </span>
+        )}
+        {phase === 'recording' && (
+          <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-rose-700 dark:text-rose-300">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
+            Recording · {formatDuration(remaining)}
+          </span>
+        )}
+        {phase === 'review' && (
+          <span className="shrink-0 whitespace-nowrap rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+            Recorded
+          </span>
+        )}
+      </div>
+
+      <div className="relative mt-3 flex items-center gap-4 sm:gap-5">
         {/* The orb: countdown ring around it, and during recording it swells with your voice. */}
         <div className="relative h-20 w-20 shrink-0">
           <svg viewBox="0 0 80 80" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden>
@@ -410,53 +432,29 @@ export default function AudioRecorder({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-              <Mic className={`h-4 w-4 ${phase === 'recording' ? 'text-rose-500' : 'text-primary'}`} /> Your answer
-            </span>
-            {phase === 'prep' && (
-              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-amber-700 dark:text-amber-300">
-                Prepare · {formatDuration(remaining)}
-              </span>
-            )}
-            {phase === 'recording' && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-rose-700 dark:text-rose-300">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
-                Recording · {formatDuration(remaining)}
-              </span>
-            )}
-            {phase === 'review' && (
-              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                Recorded
-              </span>
-            )}
-          </div>
-
           {/* Live waveform from the microphone. It moves during prep too, so a
               muted or wrong mic shows up before the answer is spent. */}
-          {phase !== 'review' && (
-            <div aria-hidden className="mt-2.5 flex h-10 items-center gap-[3px]">
-              {WAVE_SHAPE.map((shape, i) => (
-                <span
-                  key={i}
-                  style={{
-                    height: `${Math.round(
-                      (live ? 0.1 + Math.min(1, wave[i] * 1.6) * (0.8 + 0.2 * shape) : 0.25 + shape * 0.25) * 100,
-                    )}%`,
-                  }}
-                  className={`flex-1 rounded-full transition-[height] duration-100 ease-out ${
-                    phase === 'recording' ? 'bg-gradient-to-t from-rose-500 to-rose-300' : phase === 'prep' ? 'bg-amber-400/60' : 'bg-muted-foreground/20'
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-
-          {phase === 'review' && playbackUrl && (
-            <audio controls src={playbackUrl} className="mt-2.5 h-10 w-full">
-              Audio can't play on this device.
-            </audio>
-          )}
+          <div aria-hidden className="flex h-10 items-center gap-[2px] sm:gap-[3px]">
+            {WAVE_SHAPE.map((shape, i) => (
+              <span
+                key={i}
+                style={{
+                  height: `${Math.round(
+                    (live ? 0.1 + Math.min(1, wave[i] * 1.6) * (0.8 + 0.2 * shape) : 0.25 + shape * 0.25) * 100,
+                  )}%`,
+                }}
+                className={`flex-1 rounded-full transition-[height] duration-100 ease-out ${
+                  phase === 'recording'
+                    ? 'bg-gradient-to-t from-rose-500 to-rose-300'
+                    : phase === 'prep'
+                      ? 'bg-amber-400/60'
+                      : phase === 'review'
+                        ? 'bg-emerald-500/40'
+                        : 'bg-muted-foreground/20'
+                }`}
+              />
+            ))}
+          </div>
 
           {phase !== 'idle' && phase !== 'review' && (
             <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted-foreground/15">
@@ -469,8 +467,15 @@ export default function AudioRecorder({
         </div>
       </div>
 
+      {/* Under the orb rather than beside it, so the player is wide enough to use on a phone. */}
+      {phase === 'review' && playbackUrl && (
+        <audio controls src={playbackUrl} className="relative mt-3 h-10 w-full">
+          Audio can't play on this device.
+        </audio>
+      )}
+
       <p
-        className={`relative mt-3 text-[11px] leading-relaxed ${silent ? 'font-semibold text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}
+        className={`relative mt-3 text-xs leading-relaxed sm:text-[11px] ${silent ? 'font-semibold text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}
         aria-live="polite"
       >
         {status}
@@ -485,28 +490,28 @@ export default function AudioRecorder({
 
       <div className="relative mt-3 flex flex-wrap items-center gap-2">
         {phase === 'idle' && (
-          <Button onClick={handleStart} disabled={disabled || starting} size="sm" className="gap-1.5 rounded-full px-4 font-bold">
+          <Button onClick={handleStart} disabled={disabled || starting} size="sm" className={ACTION}>
             {starting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mic className="h-3.5 w-3.5" />}
             <span>{starting ? 'Opening microphone…' : 'Start recording'}</span>
           </Button>
         )}
 
         {phase === 'prep' && (
-          <Button onClick={handleSkipPrep} size="sm" variant="outline" className="gap-1.5 rounded-full px-4 font-bold">
+          <Button onClick={handleSkipPrep} size="sm" variant="outline" className={ACTION}>
             <Mic className="h-3.5 w-3.5" />
             <span>Start now</span>
           </Button>
         )}
 
         {phase === 'recording' && (
-          <Button onClick={handleStopEarly} size="sm" variant="destructive" className="gap-1.5 rounded-full px-4 font-bold">
+          <Button onClick={handleStopEarly} size="sm" variant="destructive" className={ACTION}>
             <Square className="h-3.5 w-3.5" />
             <span>Stop</span>
           </Button>
         )}
 
         {phase === 'review' && (
-          <Button onClick={handleRetake} disabled={disabled} size="sm" variant="outline" className="gap-1.5 rounded-full px-4 font-bold">
+          <Button onClick={handleRetake} disabled={disabled} size="sm" variant="outline" className={ACTION}>
             <RotateCcw className="h-3.5 w-3.5" />
             <span>Record again</span>
           </Button>
@@ -515,6 +520,9 @@ export default function AudioRecorder({
     </div>
   );
 }
+
+// The one action of each phase: the full width and a thumb-sized target on a phone.
+const ACTION = 'h-11 w-full gap-1.5 rounded-full px-4 text-sm font-bold sm:h-8 sm:w-auto sm:text-[11px]';
 
 // Resting shape, and a little per-bar texture on the live wave.
 const WAVE_BARS = 40;

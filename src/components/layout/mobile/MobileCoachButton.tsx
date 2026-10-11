@@ -14,7 +14,7 @@ const COACH_SCREENS = ['/dashboard', '/home', PRACTICE_HUB_HREF];
  */
 export default function MobileCoachButton() {
   const { pathname } = useLocation();
-  const { user, isTutorOpen, setIsTutorOpen } = useApp();
+  const { user, isTutorOpen, setIsTutorOpen, activeTutorialVideo } = useApp();
 
   if (!user || isTutorOpen || !COACH_SCREENS.includes(pathname)) return null;
 
@@ -23,7 +23,11 @@ export default function MobileCoachButton() {
       type="button"
       onClick={() => setIsTutorOpen(true)}
       aria-label="Ask Danfe, your AI coach"
-      className="lg:hidden fixed right-3 z-30 flex h-[72px] w-[52px] items-end justify-center transition-transform active:scale-90 [-webkit-tap-highlight-color:transparent] bottom-[calc(var(--mobile-nav-h,0px)+0.75rem)]"
+      // A playing video docks its mini player just above the tab bar on a
+      // phone, so Danfe stands on top of it rather than behind it.
+      className={`lg:hidden fixed right-3 z-30 flex h-[72px] w-[52px] items-end justify-center transition-[transform,bottom] active:scale-90 [-webkit-tap-highlight-color:transparent] bottom-[calc(var(--mobile-nav-h,0px)+0.75rem)] ${
+        activeTutorialVideo ? 'max-sm:bottom-[calc(var(--mobile-nav-h,0px)+8.25rem)]' : ''
+      }`}
     >
       <img
         src="/danfe.svg"

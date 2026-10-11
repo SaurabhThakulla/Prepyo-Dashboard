@@ -179,12 +179,12 @@ export default function QuestionDrawer<T extends DrawerItem>({
         className={`fixed top-1/2 -translate-y-1/2 z-50 transition-all duration-300 flex items-center justify-center shadow-xl active:scale-95 group ${
           isOpen
             ? 'hidden'
-            : 'right-2 sm:right-3 bg-primary hover:bg-primary/90 text-white w-10 h-10 sm:w-11 sm:h-11 rounded-full hover:scale-105 shadow-primary/30'
+            : 'right-0 sm:right-3 bg-primary hover:bg-primary/90 text-white w-7 h-12 sm:w-11 sm:h-11 rounded-l-2xl sm:rounded-full hover:scale-105 shadow-primary/30'
         }`}
       >
         <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" />
         {questions.length > 0 && (
-          <span className="absolute -top-1.5 -left-1.5 bg-blue-600 text-white font-mono text-[10px] font-bold px-1.5 py-0.2 rounded-full border-2 border-white dark:border-slate-900 shadow-xs">
+          <span className="absolute -top-3 right-1 sm:-top-1.5 sm:right-auto sm:-left-1.5 whitespace-nowrap leading-4 bg-blue-600 text-white font-mono text-[10px] font-bold px-1.5 py-0.2 rounded-full border-2 border-white dark:border-slate-900 shadow-xs">
             {questions.length}
           </span>
         )}

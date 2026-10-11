@@ -1,6 +1,6 @@
 import React, { useMemo, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, BookOpenCheck, ChevronRight, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowRight, BookOpenCheck, ChevronRight, LucideIcon, RotateCcw, Sparkles } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useNavSections } from '@/components/layout/sidebar/useNavSections';
 import { SecondaryNavItem } from '@/components/layout/sidebar/navigation';
@@ -19,6 +19,7 @@ const FALLBACK_TINT = { chip: 'bg-primary text-primary-foreground', icon: 'bg-pr
 interface SkillGroup {
   name: string;
   key: string;
+  icon: LucideIcon;
   href?: string;
   tasks: SecondaryNavItem[];
   mocks: SecondaryNavItem[];
@@ -43,7 +44,7 @@ export default function PracticeHubPage() {
     for (const item of practice?.items ?? []) {
       const name = item.group ?? 'Practice';
       if (!byName.has(name)) {
-        byName.set(name, { name, key: name.toLowerCase(), href: item.groupHref, tasks: [], mocks: [] });
+        byName.set(name, { name, key: name.toLowerCase(), icon: item.icon, href: item.groupHref, tasks: [], mocks: [] });
       }
       const group = byName.get(name)!;
       (item.badge === 'MOCK' ? group.mocks : group.tasks).push(item);
@@ -93,10 +94,12 @@ export default function PracticeHubPage() {
       )}
 
       <div className="sticky top-14 z-20 -mx-4 mt-3 bg-background/95 px-4 py-2 backdrop-blur-xl lg:top-16">
-        <div role="tablist" aria-label="Skill" className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Every skill fits across the screen, so none hides off the edge. */}
+        <div role="tablist" aria-label="Skill" className="flex gap-1 rounded-2xl bg-muted p-1">
           {groups.map((group, index) => {
             const active = index === selectedIndex;
             const groupTint = SKILL_TINT[group.key] ?? FALLBACK_TINT;
+            const GroupIcon = group.icon;
             return (
               <button
                 key={group.key}
@@ -105,12 +108,12 @@ export default function PracticeHubPage() {
                 aria-selected={active}
                 onClick={() => selectSkill(index)}
                 className={cn(
-                  'shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-all active:scale-95 [-webkit-tap-highlight-color:transparent]',
-                  active ? cn(groupTint.chip, 'shadow-sm') : 'bg-muted text-muted-foreground',
+                  'flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl px-1 py-2 text-xs font-semibold transition-all active:scale-95 sm:flex-row sm:justify-center sm:gap-2 sm:py-2.5 sm:text-sm [-webkit-tap-highlight-color:transparent]',
+                  active ? cn(groupTint.chip, 'shadow-sm') : 'text-muted-foreground',
                 )}
               >
-                {group.name}
-                <span className={cn('ml-1.5 text-xs', active ? 'opacity-80' : 'opacity-60')}>{group.tasks.length}</span>
+                <GroupIcon className="h-[18px] w-[18px] shrink-0" />
+                <span className="max-w-full truncate">{group.name}</span>
               </button>
             );
           })}
@@ -118,25 +121,48 @@ export default function PracticeHubPage() {
       </div>
 
       {selected ? (
-        <div role="tabpanel" aria-label={selected.name} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="mt-3 space-y-4">
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div role="tabpanel" aria-label={selected.name} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="mt-3 space-y-3">
+          {selected.tasks.length > 0 && (
+            <div className="flex items-center justify-between gap-3 px-1">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {selected.tasks.length} {selected.name.toLowerCase()} {selected.tasks.length === 1 ? 'task' : 'tasks'}
+              </h3>
+              {selected.href && (
+                <Link to={selected.href} className="flex items-center gap-0.5 text-xs font-semibold text-primary">
+                  Browse all
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              )}
+            </div>
+          )}
+
+          <ul className="grid gap-2.5 sm:grid-cols-2">
             {selected.tasks.map(task => {
               const Icon = task.icon;
+              const summary = task.description ?? task.sublabel;
               return (
                 <li key={task.href ?? task.label} className="flex">
                   <Link
                     to={task.href ?? '#'}
-                    className="flex min-h-[8.5rem] w-full flex-col rounded-3xl border border-border bg-card p-4 shadow-sm transition-all active:scale-[0.97] hover:border-primary/40 [-webkit-tap-highlight-color:transparent]"
+                    className="flex w-full items-center gap-3.5 rounded-2xl border border-border bg-card p-3.5 shadow-sm transition-all active:scale-[0.98] hover:border-primary/40 [-webkit-tap-highlight-color:transparent]"
                   >
-                    <span className={cn('flex h-10 w-10 items-center justify-center rounded-2xl', tint.icon)}>
+                    <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl', tint.icon)}>
                       <Icon className="h-5 w-5" />
                     </span>
-                    <span className="mt-3 line-clamp-3 text-sm font-bold leading-snug text-foreground">{task.label}</span>
-                    {task.badge && (
-                      <span className="mt-1 w-fit rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                        {task.badge}
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-bold leading-snug text-foreground">
+                        {task.label}
+                        {task.badge && (
+                          <span className="ml-2 inline-block rounded-md bg-muted px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                            {task.badge}
+                          </span>
+                        )}
                       </span>
-                    )}
+                      {summary && (
+                        <span className="mt-0.5 line-clamp-2 text-xs leading-snug text-muted-foreground">{summary}</span>
+                      )}
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/70" />
                   </Link>
                 </li>
               );
@@ -153,28 +179,21 @@ export default function PracticeHubPage() {
             <Link
               key={mock.href ?? mock.label}
               to={mock.href ?? '#'}
-              className="flex items-center gap-4 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-700 p-4 text-white shadow-lg transition-transform active:scale-[0.98] dark:from-slate-800 dark:to-slate-700"
+              className="flex items-center gap-3.5 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-700 p-4 text-white shadow-lg transition-transform active:scale-[0.98] dark:from-slate-800 dark:to-slate-700"
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15">
                 <BookOpenCheck className="h-6 w-6" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block font-display text-base font-bold">{mock.label}</span>
-                {mock.sublabel && <span className="block text-xs opacity-80">{mock.sublabel}</span>}
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">Timed test</span>
+                <span className="block font-display text-base font-bold leading-snug">{mock.label}</span>
+                {mock.sublabel && <span className="mt-0.5 block text-xs leading-snug opacity-80">{mock.sublabel}</span>}
               </span>
-              <ArrowRight className="h-5 w-5 shrink-0 opacity-80" />
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15">
+                <ArrowRight className="h-4 w-4" />
+              </span>
             </Link>
           ))}
-
-          {selected.href && selected.tasks.length > 0 && (
-            <Link
-              to={selected.href}
-              className="flex items-center justify-between rounded-2xl px-1 py-2 text-sm font-semibold text-primary"
-            >
-              Browse all {selected.name.toLowerCase()} questions
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          )}
         </div>
       ) : (
         <p className="mt-6 text-center text-sm text-muted-foreground">Nothing to practise here yet.</p>
@@ -199,14 +218,14 @@ function QuickLink({
   return (
     <Link
       to={to}
-      className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3 transition-transform active:scale-[0.98] [-webkit-tap-highlight-color:transparent]"
+      className="flex items-center gap-2.5 rounded-2xl border border-border bg-card p-3 shadow-sm transition-transform active:scale-[0.98] [-webkit-tap-highlight-color:transparent]"
     >
       <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', tint)}>
         <Icon className="h-[18px] w-[18px]" />
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-sm font-semibold text-foreground">{label}</span>
-        <span className="block truncate text-[11px] text-muted-foreground">{sublabel}</span>
+        <span className="block text-[13px] font-semibold leading-tight text-foreground sm:text-sm">{label}</span>
+        <span className="mt-0.5 block text-[11px] leading-tight text-muted-foreground">{sublabel}</span>
       </span>
     </Link>
   );

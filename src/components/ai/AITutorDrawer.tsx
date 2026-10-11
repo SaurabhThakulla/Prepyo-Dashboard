@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Bot, Send, X, Sparkles, RefreshCw, Zap, MessageSquare } from 'lucide-react';
+import { Send, X, Sparkles, RefreshCw, Zap, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import TutorText from './TutorText';
@@ -131,8 +131,15 @@ export default function AITutorDrawer() {
         {/* Drawer Header */}
         <div className="flex items-center justify-between p-4 border-b border-border/80 bg-card/80 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary via-indigo-600 to-emerald-500 text-white shadow-lg shadow-primary/25">
-              <Bot className="w-5 h-5 animate-pulse" />
+            {/* Danfe is the coach everywhere else in the app, so he is here too. */}
+            <div className="relative h-10 w-10 shrink-0">
+              <img
+                src="/danfe-face.svg"
+                alt=""
+                width={40}
+                height={40}
+                className="h-10 w-10 rounded-full bg-sky-100 shadow-lg shadow-primary/25 dark:bg-sky-950"
+              />
               <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-card" />
             </div>
             <div>

@@ -4,7 +4,11 @@ import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api';
 import { ReferralOverview } from '@/lib/types';
 
-export default function ReferralRedeem({ onRedeemed }: { onRedeemed?: () => void }) {
+/**
+ * `compact` drops the card frame and heading, for when the box sits inside
+ * something that already has both (the checkout's "referral code" disclosure).
+ */
+export default function ReferralRedeem({ onRedeemed, compact = false }: { onRedeemed?: () => void; compact?: boolean }) {
   const [overview, setOverview] = useState<ReferralOverview | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -31,12 +35,12 @@ export default function ReferralRedeem({ onRedeemed }: { onRedeemed?: () => void
     }
   };
 
-  return <section className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
-    <h2 className="text-sm font-bold">Have a friend's referral code?</h2>
+  return <section className={compact ? 'space-y-2' : 'rounded-xl border border-border bg-muted/20 p-4 space-y-2'}>
+    {!compact && <h2 className="text-sm font-bold">Have a friend's referral code?</h2>}
     {overview?.canRedeem && <>
       <div className="flex gap-2">
-        <Input aria-label="Friend's referral code" value={code} onChange={event => setCode(event.target.value)} maxLength={64} disabled={busy} />
-        <Button type="button" size="sm" disabled={busy || !code.trim()} onClick={redeem}>{busy ? 'Applying…' : 'Apply code'}</Button>
+        <Input aria-label="Friend's referral code" value={code} onChange={event => setCode(event.target.value)} maxLength={64} disabled={busy} className={compact ? 'h-10 text-base sm:text-sm' : undefined} />
+        <Button type="button" size="sm" disabled={busy || !code.trim()} onClick={redeem} className={compact ? 'h-10 shrink-0' : undefined}>{busy ? 'Applying…' : 'Apply code'}</Button>
       </div>
       <p className="text-xs text-muted-foreground">Apply before submitting your first payment. The referral cannot be changed. No reward is granted until payment is confirmed.</p>
     </>}
