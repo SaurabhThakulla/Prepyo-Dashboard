@@ -31,6 +31,12 @@ export function taskInstruction(exam: ExamType, skill: SkillType, key: string): 
   return topics.find(topic => matchesTypeKey(topic.name, key))?.instruction;
 }
 
+/** What a task asks of the learner, in one plain line, for the practice hub's cards. */
+export function taskSummary(exam: ExamType, skill: SkillType, name: string): string | undefined {
+  const topics = (syllabusData.exams[exam]?.skills as Record<string, { topics: (Topic & { simpleDescription?: string })[] }> | undefined)?.[skill]?.topics ?? [];
+  return topics.find(topic => topic.name === name)?.simpleDescription;
+}
+
 type Topic = { name: string; module?: string };
 
 /**

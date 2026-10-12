@@ -4,7 +4,6 @@ import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import {
-  Mic,
   RefreshCw,
   Clock,
   Bot,
@@ -32,6 +31,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import AudioRecorder from '@/components/practice/AudioRecorder';
+import QuestionFigure from '@/components/practice/QuestionFigure';
 import PromptAudio from '@/components/practice/PromptAudio';
 import KoreanHelp from '@/components/practice/KoreanHelp';
 import PracticeResultCard from '@/components/practice/PracticeResultCard';
@@ -174,8 +174,12 @@ function PracticePageContent() {
     () => !mistakeId && !readingList && Boolean(typeParam || drawerParam === 'open' || drawerParam === '1'),
   );
   const [pendingQuestionToStart, setPendingQuestionToStart] = useState<Question | null>(null);
+  // The list of questions (or mock papers) opens with the page, so the learner
+  // picks one straight away. A link to one particular item keeps it shut.
+  const opensOnList =
+    !mistakeId && !searchParams.get('paper') && !searchParams.get('passage') && !searchParams.get('questionId');
   const [isDrawerOpen, setIsDrawerOpen] = useState(
-    () => (isMockMode && !searchParams.get('paper')) || drawerParam === 'open' || drawerParam === '1',
+    () => opensOnList || drawerParam === 'open' || drawerParam === '1',
   );
 
   const { data: mockPapers = [], isLoading: mockPapersLoading } = useMockPapers(activeExam, selectedSkill, undefined, isMockMode);
@@ -195,6 +199,15 @@ function PracticePageContent() {
       setIsDrawerOpen(true);
     }
   }, [drawerParam]);
+
+  // Moving to another task or mock without leaving the page opens its list too.
+  const listKey = `${activeExam}:${selectedSkill}:${typeParam ?? ''}:${isMockMode ? 'mock' : 'practice'}`;
+  const listOpenedFor = useRef(listKey);
+  useEffect(() => {
+    if (listOpenedFor.current === listKey) return;
+    listOpenedFor.current = listKey;
+    if (opensOnList) setIsDrawerOpen(true);
+  }, [listKey, opensOnList]);
 
   const loadQuestionsForSubtask = useCallback(async () => {
     if (mistakeId) return;
@@ -820,7 +833,7 @@ function PracticePageContent() {
           {/* Unified Full-Width Workspace matching Reading layout */}
           <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-5 flex-1 flex flex-col justify-between">
             {/* Main Unified Card */}
-            <Card className="p-5 sm:p-7 space-y-5 bg-card dark:bg-[#0f141f] border-border/80 shadow-md rounded-2xl">
+            <Card className="p-4 sm:p-7 space-y-5 bg-card dark:bg-[#0f141f] border-border/80 shadow-md rounded-2xl">
               {/* Card Header */}
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 pb-3.5">
                 <div className="flex items-center gap-2">
@@ -838,7 +851,7 @@ function PracticePageContent() {
               )}
 
               {/* Inner Question & Interaction Container */}
-              <div className="rounded-2xl p-5 sm:p-6 bg-card dark:bg-card/40 border border-border/80 space-y-4 shadow-xs">
+              <div className="rounded-2xl p-3.5 sm:p-6 bg-card dark:bg-card/40 border border-border/80 space-y-4 shadow-xs">
                 {currentQuestion.title && (!isPteListening || !/^question\s*\d+$/i.test(currentQuestion.title.trim())) && (
                   <div className="flex items-start gap-3">
                     {!isPteListening && (
@@ -854,23 +867,8 @@ function PracticePageContent() {
                   </div>
                 )}
 
-                {/* Every figure in the bank is drawn on the same 760x440 canvas, so
-                    the frame is cut to that ratio (19:11) and sized from its own
-                    width alone. That gives each question identical geometry rather
-                    than a size that shifts with the window, and it reserves the
-                    figure's footprint before the image loads so nothing below it
-                    jumps. object-contain keeps the axis labels out of a crop. */}
                 {currentQuestion.imageUrl && (
-                  <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-white p-3 ring-1 ring-black/5 sm:p-4">
-                    <div className="relative w-full" style={{ aspectRatio: '19 / 11' }}>
-                      <img
-                        src={currentQuestion.imageUrl}
-                        alt={currentQuestion.title}
-                        decoding="async"
-                        className="absolute inset-0 h-full w-full object-contain"
-                      />
-                    </div>
-                  </div>
+                  <QuestionFigure src={currentQuestion.imageUrl} alt={currentQuestion.title} />
                 )}
 
                 <PromptAudio
@@ -923,10 +921,6 @@ function PracticePageContent() {
                 {/* Question Inputs */}
                 {grading === 'speech' && (
                   <div className="space-y-3 pt-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-foreground">
-                      <Mic className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Your answer</span>
-                    </div>
                     {scoreFromTranscript && (
                       <p className="text-[11px] text-muted-foreground">
                         Your words are written down as you speak and marked for content, vocabulary
@@ -1240,7 +1234,7 @@ function PracticePageContent() {
           if (!open) setPendingQuestionToStart(null);
         }}
       >
-        <DialogContent className="max-w-[400px] gap-0 p-6 sm:p-7 text-center rounded-2xl">
+        <DialogContent centered className="max-w-[400px] gap-0 p-6 sm:p-7 text-center rounded-2xl">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-teal-500/10 ring-8 ring-teal-500/5">
             <PlayCircle className="h-6 w-6 text-teal-600 dark:text-teal-400" />
           </div>

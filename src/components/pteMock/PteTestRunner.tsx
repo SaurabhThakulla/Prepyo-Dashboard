@@ -208,7 +208,7 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
       </div>
 
       <Dialog open={confirmSkip} onOpenChange={setConfirmSkip}>
-        <DialogContent>
+        <DialogContent centered>
           <DialogHeader>
             <DialogTitle>Move on without answering?</DialogTitle>
             <DialogDescription>
@@ -230,7 +230,7 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
       </Dialog>
 
       <Dialog open={confirmEnd} onOpenChange={setConfirmEnd}>
-        <DialogContent>
+        <DialogContent centered>
           <DialogHeader>
             <DialogTitle>End the test now?</DialogTitle>
             <DialogDescription>

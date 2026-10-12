@@ -281,8 +281,10 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
           <h2 className="font-display font-bold text-base text-foreground">{task.title}</h2>
           <p className="text-xs sm:text-[13px] text-foreground leading-relaxed whitespace-pre-line">{task.prompt}</p>
           {task.imageUrl && (
-            <div className="mx-auto w-full overflow-hidden rounded-xl border border-border bg-white p-3">
-              <img src={task.imageUrl} alt={task.title} className="w-full h-auto object-contain" />
+            <div className="mx-auto w-full overflow-x-auto overscroll-x-contain rounded-xl border border-border bg-white p-3">
+              {/* Squeezed to a phone's width the labels are too small to read,
+                  so there the figure keeps a readable width and scrolls sideways. */}
+              <img src={task.imageUrl} alt={task.title} className="h-auto w-[520px] max-w-none object-contain sm:w-full sm:max-w-full" />
             </div>
           )}
         </Card>

@@ -3,6 +3,7 @@ import { Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import PromptAudio from '@/components/practice/PromptAudio';
+import QuestionFigure from '@/components/practice/QuestionFigure';
 import { Question, Blank, listeningPlays } from '@/lib/types';
 import { isWordHighlightTask } from '@/lib/listening';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
@@ -52,21 +53,9 @@ export default function QuestionPrompt({
         </div>
       </div>
 
-      {/* Same 19:11 frame as the practice page, so a figure sits identically
+      {/* The same frame as the practice page, so a figure sits identically
           whichever screen renders it. */}
-      {question.imageUrl && (
-        <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-white p-3 ring-1 ring-black/5 sm:p-4">
-          <div className="relative w-full" style={{ aspectRatio: '19 / 11' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={question.imageUrl}
-              alt={question.title}
-              decoding="async"
-              className="absolute inset-0 h-full w-full object-contain"
-            />
-          </div>
-        </div>
-      )}
+      {question.imageUrl && <QuestionFigure src={question.imageUrl} alt={question.title} />}
 
       {/* Real audio when the question has a file, otherwise the script read
           aloud by the browser and labelled as synthesised. */}

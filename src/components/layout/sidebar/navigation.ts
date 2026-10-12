@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { COURSE, lessonHref } from '@/data/learnKorean';
 import { dueCount, EMPTY_PROGRESS, LearnProgress, learnedWords, lessonState } from '@/lib/learn/progress';
-import { SYLLABUS, syllabusFor, typeKey } from '@/lib/syllabus';
+import { SYLLABUS, syllabusFor, taskSummary, typeKey } from '@/lib/syllabus';
 import { typeIdsFor } from '@/lib/readingTypes';
 import { EXAM_LABELS, ExamType, ieltsModuleOf, isAdmin, SkillType, skillsFor, UserProfile } from '@/lib/types';
 import { PTE_MOCK_KINDS, pteMockHref } from '@/lib/pteMock/catalog';
@@ -49,6 +49,8 @@ export interface SecondaryNavItem {
   label: string;
   icon: LucideIcon;
   sublabel?: string;
+  /** What the task asks for, in one line. The phone's practice hub shows it. */
+  description?: string;
   badge?: string;
   count?: number;
   /** Starts a labelled run of items in the panel. Consecutive items sharing a
@@ -213,6 +215,7 @@ export function buildSections(
             label: name,
             icon,
             sublabel: `Author questions for ${name}`,
+            description: taskSummary(activeExam, skill, name),
             group: label,
             groupHref: `/practice?skill=${skill}`,
           }));
@@ -236,6 +239,7 @@ export function buildSections(
           label: name,
           icon,
           sublabel,
+          description: taskSummary(activeExam, skill, name),
           group: label,
           groupHref: `/practice?skill=${skill}`,
         }));

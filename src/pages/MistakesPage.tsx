@@ -70,7 +70,7 @@ function renderResponseBadges(text: string, isWrong: boolean) {
 
   return (
     <p
-      className={`text-xs sm:text-sm font-medium leading-relaxed ${
+      className={`text-xs sm:text-sm font-medium leading-relaxed break-words ${
         isWrong ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300'
       }`}
     >
@@ -350,25 +350,29 @@ export default function MistakesPage() {
         {/* Edge-to-edge Analytics Dashboard (no top or side gaps) */}
         {/* ======================================================================= */}
         <div className="w-full bg-card border-b border-border/80 shadow-xs">
-          <div className="px-4 sm:px-6 lg:px-8 py-5 sm:py-6 space-y-6">
+          <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
           {/* Header row: Title & Timeframe Toggle */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border/60">
-            <div>
+          <div className="flex items-start sm:items-center justify-between gap-3 pb-3 sm:pb-2 border-b border-border/60">
+            <div className="min-w-0">
               <h2 className="text-sm sm:text-base font-bold text-foreground">
-              Mistake Frequency &amp; Recovery Trends
+              <span className="sm:hidden">Your mistakes</span>
+              <span className="hidden sm:inline">Mistake Frequency &amp; Recovery Trends</span>
             </h2>
             <p className="text-[11px] sm:text-xs text-muted-foreground">
-              All metrics, graphs, and mistake lists below currently reflect the <span className="font-semibold text-foreground font-mono">{periodLabel}</span> filter.
+              <span className="sm:hidden">Showing the <span className="font-semibold text-foreground">{periodLabel.toLowerCase()}</span></span>
+              <span className="hidden sm:inline">
+                All metrics, graphs, and mistake lists below currently reflect the <span className="font-semibold text-foreground font-mono">{periodLabel}</span> filter.
+              </span>
             </p>
           </div>
 
             {/* Period Switcher Button Group */}
-            <div className="flex bg-muted/60 p-1 rounded-xl border border-border/80 self-start sm:self-auto">
+            <div className="flex shrink-0 bg-muted/60 p-1 rounded-xl border border-border/80">
               {(['weekly', 'monthly'] as const).map(p => (
                 <button
                   key={p}
                   onClick={() => setPeriod(p)}
-                  className={`px-3 py-1 text-xs font-bold capitalize rounded-lg transition-all ${
+                  className={`px-3 py-1.5 sm:py-1 text-xs font-bold capitalize rounded-lg transition-all ${
                     period === p
                       ? 'bg-card text-blue-600 dark:text-blue-400 shadow-xs'
                       : 'text-muted-foreground hover:text-foreground'
@@ -381,8 +385,8 @@ export default function MistakesPage() {
           </div>
 
           {/* KPI Summary Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="p-4 rounded-2xl border border-border/80 bg-muted/20 space-y-1">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+            <div className="p-3 sm:p-4 rounded-2xl border border-border/80 bg-muted/20 space-y-1">
               <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
                 Total ({period})
               </span>
@@ -394,7 +398,7 @@ export default function MistakesPage() {
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl border border-rose-200/60 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/10 space-y-1">
+            <div className="p-3 sm:p-4 rounded-2xl border border-rose-200/60 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/10 space-y-1">
               <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider block">
                 Unresolved
               </span>
@@ -406,9 +410,9 @@ export default function MistakesPage() {
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl border border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/10 space-y-1">
+            <div className="p-3 sm:p-4 rounded-2xl border border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/10 space-y-1">
               <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider block">
-                Resolved / Mastered
+                Resolved<span className="hidden sm:inline"> / Mastered</span>
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
@@ -420,9 +424,9 @@ export default function MistakesPage() {
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/10 space-y-1">
+            <div className="p-3 sm:p-4 rounded-2xl border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/10 space-y-1">
               <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider block">
-                Repeated Errors
+                Repeated<span className="hidden sm:inline"> Errors</span>
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono">
@@ -435,24 +439,25 @@ export default function MistakesPage() {
 
           {/* shadcn Graph Container */}
           <div className="space-y-3 pt-1">
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between gap-3 text-xs">
               <span className="font-bold text-muted-foreground text-[11px] uppercase tracking-wider">
-                Timeline Bar Graph ({periodLabel})
+                <span className="sm:hidden">Timeline</span>
+                <span className="hidden sm:inline">Timeline Bar Graph ({periodLabel})</span>
               </span>
-              <div className="flex items-center gap-3 text-[11px]">
-                <span className="inline-flex items-center gap-1.5 font-medium text-muted-foreground">
+              <div className="flex shrink-0 items-center gap-3 text-[11px]">
+                <span className="inline-flex items-center gap-1.5 whitespace-nowrap font-medium text-muted-foreground">
                   <span className="w-2.5 h-2.5 rounded-xs bg-rose-500" />
                   Unresolved
                 </span>
-                <span className="inline-flex items-center gap-1.5 font-medium text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 whitespace-nowrap font-medium text-muted-foreground">
                   <span className="w-2.5 h-2.5 rounded-xs bg-emerald-500" />
                   Resolved
                 </span>
               </div>
             </div>
 
-            <div className="rounded-2xl bg-muted/20 border border-border/60 p-4 pt-6">
-              <ChartContainer config={chartConfig} className="h-44 sm:h-52 w-full">
+            <div className="rounded-2xl bg-muted/20 border border-border/60 p-2.5 pt-4 sm:p-4 sm:pt-6">
+              <ChartContainer config={chartConfig} className="h-40 sm:h-52 w-full">
                 <BarChart
                   data={timelineData}
                   margin={{ top: 8, right: 12, left: -20, bottom: 0 }}
@@ -513,18 +518,22 @@ export default function MistakesPage() {
           </div>
 
           {/* Skill Breakdown & Top Error Tags Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-border/60">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 pt-3 sm:pt-2 border-t border-border/60">
             {/* By Skill Breakdown */}
-            <div className="p-4 rounded-2xl border border-border/60 bg-muted/15 space-y-3">
-              <div className="flex items-center justify-between">
+            <div className="p-3 sm:p-4 rounded-2xl border border-border/60 bg-muted/15 space-y-2 sm:space-y-3">
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
                   <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-                  Mistakes By Skill ({period})
+                  <span className="sm:hidden">By skill</span>
+                  <span className="hidden sm:inline">Mistakes By Skill ({period})</span>
                 </span>
-                <span className="text-[11px] text-muted-foreground">Click to filter below</span>
+                <span className="text-[11px] text-muted-foreground">
+                  <span className="sm:hidden">Tap to filter</span>
+                  <span className="hidden sm:inline">Click to filter below</span>
+                </span>
               </div>
 
-              <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-1 sm:block sm:space-y-2">
                 {(['reading', 'listening', 'writing', 'speaking'] as SkillType[]).map(s => {
                   const count = analytics?.bySkill?.[s] ?? 0;
                   const total = analytics?.total || 1;
@@ -560,19 +569,20 @@ export default function MistakesPage() {
             </div>
 
             {/* Top Error Categories / Tags */}
-            <div className="p-4 rounded-2xl border border-border/60 bg-muted/15 space-y-3">
+            <div className="p-3 sm:p-4 rounded-2xl border border-border/60 bg-muted/15 space-y-2 sm:space-y-3">
               <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-amber-600" />
-                Top Recurring Error Topics ({period})
+                <span className="sm:hidden">Recurring error topics</span>
+                <span className="hidden sm:inline">Top Recurring Error Topics ({period})</span>
               </span>
 
               {analytics?.byTag && analytics.byTag.length > 0 ? (
-                <div className="flex flex-wrap gap-2 pt-1">
+                <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 pt-1 no-scrollbar sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
                   {analytics.byTag.map(t => (
                     <button
                       key={t.tag}
                       onClick={() => setSearchQuery(t.tag)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20 text-xs font-medium text-amber-800 dark:text-amber-300 transition-colors"
+                      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20 text-xs font-medium text-amber-800 dark:text-amber-300 transition-colors"
                     >
                       <span className="font-bold">{t.tag}</span>
                       <span className="px-1.5 py-0.2 rounded-md bg-amber-500/20 text-[10px] font-mono font-bold">
@@ -592,32 +602,32 @@ export default function MistakesPage() {
       </div>
 
       {/* Main Container for Filter & Mistake List */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 space-y-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 space-y-4 sm:space-y-6">
         {/* ======================================================================= */}
         {/* Filter Tag & Search Bar */}
         {/* ======================================================================= */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-muted/40 p-2.5 sm:p-3 rounded-2xl border border-border/80">
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             {skillFilters.map(t => (
               <Button
                 key={t}
                 size="sm"
                 variant={selectedSkill === t ? 'default' : 'ghost'}
                 onClick={() => setSelectedSkill(t)}
-                className="text-xs font-bold whitespace-nowrap h-8 rounded-xl capitalize"
+                className="h-9 flex-1 px-1 text-[11px] font-bold whitespace-nowrap rounded-xl capitalize sm:h-8 sm:flex-none sm:px-3 sm:text-xs"
               >
                 {t}
               </Button>
             ))}
           </div>
 
-          <div className="relative min-w-[220px] sm:max-w-xs">
+          <div className="relative w-full sm:w-auto sm:min-w-[220px] sm:max-w-xs">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <Input
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search mistakes or topics…"
-              className="h-8 pl-8 text-xs bg-background rounded-xl border-border/80"
+              className="h-10 sm:h-8 pl-8 text-xs bg-background rounded-xl border-border/80"
             />
           </div>
         </div>
@@ -641,7 +651,7 @@ export default function MistakesPage() {
           </Card>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground px-1">
               <span>Showing <strong>{filteredMistakes.length}</strong> mistakes from <strong>{periodLabel}</strong></span>
               {selectedSkill !== 'all' && (
                 <span className="capitalize">Filtered by: <strong>{selectedSkill}</strong></span>
@@ -651,11 +661,11 @@ export default function MistakesPage() {
             {filteredMistakes.map(item => (
               <div
                 key={item.id}
-                className="rounded-2xl border border-border/80 bg-card p-6 shadow-xs hover:border-primary/30 hover:shadow-md transition-all duration-200 space-y-4"
+                className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs hover:border-primary/30 hover:shadow-md transition-all duration-200 space-y-3 sm:space-y-4"
               >
                 {/* Header row: Skill & metadata pills */}
-                <div className="flex flex-wrap items-center justify-between gap-2.5">
-                  <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
                     <span className="bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
                       {item.typeName}
                     </span>
@@ -678,7 +688,7 @@ export default function MistakesPage() {
                     )}
                   </div>
                   {item.lastAttemptedAt && (
-                    <span className="text-[10px] font-mono text-muted-foreground">
+                    <span className="shrink-0 whitespace-nowrap pt-1 text-[10px] font-mono text-muted-foreground">
                       {new Date(item.lastAttemptedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                     </span>
                   )}
@@ -686,17 +696,17 @@ export default function MistakesPage() {
 
                 {/* Title & Prompt Context */}
                 <div className="space-y-1.5">
-                  <h3 className="font-display font-bold text-base sm:text-lg text-foreground tracking-tight">
+                  <h3 className="font-display font-bold text-base sm:text-lg text-foreground tracking-tight break-words">
                     {item.questionTitle}
                   </h3>
                   {item.prompt && (
-                    <p className="text-xs sm:text-[13px] text-muted-foreground leading-relaxed">
+                    <p className="text-xs sm:text-[13px] text-muted-foreground leading-relaxed break-words">
                       {item.prompt}
                     </p>
                   )}
                 </div>
 
-                <div className="rounded-xl border border-border p-4 space-y-2">
+                <div className="rounded-xl border border-border p-3 sm:p-4 space-y-2">
                   <p className="text-xs font-bold text-muted-foreground">Previous response</p>
                   {renderResponseBadges(item.userResponse, true)}
                 </div>
@@ -712,8 +722,8 @@ export default function MistakesPage() {
       {/* Premium Upgrade Modal Overlay for Suru Users (Fixed & Non-movable) */}
       {/* ======================================================================= */}
       {isSuru && (
-        <div className="fixed inset-x-0 top-14 lg:top-16 bottom-[var(--mobile-nav-h,0px)] z-20 flex justify-center items-start pt-6 sm:pt-10 px-4 pointer-events-none lg:left-[var(--sidebar-offset,384px)] transition-[left] duration-300">
-          <div className="pointer-events-auto w-full max-w-lg bg-card/95 backdrop-blur-md border border-border/90 shadow-2xl rounded-3xl p-5 sm:p-7 text-center space-y-4 overflow-hidden">
+        <div className="fixed inset-x-0 top-14 lg:top-16 bottom-[var(--mobile-nav-h,0px)] z-20 flex justify-center items-start py-4 sm:pt-10 px-4 pointer-events-none lg:left-[var(--sidebar-offset,384px)] transition-[left] duration-300">
+          <div className="pointer-events-auto relative w-full max-w-lg max-h-full overflow-y-auto overscroll-contain bg-card/95 backdrop-blur-md border border-border/90 shadow-2xl rounded-3xl p-5 sm:p-7 text-center space-y-4">
             {/* Ambient radiant glow */}
             <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-72 bg-gradient-to-br from-amber-500/25 via-blue-500/15 to-transparent rounded-full blur-3xl pointer-events-none" />
 
@@ -745,7 +755,8 @@ export default function MistakesPage() {
                   onClick={() => navigate('/subscription')}
                   className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
                 >
-                  <span>Upgrade to Unlock Full Mistake Bank</span>
+                  <span className="sm:hidden">Upgrade to unlock</span>
+                  <span className="hidden sm:inline">Upgrade to Unlock Full Mistake Bank</span>
                   <ArrowRight className="w-4 h-4" />
                 </Button>
                 <p className="text-[11px] text-muted-foreground font-medium">
@@ -754,7 +765,7 @@ export default function MistakesPage() {
               </div>
 
               {/* Value Highlights */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-left pt-2 border-t border-border/60">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-left pt-3 sm:pt-2 border-t border-border/60">
                 <div className="p-2.5 rounded-xl border border-border/80 bg-background/80 space-y-1 shadow-2xs">
                   <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
                     <BarChart3 className="w-3.5 h-3.5 shrink-0" />
