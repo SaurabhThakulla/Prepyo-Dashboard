@@ -1,5 +1,6 @@
 import {
   Home,
+  Building2,
   Mic,
   PenTool,
   FilePenLine,
@@ -169,6 +170,13 @@ export function buildSections(
                 sublabel: 'What learners have reported',
                 badge: 'Admin',
               },
+              {
+                href: '/admin/consultancies',
+                label: 'Consultancies',
+                icon: Building2,
+                sublabel: 'Institutions, students & usage',
+                badge: 'Admin',
+              },
             ]
           : []),
         {
@@ -335,7 +343,7 @@ export function buildSections(
     },
     {
       id: 'mock',
-      label: 'Mock Exam',
+      label: 'Mock',
       icon: Timer,
       title: 'Mock Exam Simulator',
       description: 'Timed full exams with scorecards',
