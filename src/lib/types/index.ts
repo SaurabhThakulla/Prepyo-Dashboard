@@ -114,6 +114,8 @@ export interface SubscriptionState {
   aiGradingsRenewOn?: string;
   /** How often the pool renews: daily at midnight, each plan term, or monthly. */
   aiGradingsPeriod?: AIGradingsPeriod;
+  /** True for a student of an institution on the free plan: reading and listening only. */
+  aiBlocked?: boolean;
 }
 
 export type AIGradingsPeriod = 'day' | 'plan' | 'month';
@@ -561,7 +563,15 @@ export interface Evaluation {
   sentenceFeedback: SentenceFeedback[];
   modelRewrite?: string;
   transcript?: string;
+  /** Read Aloud / Repeat Sentence: the given text marked word by word. */
+  words?: WordMark[];
   createdAt: string;
+}
+
+export interface WordMark {
+  text: string;
+  said: boolean;
+  pauseAfter?: boolean;
 }
 
 // ---------------------------------------------------------------------------
