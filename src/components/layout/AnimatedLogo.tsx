@@ -1,5 +1,5 @@
 import React, { useId } from 'react';
-import danfeFaceRaw from '../../../public/danfe-face.svg?raw';
+import danfeFaceRaw from '@/assets/danfe-face.svg?raw';
 import { cn } from '@/lib/utils';
 
 /**
