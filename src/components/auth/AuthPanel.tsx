@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Loader2, Lock, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Building2, Loader2, Lock, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { GoogleAuthState } from '@/lib/hooks/useGoogleAuth';
@@ -179,7 +179,14 @@ export default function AuthPanel({ auth }: { auth: GoogleAuthState }) {
         <span>We only ever see your name and email address.</span>
       </p>
 
-      <div className="mt-4 pt-4 border-t border-border/60 text-center">
+      <div className="mt-4 pt-4 border-t border-border/60 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+        <Link
+          to="/institution/login"
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
+        >
+          <Building2 className="w-3.5 h-3.5" />
+          Institution login
+        </Link>
         <button
           type="button"
           onClick={() => setMode('admin')}
