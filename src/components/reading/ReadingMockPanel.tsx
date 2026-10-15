@@ -70,7 +70,12 @@ export default function ReadingMockPanel({ section }: { section?: FullMockSectio
   if (mock.outcome) {
     return (
       <Suspense fallback={<AppPageSkeleton />}>
-        <ScoreReport attempt={mock.outcome.attempt} outcome={mock.outcome} onBack={leave} />
+        <ScoreReport
+          attempt={mock.outcome.attempt}
+          outcome={mock.outcome}
+          onBack={leave}
+          onRedo={section ? undefined : () => { mock.exit(); void begin(); }}
+        />
       </Suspense>
     );
   }
