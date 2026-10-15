@@ -15,7 +15,10 @@ interface PracticeStudioPanelProps {
 }
 
 const ACTION_LINK_CLASS =
-  'text-xs font-medium text-foreground dark:text-zinc-300 hover:text-primary dark:hover:text-white px-3.5 py-1.5 rounded-lg border border-border dark:border-transparent hover:bg-muted dark:hover:bg-white/5 transition-colors shrink-0';
+  'text-xs font-medium text-foreground dark:text-zinc-300 hover:text-primary dark:hover:text-white px-3.5 py-1.5 rounded-lg border border-border dark:border-transparent bg-card dark:bg-transparent group-hover:border-primary/30 group-hover:text-primary hover:bg-muted dark:hover:bg-white/5 transition-colors shrink-0';
+
+// Each row lights up blue on hover; the negative margin keeps the text where it was.
+const ROW_HOVER_CLASS = '-mx-3 rounded-xl px-3 py-2 transition-colors hover:bg-blue-100 dark:hover:bg-blue-500/20';
 
 export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeStudioPanelProps) {
   return (
@@ -36,9 +39,9 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
           <span className="sm:pr-24">LATEST SCORE</span>
         </div>
 
-        <div className="space-y-3 sm:space-y-3.5">
+        <div className="space-y-1 sm:space-y-1.5">
           {skills.map(skill => (
-            <div key={skill.name} className="flex flex-row items-center justify-between py-1 group gap-3">
+            <div key={skill.name} className={`flex flex-row items-center justify-between group gap-3 ${ROW_HOVER_CLASS}`}>
               <div className="space-y-0.5 min-w-0 w-20 shrink-0 sm:w-auto sm:shrink sm:flex-1">
                 <div className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
                   {skill.name}
@@ -48,7 +51,7 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
 
               <div className="flex flex-1 sm:flex-none min-w-0 sm:w-1/2 items-center gap-3 sm:gap-6">
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
-                  <div className="w-full h-1.5 bg-slate-100 dark:bg-zinc-800/90 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-slate-100 group-hover:bg-white dark:bg-zinc-800/90 dark:group-hover:bg-zinc-800 rounded-full overflow-hidden transition-colors">
                     <div
                       className="h-full bg-primary rounded-full transition-all duration-300"
                       style={{ width: `${skill.percent}%` }}
@@ -63,7 +66,7 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
 
                 <Link
                   to={skill.href}
-                  className="text-xs font-medium text-foreground dark:text-zinc-300 hover:text-primary dark:hover:text-white px-3.5 py-1.5 rounded-lg border border-border dark:border-white/5 hover:border-primary/30 dark:hover:border-white/15 bg-muted/30 dark:bg-transparent hover:bg-muted dark:hover:bg-white/5 transition-all text-center shrink-0 min-w-[70px]"
+                  className="text-xs font-medium text-foreground dark:text-zinc-300 hover:text-primary dark:hover:text-white px-3.5 py-1.5 rounded-lg border border-border dark:border-white/5 hover:border-primary/30 dark:hover:border-white/15 bg-muted/30 group-hover:bg-card group-hover:border-primary/30 group-hover:text-primary dark:bg-transparent hover:bg-muted dark:hover:bg-white/5 transition-all text-center shrink-0 min-w-[70px]"
                 >
                   Practice
                 </Link>
@@ -73,7 +76,7 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
         </div>
       </div>
 
-      <div className="pt-4 sm:pt-5 border-t border-border dark:border-white/5 space-y-3 sm:space-y-3.5">
+      <div className="pt-4 sm:pt-5 border-t border-border dark:border-white/5 space-y-1 sm:space-y-1.5">
         <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
           TESTS &amp; REVIEW
         </div>
@@ -112,9 +115,9 @@ interface TestRowProps {
 
 function TestRow({ title, sub, href, action, highlight }: TestRowProps) {
   return (
-    <div className="flex items-center justify-between py-1 gap-3">
+    <div className={`group flex items-center justify-between gap-3 ${ROW_HOVER_CLASS}`}>
       <div className="space-y-0.5 min-w-0 flex-1">
-        <div className="text-sm font-bold text-foreground">{title}</div>
+        <div className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">{title}</div>
         <div className="text-[11px] text-muted-foreground font-normal truncate">{sub}</div>
       </div>
       <Link
