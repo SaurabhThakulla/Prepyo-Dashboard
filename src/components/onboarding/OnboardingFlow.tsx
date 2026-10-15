@@ -42,11 +42,13 @@ import JP from 'country-flag-icons/react/3x2/JP';
 import DE from 'country-flag-icons/react/3x2/DE';
 import { Button } from '@/components/ui/button';
 import {
+  ChoiceCard,
   OnboardingNavigation,
   OnboardingLayout,
   OnboardingProgress,
   OnboardingSidebar,
   OptionCard,
+  PlanLine,
   QuestionHeader,
 } from '@/components/onboarding/OnboardingChrome';
 import { useToast } from '@/components/ui/toast';
@@ -75,6 +77,7 @@ import {
   clampScore,
   dailyLabel,
   daysUntil,
+  destinationLabel,
   formatExamDate,
   formatScore,
   isoDateAfterMonths,
@@ -118,6 +121,21 @@ const STEPS = [
 ] as const;
 
 type StepId = (typeof STEPS)[number]['id'];
+
+const STEP_ICONS: Record<StepId, LucideIcon> = {
+  welcome: Sparkles,
+  exam: GraduationCap,
+  goal: Target,
+  destination: Globe,
+  experience: RotateCcw,
+  target: Trophy,
+  date: CalendarDays,
+  focus: Zap,
+  daily: Clock,
+  plan: Crown,
+  tour: Award,
+  ready: CheckCircle2,
+};
 
 // EPS-TOPIK is the Korean test for the Employment Permit System: the goal is
 // always work and the destination always South Korea, so those two questions
@@ -597,14 +615,31 @@ export default function OnboardingFlow({
   };
 
   const progress = `${((stepIndex + 1) / steps.length) * 100}%`;
+  const reached = (id: StepId) => stepIndex >= steps.findIndex(item => item.id === id);
+  const planLines: PlanLine[] = [
+    { label: 'Exam', icon: GraduationCap, value: exam ? examName(exam) : null },
+    { label: 'Goal', icon: Target, value: goal ? STUDY_GOALS.find(item => item.id === goal)?.short ?? null : null },
+    { label: 'Heading to', icon: MapPin, value: destination ? destinationLabel(destination) ?? null : null },
+    { label: 'Target', icon: Trophy, value: exam && reached('target') ? formatScore(chosen, score) : null },
+    { label: 'Exam date', icon: CalendarDays, value: notBooked ? 'Not booked' : dateValid ? formatExamDate(examDate) : null },
+    { label: 'Focus', icon: Zap, value: skillLabel(focus ?? undefined) ?? null },
+    { label: 'Daily', icon: Clock, value: minutes ? dailyLabel(minutes) : null },
+  ];
   const slide = direction === 1 ? 'motion-safe:slide-in-from-right-8' : 'motion-safe:slide-in-from-left-8';
 
   return (
     <OnboardingLayout>
-      <OnboardingSidebar steps={steps} stepIndex={stepIndex} />
+      <OnboardingSidebar steps={steps} stepIndex={stepIndex} plan={planLines} />
 
       {/* Main Flow Content Container */}
-      <div className="flex min-w-0 flex-1 flex-col justify-between overflow-y-auto">
+      <div
+        className="flex min-w-0 flex-1 flex-col justify-between overflow-y-auto"
+        style={{
+          backgroundImage:
+            'radial-gradient(60rem 28rem at 50% -8rem, rgba(59,130,246,0.13), transparent 70%), radial-gradient(#d9e2f5 1px, transparent 1px)',
+          backgroundSize: 'auto, 22px 22px',
+        }}
+      >
         <OnboardingProgress
           current={stepIndex + 1}
           total={steps.length}
@@ -625,11 +660,14 @@ export default function OnboardingFlow({
                 {step.id === 'welcome' && (
                   <div className="grid w-full max-w-4xl items-center gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-12">
                     <div>
+                      <span className="mb-5 grid h-16 w-16 place-items-center rounded-3xl bg-white shadow-[0_18px_40px_-20px_rgba(37,99,235,0.6)] ring-1 ring-blue-100 motion-safe:animate-onboarding-pop">
+                        <img src="/prepyo-mark.webp" alt="" className="h-9 w-9 object-contain" />
+                      </span>
                       <h2
                         ref={headingRef}
                         id="onboarding-title"
                         tabIndex={-1}
-                        className="font-display text-3xl font-bold tracking-tight text-slate-900 outline-none sm:text-4xl"
+                        className="font-display text-4xl font-extrabold tracking-tight text-slate-900 outline-none sm:text-5xl"
                       >
                         Namaste,{' '}
                         <span className="bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">
@@ -658,9 +696,10 @@ export default function OnboardingFlow({
                       </div>
                     </div>
 
-                    <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">How it works</span>
-                      <ol className="mt-4 space-y-5">
+                    <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#2a56cf] via-blue-700 to-[#132e7d] p-7 text-white shadow-[0_30px_60px_-30px_rgba(29,78,216,0.8)]">
+                      <span aria-hidden className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full border-[26px] border-white/10" />
+                      <span className="relative text-[11px] font-bold uppercase tracking-wider text-sky-200">How it works</span>
+                      <ol className="relative mt-5 space-y-5">
                         {[
                           { icon: Target, title: 'Tell us your goal', text: 'Your exam, target score and exam date.' },
                           { icon: CalendarDays, title: 'Get your plan', text: 'Built around your weakest skill and your daily time.' },
@@ -668,17 +707,17 @@ export default function OnboardingFlow({
                         ].map((item, index, all) => (
                           <li key={item.title} className="relative flex gap-3.5">
                             {index < all.length - 1 && (
-                              <span aria-hidden className="absolute left-[19px] top-11 h-[calc(100%-1.75rem)] w-px bg-slate-200" />
+                              <span aria-hidden className="absolute left-[19px] top-11 h-[calc(100%-1.75rem)] w-px bg-white/20" />
                             )}
-                            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.12] text-white ring-1 ring-white/15">
                               <item.icon className="h-[18px] w-[18px]" />
-                              <span className="absolute -right-1 -top-1 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white ring-2 ring-white">
+                              <span className="absolute -right-1 -top-1 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-sky-300 text-[10px] font-bold text-[#0d1f5c] ring-2 ring-blue-700">
                                 {index + 1}
                               </span>
                             </span>
                             <div className="pt-0.5">
-                              <span className="block text-sm font-bold text-slate-900">{item.title}</span>
-                              <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">{item.text}</span>
+                              <span className="block text-sm font-bold text-white">{item.title}</span>
+                              <span className="mt-0.5 block text-xs leading-relaxed text-white/70">{item.text}</span>
                             </div>
                           </li>
                         ))}
@@ -691,7 +730,7 @@ export default function OnboardingFlow({
                 {step.id === 'exam' && (
                   <div className="w-full max-w-3xl space-y-6">
                     <QuestionHeader
-                      badge={step.pill}
+                      badge={step.label} icon={STEP_ICONS[step.id]}
                       headingRef={headingRef}
                       title="Which exam are you preparing for?"
                       subtitle="Your practice, mock tests and scoring are all built around it."
@@ -703,48 +742,24 @@ export default function OnboardingFlow({
                         const selected = option.id === exam;
                         const ielts = option.id === 'IELTS';
                         return (
-                          <button
+                          <ChoiceCard
                             key={option.id}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => chooseExam(option.id)}
-                            className={`group relative flex flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all duration-200 ${
-                              selected
-                                ? `${style.ring} bg-white shadow-md ring-2`
-                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_12px_28px_-18px_rgba(15,23,42,0.45)]'
-                            }`}
+                            selected={selected}
+                            onSelect={() => chooseExam(option.id)}
+                            tone={style}
+                            title={option.name}
+                            titleClassName="pr-8 font-display text-2xl"
+                            detail={option.blurb}
+                            chips={style.facts}
                           >
-                            <span
-                              aria-hidden
-                              className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${style.wash} to-transparent transition-opacity duration-300 ${
-                                selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'
-                              }`}
-                            />
-
-                            {/* Name first in the DOM, so the button's name starts with the exam. */}
-                            <span className="relative flex items-start justify-between gap-3">
-                              <span className="font-display text-2xl font-bold text-slate-900">{option.name}</span>
-                              <span
-                                className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
-                                  selected ? `${style.tile} border-transparent` : 'border-slate-200 bg-white'
-                                }`}
-                              >
-                                {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
-                              </span>
-                            </span>
-
-                            <span className="relative mt-1 text-xs leading-relaxed text-slate-500">{option.blurb}</span>
-
                             {/* The scoring scale, drawn as rising steps and lit in the exam's colour once chosen. */}
-                            <span aria-hidden className="relative mt-5 block">
+                            <span aria-hidden className="mt-5 block">
                               <span className="flex items-end gap-[3px]">
                                 {(ielts ? Array.from({ length: 11 }) : Array.from({ length: 17 })).map((_, i, all) => (
                                   <span
                                     key={i}
                                     style={{ height: `${6 + (i / (all.length - 1)) * 14}px` }}
-                                    className={`flex-1 rounded-sm transition-colors ${selected ? style.bar : 'bg-slate-200'} ${
-                                      selected ? '' : 'group-hover:bg-slate-300'
-                                    }`}
+                                    className={`flex-1 rounded-sm transition-colors ${selected ? style.bar : 'bg-slate-200 group-hover:bg-slate-300'}`}
                                   />
                                 ))}
                               </span>
@@ -754,20 +769,7 @@ export default function OnboardingFlow({
                                 <span>{SCALE_ENDS[option.id][1]}</span>
                               </span>
                             </span>
-
-                            <span className="relative mt-4 flex flex-wrap gap-1.5">
-                              {style.facts.map(fact => (
-                                <span
-                                  key={fact}
-                                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
-                                    selected ? style.soft : 'bg-slate-100 text-slate-500'
-                                  }`}
-                                >
-                                  {fact}
-                                </span>
-                              ))}
-                            </span>
-                          </button>
+                          </ChoiceCard>
                         );
                       })}
                     </div>
@@ -837,7 +839,7 @@ export default function OnboardingFlow({
                 {step.id === 'goal' && (
                   <div className="w-full max-w-2xl space-y-6">
                     <QuestionHeader
-                      badge={step.pill}
+                      badge={step.label} icon={STEP_ICONS[step.id]}
                       headingRef={headingRef}
                       title={`What's your ${examName(chosen)} for?`}
                       subtitle="Knowing why keeps you going on the hard days. Pick the one that fits best."
@@ -849,57 +851,16 @@ export default function OnboardingFlow({
                         const style = GOAL_STYLE[option.id];
                         const selected = goal === option.id;
                         return (
-                          <button
+                          <ChoiceCard
                             key={option.id}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => setGoal(option.id)}
-                            className={`group relative flex flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all duration-200 ${
-                              selected
-                                ? `${style.ring} bg-white shadow-md ring-2`
-                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_12px_28px_-18px_rgba(15,23,42,0.45)]'
-                            }`}
-                          >
-                            <span
-                              aria-hidden
-                              className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${style.wash} to-transparent transition-opacity duration-300 ${
-                                selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'
-                              }`}
-                            />
-
-                            <span className="relative flex items-start justify-between gap-3">
-                              <span
-                                className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-200 ${
-                                  selected ? `${style.tile} shadow-sm` : style.soft
-                                }`}
-                              >
-                                <Icon className="h-7 w-7" />
-                              </span>
-                              <span
-                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
-                                  selected ? `${style.tile} border-transparent` : 'border-slate-200 bg-white'
-                                }`}
-                              >
-                                {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
-                              </span>
-                            </span>
-
-                            <span className="relative mt-4 block text-base font-bold text-slate-900">{option.label}</span>
-                            <span className="relative mt-1 block text-xs leading-relaxed text-slate-500">{option.detail}</span>
-
-                            <span className="relative mt-4 flex flex-wrap gap-1.5">
-                              {style.examples.map(example => (
-                                <span
-                                  key={example}
-                                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
-                                    selected ? style.soft : 'bg-slate-100 text-slate-500'
-                                  }`}
-                                >
-                                  {example}
-                                </span>
-                              ))}
-                            </span>
-                          </button>
+                            selected={selected}
+                            onSelect={() => setGoal(option.id)}
+                            tone={style}
+                            icon={<Icon className="h-7 w-7" />}
+                            title={option.label}
+                            detail={option.detail}
+                            chips={style.examples}
+                          />
                         );
                       })}
                     </div>
@@ -924,7 +885,7 @@ export default function OnboardingFlow({
                 {step.id === 'destination' && (
                   <div className="w-full max-w-xl space-y-6">
                     <QuestionHeader
-                      badge={step.pill}
+                      badge={step.label} icon={STEP_ICONS[step.id]}
                       headingRef={headingRef}
                       title="Where are you headed?"
                       subtitle="Pick the country your score is for. This helps us personalize your study plan, content and goals."
@@ -969,7 +930,7 @@ export default function OnboardingFlow({
                 {step.id === 'experience' && (
                   <div className="w-full max-w-2xl space-y-6">
                     <QuestionHeader
-                      badge={step.pill}
+                      badge={step.label} icon={STEP_ICONS[step.id]}
                       headingRef={headingRef}
                       title={`Have you taken ${examName(chosen)} before?`}
                       subtitle="First try or a comeback, we'll plan from where you are."
@@ -1001,42 +962,15 @@ export default function OnboardingFlow({
                         const selected = prior === opt.key;
                         const Icon = opt.icon;
                         return (
-                          <button
+                          <ChoiceCard
                             key={opt.key}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => setPrior(opt.key)}
-                            className={`group relative flex flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all duration-200 ${
-                              selected
-                                ? `${opt.ring} bg-white shadow-md ring-2`
-                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_12px_28px_-18px_rgba(15,23,42,0.45)]'
-                            }`}
-                          >
-                            <span
-                              aria-hidden
-                              className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${opt.wash} to-transparent transition-opacity duration-300 ${
-                                selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'
-                              }`}
-                            />
-                            <span className="relative flex items-start justify-between gap-3">
-                              <span
-                                className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-200 ${
-                                  selected ? `${opt.tile} shadow-sm` : opt.soft
-                                }`}
-                              >
-                                <Icon className="h-7 w-7" />
-                              </span>
-                              <span
-                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
-                                  selected ? `${opt.tile} border-transparent` : 'border-slate-200 bg-white'
-                                }`}
-                              >
-                                {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
-                              </span>
-                            </span>
-                            <span className="relative mt-4 block text-base font-bold text-slate-900">{opt.title}</span>
-                            <span className="relative mt-1 block text-xs leading-relaxed text-slate-500">{opt.desc}</span>
-                          </button>
+                            selected={selected}
+                            onSelect={() => setPrior(opt.key)}
+                            tone={opt}
+                            icon={<Icon className="h-7 w-7" />}
+                            title={opt.title}
+                            detail={opt.desc}
+                          />
                         );
                       })}
                     </div>
@@ -1098,7 +1032,7 @@ export default function OnboardingFlow({
                 {step.id === 'target' && (
                   <div className="w-full max-w-xl space-y-6">
                     <QuestionHeader
-                      badge={step.pill}
+                      badge={step.label} icon={STEP_ICONS[step.id]}
                       headingRef={headingRef}
                       title={`What ${unit} are you aiming for?`}
                       subtitle="Your dashboard measures your progress against this target."
@@ -1205,7 +1139,7 @@ export default function OnboardingFlow({
                 {step.id === 'date' && (
                   <div className="w-full max-w-2xl space-y-6">
                     <QuestionHeader
-                      badge={step.pill}
+                      badge={step.label} icon={STEP_ICONS[step.id]}
                       headingRef={headingRef}
                       title="When is your exam?"
                       subtitle="Knowing your runway helps you pace your practice."
@@ -1343,7 +1277,7 @@ export default function OnboardingFlow({
                 {step.id === 'focus' && (
                   <div className="w-full max-w-2xl space-y-6">
                     <QuestionHeader
-                      badge={step.pill}
+                      badge={step.label} icon={STEP_ICONS[step.id]}
                       headingRef={headingRef}
                       title="Which skill feels hardest right now?"
                       subtitle="We'll put it front and centre on your dashboard."
@@ -1355,57 +1289,16 @@ export default function OnboardingFlow({
                         const Icon = style.icon;
                         const selected = focus === option.id;
                         return (
-                          <button
+                          <ChoiceCard
                             key={option.id}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => setFocus(option.id)}
-                            className={`group relative flex flex-col overflow-hidden rounded-2xl border p-5 text-left transition-all duration-200 ${
-                              selected
-                                ? `${style.ring} bg-white shadow-md ring-2`
-                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_12px_28px_-18px_rgba(15,23,42,0.45)]'
-                            }`}
-                          >
-                            <span
-                              aria-hidden
-                              className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${style.wash} to-transparent transition-opacity duration-300 ${
-                                selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'
-                              }`}
-                            />
-
-                            {/* Label first in the DOM so the button's name starts with the skill. */}
-                            <span className="relative order-2 mt-4 block text-base font-bold text-slate-900">{option.label}</span>
-                            <span className="relative order-1 flex items-start justify-between gap-3">
-                              <span
-                                className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-200 ${
-                                  selected ? `${style.tile} shadow-sm` : style.soft
-                                }`}
-                              >
-                                <Icon className="h-7 w-7" />
-                              </span>
-                              <span
-                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
-                                  selected ? `${style.tile} border-transparent` : 'border-slate-200 bg-white'
-                                }`}
-                              >
-                                {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
-                              </span>
-                            </span>
-                            <span className="relative order-3 mt-1 block text-xs leading-relaxed text-slate-500">{(eps && EPS_SKILL_DETAIL[option.id]) || option.detail}</span>
-
-                            <span className="relative order-4 mt-4 flex flex-wrap gap-1.5">
-                              {SKILL_TASKS[chosen][option.id].map(task => (
-                                <span
-                                  key={task}
-                                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
-                                    selected ? style.soft : 'bg-slate-100 text-slate-500'
-                                  }`}
-                                >
-                                  {task}
-                                </span>
-                              ))}
-                            </span>
-                          </button>
+                            selected={selected}
+                            onSelect={() => setFocus(option.id)}
+                            tone={style}
+                            icon={<Icon className="h-7 w-7" />}
+                            title={option.label}
+                            detail={(eps && EPS_SKILL_DETAIL[option.id]) || option.detail}
+                            chips={SKILL_TASKS[chosen][option.id]}
+                          />
                         );
                       })}
                     </div>
@@ -1416,7 +1309,7 @@ export default function OnboardingFlow({
                 {step.id === 'daily' && (
                   <div className="w-full max-w-2xl space-y-6">
                     <QuestionHeader
-                      badge={step.pill}
+                      badge={step.label} icon={STEP_ICONS[step.id]}
                       headingRef={headingRef}
                       title="How much time can you practise each day?"
                       subtitle="Pick what you can keep up, even on busy days."
@@ -1502,7 +1395,7 @@ export default function OnboardingFlow({
                 {step.id === 'plan' && (
                   <div className="w-full max-w-5xl space-y-8">
                     <QuestionHeader
-                      badge={step.pill}
+                      badge={step.label} icon={STEP_ICONS[step.id]}
                       headingRef={headingRef}
                       title="Choose how you want to prepare"
                       subtitle={
@@ -1577,7 +1470,7 @@ export default function OnboardingFlow({
                 {step.id === 'tour' && (
                   <div className="w-full max-w-4xl space-y-6">
                     <QuestionHeader
-                      badge={step.pill}
+                      badge={step.label} icon={STEP_ICONS[step.id]}
                       headingRef={headingRef}
                       title="Your Prepyo toolkit"
                       subtitle={`${featuresFor(chosen).length === 7 ? 'Seven' : 'Six'} tools that work together to get you to your target. Pick one to see how it helps.`}
