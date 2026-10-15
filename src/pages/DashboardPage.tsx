@@ -69,21 +69,26 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="font-display text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+      {/* Greeting hero in the sidebar's blue */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2a56cf] via-primary to-[#132e7d] dark:from-blue-900 dark:via-blue-950 dark:to-slate-950 p-5 sm:p-7 text-white shadow-xl shadow-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <span aria-hidden className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full border-[28px] border-white/10" />
+        <span aria-hidden className="pointer-events-none absolute right-1/3 -bottom-24 h-48 w-48 rounded-full bg-sky-300/25 blur-3xl" />
+        <div className="relative">
+          <h1 className="font-display text-2xl sm:text-3xl font-black tracking-tight">
             Namaste, {userName}
           </h1>
-          <p className="text-xs text-muted-foreground mt-1 font-medium">
+          <p className="text-sm text-white/75 mt-1.5 font-medium">
             {user ? planHeadline(user) : `Preparing for ${EXAM_LABELS[activeExam]}`}
           </p>
         </div>
 
-        <ExamCountdown
-          examDate={examDate}
-          daysLeft={daysLeft}
-          onEdit={() => setIsExamDateOpen(true)}
-        />
+        <div className="relative">
+          <ExamCountdown
+            examDate={examDate}
+            daysLeft={daysLeft}
+            onEdit={() => setIsExamDateOpen(true)}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 2xl:grid-cols-4 gap-3 sm:gap-4">
