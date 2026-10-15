@@ -1,6 +1,6 @@
 import { subTestsLeft } from '@/lib/subscriptions';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { AlertCircle, Bot, CheckCircle2, RefreshCw, Send, Shuffle, Square, Play } from 'lucide-react';
+import { AlertCircle, Bot, CheckCircle2, RefreshCw, RotateCcw, Send, Shuffle, Square, Play } from 'lucide-react';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
 import { api, ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -145,7 +145,8 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
     toast.info('Test stopped', 'Reading session has ended.');
   }, [sessionId, setActiveTestSession, toast]);
 
-  const handleStart = useCallback(async () => {
+  // Redo passes the passage just checked so the same one is dealt again.
+  const handleStart = useCallback(async (redoPassageId?: string) => {
     if (isStarting || isSessionActive) return;
     setIsStarting(true);
     try {
@@ -163,7 +164,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
         return;
       }
 
-      const dealtSet = await deal(targetId ?? '', mistakeId, passageId);
+      const dealtSet = await deal(targetId ?? '', mistakeId, redoPassageId ?? passageId);
       if (!dealtSet) {
         return;
       }
@@ -272,7 +273,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
           instructions="The passage and questions will appear after you start."
           subTestsRemaining={subTestsRemaining}
           isStarting={isStarting}
-          onStart={handleStart}
+          onStart={() => void handleStart()}
         />
       </div>
     );
@@ -371,13 +372,25 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
               {practice.checked && mistakeId && practice.correctCount > 0 && !resolution.resolved ? (
                 <Button disabled={resolution.saving} onClick={() => void resolution.finish(true)}>Retry saving resolution</Button>
               ) : practice.checked ? (
-                <Button
-                  onClick={handleStart}
-                  className="font-bold gap-1.5 text-xs rounded-lg h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
-                >
-                  <Shuffle className="w-3.5 h-3.5" />
-                  <span>{mistakeId ? 'Try again' : 'Another passage'}</span>
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {!mistakeId && set.passage?.id && (
+                    <Button
+                      variant="outline"
+                      onClick={() => void handleStart(set.passage?.id)}
+                      className="font-bold gap-1.5 text-xs rounded-lg h-8 px-4"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Redo</span>
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => void handleStart()}
+                    className="font-bold gap-1.5 text-xs rounded-lg h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
+                  >
+                    <Shuffle className="w-3.5 h-3.5" />
+                    <span>{mistakeId ? 'Try again' : 'Another passage'}</span>
+                  </Button>
+                </div>
               ) : (
                 <Button
                   onClick={() => void handleCheck()}
