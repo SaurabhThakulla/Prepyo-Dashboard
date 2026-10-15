@@ -113,11 +113,14 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
   // same account. Only eSewa: the Khalti code is a fixed image, not this number.
   const payToId = method.buildQrPayload ? PAYMENT_ACCOUNT.phone : '';
 
+  // Same rules the submit uses, so the footer and the toast never disagree with it
+  const phoneValid = /^\d{7,15}$/.test(localPhone(phoneNumber).replace(/[\s-]/g, ''));
   const missing = [
-    !phoneNumber.trim() && 'phone number',
-    !transactionId.trim() && 'transaction ID',
+    !phoneValid && (phoneNumber.trim() ? 'a valid phone number' : 'phone number'),
+    transactionId.trim().length < 4 && 'transaction ID',
     !proofImage && 'screenshot',
   ].filter(Boolean) as string[];
+  const missingText = missing.length > 1 ? `${missing.slice(0, -1).join(', ')} and ${missing[missing.length - 1]}` : missing[0];
 
   const pickProof = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -156,22 +159,14 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
   const handleProcessPayment = async () => {
     if (processing) return;
 
+    // Clicked with details missing: say everything that is still needed at once
+    if (missing.length > 0) {
+      toast.error('Some details are missing', `Still needed: ${missingText}.`);
+      return;
+    }
+
     const phone = localPhone(phoneNumber);
-    if (!phone || phone.length < 7) {
-      toast.error('Phone number required', 'Please enter your contact or wallet phone number.');
-      return;
-    }
-
     const txn = transactionId.trim();
-    if (txn.length < 4) {
-      toast.error('Transaction ID required', `Paste the ID shown on your ${method.label} receipt.`);
-      return;
-    }
-
-    if (!proofImage) {
-      toast.error('Payment screenshot required', 'Screenshot proof is mandatory. Please attach your payment screenshot.');
-      return;
-    }
 
     setProcessing(true);
     try {
@@ -458,15 +453,18 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
                 <ShieldCheck className="mt-px h-4 w-4 shrink-0 text-emerald-500" />
                 <span aria-live="polite">
                   {missing.length > 0
-                    ? `Still needed: ${missing.join(', ')}.`
+                    ? `Still needed: ${missingText}.`
                     : `Your plan starts once we match the payment, ${REVIEW_TIME}.`}
                 </span>
               </p>
               <Button
                 onClick={handleProcessPayment}
-                disabled={processing || missing.length > 0}
+                disabled={processing}
+                aria-disabled={missing.length > 0}
                 size="lg"
-                className="w-full shrink-0 font-bold shadow-md disabled:opacity-50 sm:w-auto sm:min-w-[13rem]"
+                className={`w-full shrink-0 font-bold shadow-md disabled:opacity-50 sm:w-auto sm:min-w-[13rem] ${
+                  missing.length > 0 ? 'opacity-60' : ''
+                }`}
               >
                 {processing ? (
                   <>
