@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Mic, Square, Send, LogOut, RefreshCw, User } from 'lucide-react';
+import { Mic, Square, Send, LogOut, RefreshCw, RotateCcw, User } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
@@ -111,7 +111,7 @@ export default function SpeakingMockPanel() {
   };
 
   if (!isPremiumUser(user)) return <PracticeMockPaywall skill="speaking" exam={activeExam} />;
-  if (outcome) return <SpeakingResult outcome={outcome} onBack={() => navigate('/practice?skill=speaking')} />;
+  if (outcome) return <SpeakingResult outcome={outcome} onBack={() => navigate('/practice?skill=speaking')} onRedo={() => { setOutcome(null); void start(); }} />;
   if (session) {
     return (
       <SpeakingMockRunner
@@ -501,7 +501,7 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
   );
 }
 
-export function SpeakingResult({ outcome, onBack }: { outcome: SpeakingOutcome; onBack: () => void }) {
+export function SpeakingResult({ outcome, onBack, onRedo }: { outcome: SpeakingOutcome; onBack: () => void; onRedo?: () => void }) {
   const band = outcome.evaluation.estimatedScore;
   return (
     <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 space-y-4">
@@ -514,8 +514,14 @@ export function SpeakingResult({ outcome, onBack }: { outcome: SpeakingOutcome; 
         {outcome.xpAwarded > 0 && <Badge variant="default">+{outcome.xpAwarded} XP</Badge>}
       </Card>
       <PracticeResultCard result={{ evaluation: outcome.evaluation, xpAwarded: 0 }} />
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button variant="outline" onClick={onBack}>Back to speaking practice</Button>
+        {onRedo && (
+          <Button onClick={onRedo} className="gap-1.5">
+            <RotateCcw className="h-4 w-4" />
+            Redo
+          </Button>
+        )}
       </div>
     </div>
   );
