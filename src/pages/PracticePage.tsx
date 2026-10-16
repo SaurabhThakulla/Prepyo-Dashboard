@@ -17,6 +17,7 @@ import {
   PanelRight,
   PlayCircle,
   AlertTriangle,
+  RotateCcw,
 } from 'lucide-react';
 import {
   Dialog,
@@ -34,7 +35,7 @@ import AudioRecorder from '@/components/practice/AudioRecorder';
 import QuestionFigure from '@/components/practice/QuestionFigure';
 import PromptAudio from '@/components/practice/PromptAudio';
 import KoreanHelp from '@/components/practice/KoreanHelp';
-import PracticeResultCard from '@/components/practice/PracticeResultCard';
+import PracticeResultDialog from '@/components/practice/PracticeResultDialog';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import OptionContent, { hasPictureOptions } from '@/components/practice/OptionContent';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
@@ -43,6 +44,7 @@ import { allowsMultipleChoices } from '@/lib/choices';
 import { minimumWritingWords, writingLengthNote, writingWordCount, writingWordTarget } from '@/lib/writing';
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isPremiumUser, listeningPlays, PracticeAttempt, Question, SkillType, ieltsModuleOf } from '@/lib/types';
+import FreePlanNotice from '@/institution/FreePlanNotice';
 
 const ReadingPracticePanel = lazy(() => import('@/components/reading/ReadingPracticePanel'));
 const ReadingMockPanel = lazy(() => import('@/components/reading/ReadingMockPanel'));
@@ -300,6 +302,9 @@ function PracticePageContent() {
   const [delivery, setDelivery] = useState<Delivery | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
+  // A result opens as a pop-up rather than under the answer; a button shows it again.
+  const [showResult, setShowResult] = useState(false);
+  useEffect(() => setShowResult(result !== null), [result]);
   const [startedAt, setStartedAt] = useState<number>(() => Date.now());
   const [completedIds, setCompletedIds] = useState<string[]>([]);
 
@@ -525,6 +530,7 @@ function PracticePageContent() {
           audio: encoded.base64,
           format: encoded.format,
           durationSeconds: encoded.durationSeconds,
+          delivery,
         });
         showEvaluation(data);
         const scoreVal = data.evaluation.estimatedScore ?? (data.evaluation as any)?.overallScore ?? (data.evaluation as any)?.score ?? (activeExam === 'PTE' ? 79 : 7);
@@ -650,15 +656,16 @@ function PracticePageContent() {
   // Next question starts the next one straight away, as reading does, instead
   // of going back through the start screen. It still spends its credit; if
   // that is refused (limit reached), the start screen is shown so the learner
-  // sees why.
-  const goToNextQuestion = async () => {
-    const next = questions[currentIndex + 1];
+  // sees why. Redo passes the current question to start it again the same way.
+  const goToNextQuestion = async (next: Question | undefined = questions[currentIndex + 1]) => {
     if (!next || startPending.current) return;
     closeTutorialVideo?.();
     startPending.current = true;
     setIsStarting(true);
     setCurrentQuestion(next);
     resetAnswer();
+    // The answer was read at the bottom; the new attempt starts at the top.
+    document.querySelector('[data-practice-workspace]')?.scrollIntoView?.({ block: 'start' });
     try {
       await api.post('/practice/start', {
         exam: activeExam,
@@ -672,7 +679,7 @@ function PracticePageContent() {
       if (err instanceof ApiError && err.isLimitReached) {
         toast.warning('Daily limit reached', 'You have reached your daily sub-test allowance.');
       } else {
-        toast.error('Could not start the next question', errorMessage(err));
+        toast.error('Could not start the question', errorMessage(err));
       }
     } finally {
       startPending.current = false;
@@ -695,7 +702,9 @@ function PracticePageContent() {
         } p-0 m-0 flex flex-col bg-background`}
     >
       {/* An admin has no reason to sit the paper. They add questions/passages instead. */}
-      {isReading && isAdmin(user) ? (
+      {user?.subscription?.aiBlocked && (selectedSkill === 'speaking' || selectedSkill === 'writing') ? (
+        <FreePlanNotice />
+      ) : isReading && isAdmin(user) ? (
         <Suspense fallback={<AdminPageSkeleton />}>
           <AdminReadingAuthoring
             key={`admin-reading-${activeExam}-${typeParam || 'all'}`}
@@ -831,27 +840,31 @@ function PracticePageContent() {
       ) : (
         <div className="w-full flex flex-col flex-1">
           {/* Unified Full-Width Workspace matching Reading layout */}
-          <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-5 flex-1 flex flex-col justify-between">
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-5 space-y-4 flex-1 flex flex-col justify-between">
             {/* Main Unified Card */}
-            <Card className="p-4 sm:p-7 space-y-5 bg-card dark:bg-[#0f141f] border-border/80 shadow-md rounded-2xl">
+            <Card className="p-4 sm:p-6 space-y-4 bg-card dark:bg-[#0f141f] border-border/80 shadow-md rounded-2xl">
               {/* Card Header */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 pb-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
+                  <span className="bg-blue-600 text-white font-bold text-xs leading-none uppercase tracking-[0.08em] px-3.5 py-1.5 rounded-full shadow-xs">
                     {currentQuestion.typeName}
                   </span>
                 </div>
               </div>
 
-              {/* Instructions */}
+              {/* Instructions: one tight paragraph per blank-line block, in a tinted box */}
               {currentQuestion.prompt && (
-                <p className="text-xs sm:text-[13px] text-muted-foreground font-medium leading-relaxed whitespace-pre-line">
-                  {currentQuestion.prompt}
-                </p>
+                <div className="rounded-xl border-l-4 border-primary bg-primary/[0.06] dark:bg-primary/10 px-4 py-3.5 sm:px-5 sm:py-4 space-y-2.5">
+                  {currentQuestion.prompt.split(/\n\s*\n/).map((paragraph, i) => (
+                    <p key={i} className="text-[15px] sm:text-[16px] text-foreground leading-relaxed whitespace-pre-line">
+                      {paragraph.trim()}
+                    </p>
+                  ))}
+                </div>
               )}
 
               {/* Inner Question & Interaction Container */}
-              <div className="rounded-2xl p-3.5 sm:p-6 bg-card dark:bg-card/40 border border-border/80 space-y-4 shadow-xs">
+              <div className="rounded-2xl p-3.5 sm:p-5 bg-card dark:bg-card/40 border border-border/80 space-y-3 shadow-xs">
                 {currentQuestion.title && (!isPteListening || !/^question\s*\d+$/i.test(currentQuestion.title.trim())) && (
                   <div className="flex items-start gap-3">
                     {!isPteListening && (
@@ -859,7 +872,7 @@ function PracticePageContent() {
                         {currentIndex + 1}
                       </span>
                     )}
-                    <h3 className="text-sm sm:text-base font-bold text-foreground leading-relaxed pt-0.5">
+                    <h3 className="text-sm sm:text-base font-bold text-foreground leading-snug pt-1">
                       {isPteListening && /^question\s*\d+/i.test(currentQuestion.title)
                         ? currentQuestion.title.replace(/^question\s*\d+[:\s-]*/i, '')
                         : currentQuestion.title}
@@ -885,6 +898,7 @@ function PracticePageContent() {
                   repeat={listeningPlays(currentQuestion)}
                   title={currentQuestion.title}
                   allowTranscript={result !== null}
+                  highlights={result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
                   onFinished={() => setHeardPromptFor(currentQuestion.id)}
                 />
 
@@ -912,7 +926,7 @@ function PracticePageContent() {
                       onChange={setBlankResponses}
                     />
                   ) : (
-                    <div className="p-4 rounded-xl bg-background border border-border text-xs sm:text-sm text-foreground leading-relaxed max-h-60 overflow-y-auto">
+                    <div className="p-4 sm:p-5 rounded-xl bg-background border border-border text-[15px] sm:text-[16px] text-foreground leading-relaxed whitespace-pre-line max-h-72 overflow-y-auto">
                       {currentQuestion.contextPassage}
                     </div>
                   )
@@ -1052,8 +1066,27 @@ function PracticePageContent() {
                 )}
               </div>
 
-              {result && <PracticeResultCard result={result} />}
+              {result && (
+                <div className="flex justify-center pt-2">
+                  <Button variant="outline" className="rounded-xl" onClick={() => setShowResult(true)}>
+                    See your result{result.evaluation?.estimatedScore != null && ` (${result.evaluation.estimatedScore})`}
+                  </Button>
+                </div>
+              )}
             </Card>
+
+            {result && (
+              <PracticeResultDialog
+                result={result}
+                recording={recording}
+                open={showResult}
+                onOpenChange={setShowResult}
+                busy={isStarting}
+                redoLabel={mistakeId ? 'Try again' : 'Redo'}
+                onRedo={() => (mistakeId ? resetAnswer() : void goToNextQuestion(currentQuestion ?? undefined))}
+                onNext={mistakeId || isLast ? undefined : () => void goToNextQuestion()}
+              />
+            )}
 
             {/* Bottom Action Bar */}
             <div className="w-full flex flex-wrap items-center justify-between gap-3 pt-2">
@@ -1085,6 +1118,16 @@ function PracticePageContent() {
                   <Button
                     variant="outline"
                     size="default"
+                    onClick={() => void goToNextQuestion(currentQuestion ?? undefined)}
+                    disabled={isStarting}
+                    className="font-bold gap-2 text-xs rounded-xl h-10 px-5"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Redo</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="default"
                     onClick={restartSet}
                     className="font-bold gap-2 text-xs rounded-xl h-10 px-5"
                   >
@@ -1093,15 +1136,27 @@ function PracticePageContent() {
                   </Button>
                 </div>
               ) : result ? (
-                <Button
-                  onClick={() => void goToNextQuestion()}
-                  disabled={isStarting}
-                  size="default"
-                  className="font-bold gap-2 text-xs rounded-xl h-10 px-5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                >
-                  <span>Next question</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </Button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="default"
+                    onClick={() => void goToNextQuestion(currentQuestion ?? undefined)}
+                    disabled={isStarting}
+                    className="font-bold gap-2 text-xs rounded-xl h-10 px-5"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Redo</span>
+                  </Button>
+                  <Button
+                    onClick={() => void goToNextQuestion()}
+                    disabled={isStarting}
+                    size="default"
+                    className="font-bold gap-2 text-xs rounded-xl h-10 px-5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                  >
+                    <span>Next question</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               ) : speakingUnscored ? (
                 <span className="text-xs font-semibold text-muted-foreground">
                   Scoring for speaking answers is being set up. Record and listen back as

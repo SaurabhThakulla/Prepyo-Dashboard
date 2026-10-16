@@ -349,7 +349,7 @@ export default function MistakesPage() {
         {/* ======================================================================= */}
         {/* Edge-to-edge Analytics Dashboard (no top or side gaps) */}
         {/* ======================================================================= */}
-        <div className="w-full bg-card border-b border-border/80 shadow-xs">
+        <div className="w-full">
           <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
           {/* Header row: Title & Timeframe Toggle */}
           <div className="flex items-start sm:items-center justify-between gap-3 pb-3 sm:pb-2 border-b border-border/60">
