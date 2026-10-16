@@ -14,10 +14,12 @@ interface ScoreReportProps {
    */
   outcome?: MockSubmitOutcome;
   onBack: () => void;
+  /** Starts a fresh attempt through the mock's normal start. */
+  onRedo?: () => void;
 }
 
 /** The scorecard shown after finishing a mock, and when reviewing an old one. */
-export default function ScoreReport({ attempt, outcome, onBack }: ScoreReportProps) {
+export default function ScoreReport({ attempt, outcome, onBack, onRedo }: ScoreReportProps) {
   const skillScores = Object.entries(attempt.skillScores ?? {});
 
   return (
@@ -32,10 +34,18 @@ export default function ScoreReport({ attempt, outcome, onBack }: ScoreReportPro
             {new Date(attempt.completedAt).toLocaleString()} • {attempt.exam}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={onBack} className="gap-1.5 font-bold">
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span>Back to Mock Center</span>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={onBack} className="gap-1.5 font-bold">
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Back to Mock Center</span>
+          </Button>
+          {onRedo && (
+            <Button size="sm" onClick={onRedo} className="gap-1.5 font-bold">
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Redo</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -122,7 +122,12 @@ export default function MocksPage() {
   if (exam.outcome) {
     return (
       <Suspense fallback={<AppPageSkeleton />}>
-        <ScoreReport attempt={exam.outcome.attempt} outcome={exam.outcome} onBack={leaveReport} />
+        <ScoreReport
+          attempt={exam.outcome.attempt}
+          outcome={exam.outcome}
+          onBack={leaveReport}
+          onRedo={exam.activeMock ? () => void exam.start(exam.activeMock!) : undefined}
+        />
       </Suspense>
     );
   }
