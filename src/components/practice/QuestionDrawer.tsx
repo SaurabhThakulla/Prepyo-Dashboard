@@ -11,6 +11,7 @@ import {
   Flame,
   Award,
   Filter,
+  Play,
 } from 'lucide-react';
 import { EXAM_LABELS, EXAM_MAX_SCORE, ExamType, SkillType } from '@/lib/types';
 import { taskInstruction } from '@/lib/syllabus';
@@ -173,6 +174,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
       <button
         type="button"
         id="question-drawer-toggle"
+        data-nav
         onClick={onToggle}
         title={isOpen ? 'Collapse Questions List' : 'Browse Questions List'}
         aria-label={isOpen ? 'Collapse Questions List' : 'Browse Questions List'}
@@ -204,45 +206,38 @@ export default function QuestionDrawer<T extends DrawerItem>({
       <aside
         id="question-drawer-panel"
         aria-label="Practice Questions Drawer"
-        className={`fixed inset-y-0 right-0 w-full sm:w-[560px] md:w-[620px] lg:w-[680px] xl:w-[720px] max-w-full bg-white dark:bg-[#0f141f] border-l border-slate-200 dark:border-white/10 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-out ${
+        className={`fixed inset-y-0 right-0 w-full sm:w-[560px] md:w-[620px] lg:w-[680px] xl:w-[720px] max-w-full bg-slate-50 dark:bg-[#0c111b] border-l border-slate-200 dark:border-white/10 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
         }`}
       >
-        {/* 1. Header Section */}
-        <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-white/5 space-y-3 bg-white dark:bg-[#111622] shrink-0">
-          <div className="flex items-center justify-between gap-2.5">
-            {/* Task Info Pill: first letter only for logo, clean simple title */}
-            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              <div
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center font-bold text-xs sm:text-sm bg-primary text-white shrink-0 shadow-xs"
-              >
+        {/* 1. Header: the sidebar's blue, with the search box on it */}
+        <div className="relative overflow-hidden p-4 sm:p-5 space-y-4 bg-gradient-to-br from-[#2a56cf] via-primary to-[#132e7d] dark:from-blue-900 dark:via-blue-950 dark:to-slate-950 text-white shrink-0">
+          <span aria-hidden className="pointer-events-none absolute -right-14 -top-20 h-52 w-52 rounded-full border-[24px] border-white/10" />
+          <div className="relative flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center font-display font-black text-base bg-white text-primary dark:text-blue-950 shrink-0 shadow-lg shadow-black/15">
                 {(taskMeta.code || taskMeta.name || 'P').charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm sm:text-base font-medium text-slate-900 dark:text-white truncate">
-                    {taskMeta.name}
-                  </h2>
-                  <span className="text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 shrink-0">
+                  <h2 className="font-display text-base sm:text-lg font-bold truncate">{taskMeta.name}</h2>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/15 border border-white/20 shrink-0">
                     {EXAM_LABELS[exam]}
                   </span>
                 </div>
-                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-normal truncate mt-0.5">
-                  {taskMeta.scoreWeight}
-                </p>
+                <p className="text-xs text-white/70 truncate mt-0.5">{taskMeta.scoreWeight}</p>
                 {instruction && (
-                  <p lang="ko" className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 font-medium truncate mt-0.5">
+                  <p lang="ko" className="text-xs text-white/85 font-medium truncate mt-0.5">
                     {instruction}
                   </p>
                 )}
               </div>
             </div>
 
-            {/* Close button */}
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors shrink-0 cursor-pointer"
+              className="p-2 rounded-xl text-white/70 hover:text-white hover:bg-white/15 transition-colors shrink-0 cursor-pointer"
               title="Close drawer"
             >
               <X className="w-5 h-5" />
@@ -256,9 +251,9 @@ export default function QuestionDrawer<T extends DrawerItem>({
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Question Content / Title / #ID"
-              className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl pl-9 pr-8 py-2 text-xs sm:text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
+              className="w-full bg-white dark:bg-white/10 border border-transparent rounded-xl pl-10 pr-9 py-2.5 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 shadow-lg shadow-black/10 focus:outline-none focus:ring-4 focus:ring-white/30 transition-all"
             />
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             {searchQuery && (
               <button
                 type="button"
@@ -271,13 +266,37 @@ export default function QuestionDrawer<T extends DrawerItem>({
           </div>
         </div>
 
-        {/* 2. Filter Tabs: All, Done, Remaining (mobile responsive) */}
-        <div className="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-slate-100 dark:border-white/5 bg-slate-50/80 dark:bg-[#131926] shrink-0">
-          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+        {/* 2. Progress and filter tabs */}
+        <div className="px-4 sm:px-5 pt-4 pb-3 space-y-3 bg-white dark:bg-[#111622] border-b border-slate-100 dark:border-white/5 shrink-0">
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-400 dark:text-slate-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <span>Loading {taskMeta.name} questions…</span>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
+                <span>
+                  <span className="font-bold text-slate-900 dark:text-white">{doneCount}</span> of {questions.length} done
+                </span>
+                <span>
+                  Showing <span className="font-bold text-slate-900 dark:text-white">{filteredQuestions.length}</span>
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-500"
+                  style={{ width: `${questions.length ? Math.round((doneCount / questions.length) * 100) : 0}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-white/5">
             {[
-              { id: 'all' as const, label: 'All', fullLabel: 'All Questions', count: questions.length },
-              { id: 'done' as const, label: 'Done', fullLabel: 'Done', count: doneCount },
-              { id: 'remaining' as const, label: 'Remaining', fullLabel: 'Remaining', count: Math.max(0, questions.length - doneCount) },
+              { id: 'all' as const, label: 'All', fullLabel: 'All Questions' },
+              { id: 'done' as const, label: 'Done', fullLabel: 'Done' },
+              { id: 'remaining' as const, label: 'Remaining', fullLabel: 'Remaining' },
             ].map(tab => {
               const active = activeFilter === tab.id;
               return (
@@ -285,60 +304,35 @@ export default function QuestionDrawer<T extends DrawerItem>({
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveFilter(tab.id)}
-                  className={`py-1.5 sm:py-2 px-1.5 sm:px-2 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer ${
+                  className={`py-1.5 sm:py-2 px-1.5 sm:px-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     active
-                      ? 'bg-primary text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/5 bg-white dark:bg-white/5 border border-slate-200/60 dark:border-white/5'
+                      ? 'bg-primary text-white shadow-md shadow-primary/30'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   <span className="sm:hidden">{tab.label}</span>
                   <span className="hidden sm:inline truncate">{tab.fullLabel}</span>
-                  <span
-                    className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold shrink-0 ${
-                      active
-                        ? 'bg-white/25 text-white'
-                        : 'bg-slate-200/80 dark:bg-white/10 text-slate-600 dark:text-slate-400'
-                    }`}
-                  >
-                    {isLoading ? '…' : tab.count}
-                  </span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* 4. Stats Summary Strip */}
-        <div className="px-4 py-2 bg-slate-50 dark:bg-[#131926] border-b border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 shrink-0">
+        {/* 3. Infinite Scroll Questions List, one card per question */}
+        <div data-question-list className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 bg-slate-50 dark:bg-[#0c111b]">
           {isLoading ? (
-            <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
-              <span className="text-slate-400 dark:text-slate-500">Loading {taskMeta.name} questions…</span>
-            </div>
-          ) : (
-            <div>
-              Done <span className="font-bold text-teal-600 dark:text-teal-400">{doneCount}</span>, Found{' '}
-              <span className="font-bold text-slate-800 dark:text-white">{filteredQuestions.length}</span> Questions
-            </div>
-          )}
-        </div>
-
-        {/* 5. Infinite Scroll Questions List */}
-        <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-white/5">
-          {isLoading ? (
-            <div className="divide-y divide-slate-100 dark:divide-white/5" role="status" aria-label="Loading questions">
+            <div className="space-y-2" role="status" aria-label="Loading questions">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div
                   key={`drawer-skeleton-${i}`}
-                  className="px-4 sm:px-5 py-3.5 flex items-center justify-between gap-3 animate-pulse"
+                  className="p-3 sm:p-3.5 rounded-2xl border border-slate-200/70 dark:border-white/5 bg-white dark:bg-white/[0.03] flex items-center gap-3 animate-pulse"
                 >
+                  <Skeleton className="h-10 w-10 rounded-xl bg-slate-200/80 dark:bg-slate-800 shrink-0" />
                   <div className="min-w-0 flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Skeleton
-                        className="h-4 bg-slate-200/80 dark:bg-slate-800 rounded"
-                        style={{ width: `${Math.max(40, 75 - ((i * 11) % 35))}%` }}
-                      />
-                    </div>
+                    <Skeleton
+                      className="h-4 bg-slate-200/80 dark:bg-slate-800 rounded"
+                      style={{ width: `${Math.max(40, 75 - ((i * 11) % 35))}%` }}
+                    />
                     <div className="flex items-center gap-1.5">
                       <Skeleton className="h-3.5 w-12 rounded bg-slate-100 dark:bg-slate-800/60" />
                       {skill === 'speaking' && (
@@ -346,15 +340,15 @@ export default function QuestionDrawer<T extends DrawerItem>({
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Skeleton className="h-7 w-20 rounded-full bg-slate-200/70 dark:bg-slate-800/70" />
-                  </div>
+                  <Skeleton className="h-8 w-20 rounded-full bg-slate-200/70 dark:bg-slate-800/70 shrink-0" />
                 </div>
               ))}
             </div>
           ) : displayedQuestions.length === 0 ? (
             <div className="p-10 text-center space-y-3">
-              <Sparkles className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto" />
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Sparkles className="w-7 h-7" />
+              </div>
               <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">No questions found</h3>
               <p className="text-xs text-slate-500 max-w-xs mx-auto">
                 No questions match your current search or filter criteria.
@@ -366,7 +360,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
                     setSearchQuery('');
                     setActiveFilter('all');
                   }}
-                  className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline pt-1"
+                  className="text-xs font-bold text-primary hover:underline pt-1"
                 >
                   Clear filter
                 </button>
@@ -389,24 +383,35 @@ export default function QuestionDrawer<T extends DrawerItem>({
                 <div
                   key={question.id}
                   onClick={() => onSelectQuestion(question)}
-                  className={`group px-4 sm:px-5 py-3.5 flex items-center justify-between gap-3 transition-colors cursor-pointer ${
+                  className={`group p-3 sm:p-3.5 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-teal-50/80 dark:bg-teal-950/20 border-l-4 border-l-teal-500'
-                      : 'hover:bg-slate-50 dark:hover:bg-white/[0.03]'
+                      ? 'bg-white dark:bg-primary/10 border-primary ring-4 ring-primary/10 shadow-md'
+                      : 'bg-white dark:bg-white/[0.03] border-slate-200/70 dark:border-white/5 hover:border-primary/40 hover:shadow-md hover:-translate-y-px'
                   }`}
                 >
-                  {/* Left Column: Number, Title, Badges */}
+                  {/* Status badge: play, or a green tick once done */}
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                      isDone
+                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
+                        : isSelected
+                          ? 'bg-primary text-white'
+                          : 'bg-primary/10 text-primary dark:text-blue-300 group-hover:bg-primary group-hover:text-white'
+                    }`}
+                  >
+                    {isDone ? <CheckCircle2 className="w-5 h-5" /> : <Play className="w-4 h-4 fill-current" />}
+                  </div>
+
+                  {/* Title and badges */}
                   <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs sm:text-sm font-normal text-slate-800 dark:text-slate-200 group-hover:text-primary transition-colors truncate">
-                        #{displayNumber} {displayTitle}
-                      </span>
-                    </div>
+                    <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100 group-hover:text-primary dark:group-hover:text-white transition-colors truncate">
+                      #{displayNumber} {displayTitle}
+                    </span>
 
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {question.difficulty && (
                         <span
-                          className={`text-[10px] font-medium px-1.5 py-0.5 rounded capitalize ${
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${
                             question.difficulty === 'hard'
                               ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400'
                               : question.difficulty === 'medium'
@@ -419,48 +424,41 @@ export default function QuestionDrawer<T extends DrawerItem>({
                       )}
                       {/* Shadow tag for speaking tasks */}
                       {skill === 'speaking' && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400">
                           Shadow
                         </span>
                       )}
                       {isSelected && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary text-white">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary text-white">
                           Current
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Right Column: Score, Practice Button (no bookmark, no dash) */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    {/* Score display (only shown if question has a score or is marked done) */}
+                  {/* Score and Practice button */}
+                  <div className="flex items-center gap-2.5 shrink-0">
                     {record?.score !== undefined ? (
                       <div className="text-right">
-                        <span className="text-xs font-bold font-mono text-slate-800 dark:text-slate-200">
+                        <span className="text-sm font-bold font-mono text-slate-800 dark:text-slate-200">
                           {record.score}
                           <span className="text-[10px] font-normal text-slate-400">/{record.maxScore ?? EXAM_MAX_SCORE[exam]}</span>
                         </span>
                       </div>
                     ) : isDone ? (
-                      <div className="text-right">
-                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center justify-end gap-1">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Done
-                        </span>
-                      </div>
+                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">Done</span>
                     ) : null}
 
-                    {/* Practice * N Pill Button */}
                     <button
                       type="button"
                       onClick={e => {
                         e.stopPropagation();
                         onSelectQuestion(question);
                       }}
-                      className={`text-xs font-bold px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                        isDone
-                          ? 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white'
-                          : 'bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-primary hover:text-white'
+                      className={`text-xs font-bold px-3.5 py-1.5 rounded-full transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-primary text-white shadow-md shadow-primary/30'
+                          : 'bg-primary/10 text-primary dark:text-blue-300 hover:bg-primary hover:text-white'
                       }`}
                     >
                       {record?.attemptsCount ? `Practice * ${record.attemptsCount}` : 'Practice'}
@@ -476,7 +474,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
             <div ref={observerSentinelRef} className="py-4 text-center">
               {loadingMore ? (
                 <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
-                  <div className="w-3.5 h-3.5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                   <span>Loading more questions…</span>
                 </div>
               ) : (

@@ -40,6 +40,7 @@ export default function MockPaperDrawer({
       <button
         type="button"
         id="mock-paper-drawer-toggle"
+        data-nav
         onClick={onToggle}
         title={isOpen ? 'Collapse Tests List' : 'Browse Mock Tests'}
         aria-label={isOpen ? 'Collapse Tests List' : 'Browse Mock Tests'}

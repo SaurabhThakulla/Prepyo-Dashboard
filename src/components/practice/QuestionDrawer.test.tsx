@@ -296,7 +296,7 @@ describe('QuestionDrawer Component', () => {
     );
 
     // By default first batch (PAGE_SIZE = 20 items) is rendered
-    const cards = document.querySelectorAll('#question-drawer-panel .divide-y > .group');
+    const cards = document.querySelectorAll('#question-drawer-panel [data-question-list] > .group');
     expect(cards.length).toBe(20);
     expect(screen.getByText(/Scroll for more/i)).toBeDefined();
   });
