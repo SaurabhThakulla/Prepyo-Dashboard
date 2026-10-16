@@ -572,6 +572,8 @@ export interface WordMark {
   text: string;
   said: boolean;
   pauseAfter?: boolean;
+  /** Heard, but hard to understand (from the audio rating). */
+  unclear?: boolean;
 }
 
 // ---------------------------------------------------------------------------

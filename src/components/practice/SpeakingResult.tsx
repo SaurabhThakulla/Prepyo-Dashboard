@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Lightbulb, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Evaluation } from '@/lib/types';
+import type { Evaluation, WordMark } from '@/lib/types';
 
 interface Props {
   evaluation: Evaluation;
@@ -66,6 +66,7 @@ export default function SpeakingResult({ evaluation, xpAwarded, recording }: Pro
           {words.length > 0 && (
             <span className="flex items-center gap-3">
               <Legend className="bg-emerald-500">Good</Legend>
+              {words.some(w => w.unclear) && <Legend className="bg-amber-500">Unclear</Legend>}
               <Legend className="bg-rose-500">Missed or changed</Legend>
               <span>/ Pause</span>
             </span>
@@ -75,7 +76,7 @@ export default function SpeakingResult({ evaluation, xpAwarded, recording }: Pro
           <p className="text-base leading-loose" data-testid="marked-passage">
             {words.map((w, i) => (
               <span key={i}>
-                <span className={w.said ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 underline decoration-dotted dark:text-rose-400'}>
+                <span className={wordColour(w)}>
                   {w.text}
                 </span>
                 {w.pauseAfter && <span className="text-muted-foreground"> /</span>}{' '}
@@ -109,6 +110,12 @@ function Legend({ className, children }: { className: string; children: string }
       <span className={cn('h-2.5 w-2.5 rounded-full', className)} aria-hidden /> {children}
     </span>
   );
+}
+
+function wordColour(w: WordMark) {
+  if (!w.said) return 'text-rose-600 underline decoration-dotted dark:text-rose-400';
+  if (w.unclear) return 'text-amber-600 dark:text-amber-400';
+  return 'text-emerald-600 dark:text-emerald-400';
 }
 
 function partColour(score: number, max: number) {
