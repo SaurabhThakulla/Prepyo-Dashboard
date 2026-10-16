@@ -1,0 +1,39 @@
+import React, { lazy, Suspense } from 'react';
+import { Navigate, Outlet, Route, useParams } from 'react-router-dom';
+import { InstitutionAccountProvider } from './account';
+import { dashboardPath, LOGIN_PATH } from './paths';
+
+const LoginPage = lazy(() => import('./LoginPage'));
+const SignupPage = lazy(() => import('./SignupPage'));
+const DashboardPage = lazy(() => import('./DashboardPage'));
+
+// Shares the signed-in admin between the pages below.
+function InstitutionShell() {
+  return (
+    <InstitutionAccountProvider>
+      <Suspense fallback={null}>
+        <Outlet />
+      </Suspense>
+    </InstitutionAccountProvider>
+  );
+}
+
+// /institution/<name> was the address before; it now lives at /<name>.
+function OldAddress() {
+  const { code = '' } = useParams<{ code: string }>();
+  return <Navigate to={dashboardPath(code)} replace />;
+}
+
+/**
+ * Every institution address, placed inside <Routes> in App.tsx.
+ * /<name> is the institution's own page: the dashboard for its admin, the sign-in for its students.
+ */
+export const institutionRoutes = (
+  <Route element={<InstitutionShell />}>
+    <Route path="/institution" element={<Navigate to={LOGIN_PATH} replace />} />
+    <Route path="/institution/login" element={<LoginPage />} />
+    <Route path="/institution/signup" element={<SignupPage />} />
+    <Route path="/institution/:code" element={<OldAddress />} />
+    <Route path="/:code" element={<DashboardPage />} />
+  </Route>
+);
