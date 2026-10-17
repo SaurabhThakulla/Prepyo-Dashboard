@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Lightbulb, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Evaluation, WordMark } from '@/lib/types';
+import CriteriaTable from './CriteriaTable';
+import { CONFIDENCE_LABEL, SCALE } from './PracticeResultCard';
+import { FeedbackLists, MarkedAnswer, MarkedAnswerLegend, ResultSection, ResultSummary, toneFor, xpMeta } from './ResultParts';
 
 interface Props {
   evaluation: Evaluation;
@@ -9,120 +11,88 @@ interface Props {
   recording: Blob | null;
 }
 
-/** A spoken answer's result: trait table, the recording, and the text marked word by word. */
+/** A spoken answer's result, laid out like every other result, plus the recording and the marked text. */
 export default function SpeakingResult({ evaluation, xpAwarded, recording }: Props) {
   const recordingUrl = useObjectUrl(recording);
   const criteria = evaluation.criteria ?? [];
   const words = evaluation.words ?? [];
-  const weaknesses = evaluation.weaknesses ?? [];
-  const max = evaluation.exam === 'IELTS' ? 9 : 90;
+  // Free speech has no script: colour what the grader corrected and the fillers instead.
+  const transcript = words.length === 0 ? evaluation.transcript?.trim() ?? '' : '';
+  const scale = SCALE[evaluation.exam] ?? SCALE.PTE;
+  const score = evaluation.estimatedScore;
+  const fraction = score === null ? null : (score - scale.min) / (scale.max - scale.min);
 
   return (
-    <div className="space-y-5">
-      {evaluation.summary && <p className="text-xs leading-relaxed text-muted-foreground">{evaluation.summary}</p>}
+    <div className="space-y-6">
+      <ResultSummary
+        label={`${scale.label} estimate`}
+        score={score ?? '—'}
+        outOf={scale.max}
+        fraction={fraction ?? 0}
+        tone={toneFor(fraction)}
+        verdict={score === null ? 'Not rated' : undefined}
+        meta={[score !== null ? CONFIDENCE_LABEL[evaluation.scoreConfidence] : null, xpMeta(xpAwarded)]}
+        summary={evaluation.summary}
+        notes={['A practice estimate, not an official result.']}
+      />
 
       {criteria.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-border text-sm">
-          <table className="w-full border-collapse">
-            <thead className="bg-muted/50 text-left text-xs">
-              <tr>
-                <th className="whitespace-nowrap px-3 py-2.5 font-semibold sm:px-4">Component</th>
-                <th className="px-3 py-2.5 font-semibold sm:px-4">Score</th>
-                <th className="px-3 py-2.5 font-semibold sm:px-4">Suggestion</th>
-              </tr>
-            </thead>
-            <tbody>
-              {criteria.map(c => (
-                <tr key={c.name} className="border-t border-border align-top">
-                  <td className="whitespace-nowrap px-3 py-3 font-medium sm:px-4">{c.name}</td>
-                  <td className={cn('whitespace-nowrap px-3 py-3 tabular-nums font-semibold sm:px-4', partColour(c.score, c.maxScore))}>
-                    {c.score}/{c.maxScore}
-                  </td>
-                  <td className="px-3 py-3 text-xs leading-relaxed text-muted-foreground sm:px-4">{c.feedback}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border bg-muted/30 px-3 py-3 sm:px-4">
-            <span className="text-sm">
-              Max score: {max}, your score:{' '}
-              <span className="font-display text-lg font-semibold text-rose-600 dark:text-rose-400">{evaluation.estimatedScore ?? '—'}</span>
-            </span>
-            {xpAwarded > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
-                <Zap className="h-3 w-3" aria-hidden /> +{xpAwarded} XP
-              </span>
-            )}
-            <span className="text-[11px] text-muted-foreground">A practice estimate, not an official result.</span>
-          </div>
-        </div>
+        <ResultSection title="Score breakdown">
+          <CriteriaTable criteria={criteria} />
+        </ResultSection>
       )}
 
-      {recordingUrl && <audio controls src={recordingUrl} className="h-10 w-full max-w-sm" />}
-
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span>Speech recognition:</span>
-          {words.length > 0 && (
-            <span className="flex items-center gap-3">
-              <Legend className="bg-emerald-500">Good</Legend>
-              {words.some(w => w.unclear) && <Legend className="bg-amber-500">Unclear</Legend>}
-              <Legend className="bg-rose-500">Missed or changed</Legend>
+      <ResultSection
+        title="Your answer"
+        aside={
+          words.length > 0 ? (
+            <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              <Legend dot="bg-emerald-500">Good</Legend>
+              {words.some(w => w.unclear) && <Legend dot="bg-amber-500">Unclear</Legend>}
+              <Legend dot="bg-rose-500">Missed or changed</Legend>
               <span>/ Pause</span>
             </span>
+          ) : transcript && score !== null ? (
+            <MarkedAnswerLegend />
+          ) : null
+        }
+      >
+        <div className="space-y-3 rounded-xl border border-border px-4 py-3">
+          {recordingUrl && <audio controls src={recordingUrl} className="h-10 w-full" />}
+          {words.length > 0 ? (
+            <p className="text-[15px] leading-8" data-testid="marked-passage">
+              {words.map((w, i) => (
+                <span key={i}>
+                  <span className={wordColour(w)}>{w.text}</span>
+                  {w.pauseAfter && <span className="font-semibold text-muted-foreground"> /</span>}{' '}
+                </span>
+              ))}
+            </p>
+          ) : transcript ? (
+            <MarkedAnswer text={transcript} fixes={evaluation.sentenceFeedback ?? []} rated={score !== null} />
+          ) : (
+            <p className="text-sm leading-relaxed text-foreground">No speech could be made out in that recording.</p>
           )}
         </div>
-        {words.length > 0 ? (
-          <p className="text-base leading-loose" data-testid="marked-passage">
-            {words.map((w, i) => (
-              <span key={i}>
-                <span className={wordColour(w)}>
-                  {w.text}
-                </span>
-                {w.pauseAfter && <span className="text-muted-foreground"> /</span>}{' '}
-              </span>
-            ))}
-          </p>
-        ) : (
-          <p className="rounded-xl bg-muted/40 px-4 py-3 text-sm italic leading-relaxed">
-            {evaluation.transcript || 'No speech could be made out in that recording.'}
-          </p>
-        )}
-      </div>
+      </ResultSection>
 
-      {weaknesses.length > 0 && (
-        <div className="space-y-1.5 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300">
-            <Lightbulb className="h-3.5 w-3.5" aria-hidden /> Work on next
-          </p>
-          <ul className="list-disc space-y-1 pl-5 text-sm">
-            {weaknesses.map(item => <li key={item}>{item}</li>)}
-          </ul>
-        </div>
-      )}
+      <FeedbackLists strengths={evaluation.strengths ?? []} weaknesses={evaluation.weaknesses ?? []} />
     </div>
   );
 }
 
-function Legend({ className, children }: { className: string; children: string }) {
+function Legend({ dot, children }: { dot: string; children: string }) {
   return (
-    <span className="flex items-center gap-1">
-      <span className={cn('h-2.5 w-2.5 rounded-full', className)} aria-hidden /> {children}
+    <span className="inline-flex items-center gap-1.5">
+      <span className={cn('h-2 w-2 rounded-full', dot)} aria-hidden /> {children}
     </span>
   );
 }
 
 function wordColour(w: WordMark) {
-  if (!w.said) return 'text-rose-600 underline decoration-dotted dark:text-rose-400';
-  if (w.unclear) return 'text-amber-600 dark:text-amber-400';
-  return 'text-emerald-600 dark:text-emerald-400';
-}
-
-function partColour(score: number, max: number) {
-  const part = max > 0 ? score / max : 0;
-  if (part >= 0.75) return 'text-emerald-600 dark:text-emerald-400';
-  if (part >= 0.45) return 'text-amber-600 dark:text-amber-400';
-  return 'text-rose-600 dark:text-rose-400';
+  if (!w.said) return 'text-rose-700 underline decoration-dotted underline-offset-4 dark:text-rose-400';
+  if (w.unclear) return 'text-amber-700 dark:text-amber-400';
+  return 'text-emerald-700 dark:text-emerald-400';
 }
 
 function useObjectUrl(blob: Blob | null) {

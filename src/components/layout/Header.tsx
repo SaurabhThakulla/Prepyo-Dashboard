@@ -42,6 +42,7 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
+            data-stay
             className={`h-8 w-8 shrink-0 rounded-lg border transition-all duration-150 active:scale-95 flex items-center justify-center ${
               isSecondaryOpen
                 ? 'border-border/80 bg-muted/70 text-foreground shadow-2xs'

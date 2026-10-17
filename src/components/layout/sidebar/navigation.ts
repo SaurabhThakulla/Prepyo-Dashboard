@@ -210,6 +210,8 @@ export function buildSections(
           ? SYLLABUS[activeExam][skill] ?? []
           : syllabusFor(activeExam, skill, ieltsModuleOf(user));
         const isRepeatedEssay = (n: string) => /repeated\s*essay/i.test(n);
+        // Writing and speaking answers are marked by AI; reading and listening are marked in code.
+        const aiBadge = skill === 'writing' || skill === 'speaking' ? 'AI' : undefined;
         const names = rawNames.filter(name => {
           if (isRepeatedEssay(name)) {
             return hasMistake;
@@ -224,6 +226,7 @@ export function buildSections(
             icon,
             sublabel: `Author questions for ${name}`,
             description: taskSummary(activeExam, skill, name),
+            badge: aiBadge,
             group: label,
             groupHref: `/practice?skill=${skill}`,
           }));
@@ -248,6 +251,7 @@ export function buildSections(
           icon,
           sublabel,
           description: taskSummary(activeExam, skill, name),
+          badge: aiBadge,
           group: label,
           groupHref: `/practice?skill=${skill}`,
         }));

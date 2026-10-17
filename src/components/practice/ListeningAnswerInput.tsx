@@ -4,18 +4,21 @@ import { Button } from '@/components/ui/button';
 import { Question } from '@/lib/types';
 import { isWordHighlightTask, listeningTextTask } from '@/lib/listening';
 import { writingWordCount } from '@/lib/writing';
+import { answerMark, WORD_MARK_CLASS } from '@/lib/answerMarks';
 
 interface Props {
   question: Question;
   textAnswer: string;
   onTextChange: (text: string) => void;
   selectedOptions: string[];
+  /** The answer key once marked; null before. */
+  correctAnswers?: string[] | null;
   onSelectionChange: (ids: string[]) => void;
   disabled?: boolean;
 }
 
 export default function ListeningAnswerInput({
-  question, textAnswer, onTextChange, selectedOptions, onSelectionChange, disabled = false,
+  question, textAnswer, onTextChange, selectedOptions, onSelectionChange, disabled = false, correctAnswers = null,
 }: Props) {
   const id = useId();
   const task = listeningTextTask(question);
@@ -57,6 +60,7 @@ export default function ListeningAnswerInput({
       <div className="rounded-xl border border-border bg-background p-4 sm:p-5 text-base leading-loose">
         {question.options?.map((option, index) => {
           const selected = selectedOptions.includes(option.id);
+          const mark = answerMark(option.id, selected, correctAnswers);
           return (
             <React.Fragment key={option.id}>
               <button
@@ -65,7 +69,7 @@ export default function ListeningAnswerInput({
                 aria-pressed={selected}
                 disabled={disabled}
                 onClick={() => onSelectionChange(selected ? selectedOptions.filter(value => value !== option.id) : [...selectedOptions, option.id])}
-                className={`inline rounded px-1 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed ${selected ? 'bg-primary text-primary-foreground underline decoration-2 underline-offset-4' : 'text-foreground hover:bg-primary/10'}`}
+                className={`inline rounded px-1 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed ${correctAnswers ? WORD_MARK_CLASS[mark] : selected ? 'bg-primary text-primary-foreground underline decoration-2 underline-offset-4' : 'text-foreground hover:bg-primary/10'}`}
               >{option.text}</button>{' '}
             </React.Fragment>
           );

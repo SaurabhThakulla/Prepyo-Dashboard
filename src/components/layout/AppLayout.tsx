@@ -93,6 +93,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
 
     const button = target.closest('button');
+    // Controls that only change the layout (data-stay) never leave the task.
+    if (button?.hasAttribute('data-stay')) return;
     if (button) {
       if (
         button.closest('aside') ||

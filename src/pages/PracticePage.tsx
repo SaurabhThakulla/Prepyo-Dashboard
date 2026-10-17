@@ -36,6 +36,7 @@ import QuestionFigure from '@/components/practice/QuestionFigure';
 import PromptAudio from '@/components/practice/PromptAudio';
 import KoreanHelp from '@/components/practice/KoreanHelp';
 import PracticeResultDialog from '@/components/practice/PracticeResultDialog';
+import { answerMark, OPTION_MARK_CLASS, OPTION_MARK_LABEL } from '@/lib/answerMarks';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import OptionContent, { hasPictureOptions } from '@/components/practice/OptionContent';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
@@ -305,6 +306,11 @@ function PracticePageContent() {
   // A result opens as a pop-up rather than under the answer; a button shows it again.
   const [showResult, setShowResult] = useState(false);
   useEffect(() => setShowResult(result !== null), [result]);
+  const seeResultButton = result && (
+    <Button variant="outline" size="default" onClick={() => setShowResult(true)} className="font-bold text-xs rounded-xl h-10 px-5">
+      See your result{result.evaluation?.estimatedScore != null && ` (${result.evaluation.estimatedScore})`}
+    </Button>
+  );
   const [startedAt, setStartedAt] = useState<number>(() => Date.now());
   const [completedIds, setCompletedIds] = useState<string[]>([]);
 
@@ -997,6 +1003,7 @@ function PracticePageContent() {
                   selectedOptions={selectedOptions}
                   onSelectionChange={setSelectedOptions}
                   disabled={submitting || result !== null}
+                  correctAnswers={result?.review?.correctAnswers ?? null}
                 />
 
                 {!isWordHighlightTask(currentQuestion) && currentQuestion.options && currentQuestion.options.length > 0 && (
@@ -1005,10 +1012,13 @@ function PracticePageContent() {
                     <div className={hasPictureOptions(currentQuestion.options) ? 'grid grid-cols-2 gap-2.5' : 'space-y-2.5'}>
                     {currentQuestion.options.map((opt, optIndex) => {
                       const checked = selectedOptions.includes(opt.id);
+                      // Once marked, the right answer is green and a wrong pick red.
+                      const key = result?.review?.correctAnswers ?? null;
+                      const mark = answerMark(opt.id, checked, key);
                       return (
                         <label
                           key={opt.id}
-                          className={`flex items-start gap-2.5 p-3.5 rounded-xl border cursor-pointer text-xs sm:text-sm transition-colors ${checked ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40'
+                          className={`flex items-start gap-2.5 p-3.5 rounded-xl border cursor-pointer text-xs sm:text-sm transition-colors ${key ? OPTION_MARK_CLASS[mark] : checked ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40'
                             }`}
                         >
                           <input
@@ -1025,6 +1035,11 @@ function PracticePageContent() {
                             className="mt-0.5 rounded border-input text-primary focus:ring-primary h-4 w-4"
                           />
                           <OptionContent option={opt} index={optIndex} />
+                          {OPTION_MARK_LABEL[mark] && (
+                            <span className={`ml-auto shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold ${mark === 'wrong' ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300' : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'}`}>
+                              {OPTION_MARK_LABEL[mark]}
+                            </span>
+                          )}
                         </label>
                       );
                     })}
@@ -1035,8 +1050,13 @@ function PracticePageContent() {
                 {!passageHasGaps(currentQuestion.contextPassage) && currentQuestion.blanks && currentQuestion.blanks.length > 0 && (
                   <div className="space-y-3 pt-2">
                     <h4 className="text-xs font-bold text-foreground">Fill each blank:</h4>
-                    {currentQuestion.blanks.map((b, idx) => (
-                      <div key={b.id} className="flex items-center justify-between gap-3 p-3 bg-card rounded-xl border border-border text-xs sm:text-sm">
+                    {currentQuestion.blanks.map((b, idx) => {
+                      const reviewed = result?.review?.blanks?.find(r => r.id === b.id);
+                      const given = (blankResponses[b.id] ?? '').trim().toLowerCase();
+                      const right = !!reviewed && [reviewed.correctAnswer]
+                        .some(a => (a ?? '').trim().toLowerCase() === given && given !== '');
+                      return (
+                      <div key={b.id} className={`flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border text-xs sm:text-sm ${!reviewed ? 'bg-card border-border' : right ? 'border-emerald-500 bg-emerald-500/10' : 'border-rose-500 bg-rose-500/10'}`}>
                         <span className="font-bold text-primary shrink-0">Blank {idx + 1}:</span>
                         {b.options && b.options.length > 0 ? (
                           <div className="relative inline-flex items-center group">
@@ -1060,24 +1080,23 @@ function PracticePageContent() {
                             placeholder="Type your answer"
                           />
                         )}
+                        {reviewed && !right && (
+                          <span className="w-full text-xs font-semibold text-emerald-700 dark:text-emerald-300">Correct answer: {reviewed.correctAnswer}</span>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
 
-              {result && (
-                <div className="flex justify-center pt-2">
-                  <Button variant="outline" className="rounded-xl" onClick={() => setShowResult(true)}>
-                    See your result{result.evaluation?.estimatedScore != null && ` (${result.evaluation.estimatedScore})`}
-                  </Button>
-                </div>
-              )}
             </Card>
 
             {result && (
               <PracticeResultDialog
                 result={result}
+                answerText={textAnswer}
+                blankAnswers={blankResponses}
                 recording={recording}
                 open={showResult}
                 onOpenChange={setShowResult}
@@ -1103,6 +1122,7 @@ function PracticePageContent() {
               {result && mistakeId ? (
                 <div className="flex items-center gap-3">
                   {resolution.resolved && <span role="status">Mistake resolved</span>}
+                  {seeResultButton}
                   {result.attempt?.isCorrect && !resolution.resolved ? (
                     <Button disabled={resolution.saving} onClick={() => void resolution.finish(true)}>Retry saving resolution</Button>
                   ) : (
@@ -1115,6 +1135,7 @@ function PracticePageContent() {
                     <CheckCircle2 className="w-4 h-4" />
                     You have finished every question here
                   </span>
+                  {seeResultButton}
                   <Button
                     variant="outline"
                     size="default"
@@ -1137,6 +1158,7 @@ function PracticePageContent() {
                 </div>
               ) : result ? (
                 <div className="flex flex-wrap items-center gap-3">
+                  {seeResultButton}
                   <Button
                     variant="outline"
                     size="default"
