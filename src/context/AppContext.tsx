@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { api, ApiError } from '@/lib/api';
 import '@/lib/google';
 import { ExamType, isExamType, NotificationItem, UserProfile } from '@/lib/types';
+import { PteExamVariant } from '@/lib/pteExamConfig';
 import { TutorialVideo } from '@/data/tutorials';
 
 export type TutorialViewMode = 'standard' | 'theater' | 'mini';
@@ -56,6 +57,8 @@ interface AppContextType {
 
   activeExam: ExamType;
   setActiveExam: (exam: ExamType) => Promise<void>;
+  pteVariant: PteExamVariant;
+  setPteVariant: (variant: PteExamVariant) => void;
   updateProfile: (updates: Partial<Pick<UserProfile, 'name' | 'targetExam' | 'targetModule' | 'targetScore' | 'examDate' | 'nepalRegion'>>) => Promise<void>;
   completeOnboarding: (answers?: OnboardingAnswers) => Promise<void>;
 
@@ -113,6 +116,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     return 'PTE';
   });
+  const [pteVariant, setPteVariantState] = useState<PteExamVariant>(() => {
+    try {
+      const saved = localStorage.getItem('prepyo-pte-variant');
+      if (saved === 'core' || saved === 'academic') return saved;
+    } catch {
+      // ignore
+    }
+    return 'academic';
+  });
+
+  const setPteVariant = useCallback((variant: PteExamVariant) => {
+    setPteVariantState(variant);
+    try {
+      localStorage.setItem('prepyo-pte-variant', variant);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const [isTutorOpen, setIsTutorOpen] = useState(false);
   const [tutorContextPrompt, setTutorContextPrompt] = useState('');
   const [tutorQuestion, setTutorQuestion] = useState<string | null>(null);
@@ -434,6 +456,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       clearAllNotifications,
       activeExam,
       setActiveExam,
+      pteVariant,
+      setPteVariant,
       updateProfile,
       completeOnboarding,
       isTutorOpen,
@@ -458,7 +482,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       user, loading, signInWithGoogle, signInAsAdmin, logout, refreshUser,
       notifications, unreadCount, hasMoreNotifications, refreshNotifications, loadMoreNotifications,
       markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllNotifications,
-      activeExam, setActiveExam, updateProfile, completeOnboarding,
+      activeExam, setActiveExam, pteVariant, setPteVariant, updateProfile, completeOnboarding,
       isTutorOpen, tutorContextPrompt, tutorQuestion, askTutor, clearTutorQuestion,
       theme, setTheme, toggleTheme,
       activeTestSession, activeTutorialVideo, tutorialViewMode, closeTutorialVideo,

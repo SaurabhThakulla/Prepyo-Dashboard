@@ -5,6 +5,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import SecondaryNavList from './SecondaryNavList';
 import { PrimarySectionConfig, SecondaryNavItem } from './navigation';
 import { EXAM_LABELS, ExamType, UserProfile, isAdmin, isPremiumUser } from '@/lib/types';
+import { useApp } from '@/context/AppContext';
+import { PteExamVariant } from '@/lib/pteExamConfig';
 
 interface SecondaryPanelProps {
   section: PrimarySectionConfig;
@@ -28,17 +30,18 @@ export default function SecondaryPanel({
   onOpenTutor,
   onNavigate,
 }: SecondaryPanelProps) {
+  const { pteVariant, setPteVariant } = useApp();
   const SectionIcon = section.icon;
 
   return (
     <aside
       className={`shrink-0 border-r border-white/10 flex flex-col justify-between transition-all duration-300 ease-in-out overflow-hidden ${
         isOpen
-          ? 'w-[min(20rem,calc(100vw-5rem))] lg:w-80 opacity-100 pointer-events-auto shadow-xl lg:shadow-none'
+          ? 'w-[min(22rem,calc(100vw-5rem))] lg:w-[22rem] opacity-100 pointer-events-auto shadow-xl lg:shadow-none'
           : 'w-0 opacity-0 pointer-events-none border-none'
       }`}
     >
-      <div className="w-[min(20rem,calc(100vw-5rem))] lg:w-80 min-h-0 flex flex-col justify-between h-full">
+      <div className="w-[min(22rem,calc(100vw-5rem))] lg:w-[22rem] min-h-0 flex flex-col justify-between h-full">
         <div className="px-4 pt-5 pb-4 space-y-3">
           <div className="flex items-center gap-3 rounded-2xl bg-white/10 border border-white/15 p-2.5 pr-3 backdrop-blur-sm">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-primary dark:text-blue-950 shadow-md shadow-black/15">
@@ -51,6 +54,10 @@ export default function SecondaryPanel({
           </div>
 
           {isAdmin(user) && <ExamSwitcher activeExam={activeExam} onChange={onExamChange} onBlue />}
+
+          {activeExam === 'PTE' && (
+            <PteVariantSwitcher pteVariant={pteVariant} onChange={setPteVariant} onBlue />
+          )}
         </div>
 
         <SecondaryNavList
@@ -157,6 +164,47 @@ export function ExamSwitcher({
           <span className="text-[9px] opacity-75 font-mono">{target}</span>
         </button>
       ))}
+    </div>
+  );
+}
+
+export function PteVariantSwitcher({
+  pteVariant,
+  onChange,
+  onBlue = false,
+}: {
+  pteVariant: PteExamVariant;
+  onChange: (variant: PteExamVariant) => void;
+  onBlue?: boolean;
+}) {
+  return (
+    <div className={`flex items-center p-1 rounded-xl border ${onBlue ? 'bg-white/10 border-white/20' : 'bg-muted/60 border-border'}`}>
+      <button
+        type="button"
+        onClick={() => onChange('academic')}
+        className={`flex-1 py-1 rounded-lg text-xs font-bold transition-all text-center ${
+          pteVariant === 'academic'
+            ? 'bg-[#00c4a7] text-white shadow-sm'
+            : onBlue
+              ? 'text-white/70 hover:text-white'
+              : 'text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        PTE Academic
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('core')}
+        className={`flex-1 py-1 rounded-lg text-xs font-bold transition-all text-center ${
+          pteVariant === 'core'
+            ? 'bg-[#00c4a7] text-white shadow-sm'
+            : onBlue
+              ? 'text-white/70 hover:text-white'
+              : 'text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        PTE Core
+      </button>
     </div>
   );
 }

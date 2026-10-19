@@ -13,22 +13,18 @@ import {
   BarChart3,
   Lock,
   Crown,
-  BookOpen,
   ArrowRight,
+  Clock,
+  Flame,
+  BookOpen,
+  Headphones,
+  SquarePen,
+  Mic,
+  Lightbulb,
+  Layers,
+  X,
+  Target,
 } from 'lucide-react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from 'recharts';
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart';
 import { MistakesPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -79,16 +75,21 @@ function renderResponseBadges(text: string, isWrong: boolean) {
   );
 }
 
-const chartConfig = {
-  unresolved: {
-    label: 'Unresolved',
-    color: 'hsl(350 89% 60%)',
-  },
-  resolved: {
-    label: 'Resolved',
-    color: 'hsl(142 71% 45%)',
-  },
-} satisfies ChartConfig;
+const SKILL_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  all: Layers,
+  reading: BookOpen,
+  listening: Headphones,
+  writing: SquarePen,
+  speaking: Mic,
+};
+
+const SKILL_STYLES: Record<string, string> = {
+  reading: 'bg-blue-50/90 text-blue-700 border-blue-200/80 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50',
+  listening: 'bg-purple-50/90 text-purple-700 border-purple-200/80 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900/50',
+  writing: 'bg-indigo-50/90 text-indigo-700 border-indigo-200/80 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-900/50',
+  speaking: 'bg-amber-50/90 text-amber-700 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50',
+};
+
 
 const DUMMY_ANALYTICS: Partial<Record<ExamType, MistakeAnalytics>> = {
   PTE: {
@@ -323,17 +324,12 @@ export default function MistakesPage() {
     );
   });
 
-  // Prepare chart dataset for shadcn graph
-  const timelineData = (analytics?.timeline ?? []).map(point => ({
-    label: point.label,
-    date: point.date,
-    total: point.count,
-    resolved: point.resolved,
-    unresolved: Math.max(0, point.count - point.resolved),
-  }));
-
   const periodLabel =
     period === 'weekly' ? 'Past 7 Days' : 'Past 4 Weeks';
+
+  const recoveryRate = analytics?.total && analytics.total > 0
+    ? Math.round((analytics.resolved / analytics.total) * 100)
+    : 0;
 
   return (
     <div className="relative w-full pb-16 overflow-hidden">
@@ -347,382 +343,364 @@ export default function MistakesPage() {
         aria-hidden={isSuru ? 'true' : undefined}
       >
         {/* ======================================================================= */}
-        {/* Edge-to-edge Analytics Dashboard (no top or side gaps) */}
+        {/* Analytics Dashboard Header & KPI Summary Cards */}
         {/* ======================================================================= */}
         <div className="w-full">
           <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
-          {/* Header row: Title & Timeframe Toggle */}
-          <div className="flex items-start sm:items-center justify-between gap-3 pb-3 sm:pb-2 border-b border-border/60">
-            <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-bold text-foreground">
-              <span className="sm:hidden">Your mistakes</span>
-              <span className="hidden sm:inline">Mistake Frequency &amp; Recovery Trends</span>
-            </h2>
-            <p className="text-[11px] sm:text-xs text-muted-foreground">
-              <span className="sm:hidden">Showing the <span className="font-semibold text-foreground">{periodLabel.toLowerCase()}</span></span>
-              <span className="hidden sm:inline">
-                All metrics, graphs, and mistake lists below currently reflect the <span className="font-semibold text-foreground font-mono">{periodLabel}</span> filter.
-              </span>
-            </p>
-          </div>
-
-            {/* Period Switcher Button Group */}
-            <div className="flex shrink-0 bg-muted/60 p-1 rounded-xl border border-border/80">
-              {(['weekly', 'monthly'] as const).map(p => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={`px-3 py-1.5 sm:py-1 text-xs font-bold capitalize rounded-lg transition-all ${
-                    period === p
-                      ? 'bg-card text-blue-600 dark:text-blue-400 shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {p === 'weekly' ? 'Weekly' : 'Monthly'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* KPI Summary Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-            <div className="p-3 sm:p-4 rounded-2xl border border-border/80 bg-muted/20 space-y-1">
-              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
-                Total ({period})
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black text-foreground font-mono">
-                  {analytics?.total ?? 0}
-                </span>
-                <span className="text-[10px] font-bold text-muted-foreground">errors</span>
-              </div>
-            </div>
-
-            <div className="p-3 sm:p-4 rounded-2xl border border-rose-200/60 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/10 space-y-1">
-              <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider block">
-                Unresolved
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 font-mono">
-                  {analytics?.unresolved ?? 0}
-                </span>
-                <span className="text-[10px] font-bold text-rose-600/80">needs review</span>
-              </div>
-            </div>
-
-            <div className="p-3 sm:p-4 rounded-2xl border border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/10 space-y-1">
-              <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider block">
-                Resolved<span className="hidden sm:inline"> / Mastered</span>
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                  {analytics?.resolved ?? 0}
-                </span>
-                <span className="text-[10px] font-bold text-emerald-600/80">
-                  {analytics?.total ? Math.round((analytics.resolved / analytics.total) * 100) : 0}% recovery
-                </span>
-              </div>
-            </div>
-
-            <div className="p-3 sm:p-4 rounded-2xl border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/10 space-y-1">
-              <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider block">
-                Repeated<span className="hidden sm:inline"> Errors</span>
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono">
-                  {analytics?.repeatCount ?? 0}
-                </span>
-                <span className="text-[10px] font-bold text-amber-600/80">missed &gt;1x</span>
-              </div>
-            </div>
-          </div>
-
-          {/* shadcn Graph Container */}
-          <div className="space-y-3 pt-1">
-            <div className="flex items-center justify-between gap-3 text-xs">
-              <span className="font-bold text-muted-foreground text-[11px] uppercase tracking-wider">
-                <span className="sm:hidden">Timeline</span>
-                <span className="hidden sm:inline">Timeline Bar Graph ({periodLabel})</span>
-              </span>
-              <div className="flex shrink-0 items-center gap-3 text-[11px]">
-                <span className="inline-flex items-center gap-1.5 whitespace-nowrap font-medium text-muted-foreground">
-                  <span className="w-2.5 h-2.5 rounded-xs bg-rose-500" />
-                  Unresolved
-                </span>
-                <span className="inline-flex items-center gap-1.5 whitespace-nowrap font-medium text-muted-foreground">
-                  <span className="w-2.5 h-2.5 rounded-xs bg-emerald-500" />
-                  Resolved
-                </span>
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-muted/20 border border-border/60 p-2.5 pt-4 sm:p-4 sm:pt-6">
-              <ChartContainer config={chartConfig} className="h-40 sm:h-52 w-full">
-                <BarChart
-                  data={timelineData}
-                  margin={{ top: 8, right: 12, left: -20, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border/40" />
-                  <XAxis
-                    dataKey="label"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    fontSize={11}
-                    className="font-mono font-medium text-muted-foreground"
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={6}
-                    fontSize={11}
-                    allowDecimals={false}
-                    className="font-mono text-muted-foreground"
-                  />
-                  <ChartTooltip
-                    cursor={{ fill: 'currentColor', opacity: 0.05 }}
-                    content={
-                      <ChartTooltipContent
-                        indicator="dot"
-                        labelFormatter={(label, payload) => {
-                          const date = payload?.[0]?.payload?.date;
-                          return (
-                            <div className="flex items-center justify-between gap-3 font-bold">
-                              <span>{label}</span>
-                              {date && (
-                                <span className="text-[10px] font-mono text-muted-foreground font-normal">
-                                  {date}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        }}
-                      />
-                    }
-                  />
-                  <Bar
-                    dataKey="resolved"
-                    stackId="mistakes"
-                    fill="hsl(142 71% 45%)"
-                    radius={[0, 0, 3, 3]}
-                  />
-                  <Bar
-                    dataKey="unresolved"
-                    stackId="mistakes"
-                    fill="hsl(350 89% 60%)"
-                    radius={[3, 3, 0, 0]}
-                  />
-                </BarChart>
-              </ChartContainer>
-            </div>
-          </div>
-
-          {/* Skill Breakdown & Top Error Tags Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 pt-3 sm:pt-2 border-t border-border/60">
-            {/* By Skill Breakdown */}
-            <div className="p-3 sm:p-4 rounded-2xl border border-border/60 bg-muted/15 space-y-2 sm:space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-                  <span className="sm:hidden">By skill</span>
-                  <span className="hidden sm:inline">Mistakes By Skill ({period})</span>
-                </span>
-                <span className="text-[11px] text-muted-foreground">
-                  <span className="sm:hidden">Tap to filter</span>
-                  <span className="hidden sm:inline">Click to filter below</span>
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-1 sm:block sm:space-y-2">
-                {(['reading', 'listening', 'writing', 'speaking'] as SkillType[]).map(s => {
-                  const count = analytics?.bySkill?.[s] ?? 0;
-                  const total = analytics?.total || 1;
-                  const pct = Math.round((count / total) * 100);
-                  const isSelected = selectedSkill === s;
-
-                  return (
-                    <div
-                      key={s}
-                      onClick={() => setSelectedSkill(isSelected ? 'all' : s)}
-                      className={`p-2 rounded-xl cursor-pointer transition-all border ${
-                        isSelected
-                          ? 'border-blue-500 bg-blue-500/10'
-                          : 'border-transparent hover:bg-muted/40'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="font-bold capitalize text-foreground">{s}</span>
-                        <span className="font-mono text-muted-foreground">
-                          {count} ({pct}%)
-                        </span>
-                      </div>
-                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-blue-600 rounded-full transition-all duration-300"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Top Error Categories / Tags */}
-            <div className="p-3 sm:p-4 rounded-2xl border border-border/60 bg-muted/15 space-y-2 sm:space-y-3">
-              <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-amber-600" />
-                <span className="sm:hidden">Recurring error topics</span>
-                <span className="hidden sm:inline">Top Recurring Error Topics ({period})</span>
-              </span>
-
-              {analytics?.byTag && analytics.byTag.length > 0 ? (
-                <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 pt-1 no-scrollbar sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-                  {analytics.byTag.map(t => (
-                    <button
-                      key={t.tag}
-                      onClick={() => setSearchQuery(t.tag)}
-                      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20 text-xs font-medium text-amber-800 dark:text-amber-300 transition-colors"
-                    >
-                      <span className="font-bold">{t.tag}</span>
-                      <span className="px-1.5 py-0.2 rounded-md bg-amber-500/20 text-[10px] font-mono font-bold">
-                        {t.count}
-                      </span>
-                    </button>
-                  ))}
+            {/* Header row: Title & Timeframe Toggle */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2.5">
+                  <h2 className="text-lg sm:text-xl font-black text-foreground tracking-tight">
+                    Mistake Bank
+                  </h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-primary/10 text-primary border border-primary/20 tracking-wider">
+                    {activeExam}
+                  </span>
                 </div>
-              ) : (
-                <p className="text-xs text-muted-foreground italic pt-2">
-                  No error categories tagged in this period yet.
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Review questions missed during practice &amp; mocks in the{' '}
+                  <span className="font-semibold text-foreground font-mono">{periodLabel}</span> to target weak areas.
                 </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Container for Filter & Mistake List */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 space-y-4 sm:space-y-6">
-        {/* ======================================================================= */}
-        {/* Filter Tag & Search Bar */}
-        {/* ======================================================================= */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-muted/40 p-2.5 sm:p-3 rounded-2xl border border-border/80">
-          <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            {skillFilters.map(t => (
-              <Button
-                key={t}
-                size="sm"
-                variant={selectedSkill === t ? 'default' : 'ghost'}
-                onClick={() => setSelectedSkill(t)}
-                className="h-9 flex-1 px-1 text-[11px] font-bold whitespace-nowrap rounded-xl capitalize sm:h-8 sm:flex-none sm:px-3 sm:text-xs"
-              >
-                {t}
-              </Button>
-            ))}
-          </div>
-
-          <div className="relative w-full sm:w-auto sm:min-w-[220px] sm:max-w-xs">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            <Input
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search mistakes or topics…"
-              className="h-10 sm:h-8 pl-8 text-xs bg-background rounded-xl border-border/80"
-            />
-          </div>
-        </div>
-
-        {/* ======================================================================= */}
-        {/* Mistake Cards List (Reflects Period Filter!) */}
-        {/* ======================================================================= */}
-        {loading ? (
-          <MistakesPageSkeleton bare />
-        ) : filteredMistakes.length === 0 ? (
-          <Card className="p-12 text-center space-y-3 rounded-2xl border-border/80">
-            <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
-            <CardTitle className="text-base font-bold">
-              {rawMistakes.length === 0 ? `No mistakes recorded in the ${periodLabel.toLowerCase()}` : 'No matching mistakes found'}
-            </CardTitle>
-            <CardDescription className="text-xs max-w-md mx-auto">
-              {rawMistakes.length === 0
-                ? `Questions you miss during practice and full mock exams within the ${periodLabel.toLowerCase()} will appear here for review.`
-                : 'Try clearing your search query or switching to another skill filter.'}
-            </CardDescription>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground px-1">
-              <span>Showing <strong>{filteredMistakes.length}</strong> mistakes from <strong>{periodLabel}</strong></span>
-              {selectedSkill !== 'all' && (
-                <span className="capitalize">Filtered by: <strong>{selectedSkill}</strong></span>
-              )}
-            </div>
-
-            {filteredMistakes.map(item => (
-              <div
-                key={item.id}
-                className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs hover:border-primary/30 hover:shadow-md transition-all duration-200 space-y-3 sm:space-y-4"
-              >
-                {/* Header row: Skill & metadata pills */}
-                <div className="flex items-start justify-between gap-2.5">
-                  <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
-                    <span className="bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
-                      {item.typeName}
-                    </span>
-                    {item.skill && (
-                      <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/80 px-2.5 py-0.5 rounded-md border border-border">
-                        {item.skill}
-                      </span>
-                    )}
-                    {item.errorTag && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-md border border-amber-500/20">
-                        <Tag className="w-3 h-3" />
-                        <span>{item.errorTag}</span>
-                      </span>
-                    )}
-                    {item.failedCount > 1 && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 dark:text-rose-400 bg-rose-500/10 px-2.5 py-0.5 rounded-md border border-rose-500/20">
-                        <RotateCcw className="w-3 h-3" />
-                        <span>Missed {item.failedCount}x</span>
-                      </span>
-                    )}
-                  </div>
-                  {item.lastAttemptedAt && (
-                    <span className="shrink-0 whitespace-nowrap pt-1 text-[10px] font-mono text-muted-foreground">
-                      {new Date(item.lastAttemptedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                    </span>
-                  )}
-                </div>
-
-                {/* Title & Prompt Context */}
-                <div className="space-y-1.5">
-                  <h3 className="font-display font-bold text-base sm:text-lg text-foreground tracking-tight break-words">
-                    {item.questionTitle}
-                  </h3>
-                  {item.prompt && (
-                    <p className="text-xs sm:text-[13px] text-muted-foreground leading-relaxed break-words">
-                      {item.prompt}
-                    </p>
-                  )}
-                </div>
-
-                <div className="rounded-xl border border-border p-3 sm:p-4 space-y-2">
-                  <p className="text-xs font-bold text-muted-foreground">Previous response</p>
-                  {renderResponseBadges(item.userResponse, true)}
-                </div>
-                {!isSuru && <MistakePracticeLink mistake={item} />}
               </div>
-            ))}
+
+              {/* Period Switcher Button Group */}
+              <div className="inline-flex self-start sm:self-auto bg-muted/60 p-1 rounded-2xl border border-border/80 shadow-2xs">
+                {(['weekly', 'monthly'] as const).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setPeriod(p)}
+                    className={`px-3.5 py-1.5 text-xs font-bold capitalize rounded-xl transition-all ${
+                      period === p
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {p === 'weekly' ? 'Weekly' : 'Monthly'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* KPI Summary Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {/* Total Logged */}
+              <div className="group relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-indigo-50/40 dark:to-indigo-950/20 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-indigo-400/40 transition-all duration-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Total Logged
+                  </span>
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                    <Layers className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-2.5 flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-black text-foreground font-mono tracking-tight">
+                    {analytics?.total ?? 0}
+                  </span>
+                  <span className="text-[11px] font-medium text-muted-foreground">questions</span>
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground/80 truncate">
+                  Logged in {periodLabel.toLowerCase()}
+                </p>
+              </div>
+
+              {/* Unresolved / Needs Review */}
+              <div className="group relative overflow-hidden rounded-2xl border border-rose-200/80 dark:border-rose-900/40 bg-gradient-to-br from-card via-card to-rose-50/40 dark:to-rose-950/20 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-rose-400/40 transition-all duration-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">
+                    Unresolved
+                  </span>
+                  <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                    <Flame className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-2.5 flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight">
+                    {analytics?.unresolved ?? 0}
+                  </span>
+                  <span className="text-[11px] font-semibold text-rose-600/80">needs retry</span>
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground/80 truncate">
+                  Awaiting practice retry
+                </p>
+              </div>
+
+              {/* Mastered / Resolved */}
+              <div className="group relative overflow-hidden rounded-2xl border border-emerald-200/80 dark:border-emerald-900/40 bg-gradient-to-br from-card via-card to-emerald-50/40 dark:to-emerald-950/20 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-emerald-400/40 transition-all duration-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
+                    Mastered
+                  </span>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-2.5 flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
+                    {analytics?.resolved ?? 0}
+                  </span>
+                  <span className="text-[11px] font-semibold text-emerald-600/80">
+                    {recoveryRate}% recovery
+                  </span>
+                </div>
+                <div className="mt-2 w-full bg-muted/60 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${recoveryRate}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Repeat Traps */}
+              <div className="group relative overflow-hidden rounded-2xl border border-amber-200/80 dark:border-amber-900/40 bg-gradient-to-br from-card via-card to-amber-50/40 dark:to-amber-950/20 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-amber-400/40 transition-all duration-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
+                    Repeat Traps
+                  </span>
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                    <RotateCcw className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-2.5 flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono tracking-tight">
+                    {analytics?.repeatCount ?? 0}
+                  </span>
+                  <span className="text-[11px] font-semibold text-amber-600/80">missed &gt;1x</span>
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground/80 truncate">
+                  High priority revision
+                </p>
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+
+        {/* Main Container for Filter & Mistake List */}
+        <div className="w-full px-4 sm:px-6 lg:px-8 space-y-4 sm:space-y-6">
+          {/* Filter Tag & Search Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-muted/30 p-2.5 sm:p-3 rounded-2xl border border-border/80 shadow-2xs">
+            {/* Skill Buttons */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              {skillFilters.map(t => {
+                const Icon = SKILL_ICONS[t] || Layers;
+                const isSelected = selectedSkill === t;
+                return (
+                  <Button
+                    key={t}
+                    size="sm"
+                    variant={isSelected ? 'default' : 'outline'}
+                    onClick={() => setSelectedSkill(t)}
+                    className={`h-9 px-3 rounded-xl capitalize text-xs font-semibold whitespace-nowrap transition-all duration-150 flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'shadow-xs font-bold'
+                        : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground border-border/60'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{t}</span>
+                  </Button>
+                );
+              })}
+            </div>
+
+            {/* Search Input */}
+            <div className="relative w-full sm:w-auto sm:min-w-[240px] sm:max-w-xs">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search mistakes or topics…"
+                className="h-10 sm:h-9 pl-9 pr-8 text-xs bg-background rounded-xl border-border/80 focus-visible:ring-1 focus-visible:ring-primary"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full"
+                  aria-label="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Mistake Cards List */}
+          {loading ? (
+            <MistakesPageSkeleton bare />
+          ) : filteredMistakes.length === 0 ? (
+            <Card className="p-12 text-center space-y-4 rounded-3xl border border-dashed border-border/80 bg-muted/10">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-2xs">
+                <CheckCircle2 className="w-7 h-7" />
+              </div>
+              <div className="space-y-1.5 max-w-md mx-auto">
+                <CardTitle className="text-base sm:text-lg font-bold">
+                  {rawMistakes.length === 0
+                    ? `No mistakes recorded in the ${periodLabel.toLowerCase()}`
+                    : 'No matching mistakes found'}
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm leading-relaxed">
+                  {rawMistakes.length === 0
+                    ? `Questions you miss during practice and full mock exams within the ${periodLabel.toLowerCase()} will appear here automatically.`
+                    : 'Try clearing your search query or switching to another skill filter.'}
+                </CardDescription>
+              </div>
+              {searchQuery && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSearchQuery('')}
+                  className="rounded-xl text-xs"
+                >
+                  Clear Search Filter
+                </Button>
+              )}
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground px-1">
+                <span>
+                  Showing <strong className="text-foreground">{filteredMistakes.length}</strong> mistakes from <strong className="text-foreground">{periodLabel}</strong>
+                </span>
+                {selectedSkill !== 'all' && (
+                  <span className="capitalize">
+                    Filtered by: <strong className="text-foreground">{selectedSkill}</strong>
+                  </span>
+                )}
+              </div>
+
+              {filteredMistakes.map(item => {
+                const SkillIcon = SKILL_ICONS[item.skill] || Layers;
+                const skillStyle = SKILL_STYLES[item.skill] || 'bg-muted text-muted-foreground border-border';
+
+                return (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs hover:border-primary/40 hover:shadow-md transition-all duration-200 space-y-4"
+                  >
+                    {/* Header row: Skill, question type, repeat count & timestamp */}
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
+                        {/* Skill Pill */}
+                        {item.skill && (
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider border ${skillStyle}`}>
+                            <SkillIcon className="w-3 h-3" />
+                            <span>{item.skill}</span>
+                          </span>
+                        )}
+
+                        {/* Question Type */}
+                        <span className="px-3 py-1 rounded-lg text-[11px] font-bold tracking-tight bg-secondary/80 text-secondary-foreground border border-border/60">
+                          {item.typeName}
+                        </span>
+
+                        {/* Status Pill */}
+                        {item.resolved ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/25">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                            <span>Mastered</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 dark:text-rose-300 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/25">
+                            <Flame className="w-3 h-3 text-rose-500" />
+                            <span>Unresolved</span>
+                          </span>
+                        )}
+
+                        {/* Error Tag */}
+                        {item.errorTag && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
+                            <Tag className="w-3 h-3" />
+                            <span>{item.errorTag}</span>
+                          </span>
+                        )}
+
+                        {/* Repeat Count */}
+                        {item.failedCount > 1 && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 dark:text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/25">
+                            <RotateCcw className="w-3 h-3" />
+                            <span>Missed {item.failedCount}x</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Timestamp */}
+                      {item.lastAttemptedAt && (
+                        <span className="shrink-0 inline-flex items-center gap-1 pt-1 text-[11px] font-mono text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          {new Date(item.lastAttemptedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Title & Prompt Context */}
+                    <div className="space-y-2">
+                      <h3 className="font-display font-bold text-base sm:text-lg text-foreground tracking-tight break-words">
+                        {item.questionTitle}
+                      </h3>
+                      {item.prompt && (
+                        <div className="text-xs sm:text-[13px] text-muted-foreground/90 bg-muted/20 border-l-2 border-primary/40 pl-3 py-1.5 rounded-r-lg leading-relaxed break-words">
+                          {item.prompt}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Responses Comparison: Your Answer vs Correct Answer */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                      {/* Previous (Wrong) Response */}
+                      <div className="rounded-xl border border-rose-200/70 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/20 p-3 sm:p-3.5 space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-rose-700 dark:text-rose-400">
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>Previous response</span>
+                        </div>
+                        <div className="pt-0.5">
+                          {renderResponseBadges(item.userResponse, true)}
+                        </div>
+                      </div>
+
+                      {/* Correct Answer (if available) */}
+                      {item.correctResponse && (
+                        <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/20 p-3 sm:p-3.5 space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Correct answer</span>
+                          </div>
+                          <div className="pt-0.5">
+                            {renderResponseBadges(item.correctResponse, false)}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Examiner Explanation Box */}
+                    {item.explanation && (
+                      <div className="rounded-xl border border-amber-200/60 dark:border-amber-900/40 bg-amber-500/5 p-3.5 space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
+                          <Lightbulb className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                          <span>Examiner Explanation &amp; Key Learning</span>
+                        </div>
+                        <p className="text-xs sm:text-[13px] text-muted-foreground leading-relaxed pl-5">
+                          {item.explanation}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Action link */}
+                    {!isSuru && <MistakePracticeLink mistake={item} />}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ======================================================================= */}
       {/* Premium Upgrade Modal Overlay for Suru Users (Fixed & Non-movable) */}
       {/* ======================================================================= */}
       {isSuru && (
-        <div className="fixed inset-x-0 top-14 lg:top-16 bottom-[var(--mobile-nav-h,0px)] z-20 flex justify-center items-start py-4 sm:pt-10 px-4 pointer-events-none lg:left-[var(--sidebar-offset,384px)] transition-[left] duration-300">
+        <div className="fixed inset-x-0 top-14 lg:top-16 bottom-[var(--mobile-nav-h,0px)] z-20 flex justify-center items-start py-4 sm:pt-10 px-4 pointer-events-none lg:left-[var(--sidebar-offset,416px)] transition-[left] duration-300">
           <div className="pointer-events-auto relative w-full max-w-lg max-h-full overflow-y-auto overscroll-contain bg-card/95 backdrop-blur-md border border-border/90 shadow-2xl rounded-3xl p-5 sm:p-7 text-center space-y-4">
             {/* Ambient radiant glow */}
             <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-72 bg-gradient-to-br from-amber-500/25 via-blue-500/15 to-transparent rounded-full blur-3xl pointer-events-none" />

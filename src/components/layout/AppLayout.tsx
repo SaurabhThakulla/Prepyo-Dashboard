@@ -228,8 +228,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       />
 
       <div
-        style={{ '--sidebar-offset': isSecondaryOpen ? '384px' : '64px' } as React.CSSProperties}
-        className={`${isSecondaryOpen ? 'lg:pl-[384px]' : 'lg:pl-16'
+        style={{ '--sidebar-offset': isSecondaryOpen ? '416px' : '64px' } as React.CSSProperties}
+        className={`${isSecondaryOpen ? 'lg:pl-[416px]' : 'lg:pl-16'
           } flex w-full min-w-0 flex-col min-h-screen transition-[padding] duration-300 ease-in-out`}
       >
         <MobileTopBar />

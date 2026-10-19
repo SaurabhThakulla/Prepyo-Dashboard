@@ -34,6 +34,7 @@ import { SYLLABUS, syllabusFor, taskSummary, typeKey } from '@/lib/syllabus';
 import { typeIdsFor } from '@/lib/readingTypes';
 import { EXAM_LABELS, ExamType, ieltsModuleOf, isAdmin, SkillType, skillsFor, UserProfile } from '@/lib/types';
 import { PTE_MOCK_KINDS, pteMockHref } from '@/lib/pteMock/catalog';
+import { getPteTaskWeight, isPteTaskAvailable, getPteTaskLockedReason, PteExamVariant } from '@/lib/pteExamConfig';
 
 /**
  * What goes in the sidebar, and which item is highlighted.
@@ -60,6 +61,12 @@ export interface SecondaryNavItem {
   /** Makes the group heading itself a link — used by the skill headings, so
    *  "Reading" still opens reading practice without picking a task type. */
   groupHref?: string;
+  /** Score weight shown alongside the task in the secondary sidebar (e.g. "16%", "4%"). */
+  weight?: string;
+  /** Set when a task is not part of the active exam/variant. */
+  isLocked?: boolean;
+  /** Why the task is locked, e.g. "PTE Academic only". */
+  lockedReason?: string;
 }
 
 export interface PrimarySectionConfig {
@@ -112,6 +119,7 @@ export function buildSections(
   mockPassageCount = 0,
   hasMistake = false,
   learnProgress: LearnProgress = EMPTY_PROGRESS,
+  pteVariant: PteExamVariant = 'academic',
 ): PrimarySectionConfig[] {
   const isPTE = activeExam === 'PTE';
   // EPS-TOPIK has no sectional mocks yet; its full 40-question mock is to come.
@@ -199,7 +207,9 @@ export function buildSections(
       id: 'practice',
       label: 'Practice',
       icon: FilePenLine,
-      title: `${EXAM_LABELS[activeExam]} Practice Studio`,
+      title: isPTE
+        ? (pteVariant === 'core' ? 'PTE Core Practice Studio' : 'PTE Academic Practice Studio')
+        : `${EXAM_LABELS[activeExam]} Practice Studio`,
       description: 'Exam-format tasks & AI rubric feedback',
       // One heading per skill, one item per task type underneath — the exam's
       // own shape, straight from the syllabus, so PTE and IELTS each list their
@@ -220,16 +230,24 @@ export function buildSections(
         });
 
         if (isAdmin(user ?? null)) {
-          return names.map(name => ({
-            href: `/practice?skill=${skill}&type=${typeKey(name)}`,
-            label: name,
-            icon,
-            sublabel: `Author questions for ${name}`,
-            description: taskSummary(activeExam, skill, name),
-            badge: aiBadge,
-            group: label,
-            groupHref: `/practice?skill=${skill}`,
-          }));
+          return names.map(name => {
+            const pteWeight = isPTE ? getPteTaskWeight(pteVariant, name) : undefined;
+            const pteAvailable = isPTE ? isPteTaskAvailable(pteVariant, name) : true;
+            const pteLockedReason = isPTE && !pteAvailable ? getPteTaskLockedReason(pteVariant, name) : undefined;
+            return {
+              href: `/practice?skill=${skill}&type=${typeKey(name)}`,
+              label: name,
+              icon,
+              sublabel: pteLockedReason ?? `Author questions for ${name}`,
+              description: taskSummary(activeExam, skill, name),
+              badge: !pteAvailable ? (pteVariant === 'core' ? 'PTEA' : 'CORE') : aiBadge,
+              group: label,
+              groupHref: `/practice?skill=${skill}`,
+              weight: pteWeight,
+              isLocked: !pteAvailable,
+              lockedReason: pteLockedReason,
+            };
+          });
         }
 
         // Reading is the one skill whose bank can be empty behind a heading, so
@@ -245,16 +263,24 @@ export function buildSections(
               )
             : names;
 
-        const links: SecondaryNavItem[] = offered.map(name => ({
-          href: `/practice?skill=${skill}&type=${typeKey(name)}`,
-          label: name,
-          icon,
-          sublabel,
-          description: taskSummary(activeExam, skill, name),
-          badge: aiBadge,
-          group: label,
-          groupHref: `/practice?skill=${skill}`,
-        }));
+        const links: SecondaryNavItem[] = offered.map(name => {
+          const pteWeight = isPTE ? getPteTaskWeight(pteVariant, name) : undefined;
+          const pteAvailable = isPTE ? isPteTaskAvailable(pteVariant, name) : true;
+          const pteLockedReason = isPTE && !pteAvailable ? getPteTaskLockedReason(pteVariant, name) : undefined;
+          return {
+            href: `/practice?skill=${skill}&type=${typeKey(name)}`,
+            label: name,
+            icon,
+            sublabel: pteLockedReason ?? sublabel,
+            description: taskSummary(activeExam, skill, name),
+            badge: !pteAvailable ? (pteVariant === 'core' ? 'PTEA' : 'CORE') : aiBadge,
+            group: label,
+            groupHref: `/practice?skill=${skill}`,
+            weight: pteWeight,
+            isLocked: !pteAvailable,
+            lockedReason: pteLockedReason,
+          };
+        });
 
         // Mock tests sit under the same heading as the practice tasks for each skill.
         // PTE runs every sectional test on its own test player. The IELTS mocks
@@ -352,7 +378,7 @@ export function buildSections(
       title: 'Mock Exam Simulator',
       description: 'Timed full exams with scorecards',
       items: [
-        ...(isEPS ? [] : isPTE ? pteMockItems() : ieltsMockItems()),
+        ...(isEPS ? [] : isPTE ? pteMockItems(pteVariant) : ieltsMockItems()),
         {
           href: '/diagnostic',
           label: 'Diagnostic Test',
@@ -473,19 +499,24 @@ function ieltsMockItems(): SecondaryNavItem[] {
  * The PTE mock tests, in the two groups a learner chooses between: the whole
  * test, or one section of it. The mock centre (/mocks) heads the list.
  */
-function pteMockItems(): SecondaryNavItem[] {
+function pteMockItems(variant: PteExamVariant = 'academic'): SecondaryNavItem[] {
+  const isCore = variant === 'core';
   return [
     {
       href: '/mocks',
-      label: 'PTE Mock Test Centre',
+      label: isCore ? 'PTE Core Mock Centre' : 'PTE Mock Test Centre',
       icon: Timer,
-      sublabel: 'Every test, your progress and results',
+      sublabel: `Every ${isCore ? 'PTE Core' : 'PTE Academic'} test, your progress and results`,
     },
     ...PTE_MOCK_KINDS.map(meta => ({
       href: pteMockHref(meta.kind),
-      label: meta.kind === 'full' ? 'Full Mock Test' : `${meta.shortLabel} Test`,
+      label: meta.kind === 'full'
+        ? (isCore ? 'PTE Core Full Mock' : 'Full Mock Test')
+        : `${meta.shortLabel} Test`,
       icon: meta.icon,
-      sublabel: meta.blurb,
+      sublabel: isCore && meta.kind === 'full'
+        ? 'All three parts, timed for PTE Core, scored 10-90'
+        : meta.blurb,
       badge: meta.kind === 'full' ? '2h' : undefined,
       group: meta.kind === 'full' ? 'Full Mock Test' : 'Sectional Tests',
     })),
