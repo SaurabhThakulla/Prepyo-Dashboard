@@ -371,12 +371,12 @@ export default function AudioRecorder({
 
   const tone =
     phase === 'recording'
-      ? { orb: 'bg-rose-500 shadow-rose-500/30', bar: 'from-rose-500 to-rose-400', wave: 'bg-rose-400', panel: 'border-rose-500/40 bg-rose-500/[0.06]' }
+      ? { orb: 'bg-rose-500 shadow-rose-500/30', bar: 'from-rose-500 to-rose-400', wave: 'bg-rose-400', panel: 'bg-rose-500/[0.07]' }
       : phase === 'prep'
-        ? { orb: 'bg-amber-500 shadow-amber-500/30', bar: 'from-amber-500 to-amber-300', wave: 'bg-amber-400/70', panel: 'border-amber-500/40 bg-amber-500/[0.06]' }
+        ? { orb: 'bg-amber-500 shadow-amber-500/30', bar: 'from-amber-500 to-amber-300', wave: 'bg-amber-400/70', panel: 'bg-amber-500/[0.07]' }
         : phase === 'review'
-          ? { orb: 'bg-emerald-500 shadow-emerald-500/30', bar: 'from-emerald-500 to-emerald-400', wave: 'bg-emerald-500/40', panel: 'border-emerald-500/30 bg-emerald-500/[0.05]' }
-          : { orb: 'bg-primary shadow-primary/30', bar: 'from-primary to-primary', wave: 'bg-muted-foreground/20', panel: 'border-primary/10 bg-primary/[0.06]' };
+          ? { orb: 'bg-emerald-500 shadow-emerald-500/30', bar: 'from-emerald-500 to-emerald-400', wave: 'bg-emerald-500/40', panel: 'bg-emerald-500/[0.06]' }
+          : { orb: 'bg-primary shadow-primary/30', bar: 'from-primary to-primary', wave: 'bg-muted-foreground/20', panel: 'bg-primary/[0.06]' };
 
   // Left clock counts up through the current phase; right is that phase's length.
   const phaseLength = phase === 'prep' ? prepSeconds : maxSeconds;
@@ -393,7 +393,7 @@ export default function AudioRecorder({
   const micLabel = phase === 'idle' ? 'Start recording' : phase === 'prep' ? 'Start now' : phase === 'recording' ? 'Stop recording' : 'Recorded';
 
   return (
-    <div className={`relative overflow-hidden rounded-xl border p-4 transition-colors duration-500 sm:px-5 ${tone.panel}`}>
+    <div className={`relative overflow-hidden rounded-xl p-4 transition-colors duration-500 sm:px-5 ${tone.panel}`}>
       <p className="text-center text-sm font-semibold text-foreground" aria-live="polite">{headline}</p>
 
       <div className="mt-2 flex items-center gap-3 sm:gap-4">

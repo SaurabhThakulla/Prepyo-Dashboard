@@ -171,6 +171,11 @@
               "isAi": true
             },
             {
+              "name": "Write Email",
+              "simpleDescription": "Read a situation and write an email of 80–120 words to a recipient with appropriate tone and form",
+              "isAi": true
+            },
+            {
               "name": "Repeated Essay Questions",
               "simpleDescription": "Practice high-frequency and repeated PTE exam essay prompts with AI feedback",
               "isAi": true

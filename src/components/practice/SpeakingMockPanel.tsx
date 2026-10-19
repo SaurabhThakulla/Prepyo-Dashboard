@@ -11,7 +11,7 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Evaluation, MockAttempt, isPremiumUser } from '@/lib/types';
 import { subTestsLeft } from '@/lib/subscriptions';
-import { encodeForUpload } from '@/lib/audio';
+import { encodeForUpload, beep } from '@/lib/audio';
 import { AnswerRecorder } from '@/lib/answerRecorder';
 import { Playback, playClips, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
@@ -240,7 +240,12 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
     [session.id],
   );
 
-  const record = useCallback((seconds: number) => {
+  const record = useCallback(async (seconds: number) => {
+    try {
+      await beep();
+    } catch {
+      // non-fatal
+    }
     try {
       recorder.current?.start();
     } catch {

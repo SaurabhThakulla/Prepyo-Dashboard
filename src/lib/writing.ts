@@ -32,6 +32,10 @@ export function writingWordCount(text: string): number {
 
 /** The note under the answer box, saying what length is being asked for. */
 export function writingLengthNote(question: Pick<Question, 'exam' | 'typeId'>): string {
+  const typeId = question.typeId ?? '';
+  if (question.exam === 'PTE' && typeId.includes('email')) {
+    return 'Write an email of 80–120 words (minimum 50 words). Address all bullet points in the prompt.';
+  }
   const target = writingWordTarget(question);
   if (target) {
     return `Write at least ${target} words. Shorter answers still get feedback, but IELTS rates 20 words or fewer at Band 1, and copied task wording does not count.`;

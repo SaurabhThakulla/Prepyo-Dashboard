@@ -83,6 +83,14 @@ const PTE_TASK_META: Record<string, TaskMeta> = {
     bgLight: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
     scoreWeight: 'Score Weight Overall: 7% Writing: 12%',
   },
+  writeemail: {
+    code: 'EMAIL',
+    name: 'Write Email',
+    skill: 'writing',
+    color: 'bg-[#008736] text-white',
+    bgLight: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+    scoreWeight: 'Score Weight Overall: 7% Writing: 12%',
+  },
   repeatedessayquestions: {
     code: 'REQ',
     name: 'Repeated Essay Questions',
