@@ -8,33 +8,7 @@ import { Playback, playRecording, StoppedError } from '@/lib/scriptPlayer';
  * recording starts, and the microphone.
  */
 
-let context: AudioContext | null = null;
-
-function audioContext(): AudioContext | null {
-  if (context) return context;
-  const Ctor = window.AudioContext ?? (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!Ctor) return null;
-  context = new Ctor();
-  return context;
-}
-
-/** The short tone the test plays when the microphone opens. */
-export function beep(durationMs = 350): Promise<void> {
-  const ctx = audioContext();
-  if (!ctx) return Promise.resolve();
-  void ctx.resume().catch(() => {});
-  const oscillator = ctx.createOscillator();
-  const gain = ctx.createGain();
-  oscillator.type = 'sine';
-  oscillator.frequency.value = 880;
-  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + durationMs / 1000);
-  oscillator.connect(gain).connect(ctx.destination);
-  oscillator.start();
-  oscillator.stop(ctx.currentTime + durationMs / 1000);
-  return new Promise(resolve => setTimeout(resolve, durationMs + 50));
-}
+export { beep } from '@/lib/audio';
 
 /** Whether an item has a recording to play. */
 export function hasPromptAudio(question: Question): boolean {
