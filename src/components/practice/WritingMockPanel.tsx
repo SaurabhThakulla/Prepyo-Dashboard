@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Clock, LogOut, RefreshCw, Send } from 'lucide-react';
+import { Clock, LogOut, RefreshCw, RotateCcw, Send } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
@@ -152,7 +152,7 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
   }
 
   if (outcome) {
-    return <WritingMockResult outcome={outcome} onBack={() => navigate('/practice?skill=writing')} />;
+    return <WritingMockResult outcome={outcome} onBack={() => navigate('/practice?skill=writing')} onRedo={() => { setOutcome(null); void start(); }} />;
   }
 
   if (session) {
@@ -328,7 +328,7 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
   );
 }
 
-function WritingMockResult({ outcome, onBack }: { outcome: WritingMockOutcome; onBack: () => void }) {
+function WritingMockResult({ outcome, onBack, onRedo }: { outcome: WritingMockOutcome; onBack: () => void; onRedo?: () => void }) {
   const t1 = outcome.task1Evaluation.estimatedScore;
   const t2 = outcome.task2Evaluation.estimatedScore;
   return (
@@ -355,8 +355,14 @@ function WritingMockResult({ outcome, onBack }: { outcome: WritingMockOutcome; o
         <PracticeResultCard result={{ evaluation: outcome.task2Evaluation, xpAwarded: 0 }} />
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button variant="outline" onClick={onBack}>Back to writing practice</Button>
+        {onRedo && (
+          <Button onClick={onRedo} className="gap-1.5">
+            <RotateCcw className="h-4 w-4" />
+            Redo
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useMemo, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, BookOpenCheck, ChevronRight, LucideIcon, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowRight, BookOpenCheck, ChevronRight, Lock, LucideIcon, RotateCcw, Sparkles } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useNavSections } from '@/components/layout/sidebar/useNavSections';
 import { SecondaryNavItem } from '@/components/layout/sidebar/navigation';
@@ -140,6 +140,32 @@ export default function PracticeHubPage() {
             {selected.tasks.map(task => {
               const Icon = task.icon;
               const summary = task.description ?? task.sublabel;
+
+              if (task.isLocked) {
+                return (
+                  <li key={task.href ?? task.label} className="flex">
+                    <div className="flex w-full items-center gap-3.5 rounded-2xl border border-border/60 bg-muted/30 p-3.5 opacity-60 cursor-not-allowed select-none">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2 text-[15px] font-bold leading-snug text-muted-foreground">
+                          {task.label}
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase">
+                            <Lock className="w-3 h-3" /> {task.badge || 'Locked'}
+                          </span>
+                        </span>
+                        {task.lockedReason && (
+                          <span className="mt-0.5 line-clamp-2 text-xs leading-snug text-amber-600/80 dark:text-amber-400/80">
+                            {task.lockedReason}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </li>
+                );
+              }
+
               return (
                 <li key={task.href ?? task.label} className="flex">
                   <Link
@@ -150,10 +176,16 @@ export default function PracticeHubPage() {
                       <Icon className="h-5 w-5" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-bold leading-snug text-foreground">
-                        {task.label}
+                      <span className="flex items-center gap-1.5 text-[15px] font-bold leading-snug text-foreground flex-wrap">
+                        <span>{task.label}</span>
+                        {task.weight && (
+                          <span className="rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/70 dark:border-rose-900/50 px-1.5 py-0.5 text-[10px] font-extrabold font-mono inline-flex items-center">
+                            <span>{task.weight.endsWith('%') ? task.weight.slice(0, -1) : task.weight}</span>
+                            {task.weight.endsWith('%') && <span className="ml-0.5">%</span>}
+                          </span>
+                        )}
                         {task.badge && (
-                          <span className="ml-2 inline-block rounded-md bg-muted px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                             {task.badge}
                           </span>
                         )}

@@ -121,7 +121,7 @@ function removeRangeFromHighlights(
 }
 
 /**
- * Compact, elegant IELTS passage reader with dedicated reading typography (Lora / Georgia),
+ * Compact, elegant IELTS passage reader with sans text by default (a serif option for book-style reading),
  * multi-time highlighting opening at the mouse cursor, and right-click clear functionality.
  */
 export default function PassageReader({
@@ -132,7 +132,7 @@ export default function PassageReader({
   questionRange = 'Questions 1–13',
 }: PassageReaderProps) {
   const [textSize, setTextSize] = useState<TextSize>('base');
-  const [fontType, setFontType] = useState<FontType>('reading');
+  const [fontType, setFontType] = useState<FontType>('sans');
 
   // Highlights state stored per passage ID
   const [highlightsByPassage, setHighlightsByPassage] = useState<

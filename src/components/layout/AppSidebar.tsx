@@ -105,7 +105,7 @@ export default function AppSidebar({
       )}
 
       <div
-        className={`fixed top-0 h-dvh left-0 z-40 hidden lg:flex transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 h-dvh left-0 z-40 hidden lg:flex text-white bg-gradient-to-b from-[#2a56cf] via-primary to-[#132e7d] dark:from-blue-950 dark:via-blue-950 dark:to-slate-950 transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >

@@ -11,13 +11,15 @@ import {
   Send,
   CheckCircle2,
   ChevronDown,
-  ChevronRight,
   Volume2,
   LayoutList,
   PanelRight,
   PlayCircle,
   AlertTriangle,
+  RotateCcw,
+  Lock,
 } from 'lucide-react';
+import { isPteTaskAvailable, getPteTaskLockedReason, findPteTaskConfig } from '@/lib/pteExamConfig';
 import {
   Dialog,
   DialogContent,
@@ -34,7 +36,8 @@ import AudioRecorder from '@/components/practice/AudioRecorder';
 import QuestionFigure from '@/components/practice/QuestionFigure';
 import PromptAudio from '@/components/practice/PromptAudio';
 import KoreanHelp from '@/components/practice/KoreanHelp';
-import PracticeResultCard from '@/components/practice/PracticeResultCard';
+import PracticeResultDialog from '@/components/practice/PracticeResultDialog';
+import { answerMark, OPTION_MARK_CLASS, OPTION_MARK_LABEL } from '@/lib/answerMarks';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import OptionContent, { hasPictureOptions } from '@/components/practice/OptionContent';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
@@ -43,6 +46,9 @@ import { allowsMultipleChoices } from '@/lib/choices';
 import { minimumWritingWords, writingLengthNote, writingWordCount, writingWordTarget } from '@/lib/writing';
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isPremiumUser, listeningPlays, PracticeAttempt, Question, SkillType, ieltsModuleOf } from '@/lib/types';
+import FreePlanNotice from '@/institution/FreePlanNotice';
+import PracticeActionBar, { gradingUnits, notesFor, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
+import MyScore from '@/components/practice/flow/MyScore';
 
 const ReadingPracticePanel = lazy(() => import('@/components/reading/ReadingPracticePanel'));
 const ReadingMockPanel = lazy(() => import('@/components/reading/ReadingMockPanel'));
@@ -91,6 +97,8 @@ function getSubtaskTitle(exam: ExamType, skill: SkillType, typeKey?: string | nu
 
 import { useToast } from '@/components/ui/toast';
 
+const PILL = 'h-9 gap-1.5 rounded-full px-5 text-xs font-bold';
+
 const GRADING: Record<SkillType, 'deterministic' | 'ai' | 'speech'> = {
   reading: 'deterministic',
   listening: 'deterministic',
@@ -122,7 +130,7 @@ export default function PracticePage() {
 
 function PracticePageContent() {
   const {
-    user, activeExam: contextExam, refreshUser, setIsTutorOpen, setTutorContextPrompt, setActiveTestSession,
+    user, activeExam: contextExam, pteVariant, setPteVariant, refreshUser, setIsTutorOpen, setTutorContextPrompt, setActiveTestSession,
     markNotificationAsRead, refreshNotifications, closeTutorialVideo,
   } = useApp();
   const mounted = useRef(true);
@@ -300,6 +308,14 @@ function PracticePageContent() {
   const [delivery, setDelivery] = useState<Delivery | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
+  // A result opens as a pop-up rather than under the answer; a button shows it again.
+  const [showResult, setShowResult] = useState(false);
+  useEffect(() => setShowResult(result !== null), [result]);
+  const seeResultButton = result && (
+    <Button variant="outline" onClick={() => setShowResult(true)} className={PILL}>
+      See your result{result.evaluation?.estimatedScore != null && ` (${result.evaluation.estimatedScore})`}
+    </Button>
+  );
   const [startedAt, setStartedAt] = useState<number>(() => Date.now());
   const [completedIds, setCompletedIds] = useState<string[]>([]);
 
@@ -443,6 +459,23 @@ function PracticePageContent() {
     setStartedAt(Date.now());
   }, []);
 
+  // Redo before submitting: a clean answer to the same question, with no new credit spent.
+  const [answerRound, setAnswerRound] = useState(0);
+  const clearAnswer = () => {
+    setTextAnswer('');
+    setBlankResponses({});
+    setSelectedOptions([]);
+    setRecording(null);
+    setSpokenTranscript('');
+    setDelivery(undefined);
+    setAnswerRound(n => n + 1);
+  };
+
+  // A marked answer shows up in My Score at once.
+  useEffect(() => {
+    if (result) void queryClient.invalidateQueries({ queryKey: ['practice-history'] });
+  }, [result, queryClient]);
+
   // Passage-based reading (IELTS, PTE). EPS-TOPIK reading items stand alone,
   // so they are practised and authored like any other single question.
   const isReading = selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK';
@@ -525,6 +558,7 @@ function PracticePageContent() {
           audio: encoded.base64,
           format: encoded.format,
           durationSeconds: encoded.durationSeconds,
+          delivery,
         });
         showEvaluation(data);
         const scoreVal = data.evaluation.estimatedScore ?? (data.evaluation as any)?.overallScore ?? (data.evaluation as any)?.score ?? (activeExam === 'PTE' ? 79 : 7);
@@ -639,6 +673,11 @@ function PracticePageContent() {
 
   const currentIndex = currentQuestion ? questions.findIndex(q => q.id === currentQuestion.id) : -1;
   const isLast = currentIndex === questions.length - 1;
+  // PTE listening titles are "Question N"; drop that, it repeats the number.
+  const questionHeading = (currentQuestion?.title ?? '').replace(isPteListening ? /^question\s*\d+[:\s-]*/i : /^$/, '').trim();
+  // Short code in the heading badge: the exam's own (RA, FIB-D), else the type's initials.
+  const taskCode = (activeExam === 'PTE' && findPteTaskConfig(currentQuestion?.typeName ?? '')?.code)
+    || (currentQuestion?.typeName ?? '').split(/[\s:&-]+/).filter(Boolean).slice(0, 3).map(w => w[0]).join('').toUpperCase();
 
   const goToIndex = (index: number) => {
     const question = questions[index];
@@ -650,15 +689,16 @@ function PracticePageContent() {
   // Next question starts the next one straight away, as reading does, instead
   // of going back through the start screen. It still spends its credit; if
   // that is refused (limit reached), the start screen is shown so the learner
-  // sees why.
-  const goToNextQuestion = async () => {
-    const next = questions[currentIndex + 1];
+  // sees why. Redo passes the current question to start it again the same way.
+  const goToNextQuestion = async (next: Question | undefined = questions[currentIndex + 1]) => {
     if (!next || startPending.current) return;
     closeTutorialVideo?.();
     startPending.current = true;
     setIsStarting(true);
     setCurrentQuestion(next);
     resetAnswer();
+    // The answer was read at the bottom; the new attempt starts at the top.
+    document.querySelector('[data-practice-workspace]')?.scrollIntoView?.({ block: 'start' });
     try {
       await api.post('/practice/start', {
         exam: activeExam,
@@ -672,12 +712,20 @@ function PracticePageContent() {
       if (err instanceof ApiError && err.isLimitReached) {
         toast.warning('Daily limit reached', 'You have reached your daily sub-test allowance.');
       } else {
-        toast.error('Could not start the next question', errorMessage(err));
+        toast.error('Could not start the question', errorMessage(err));
       }
     } finally {
       startPending.current = false;
       setIsStarting(false);
     }
+  };
+
+  // Arrows and the number list: straight on after a marked answer, as Next was;
+  // mid-answer, the start dialog first says the attempt will be dropped.
+  const openQuestion = (question: Question | undefined) => {
+    if (!question || question.id === currentQuestion?.id) return;
+    if (result) void goToNextQuestion(question);
+    else setPendingQuestionToStart(question);
   };
 
   const restartSet = () => {
@@ -695,7 +743,9 @@ function PracticePageContent() {
         } p-0 m-0 flex flex-col bg-background`}
     >
       {/* An admin has no reason to sit the paper. They add questions/passages instead. */}
-      {isReading && isAdmin(user) ? (
+      {user?.subscription?.aiBlocked && (selectedSkill === 'speaking' || selectedSkill === 'writing') ? (
+        <FreePlanNotice />
+      ) : isReading && isAdmin(user) ? (
         <Suspense fallback={<AdminPageSkeleton />}>
           <AdminReadingAuthoring
             key={`admin-reading-${activeExam}-${typeParam || 'all'}`}
@@ -738,6 +788,7 @@ function PracticePageContent() {
             mistakeId={mistakeId}
             exam={activeExam}
             passageId={passageParam ?? undefined}
+            passageIds={readingPassages.map(passage => passage.id)}
           />
         </Suspense>
       ) : isAdminUser ? (
@@ -831,41 +882,63 @@ function PracticePageContent() {
       ) : (
         <div className="w-full flex flex-col flex-1">
           {/* Unified Full-Width Workspace matching Reading layout */}
-          <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-5 flex-1 flex flex-col justify-between">
-            {/* Main Unified Card */}
-            <Card className="p-4 sm:p-7 space-y-5 bg-card dark:bg-[#0f141f] border-border/80 shadow-md rounded-2xl">
-              {/* Card Header */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 pb-3.5">
-                <div className="flex items-center gap-2">
-                  <span className="bg-blue-600 text-white font-extrabold text-[11px] uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
-                    {currentQuestion.typeName}
-                  </span>
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-5 space-y-4 flex-1 flex flex-col">
+            {/* Warning banner when practicing a task locked in current PTE variant */}
+            {activeExam === 'PTE' && typeParam && !isPteTaskAvailable(pteVariant, typeParam) && (
+              <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/90 dark:bg-amber-950/40 p-4 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-start gap-3">
+                  <Lock className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-bold">
+                      This task is unavailable in {pteVariant === 'core' ? 'PTE Core' : 'PTE Academic'}
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300/85 mt-0.5">
+                      {getPteTaskLockedReason(pteVariant, typeParam)}
+                    </p>
+                  </div>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="bg-white dark:bg-slate-900 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 font-bold shrink-0 self-start sm:self-auto hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                  onClick={() => setPteVariant(pteVariant === 'core' ? 'academic' : 'core')}
+                >
+                  Switch to {pteVariant === 'core' ? 'PTE Academic' : 'PTE Core'}
+                </Button>
+              </div>
+            )}
+            {/* Main Unified Card */}
+            <Card className="p-4 sm:p-6 space-y-4 bg-card dark:bg-[#0f141f] border-0 shadow-none rounded-2xl">
+              {/* Task type first, as the heading */}
+              <div className="flex items-center gap-3 border-b border-primary/30 pb-3">
+                <span className="inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-primary px-2 text-xs font-bold text-primary-foreground">
+                  {taskCode}
+                </span>
+                <h2 className="text-lg sm:text-xl font-bold text-primary leading-tight">{currentQuestion.typeName}</h2>
               </div>
 
-              {/* Instructions */}
+              {/* Instructions as plain text, one paragraph per blank-line block */}
               {currentQuestion.prompt && (
-                <p className="text-xs sm:text-[13px] text-muted-foreground font-medium leading-relaxed whitespace-pre-line">
-                  {currentQuestion.prompt}
-                </p>
+                <div className="space-y-2">
+                  {currentQuestion.prompt.split(/\n\s*\n/).map((paragraph, i) => (
+                    <p key={i} className="text-sm sm:text-[15px] text-foreground/90 leading-relaxed whitespace-pre-line">
+                      {paragraph.trim()}
+                    </p>
+                  ))}
+                </div>
               )}
 
-              {/* Inner Question & Interaction Container */}
-              <div className="rounded-2xl p-3.5 sm:p-6 bg-card dark:bg-card/40 border border-border/80 space-y-4 shadow-xs">
-                {currentQuestion.title && (!isPteListening || !/^question\s*\d+$/i.test(currentQuestion.title.trim())) && (
-                  <div className="flex items-start gap-3">
-                    {!isPteListening && (
-                      <span className="shrink-0 w-7 h-7 rounded-xl bg-primary/10 text-primary font-mono font-bold text-xs flex items-center justify-center border border-primary/20">
-                        {currentIndex + 1}
-                      </span>
-                    )}
-                    <h3 className="text-sm sm:text-base font-bold text-foreground leading-relaxed pt-0.5">
-                      {isPteListening && /^question\s*\d+/i.test(currentQuestion.title)
-                        ? currentQuestion.title.replace(/^question\s*\d+[:\s-]*/i, '')
-                        : currentQuestion.title}
-                    </h3>
-                  </div>
-                )}
+              {/* Blue bar with the question's number and title */}
+              {(questionHeading || (!isPteListening && currentIndex >= 0)) && (
+                <div className="flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-primary-foreground sm:px-5">
+                  {!isPteListening && currentIndex >= 0 && <span className="font-bold tabular-nums">#{currentIndex + 1}</span>}
+                  {!isPteListening && currentIndex >= 0 && questionHeading && <span className="opacity-60">|</span>}
+                  {questionHeading && <h3 className="text-sm sm:text-base font-semibold leading-snug">{questionHeading}</h3>}
+                </div>
+              )}
+
+              {/* The question itself, straight on the card */}
+              <div className="space-y-3">
 
                 {currentQuestion.imageUrl && (
                   <QuestionFigure src={currentQuestion.imageUrl} alt={currentQuestion.title} />
@@ -885,6 +958,7 @@ function PracticePageContent() {
                   repeat={listeningPlays(currentQuestion)}
                   title={currentQuestion.title}
                   allowTranscript={result !== null}
+                  highlights={result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
                   onFinished={() => setHeardPromptFor(currentQuestion.id)}
                 />
 
@@ -912,7 +986,7 @@ function PracticePageContent() {
                       onChange={setBlankResponses}
                     />
                   ) : (
-                    <div className="p-4 rounded-xl bg-background border border-border text-xs sm:text-sm text-foreground leading-relaxed max-h-60 overflow-y-auto">
+                    <div className="p-4 sm:p-5 rounded-xl bg-background border border-primary/40 text-[15px] sm:text-[16px] text-foreground leading-relaxed whitespace-pre-line max-h-72 overflow-y-auto">
                       {currentQuestion.contextPassage}
                     </div>
                   )
@@ -941,7 +1015,7 @@ function PracticePageContent() {
                       </p>
                     )}
                     <AudioRecorder
-                      key={currentQuestion.id}
+                      key={`${currentQuestion.id}-${answerRound}`}
                       prepSeconds={Math.max(10, currentQuestion.prepTimeSeconds ?? 10)}
                       maxSeconds={currentQuestion.timeLimitSeconds}
                       disabled={submitting || result !== null || waitingForPrompt}
@@ -983,6 +1057,7 @@ function PracticePageContent() {
                   selectedOptions={selectedOptions}
                   onSelectionChange={setSelectedOptions}
                   disabled={submitting || result !== null}
+                  correctAnswers={result?.review?.correctAnswers ?? null}
                 />
 
                 {!isWordHighlightTask(currentQuestion) && currentQuestion.options && currentQuestion.options.length > 0 && (
@@ -991,10 +1066,13 @@ function PracticePageContent() {
                     <div className={hasPictureOptions(currentQuestion.options) ? 'grid grid-cols-2 gap-2.5' : 'space-y-2.5'}>
                     {currentQuestion.options.map((opt, optIndex) => {
                       const checked = selectedOptions.includes(opt.id);
+                      // Once marked, the right answer is green and a wrong pick red.
+                      const key = result?.review?.correctAnswers ?? null;
+                      const mark = answerMark(opt.id, checked, key);
                       return (
                         <label
                           key={opt.id}
-                          className={`flex items-start gap-2.5 p-3.5 rounded-xl border cursor-pointer text-xs sm:text-sm transition-colors ${checked ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40'
+                          className={`flex items-start gap-2.5 p-3.5 rounded-xl border cursor-pointer text-xs sm:text-sm transition-colors ${key ? OPTION_MARK_CLASS[mark] : checked ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40'
                             }`}
                         >
                           <input
@@ -1011,6 +1089,11 @@ function PracticePageContent() {
                             className="mt-0.5 rounded border-input text-primary focus:ring-primary h-4 w-4"
                           />
                           <OptionContent option={opt} index={optIndex} />
+                          {OPTION_MARK_LABEL[mark] && (
+                            <span className={`ml-auto shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold ${mark === 'wrong' ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300' : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'}`}>
+                              {OPTION_MARK_LABEL[mark]}
+                            </span>
+                          )}
                         </label>
                       );
                     })}
@@ -1021,8 +1104,13 @@ function PracticePageContent() {
                 {!passageHasGaps(currentQuestion.contextPassage) && currentQuestion.blanks && currentQuestion.blanks.length > 0 && (
                   <div className="space-y-3 pt-2">
                     <h4 className="text-xs font-bold text-foreground">Fill each blank:</h4>
-                    {currentQuestion.blanks.map((b, idx) => (
-                      <div key={b.id} className="flex items-center justify-between gap-3 p-3 bg-card rounded-xl border border-border text-xs sm:text-sm">
+                    {currentQuestion.blanks.map((b, idx) => {
+                      const reviewed = result?.review?.blanks?.find(r => r.id === b.id);
+                      const given = (blankResponses[b.id] ?? '').trim().toLowerCase();
+                      const right = !!reviewed && [reviewed.correctAnswer]
+                        .some(a => (a ?? '').trim().toLowerCase() === given && given !== '');
+                      return (
+                      <div key={b.id} className={`flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border text-xs sm:text-sm ${!reviewed ? 'bg-card border-border' : right ? 'border-emerald-500 bg-emerald-500/10' : 'border-rose-500 bg-rose-500/10'}`}>
                         <span className="font-bold text-primary shrink-0">Blank {idx + 1}:</span>
                         {b.options && b.options.length > 0 ? (
                           <div className="relative inline-flex items-center group">
@@ -1046,88 +1134,118 @@ function PracticePageContent() {
                             placeholder="Type your answer"
                           />
                         )}
+                        {reviewed && !right && (
+                          <span className="w-full text-xs font-semibold text-emerald-700 dark:text-emerald-300">Correct answer: {reviewed.correctAnswer}</span>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
 
-              {result && <PracticeResultCard result={result} />}
             </Card>
 
-            {/* Bottom Action Bar */}
-            <div className="w-full flex flex-wrap items-center justify-between gap-3 pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAskAITutor}
-                className="gap-2 font-bold text-xs rounded-xl h-10 px-4"
-              >
-                <Bot className="w-4 h-4 text-primary" />
-                <span>Ask AI Coach</span>
-              </Button>
+            {result && (
+              <PracticeResultDialog
+                result={result}
+                answerText={textAnswer}
+                blankAnswers={blankResponses}
+                recording={recording}
+                open={showResult}
+                onOpenChange={setShowResult}
+                busy={isStarting}
+                redoLabel={mistakeId ? 'Try again' : 'Redo'}
+                onRedo={() => (mistakeId ? resetAnswer() : void goToNextQuestion(currentQuestion ?? undefined))}
+                onNext={mistakeId || isLast ? undefined : () => void goToNextQuestion()}
+              />
+            )}
 
-              {result && mistakeId ? (
-                <div className="flex items-center gap-3">
-                  {resolution.resolved && <span role="status">Mistake resolved</span>}
-                  {result.attempt?.isCorrect && !resolution.resolved ? (
-                    <Button disabled={resolution.saving} onClick={() => void resolution.finish(true)}>Retry saving resolution</Button>
+            <PracticeActionBar
+              cost={speakingUnscored ? null : gradingUnits(selectedSkill, currentQuestion.typeId)}
+              index={mistakeId ? -1 : currentIndex}
+              total={mistakeId ? 0 : questions.length}
+              onJump={mistakeId ? undefined : i => openQuestion(questions[i])}
+              onShuffle={mistakeId || questions.length < 2 ? undefined : () => {
+                const others = questions.filter(q => q.id !== currentQuestion.id);
+                openQuestion(others[Math.floor(Math.random() * others.length)]);
+              }}
+              disabled={isStarting || submitting}
+              actions={
+                <>
+                  {result && mistakeId ? (
+                    <>
+                      {resolution.resolved && <span role="status" className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Mistake resolved</span>}
+                      {seeResultButton}
+                      {result.attempt?.isCorrect && !resolution.resolved ? (
+                        <Button disabled={resolution.saving} onClick={() => void resolution.finish(true)} className={PILL}>Retry saving resolution</Button>
+                      ) : (
+                        <Button variant="outline" onClick={() => { resetAnswer(); }} className={PILL}>Try again</Button>
+                      )}
+                    </>
+                  ) : result ? (
+                    <>
+                      {seeResultButton}
+                      <Button variant="outline" onClick={() => void goToNextQuestion(currentQuestion ?? undefined)} disabled={isStarting} className={PILL}>
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Redo</span>
+                      </Button>
+                      {isLast && (
+                        <>
+                          <Button variant="outline" onClick={restartSet} className={PILL}>
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            <span>Start over</span>
+                          </Button>
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 className="w-4 h-4" />
+                            You have finished every question here
+                          </span>
+                        </>
+                      )}
+                    </>
+                  ) : speakingUnscored ? (
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      Scoring for speaking answers is being set up. Record and listen back as
+                      often as you like - this costs no sub-test credit.
+                    </span>
                   ) : (
-                    <Button onClick={() => { resetAnswer(); }}>Try again</Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={handleSubmitAnswer}
+                        disabled={submitting || !canSubmit}
+                        aria-label={submitting ? undefined : grading === 'speech' ? 'Submit recording' : 'Submit Answer'}
+                        className={`${PILL} border-primary text-primary hover:bg-primary hover:text-primary-foreground`}
+                      >
+                        {submitting ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>{submitStage}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-3.5 h-3.5" />
+                            <span>Submit</span>
+                          </>
+                        )}
+                      </Button>
+                      <Button variant="outline" onClick={clearAnswer} disabled={submitting} className={PILL}>
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Redo</span>
+                      </Button>
+                    </>
                   )}
-                </div>
-              ) : result && isLast ? (
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle2 className="w-4 h-4" />
-                    You have finished every question here
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="default"
-                    onClick={restartSet}
-                    className="font-bold gap-2 text-xs rounded-xl h-10 px-5"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Start over</span>
+                  <Button variant="ghost" onClick={handleAskAITutor} className={`${PILL} gap-2`}>
+                    <Bot className="w-4 h-4 text-primary" />
+                    <span>Ask AI Coach</span>
                   </Button>
-                </div>
-              ) : result ? (
-                <Button
-                  onClick={() => void goToNextQuestion()}
-                  disabled={isStarting}
-                  size="default"
-                  className="font-bold gap-2 text-xs rounded-xl h-10 px-5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                >
-                  <span>Next question</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </Button>
-              ) : speakingUnscored ? (
-                <span className="text-xs font-semibold text-muted-foreground">
-                  Scoring for speaking answers is being set up. Record and listen back as
-                  often as you like - this costs no sub-test credit.
-                </span>
-              ) : (
-                <Button
-                  onClick={handleSubmitAnswer}
-                  disabled={submitting || !canSubmit}
-                  size="default"
-                  className="font-bold gap-2 text-xs rounded-xl h-10 px-5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                >
-                  {submitting ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>{submitStage}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-3.5 h-3.5" />
-                      <span>{grading === 'speech' ? 'Submit recording' : 'Submit Answer'}</span>
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
+                </>
+              }
+            />
+
+            <PracticeNotes notes={speakingUnscored ? [] : notesFor(selectedSkill)} />
+
+            <MyScore questionIds={[currentQuestion.id]} />
           </div>
         </div>
       )}

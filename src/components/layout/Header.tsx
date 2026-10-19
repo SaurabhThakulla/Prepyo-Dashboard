@@ -1,16 +1,7 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
-import {
-  Sparkles,
-  Bell,
-  Gift,
-  ShieldCheck,
-  ChevronRight,
-  Sun,
-  Moon,
-  PanelLeft
-} from 'lucide-react';
+import { Bell, ChevronRight, PanelLeft, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import NotificationDrawer from './NotificationDrawer';
 
@@ -20,7 +11,7 @@ interface HeaderProps {
 }
 
 export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps) {
-  const { user, unreadCount, setIsTutorOpen, theme, toggleTheme, activeTestSession } = useApp();
+  const { user, unreadCount, activeTestSession } = useApp();
   const { pathname } = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -40,7 +31,6 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
   };
 
   const title = getPageTitle(pathname || '');
-  const planId = user?.subscription?.planId;
 
   return (
     <>
@@ -52,6 +42,7 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
+            data-stay
             className={`h-8 w-8 shrink-0 rounded-lg border transition-all duration-150 active:scale-95 flex items-center justify-center ${
               isSecondaryOpen
                 ? 'border-border/80 bg-muted/70 text-foreground shadow-2xs'
@@ -70,52 +61,29 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
           </div>
         </div>
 
-        
-        {/* Active Test Session Indicator */}
-        {activeTestSession?.isActive && (
-          <div role="status" title={activeTestSession.title || 'Test in Progress'} className="flex shrink-0 min-w-0 xl:max-w-xs items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+        {/* Right: the running test, if any, XP and notifications; theme, plan and rewards live in the sidebar */}
+        <div className="flex shrink-0 min-w-0 items-center gap-3">
+          {/* Active Test Session Indicator */}
+          {activeTestSession?.isActive && (
+            <div role="status" title={activeTestSession.title || 'Test in Progress'} className="flex shrink-0 min-w-0 xl:max-w-xs items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+              </span>
+              <span className="sr-only xl:not-sr-only xl:truncate">{activeTestSession.title ? `Testing: ${activeTestSession.title}` : 'Test in Progress'}</span>
+            </div>
+          )}
+
+          {/* XP earned, with a bolt */}
+          <div
+            title="XP Points"
+            className="flex h-9 items-center gap-1.5 rounded-full border border-border bg-card pl-1 pr-3 shadow-sm"
+          >
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-amber-300 to-orange-500 shadow-sm shadow-orange-500/30">
+              <Zap className="h-3.5 w-3.5 fill-white text-white" />
             </span>
-            <span className="sr-only xl:not-sr-only xl:truncate">{activeTestSession.title ? `Testing: ${activeTestSession.title}` : 'Test in Progress'}</span>
+            <span className="text-xs font-bold text-foreground tabular-nums">{user?.xp ?? 0} XP</span>
           </div>
-        )}
-
-        {/* Right Action Icons & Badges */}
-        <div className="flex shrink-0 items-center gap-0 sm:gap-2">
-          <Button asChild size="sm" className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 text-xs font-bold gap-1 px-2 sm:px-3">
-            <Link to="/referrals" aria-label="Earn Rewards"><Gift className="w-4 h-4" /><span className="hidden sm:inline">Earn Rewards</span></Link>
-          </Button>
-          {/* XP Badge */}
-          <div className="hidden sm:flex items-center gap-1 bg-primary/10 border border-primary/30 px-2.5 py-1.5 rounded-xl text-xs font-bold text-primary" title="XP Points">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <span>{user?.xp ?? 0} XP</span>
-          </div>
-
-          {      /* Pro / Subscription Button */}
-          <Button
-            asChild
-            variant={planId === 'elite' ? 'nepal' : planId === 'pro' ? 'default' : 'outline'}
-            size="sm"
-            className="hidden md:inline-flex text-xs font-bold"
-          >
-            <Link to="/subscription">
-              <ShieldCheck className="w-3.5 h-3.5 mr-1" />
-              <span>{planId && planId !== 'free' ? planId.toUpperCase() : 'UPGRADE'}</span>
-            </Link>
-          </Button>
-
-          {/* Theme Toggle Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-full"
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
-          </Button>
 
           {/* Notifications */}
           <Button
@@ -123,7 +91,7 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
             size="icon"
             onClick={() => setShowNotifications(!showNotifications)}
             aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
-            className="relative h-9 w-9 text-muted-foreground hover:text-foreground"
+            className="relative h-9 w-9 rounded-full border border-border bg-card text-muted-foreground hover:text-primary hover:border-primary/40 shadow-sm"
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (

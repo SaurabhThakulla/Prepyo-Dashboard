@@ -47,3 +47,8 @@ next-env.d.ts
 .claude/
 .gemini/
 
+
+# Tests stay local: new test files are not committed. Test files already in
+# the repository are still tracked; add a new one on purpose with git add -f.
+*.test.ts
+*.test.tsx

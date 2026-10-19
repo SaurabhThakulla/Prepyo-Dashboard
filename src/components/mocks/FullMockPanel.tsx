@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Award, CheckCircle2, Circle, CircleDot, Play, RefreshCw, XCircle } from 'lucide-react';
+import { Award, CheckCircle2, Circle, CircleDot, Play, RefreshCw, RotateCcw, XCircle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
@@ -197,6 +197,8 @@ export default function FullMockPanel({ header }: { header: React.ReactNode }) {
           session={full}
           onReports={() => navigate('/mocks?tab=reports')}
           onDone={() => setFull(null)}
+          onRedo={() => void start()}
+          busy={busy}
         />
       ) : full ? (
         <div className="w-full flex justify-center">
@@ -325,10 +327,15 @@ function FullMockResult({
   session,
   onReports,
   onDone,
+  onRedo,
+  busy,
 }: {
   session: FullMockSession;
   onReports: () => void;
   onDone: () => void;
+  // A new full mock goes through the normal start, so the plan's allowance applies.
+  onRedo: () => void;
+  busy: boolean;
 }) {
   return (
     <div className="w-full flex justify-center">
@@ -365,7 +372,11 @@ function FullMockResult({
           <Button variant="outline" onClick={onDone}>
             Back to Mock Center
           </Button>
-          <Button onClick={onReports}>See score reports</Button>
+          <Button variant="outline" onClick={onReports}>See score reports</Button>
+          <Button onClick={onRedo} disabled={busy} className="gap-1.5">
+            <RotateCcw className="h-4 w-4" />
+            Redo
+          </Button>
         </div>
       </Card>
     </div>

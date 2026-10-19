@@ -23,6 +23,7 @@ import { shouldShowOnboarding } from '@/components/onboarding/onboarding';
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
 import { useClipboardGuard } from '@/lib/hooks/useClipboardGuard';
 import { isAdmin } from '@/lib/types';
+import { isInstitutionPath } from '@/institution/paths';
 
 const AITutorDrawer = lazy(() => import('@/components/ai/AITutorDrawer'));
 const GlobalMiniPlayer = lazy(() => import('@/components/tutorials/GlobalMiniPlayer'));
@@ -57,7 +58,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (navigationType !== 'POP') window.scrollTo(0, 0);
   }, [pathname, navigationType]);
 
-  useClipboardGuard(!isAdmin(user), () =>
+  // Signed-out pages (login, sign-up) and institution pages keep paste for emails and passwords.
+  useClipboardGuard(!!user && !isAdmin(user) && !isInstitutionPath(pathname), () =>
     toast.info('Pasting is turned off', 'Type your answer yourself, the way you will in the exam.'),
   );
 
@@ -73,8 +75,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const target = e.target as HTMLElement | null;
     if (!target) return;
 
-    // Allowed areas: inside the active practice / test workspace
-    if (target.closest('[data-practice-workspace]')) {
+    // Allowed areas: inside the active practice / test workspace, except its
+    // controls that leave the task (data-nav), like the question list toggle
+    if (target.closest('[data-practice-workspace]') && !target.closest('[data-nav]')) {
       return;
     }
 
@@ -90,6 +93,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
 
     const button = target.closest('button');
+    // Controls that only change the layout (data-stay) never leave the task.
+    if (button?.hasAttribute('data-stay')) return;
     if (button) {
       if (
         button.closest('aside') ||
@@ -137,7 +142,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isSecondaryOpen, setIsSecondaryOpen] = useState(true);
   const [onboardingClosedFor, setOnboardingClosedFor] = useState<string | null>(null);
 
-  const isAuthPage = pathname === '/' || pathname === '/login' || pathname === '/signup';
+  const isAuthPage =
+    pathname === '/' || pathname === '/login' || pathname === '/signup' || isInstitutionPath(pathname);
   const isLegalPage =
     pathname === '/terms' ||
     pathname === '/privacy' ||
@@ -212,7 +218,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <>
     <div
       onClickCapture={handleContainerClickCapture}
-      className={`${showTabBar ? '[--mobile-nav-h:calc(4rem+env(safe-area-inset-bottom))]' : '[--mobile-nav-h:0px]'} lg:[--mobile-nav-h:0px] min-h-screen bg-background text-foreground flex flex-col transition-colors duration-200`}
+      className={`${showTabBar ? '[--mobile-nav-h:calc(4rem+env(safe-area-inset-bottom))]' : '[--mobile-nav-h:0px]'} lg:[--mobile-nav-h:0px] min-h-screen app-backdrop text-foreground flex flex-col transition-colors duration-200`}
     >
       <AppSidebar
         isOpen={isSidebarOpen}
@@ -222,8 +228,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       />
 
       <div
-        style={{ '--sidebar-offset': isSecondaryOpen ? '384px' : '64px' } as React.CSSProperties}
-        className={`${isSecondaryOpen ? 'lg:pl-[384px]' : 'lg:pl-16'
+        style={{ '--sidebar-offset': isSecondaryOpen ? '416px' : '64px' } as React.CSSProperties}
+        className={`${isSecondaryOpen ? 'lg:pl-[416px]' : 'lg:pl-16'
           } flex w-full min-w-0 flex-col min-h-screen transition-[padding] duration-300 ease-in-out`}
       >
         <MobileTopBar />
@@ -254,29 +260,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
 
     <Dialog open={pendingLeave !== null} onOpenChange={open => { if (!open && !ending) setPendingLeave(null); }}>
-      <DialogContent centered className="max-w-[380px] gap-0 p-6 sm:p-7 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 ring-8 ring-amber-500/5">
-          <LogOut className="h-5 w-5 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
-        </div>
-        <DialogHeader className="space-y-2 sm:text-center">
-          <DialogTitle className="text-lg font-medium leading-snug">
-            End this task?
-          </DialogTitle>
-          <DialogDescription className="text-sm font-normal leading-relaxed">
-            If you leave now, this attempt ends and your answer won&rsquo;t be submitted.
-          </DialogDescription>
-        </DialogHeader>
-        {taskLabel && (
-          <div className="mx-auto mt-4 inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-normal text-muted-foreground">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-            <span className="truncate">{taskLabel} in progress</span>
+      <DialogContent centered className="max-w-[420px] gap-0 p-0 sm:p-0 overflow-hidden">
+        <div className="flex flex-col items-center gap-4 px-6 pb-5 pt-7 text-center sm:flex-row sm:items-start sm:pt-6 sm:text-left">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-50 ring-1 ring-rose-200/80 dark:bg-rose-500/10 dark:ring-rose-500/25">
+            <LogOut className="h-5 w-5 text-rose-600 dark:text-rose-400" strokeWidth={2.25} />
           </div>
-        )}
-        <DialogFooter className="mt-6 grid grid-cols-2 gap-3 sm:flex-none">
-          <Button type="button" variant="outline" className="h-10 w-full rounded-xl font-normal" disabled={ending} onClick={() => setPendingLeave(null)}>
+          <div className="min-w-0 flex-1">
+            <DialogHeader className="space-y-2 text-center sm:pr-8 sm:text-left">
+              <DialogTitle className="text-xl font-bold leading-snug tracking-normal">End this task?</DialogTitle>
+              <DialogDescription className="text-[15px] leading-relaxed text-foreground/75">
+                If you leave now, this attempt ends and your answer won&rsquo;t be submitted.
+              </DialogDescription>
+            </DialogHeader>
+            {taskLabel && (
+              <div title={`${taskLabel} in progress`} className="mt-4 inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-muted/60 px-3.5 py-1.5 text-[13px] font-medium text-foreground">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500 animate-pulse" aria-hidden />
+                <span className="min-w-0 truncate">{taskLabel}</span>
+              </div>
+            )}
+          </div>
+        </div>
+        {/* Two equal buttons within thumb reach on a phone, right-aligned on wider screens */}
+        <DialogFooter className="grid grid-cols-2 gap-3 border-t border-border bg-muted/40 px-6 py-4 sm:flex sm:flex-row sm:justify-end sm:space-x-0">
+          <Button type="button" variant="outline" className="h-11 rounded-xl px-5 text-[15px] font-semibold sm:h-10 sm:text-sm" disabled={ending} onClick={() => setPendingLeave(null)}>
             Keep going
           </Button>
-          <Button type="button" variant="destructive" className="h-10 w-full rounded-xl font-normal" disabled={ending} onClick={confirmLeave}>
+          <Button type="button" variant="destructive" className="h-11 rounded-xl px-5 text-[15px] font-semibold sm:h-10 sm:text-sm" disabled={ending} onClick={confirmLeave}>
             {ending ? 'Ending…' : 'End task'}
           </Button>
         </DialogFooter>

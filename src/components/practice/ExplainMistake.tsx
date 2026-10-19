@@ -54,7 +54,7 @@ export default function ExplainMistake({ attempt, review }: { attempt: PracticeA
   if (!isPremiumUser(user)) return null;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-6 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border px-4 py-3">
       <p className="text-xs text-muted-foreground">Still unsure? The AI coach can walk you through it.</p>
       <Button
         variant="outline"

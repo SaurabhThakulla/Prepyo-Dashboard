@@ -161,6 +161,38 @@ select option {
   display: none;
 }
 
+/* App shell backdrop: brand glows over a blue wash and a faint dot grid, so white cards stand out */
+.app-backdrop {
+  background-color: hsl(222 50% 95%);
+  background-image:
+    radial-gradient(64rem 36rem at 88% -6%, hsl(224 88% 58% / 0.34), transparent 62%),
+    radial-gradient(46rem 28rem at 12% -4%, hsl(195 92% 58% / 0.26), transparent 62%),
+    radial-gradient(52rem 30rem at 55% 112%, hsl(258 85% 66% / 0.14), transparent 62%),
+    radial-gradient(hsl(224 45% 40% / 0.11) 1px, transparent 1px),
+    linear-gradient(180deg, hsl(222 62% 92%) 0%, hsl(222 50% 95.5%) 45%, hsl(222 40% 96.5%) 100%);
+  background-size: auto, auto, auto, 22px 22px, auto;
+  background-attachment: fixed;
+}
+
+.dark .app-backdrop {
+  background-color: hsl(224 71% 4%);
+  background-image:
+    radial-gradient(64rem 36rem at 88% -6%, hsl(224 88% 55% / 0.26), transparent 62%),
+    radial-gradient(46rem 28rem at 12% -4%, hsl(195 92% 50% / 0.12), transparent 62%),
+    radial-gradient(52rem 30rem at 55% 112%, hsl(258 85% 60% / 0.12), transparent 62%),
+    radial-gradient(hsl(213 40% 80% / 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, hsl(224 60% 8%) 0%, hsl(224 71% 4%) 50%);
+}
+
+/* Lift the page's cards off the backdrop */
+.app-backdrop main .bg-card {
+  box-shadow: 0 1px 2px hsl(224 60% 20% / 0.05), 0 12px 32px -16px hsl(224 72% 38% / 0.3);
+}
+
+.dark .app-backdrop main .bg-card {
+  box-shadow: 0 1px 2px hsl(0 0% 0% / 0.3), 0 12px 32px -16px hsl(0 0% 0% / 0.6);
+}
+
 /* QR Scanner laser beam animation */
 @keyframes qr-scanner-beam {
   0% {

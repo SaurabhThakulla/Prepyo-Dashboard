@@ -24,6 +24,7 @@
 // WAV is still supported and is the fallback. See encodeForUpload.
 
 import type { EncodeRequest, EncodeResponse } from './audio.worker';
+import { trimSilence } from './silence';
 
 /** Formats the API accepts. Mirrors ai.AudioFormats in the backend. */
 export type UploadFormat = 'mp3' | 'wav';
@@ -125,7 +126,8 @@ export async function encodeForUpload(blob: Blob): Promise<EncodedRecording> {
 
   const mono = await toMono16k(decoded);
   const durationSeconds = Math.max(1, Math.ceil(mono.length / TARGET_SAMPLE_RATE));
-  const samples = toInt16(mono);
+  // The duration stays the full answer's, so pace and time-limit checks are unchanged.
+  const samples = toInt16(trimSilence(mono, TARGET_SAMPLE_RATE));
 
   try {
     return { base64: toBase64(await encodeMp3(samples)), format: 'mp3', durationSeconds };
@@ -270,3 +272,63 @@ export function formatDuration(totalSeconds: number): string {
   const minutes = Math.floor(safe / 60);
   return `${minutes}:${String(safe % 60).padStart(2, '0')}`;
 }
+
+let beepContext: AudioContext | null = null;
+
+function getBeepAudioContext(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  if (beepContext && beepContext.state !== 'closed') return beepContext;
+  const Ctor = window.AudioContext ?? (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Ctor) return null;
+  beepContext = new Ctor();
+  return beepContext;
+}
+
+if (typeof window !== 'undefined') {
+  const unlockBeep = () => {
+    if (beepContext && beepContext.state === 'suspended') {
+      void beepContext.resume().catch(() => {});
+    }
+  };
+  window.addEventListener('pointerdown', unlockBeep, { passive: true });
+  window.addEventListener('keydown', unlockBeep, { passive: true });
+}
+
+/**
+ * The sharp, loud cue tone (1000 Hz) played when preparation finishes and the task /
+ * microphone recording begins, matching official PTE testing centers.
+ */
+export async function beep(durationMs = 300): Promise<void> {
+  try {
+    const ctx = getBeepAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      await ctx.resume().catch(() => {});
+    }
+    const startTime = ctx.currentTime;
+    const durationSec = Math.max(0.1, durationMs / 1000);
+    const attackSec = 0.005; // 5ms crisp attack transient
+    const releaseSec = 0.02; // 20ms clean release to avoid clicks
+    const peakGain = 0.75; // Loud and clear
+
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(1000, startTime);
+
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(peakGain, startTime + attackSec);
+    // Sustain full loudness through the tone
+    gain.gain.setValueAtTime(peakGain, startTime + durationSec - releaseSec);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + durationSec);
+
+    oscillator.connect(gain).connect(ctx.destination);
+    oscillator.start(startTime);
+    oscillator.stop(startTime + durationSec);
+    await new Promise(resolve => setTimeout(resolve, durationMs + 30));
+  } catch (err) {
+    console.warn('Audio beep failed:', err);
+  }
+}
+

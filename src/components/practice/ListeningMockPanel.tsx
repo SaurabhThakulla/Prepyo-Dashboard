@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Clock, Headphones, LogOut, RefreshCw, Send, Volume2 } from 'lucide-react';
+import { Clock, Headphones, LogOut, RefreshCw, RotateCcw, Send, Volume2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
@@ -95,7 +95,7 @@ export default function ListeningMockPanel() {
   };
 
   if (!isPremiumUser(user)) return <PracticeMockPaywall skill="listening" exam={activeExam} />;
-  if (outcome) return <ListeningResult outcome={outcome} onBack={() => navigate('/practice?skill=listening')} />;
+  if (outcome) return <ListeningResult outcome={outcome} onBack={() => navigate('/practice?skill=listening')} onRedo={() => { setOutcome(null); void start(); }} />;
   if (session) {
     return (
       <ListeningMockRunner
@@ -506,7 +506,7 @@ function ListeningGroupView({
   );
 }
 
-export function ListeningResult({ outcome, onBack }: { outcome: ListeningOutcome; onBack: () => void }) {
+export function ListeningResult({ outcome, onBack, onRedo }: { outcome: ListeningOutcome; onBack: () => void; onRedo?: () => void }) {
   const [showScripts, setShowScripts] = useState(false);
   const answersById = new Map((outcome.submitted ?? []).map(a => [a.questionId, a]));
   return (
@@ -555,8 +555,14 @@ export function ListeningResult({ outcome, onBack }: { outcome: ListeningOutcome
           ))}
       </Card>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button variant="outline" onClick={onBack}>Back to listening practice</Button>
+        {onRedo && (
+          <Button onClick={onRedo} className="gap-1.5">
+            <RotateCcw className="h-4 w-4" />
+            Redo
+          </Button>
+        )}
       </div>
     </div>
   );

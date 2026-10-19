@@ -38,8 +38,10 @@ import {
   Lightbulb,
   GitFork,
   ListOrdered,
+  Lock,
   LucideIcon,
 } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 import { SecondaryNavItem } from './navigation';
 
 interface SecondaryNavListProps {
@@ -48,6 +50,19 @@ interface SecondaryNavListProps {
   fallbackHeading: string;
   isItemActive: (item: SecondaryNavItem) => boolean;
   onNavigate: () => void;
+}
+
+/** Renders a weight badge (e.g. "16%") with a little space between the number and '%' so they don't merge. */
+function renderWeightBadge(weight: string) {
+  if (weight.endsWith('%')) {
+    return (
+      <span className="inline-flex items-center justify-center">
+        <span>{weight.slice(0, -1)}</span>
+        <span className="ml-0.5">%</span>
+      </span>
+    );
+  }
+  return weight;
 }
 
 /** Returns the icon appropriate for the main topic/skill group. */
@@ -118,7 +133,7 @@ interface NavGroup {
   items: SecondaryNavItem[];
 }
 
-/** The list of links inside the secondary panel, with adaptive light/dark blue headers. */
+/** The list of links inside the blue secondary panel; the open link is a white pill. */
 export default function SecondaryNavList({
   items,
   fallbackHeading,
@@ -172,26 +187,19 @@ export default function SecondaryNavList({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto py-0 space-y-0">
+    <div className="flex-1 overflow-y-auto px-3 pb-2 [&::-webkit-scrollbar-thumb]:bg-white/20 hover:[&::-webkit-scrollbar-thumb]:bg-white/35">
       {!items[0]?.group && (
-        <div className="px-4 py-1.5 bg-slate-200/80 dark:bg-slate-800/70 text-slate-900 dark:text-slate-100 border-y border-slate-300/80 dark:border-slate-700/60 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded bg-slate-300/90 dark:bg-slate-700/90 flex items-center justify-center border border-slate-400/40 dark:border-slate-600/60 text-slate-900 dark:text-slate-100">
-              <Folder className="w-3 h-3 text-slate-800 dark:text-slate-200" />
-            </div>
-            <h4 className="font-display text-[11px] font-extrabold uppercase tracking-wider text-slate-900 dark:text-slate-100">
-              {fallbackHeading}
-            </h4>
-          </div>
-        </div>
+        <h4 className="px-3 pt-1 pb-2 font-display text-[11px] font-semibold uppercase tracking-[0.12em] text-white/50">
+          {fallbackHeading}
+        </h4>
       )}
 
       <TooltipProvider delayDuration={120}>
-        <div className="space-y-0">
+        <div>
           {groups.map((group, groupIndex) => {
             if (!group.name) {
               return (
-                <div key={`ungrouped-${groupIndex}`} className="space-y-0">
+                <div key={`ungrouped-${groupIndex}`} className="space-y-1">
                   {group.items.map((item, idx) => (
                     <TooltipItem
                       key={`${item.href ?? item.label}-${idx}`}
@@ -208,7 +216,10 @@ export default function SecondaryNavList({
             const isCollapsed = Boolean(collapsedGroups[group.name]) && !isGroupActive;
 
             return (
-              <div key={`group-${group.name}-${groupIndex}`} className="space-y-0">
+              <div
+                key={`group-${group.name}-${groupIndex}`}
+                className={groupIndex > 0 ? 'mt-3 pt-3 border-t border-white/10' : ''}
+              >
                 <GroupHeading
                   groupName={group.name}
                   groupHref={group.groupHref}
@@ -219,7 +230,7 @@ export default function SecondaryNavList({
                 />
 
                 {!isCollapsed && (
-                  <div className="space-y-0">
+                  <div className="space-y-1">
                     {group.items.map((item, idx) => (
                       <TooltipItem
                         key={`${item.href ?? item.label}-${idx}`}
@@ -259,64 +270,31 @@ function GroupHeading({
   const GroupIcon = getGroupIcon(groupName);
 
   return (
-    <div
-      className={`group/header flex items-center justify-between w-full px-4 py-1.5 rounded-none transition-all duration-150 border-y ${
-        isGroupActive
-          ? 'bg-blue-100 dark:bg-blue-950/60 border-blue-300/90 dark:border-blue-800/70 text-blue-950 dark:text-blue-100'
-          : 'bg-slate-200/80 hover:bg-slate-200 dark:bg-slate-800/70 dark:hover:bg-slate-800/90 border-slate-300/80 dark:border-slate-700/60 text-slate-900 dark:text-slate-100'
-      }`}
-    >
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        <div
-          className={`w-5 h-5 rounded flex items-center justify-center shrink-0 transition-transform duration-200 group-hover/header:scale-105 border ${
-            isGroupActive
-              ? 'bg-blue-200/90 dark:bg-blue-900/80 border-blue-400/50 text-blue-700 dark:text-blue-300'
-              : 'bg-slate-300/90 dark:bg-slate-700/90 border-slate-400/40 dark:border-slate-600/60 text-slate-900 dark:text-slate-100'
-          }`}
-        >
-          <GroupIcon className="w-3 h-3" />
-        </div>
-
-        <div className="flex items-center gap-1.5 min-w-0">
-          {groupHref ? (
-            <Link
-              to={groupHref}
-              onClick={onNavigate}
-              className={`font-display text-[11px] font-extrabold uppercase tracking-wider transition-colors truncate ${
-                isGroupActive
-                  ? 'text-blue-950 dark:text-blue-200 hover:text-blue-700'
-                  : 'text-slate-900 dark:text-slate-100 hover:text-primary'
-              }`}
-            >
-              {groupName}
-            </Link>
-          ) : (
-            <span
-              className={`font-display text-[11px] font-extrabold uppercase tracking-wider truncate ${
-                isGroupActive ? 'text-blue-950 dark:text-blue-200' : 'text-slate-900 dark:text-slate-100'
-              }`}
-            >
-              {groupName}
-            </span>
-          )}
-        </div>
+    <div className="flex items-center justify-between w-full px-3 pb-1.5">
+      <div className={`flex items-center gap-2 min-w-0 flex-1 ${isGroupActive ? 'text-white' : 'text-white/50'}`}>
+        <GroupIcon className="w-3.5 h-3.5 shrink-0" />
+        {groupHref ? (
+          <Link
+            to={groupHref}
+            onClick={onNavigate}
+            className="font-display text-[11px] font-semibold uppercase tracking-[0.12em] truncate hover:text-white transition-colors"
+          >
+            {groupName}
+          </Link>
+        ) : (
+          <span className="font-display text-[11px] font-semibold uppercase tracking-[0.12em] truncate">{groupName}</span>
+        )}
       </div>
 
-      <div className="flex items-center gap-1 shrink-0 ml-1.5">
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          className="p-1 rounded text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-300/60 dark:hover:bg-slate-700/60 transition-colors"
-          title={isCollapsed ? `Expand ${groupName}` : `Collapse ${groupName}`}
-          aria-label={isCollapsed ? `Expand ${groupName}` : `Collapse ${groupName}`}
-        >
-          <ChevronDown
-            className={`w-3.5 h-3.5 transition-transform duration-200 ${
-              isCollapsed ? '-rotate-90 text-slate-600 dark:text-slate-400' : 'rotate-0 text-slate-800 dark:text-slate-200'
-            }`}
-          />
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={onToggleCollapse}
+        className="p-1 ml-1.5 shrink-0 rounded-md text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+        title={isCollapsed ? `Expand ${groupName}` : `Collapse ${groupName}`}
+        aria-label={isCollapsed ? `Expand ${groupName}` : `Collapse ${groupName}`}
+      >
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
+      </button>
     </div>
   );
 }
@@ -341,15 +319,25 @@ function TooltipItem({
         sideOffset={8}
         className="p-2.5 space-y-0.5 rounded-xl border border-border/90 bg-popover/95 backdrop-blur-xl shadow-2xl"
       >
-        <div className="font-bold text-xs text-foreground flex items-center gap-1.5">
+        <div className="font-bold text-xs text-foreground flex items-center gap-1.5 flex-wrap">
           <span>{item.label}</span>
+          {item.weight && (
+            <span className="text-[10px] bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded font-mono font-bold">
+              Weight: {renderWeightBadge(item.weight)}
+            </span>
+          )}
           {item.badge && (
             <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0 rounded font-semibold uppercase">
               {item.badge}
             </span>
           )}
         </div>
-        {item.sublabel && (
+        {item.isLocked && item.lockedReason && (
+          <p className="text-[11px] font-semibold text-amber-500 dark:text-amber-400 flex items-center gap-1 pt-0.5">
+            <Lock className="w-3 h-3 shrink-0" /> {item.lockedReason}
+          </p>
+        )}
+        {item.sublabel && !item.isLocked && (
           <p className="text-[11px] text-muted-foreground font-normal leading-tight max-w-[220px]">
             {item.sublabel}
           </p>
@@ -369,41 +357,82 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
   { item, isActive, onNavigate },
   ref,
 ) {
+  const toast = useToast();
   // Course lessons carry their state (done, open, locked) in the icon, so a
   // topic icon picked from the label must not replace it.
   const Icon = item.href?.startsWith('/learn') ? item.icon : getSubtopicIcon(item.label, item.icon);
 
-  const className = `group flex items-center justify-between w-full text-left pl-[22px] pr-3.5 py-2 rounded-none text-xs transition-colors duration-150 border-b border-slate-100/60 dark:border-white/5 ${
+  if (item.isLocked) {
+    return (
+      <button
+        ref={ref as React.Ref<HTMLButtonElement>}
+        type="button"
+        onClick={() => {
+          toast.warning('Task unavailable', item.lockedReason ?? 'This task is not included in your selected exam.');
+        }}
+        className="group flex items-center justify-between w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all duration-150 outline-none text-white/40 hover:text-white/60 hover:bg-white/5 cursor-not-allowed font-medium select-none"
+      >
+        <div className="flex items-center gap-3 min-w-0 flex-1 pr-1">
+          <Icon className="w-[18px] h-[18px] shrink-0 text-white/30" />
+          <span title={item.label} className="line-clamp-2 leading-snug">
+            {item.label}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0 ml-1.5">
+          <Lock className="w-3.5 h-3.5 text-white/40" />
+          <Badge
+            variant="outline"
+            className="text-[9px] px-1.5 py-0 font-bold uppercase rounded-sm border-white/20 text-white/40 bg-white/5"
+          >
+            {item.badge || 'Locked'}
+          </Badge>
+        </div>
+      </button>
+    );
+  }
+
+  const className = `group flex items-center justify-between w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-white ${
     isActive
-      ? 'bg-slate-100 dark:bg-white/10 text-foreground dark:text-white font-semibold shadow-xs'
-      : 'text-muted-foreground hover:text-foreground hover:bg-slate-100/60 dark:hover:bg-white/5 font-medium'
+      ? 'bg-white text-primary dark:text-blue-950 font-semibold shadow-lg shadow-black/15'
+      : 'text-white/80 hover:text-white hover:bg-white/10 hover:translate-x-0.5 font-medium'
   }`;
 
   const content = (
     <>
-      <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1">
-        <Icon
-          className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-            isActive ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground/80 group-hover:text-foreground'
-          }`}
-        />
-        <span
-          title={item.label}
-          className={`line-clamp-2 text-xs leading-snug ${
-            isActive ? 'font-semibold text-foreground dark:text-white' : 'font-medium text-foreground/85 group-hover:text-foreground'
-          }`}
-        >
+      <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
+        <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? '' : 'text-white/60 group-hover:text-white'}`} />
+        <span title={item.label} className="leading-snug truncate">
           {item.label}
         </span>
+        {item.badge === 'AI' && (
+          <span className={`text-[10px] font-bold tracking-tight shrink-0 ${
+            isActive ? 'text-primary dark:text-blue-950' : 'text-sky-200'
+          }`}>
+            AI Score
+          </span>
+        )}
       </div>
 
-      {item.badge && (
+      {item.weight && (
+        <span
+          className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ml-auto font-mono shadow-xs transition-transform group-hover:scale-105 min-w-[36px] text-center inline-flex items-center justify-center ${
+            isActive
+              ? 'bg-primary text-white font-extrabold shadow-sm'
+              : 'bg-white text-blue-950 font-extrabold shadow-xs'
+          }`}
+          title={`Score Weight: ${item.weight}`}
+        >
+          {renderWeightBadge(item.weight)}
+        </span>
+      )}
+
+      {item.badge && item.badge !== 'AI' && (
         <Badge
           variant={isActive ? 'default' : 'outline'}
-          className={`text-[9px] px-1.5 py-0 shrink-0 ml-1.5 font-bold uppercase rounded-sm ${
+          className={`text-[9px] px-1.5 py-0 shrink-0 ml-auto font-bold uppercase rounded-sm ${
             isActive
-              ? 'bg-blue-600 text-white dark:bg-blue-500 dark:text-white border-transparent'
-              : 'border-border text-muted-foreground'
+              ? 'bg-primary text-white dark:bg-blue-950 border-transparent'
+              : 'border-white/40 text-white/80'
           }`}
         >
           {item.badge}
@@ -413,8 +442,8 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
         <span
           className={`text-[10px] font-bold px-1.5 py-0.2 rounded-sm shrink-0 ml-1.5 font-mono ${
             isActive
-              ? 'bg-blue-500/25 text-blue-800 dark:text-blue-200 border border-blue-400/40'
-              : 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30'
+              ? 'bg-primary/15 text-primary dark:text-blue-950 border border-primary/30'
+              : 'bg-amber-300/20 text-amber-200 border border-amber-300/40'
           }`}
         >
           {item.count}

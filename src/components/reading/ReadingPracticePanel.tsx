@@ -1,6 +1,6 @@
 import { subTestsLeft } from '@/lib/subscriptions';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { AlertCircle, Bot, CheckCircle2, RefreshCw, Send, Shuffle, Square, Play } from 'lucide-react';
+import { AlertCircle, Bot, CheckCircle2, RefreshCw, RotateCcw, Send, Shuffle, Square, Play } from 'lucide-react';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
 import { api, ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,11 @@ import { READING_TYPES, typeIdsFor, needsParagraphLabels, familyOf } from '@/lib
 import { ExamType, ReadingGroup, ReadingTaskType } from '@/lib/types';
 import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
 import { ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
+import { useQueryClient } from '@tanstack/react-query';
+import PracticeActionBar, { notesFor, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
+import MyScore from '@/components/practice/flow/MyScore';
+
+const PILL = 'h-9 gap-1.5 rounded-full px-4 text-xs font-bold';
 
 interface ReadingPracticePanelProps {
   /** The `?type=` key the sidebar linked with, if any. */
@@ -23,6 +28,8 @@ interface ReadingPracticePanelProps {
   exam?: ExamType;
   /** A passage chosen from the practice list; Start deals that one. */
   passageId?: string;
+  /** The practice list's passages, in order, for the arrows and number list. */
+  passageIds?: string[];
 }
 
 /**
@@ -108,11 +115,12 @@ function labelForTypeKey(key?: string) {
  * Left pane: Reading passage with centered title and continuous natural paragraphs.
  * Right pane: Question notes completion card with inline inputs and circled numbers.
  */
-export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, passageId }: ReadingPracticePanelProps) {
+export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, passageId, passageIds = [] }: ReadingPracticePanelProps) {
   const { user, activeExam: contextExam, refreshUser, setIsTutorOpen, setTutorContextPrompt, activeTestSession, setActiveTestSession } = useApp();
   const activeExam = exam ?? contextExam;
   const resolution = useMistakeResolution(mistakeId);
   const toast = useToast();
+  const queryClient = useQueryClient();
 
   const typesQuery = useReadingTypes(activeExam);
   const types = typesQuery.data?.types ?? [];
@@ -145,7 +153,8 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
     toast.info('Test stopped', 'Reading session has ended.');
   }, [sessionId, setActiveTestSession, toast]);
 
-  const handleStart = useCallback(async () => {
+  // Redo passes the passage just checked so the same one is dealt again.
+  const handleStart = useCallback(async (redoPassageId?: string) => {
     if (isStarting || isSessionActive) return;
     setIsStarting(true);
     try {
@@ -163,7 +172,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
         return;
       }
 
-      const dealtSet = await deal(targetId ?? '', mistakeId, passageId);
+      const dealtSet = await deal(targetId ?? '', mistakeId, redoPassageId ?? passageId);
       if (!dealtSet) {
         return;
       }
@@ -203,6 +212,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
   const handleCheck = async () => {
     try {
       const graded = await practice.check();
+      void queryClient.invalidateQueries({ queryKey: ['practice-history'] });
       if (mistakeId && graded) {
         const outcome = Object.values(graded)[0];
         if (outcome) await resolution.finish(outcome.attempt.isCorrect);
@@ -272,7 +282,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
           instructions="The passage and questions will appear after you start."
           subTestsRemaining={subTestsRemaining}
           isStarting={isStarting}
-          onStart={handleStart}
+          onStart={() => void handleStart()}
         />
       </div>
     );
@@ -298,6 +308,11 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
   }
 
   const hasPassage = Boolean(set.passage && displayedGroups[0]?.passageDisplay !== 'hidden');
+  const passageIndex = set.passage ? passageIds.indexOf(set.passage.id) : -1;
+  const shownQuestionIds = displayedGroups.flatMap(group => group.questions.map(question => question.id));
+  // Redo before checking: blank every answer on this passage, same session.
+  const clearAnswers = () =>
+    shownQuestionIds.forEach(id => practice.answer(id, { textResponse: '', selectedOptions: [], blankResponses: {} }));
 
   return (
     <div data-practice-workspace className="relative w-full min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] p-0 m-0 flex flex-col bg-background lg:overflow-hidden">
@@ -346,57 +361,83 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
                   </p>
                 </Card>
               )}
+
+              <div className="space-y-3 px-1 py-3">
+                <PracticeNotes notes={notesFor('reading')} />
+                <MyScore questionIds={shownQuestionIds} bySitting />
+              </div>
             </div>
 
             {/* Bottom Sticky Action Bar - Compact */}
-            <div className="pt-2 mt-1 border-t border-border/70 flex flex-wrap items-center justify-between gap-2 shrink-0 bg-background/90 backdrop-blur-xs py-1.5 px-3">
-              <Button variant="outline" size="sm" onClick={askTutor} className="gap-1.5 font-bold text-xs rounded-lg h-8 px-3">
-                <Bot className="w-3.5 h-3.5 text-primary" />
-                <span>Ask AI Coach</span>
-              </Button>
-
-              {isSessionActive && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleStop}
-                  disabled={isStopping}
-                  className="font-bold gap-1.5 text-xs rounded-lg h-8 px-3 bg-rose-600 hover:bg-rose-700 text-white shadow-xs"
-                >
-                  <Square className="w-3 h-3 fill-current" />
-                  <span>Stop Practice</span>
-                </Button>
-              )}
-
-              {practice.checked && mistakeId && practice.correctCount > 0 && !resolution.resolved ? (
-                <Button disabled={resolution.saving} onClick={() => void resolution.finish(true)}>Retry saving resolution</Button>
-              ) : practice.checked ? (
-                <Button
-                  onClick={handleStart}
-                  className="font-bold gap-1.5 text-xs rounded-lg h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
-                >
-                  <Shuffle className="w-3.5 h-3.5" />
-                  <span>{mistakeId ? 'Try again' : 'Another passage'}</span>
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => void handleCheck()}
-                  disabled={practice.checking || practice.answeredCount === 0}
-                  className="font-bold gap-1.5 text-xs rounded-lg h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-2xs"
-                >
-                  {practice.checking ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Checking…</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Check answers</span>
-                    </>
-                  )}
-                </Button>
-              )}
+            <div className="pt-2 mt-1 border-t border-border/70 shrink-0 bg-background/90 backdrop-blur-xs py-1.5 px-3">
+              <PracticeActionBar
+                index={passageIndex}
+                total={mistakeId ? 0 : passageIds.length}
+                onJump={mistakeId ? undefined : i => void handleStart(passageIds[i])}
+                onShuffle={mistakeId ? undefined : () => void handleStart()}
+                disabled={isSessionActive || practice.checking}
+                actions={
+                  <>
+                    {practice.checked && mistakeId && practice.correctCount > 0 && !resolution.resolved ? (
+                      <Button disabled={resolution.saving} onClick={() => void resolution.finish(true)}>Retry saving resolution</Button>
+                    ) : practice.checked ? (
+                      <>
+                        {!mistakeId && set.passage?.id && (
+                          <Button variant="outline" onClick={() => void handleStart(set.passage?.id)} className={PILL}>
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Redo</span>
+                          </Button>
+                        )}
+                        <Button onClick={() => void handleStart()} className={`${PILL} bg-blue-600 hover:bg-blue-700 text-white shadow-2xs`}>
+                          <Shuffle className="w-3.5 h-3.5" />
+                          <span>{mistakeId ? 'Try again' : 'Another passage'}</span>
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={() => void handleCheck()}
+                          disabled={practice.checking || practice.answeredCount === 0}
+                          aria-label={practice.checking ? undefined : 'Check answers'}
+                          className={`${PILL} border-primary text-primary hover:bg-primary hover:text-primary-foreground`}
+                        >
+                          {practice.checking ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              <span>Checking…</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-3.5 h-3.5" />
+                              <span>Submit</span>
+                            </>
+                          )}
+                        </Button>
+                        <Button variant="outline" onClick={clearAnswers} disabled={practice.checking || practice.answeredCount === 0} className={PILL}>
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Redo</span>
+                        </Button>
+                      </>
+                    )}
+                    {isSessionActive && (
+                      <Button
+                        variant="destructive"
+                        onClick={handleStop}
+                        disabled={isStopping}
+                        className={`${PILL} bg-rose-600 hover:bg-rose-700 text-white shadow-xs`}
+                      >
+                        <Square className="w-3 h-3 fill-current" />
+                        <span>Stop Practice</span>
+                      </Button>
+                    )}
+                    <Button variant="ghost" onClick={askTutor} className={PILL}>
+                      <Bot className="w-3.5 h-3.5 text-primary" />
+                      <span>Ask AI Coach</span>
+                    </Button>
+                  </>
+                }
+              />
             </div>
           </div>
         </div>

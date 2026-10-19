@@ -41,6 +41,8 @@ interface PromptAudioProps {
    * that is the learner's whole allowance, as in the test.
    */
   repeat?: number;
+  /** Answers to mark in the transcript once it is shown after submitting. */
+  highlights?: string[];
   /**
    * Where the script is fetched from when it is not carried inline. Defaults
    * to the question's playback endpoint.
@@ -84,6 +86,7 @@ export default function PromptAudio({
   scriptOnRequest = false,
   singlePlay = false,
   repeat = 1,
+  highlights,
   scriptUrl,
   serverAudioUrl,
 }: PromptAudioProps) {
@@ -156,9 +159,14 @@ export default function PromptAudio({
     return cancelPlayback;
   }, [questionId, audioTranscript, audioUrl, cancelPlayback]);
 
+  // A stored recording that will not load (its file is missing) is read by
+  // the server's voice instead, which sends sound only, never the script.
+  const [recordingBroken, setRecordingBroken] = useState(false);
+
   useEffect(() => {
     setFetchedScript(null);
     setPlayed(false);
+    setRecordingBroken(false);
   }, [questionId]);
 
   const stop = useCallback(() => {
@@ -224,14 +232,15 @@ export default function PromptAudio({
     const starts: number[] = [];
     segments.reduce((sum, part, i) => ((starts[i] = sum), sum + (part === PAUSE_SEGMENT ? 0 : part.length)), 0);
     // Whether the voice has said anything yet. A voice that never starts does
-    // not work in this browser (Brave's shields can do this), so the server's
-    // voice takes over; nothing was heard, so the one play is not used up.
+    // not work in this browser (Brave's shields can do this), and Chrome's
+    // online voices can drop out part-way; either way the server's voice takes
+    // over, and as the recording was not heard through, the one play is not used up.
     let anyStarted = false;
     const fail = () => {
       if (run !== generation.current) return;
       cancelPlayback();
       setSpeaking(false);
-      if (!anyStarted && spokenUrl) {
+      if (spokenUrl) {
         markBrowserVoiceBroken();
         setPlayed(false);
         setProgress(0);
@@ -323,10 +332,11 @@ export default function PromptAudio({
     } catch { fail(); }
   }, [script, scriptOnRequest, playbackUrl, spokenUrl, oncePlayed, cancelPlayback, repeat]);
 
-  if (audioUrl) {
+  if (audioUrl && !(recordingBroken && spokenUrl)) {
     return (
       <RecordedAudio
         src={audioUrl}
+        onLoadError={() => setRecordingBroken(true)}
         title={title}
         questionId={questionId}
         singlePlay={singlePlay && !allowTranscript}
@@ -334,8 +344,8 @@ export default function PromptAudio({
         onFinished={() => onFinishedRef.current?.()}
         footer={
           allowTranscript && script ? (
-            <p className="text-xs text-foreground italic leading-relaxed border-t border-border pt-2 whitespace-pre-line">
-              &ldquo;{script}&rdquo;
+            <p className="text-[13px] sm:text-sm text-foreground italic leading-relaxed border-t border-border pt-2 whitespace-pre-line">
+              &ldquo;<ScriptText text={script ?? ''} highlights={highlights} />&rdquo;
             </p>
           ) : null
         }
@@ -343,7 +353,7 @@ export default function PromptAudio({
     );
   }
 
-  if (!script && !scriptOnRequest) return null;
+  if (!script && !scriptOnRequest && !recordingBroken) return null;
 
   // A device can have voices and still none in the script's language: many
   // Windows PCs have no Korean voice, and an English one reading Hangul says
@@ -355,7 +365,7 @@ export default function PromptAudio({
     !window.speechSynthesis.getVoices().some(voice => voice.lang.toLowerCase().startsWith(language));
 
   // A browser that cannot speak gets the same script spoken on the server.
-  if ((!canSpeak || browserVoice === 'none' || voiceFailed || noVoiceForScript) && spokenUrl) {
+  if ((recordingBroken || !canSpeak || browserVoice === 'none' || voiceFailed || noVoiceForScript) && spokenUrl) {
     return (
       <ServerSpokenAudio
         listUrl={spokenUrl}
@@ -366,8 +376,8 @@ export default function PromptAudio({
         onFinished={() => onFinishedRef.current?.()}
         footer={
           allowTranscript && script ? (
-            <p className="text-xs text-foreground italic leading-relaxed border-t border-border pt-2 whitespace-pre-line">
-              &ldquo;{script}&rdquo;
+            <p className="text-[13px] sm:text-sm text-foreground italic leading-relaxed border-t border-border pt-2 whitespace-pre-line">
+              &ldquo;<ScriptText text={script ?? ''} highlights={highlights} />&rdquo;
             </p>
           ) : null
         }
@@ -385,7 +395,7 @@ export default function PromptAudio({
         <p className="text-[11px] text-muted-foreground leading-relaxed">
           Audio can't play on this device. Try opening Prepyo in Chrome or Edge.
         </p>
-        {allowTranscript && <p className="text-xs text-foreground italic leading-relaxed">&ldquo;{script}&rdquo;</p>}
+        {allowTranscript && <p className="text-xs text-foreground italic leading-relaxed">&ldquo;<ScriptText text={script ?? ''} highlights={highlights} />&rdquo;</p>}
       </div>
     );
   }
@@ -427,8 +437,8 @@ export default function PromptAudio({
               task into a reading one. */}
           {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
           {allowTranscript && showTranscript && (
-            <p className="text-xs text-foreground italic leading-relaxed border-t border-border pt-2 whitespace-pre-line">
-              &ldquo;{script ?? 'The transcript will appear once the recording has been played.'}&rdquo;
+            <p className="text-[13px] sm:text-sm text-foreground italic leading-relaxed border-t border-border pt-2 whitespace-pre-line">
+              &ldquo;{script ? <ScriptText text={script} highlights={highlights} /> : 'The transcript will appear once the recording has been played.'}&rdquo;
             </p>
           )}
         </>
@@ -600,6 +610,7 @@ function RecordedAudio({
   singlePlay = false,
   repeat = 1,
   onFinished,
+  onLoadError,
   footer,
 }: {
   src: string;
@@ -608,6 +619,7 @@ function RecordedAudio({
   singlePlay?: boolean;
   repeat?: number;
   onFinished: () => void;
+  onLoadError?: () => void;
   /** Shown under the player, as the transcript is once the answer is in. */
   footer?: React.ReactNode;
 }) {
@@ -676,7 +688,10 @@ function RecordedAudio({
           const el = event.currentTarget;
           if (el.duration) setProgress((round.current + el.currentTime / el.duration) / repeat);
         }}
-        onError={() => setError("The audio couldn't load. Please try again.")}
+        onError={() => {
+          setError("The audio couldn't load. Please try again.");
+          onLoadError?.();
+        }}
         className="hidden"
       />
       <VoicePanel
@@ -775,12 +790,12 @@ function VoicePanel({ disabled = false, playing, progress, status, onToggle, tog
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
+            <span className="flex shrink-0 items-center gap-1.5 text-sm font-bold text-foreground">
               <Volume2 className={`h-4 w-4 ${playing ? 'text-primary' : 'text-muted-foreground'}`} />
               Listen
             </span>
-            <span className="truncate text-[11px] font-semibold text-muted-foreground" aria-live="polite">
+            <span className="min-w-0 text-xs font-semibold text-muted-foreground" aria-live="polite">
               {status}
             </span>
           </div>
@@ -812,5 +827,29 @@ function VoicePanel({ disabled = false, playing, progress, status, onToggle, tog
 
       {footer && <div className="relative mt-3 space-y-2">{footer}</div>}
     </div>
+  );
+}
+
+/** The transcript with each answer marked, so the learner sees where it was said. */
+function ScriptText({ text, highlights = [] }: { text: string; highlights?: string[] }) {
+  const words = highlights.map(word => word.trim()).filter(Boolean);
+  if (!words.length) return <>{text}</>;
+  const alternatives = words
+    .map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .sort((a, b) => b.length - a.length)
+    .join('|');
+  const parts = text.split(new RegExp(`(?<![\\p{L}\\p{N}])(${alternatives})(?![\\p{L}\\p{N}])`, 'giu'));
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 ? (
+          <mark key={i} className="rounded px-1 not-italic font-semibold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300">
+            {part}
+          </mark>
+        ) : (
+          part
+        ),
+      )}
+    </>
   );
 }

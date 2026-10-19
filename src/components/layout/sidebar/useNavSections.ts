@@ -12,7 +12,7 @@ import { buildSections, PrimarySectionConfig } from './navigation';
  */
 export function useNavSections(): PrimarySectionConfig[] {
   const [searchParams] = useSearchParams();
-  const { user, activeExam, setIsTutorOpen } = useApp();
+  const { user, activeExam, setIsTutorOpen, pteVariant } = useApp();
 
   // Reading headings are only worth showing when the bank has something behind
   // them, so the menu is checked against the same list the practice page deals
@@ -36,5 +36,6 @@ export function useNavSections(): PrimarySectionConfig[] {
     readingTypes.data?.mockPassageCount ?? 0,
     hasMistake,
     learnProgress,
+    pteVariant,
   );
 }

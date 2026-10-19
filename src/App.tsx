@@ -6,6 +6,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
 import AuthScreen from '@/components/auth/AuthScreen';
 import RedirectIfAuthenticated from '@/components/auth/RedirectIfAuthenticated';
+import { institutionRoutes } from '@/institution/InstitutionRoutes';
 
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const PracticePage = lazy(() => import('@/pages/PracticePage'));
@@ -27,6 +28,7 @@ const LessonPage = lazy(() => import('@/pages/LessonPage'));
 const AdminPage = lazy(() => import('@/pages/AdminPage'));
 const AdminReportsPage = lazy(() => import('@/pages/AdminReportsPage'));
 const AdminPaymentsPage = lazy(() => import('@/pages/AdminPaymentsPage'));
+const AdminConsultanciesPage = lazy(() => import('@/pages/AdminConsultanciesPage'));
 const TermsPage = lazy(() => import('@/pages/TermsPage'));
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
@@ -61,6 +63,9 @@ export default function App() {
           }
         />
 
+        {/* Institution pages, including each institution's own address (/its-name): see src/institution. */}
+        {institutionRoutes}
+
         <Route
           path="/dashboard"
           element={
@@ -91,6 +96,7 @@ export default function App() {
         <Route path="/admin" element={<Suspense fallback={<AppPageSkeleton />}><AdminPage /></Suspense>} />
         <Route path="/admin/reports" element={<Suspense fallback={<AppPageSkeleton />}><AdminReportsPage /></Suspense>} />
         <Route path="/admin/payments" element={<Suspense fallback={<AppPageSkeleton />}><AdminPaymentsPage /></Suspense>} />
+        <Route path="/admin/consultancies" element={<Suspense fallback={<AppPageSkeleton />}><AdminConsultanciesPage /></Suspense>} />
 
         <Route path="/terms" element={<Suspense fallback={null}><TermsPage /></Suspense>} />
         <Route path="/privacy" element={<Suspense fallback={null}><PrivacyPage /></Suspense>} />

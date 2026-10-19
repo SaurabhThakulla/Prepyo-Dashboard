@@ -2,9 +2,12 @@ import React, { useMemo } from 'react';
 import { Blank } from '@/lib/types';
 import { Check, X } from 'lucide-react';
 
+// Note-style passages number their gaps as "____ (1)"; they become [[1]] markers.
+const numberedGaps = (passage: string) => passage.replace(/_{2,}\s*\((\d+)\)/g, '[[$1]]');
+
 export function passageHasGaps(passage?: string | null): boolean {
   if (!passage) return false;
-  return /\[\[[\w-]+\]\]/.test(passage);
+  return /\[\[[\w-]+\]\]/.test(numberedGaps(passage));
 }
 
 interface InlineBlankPassageProps {
@@ -27,7 +30,7 @@ export default function InlineBlankPassage({
   className = '',
 }: InlineBlankPassageProps) {
   // Splitting with a capturing group interleaves text and gap markers
-  const parts = useMemo(() => passage.split(/\[\[([\w-]+)\]\]/g), [passage]);
+  const parts = useMemo(() => numberedGaps(passage).split(/\[\[([\w-]+)\]\]/g), [passage]);
 
   const blankById = useMemo(() => new Map(blanks.map(b => [b.id, b])), [blanks]);
   const reviewById = useMemo(
@@ -39,7 +42,7 @@ export default function InlineBlankPassage({
 
   return (
     <div
-      className={`p-4 sm:p-5 rounded-xl bg-background border border-border text-xs sm:text-sm md:text-[14px] text-foreground leading-[2.4] max-h-72 overflow-y-auto select-text ${className}`}
+      className={`p-4 sm:p-5 rounded-xl bg-background border border-border text-[15px] sm:text-[16px] text-foreground leading-[2.6] whitespace-pre-line max-h-96 overflow-y-auto select-text ${className}`}
     >
       {parts.map((part, index) => {
         if (index % 2 === 0) {
@@ -99,7 +102,7 @@ export default function InlineBlankPassage({
               onChange={e => onChange({ ...responses, [blankId]: e.target.value })}
               placeholder={`Blank ${gapIndex + 1}`}
               aria-label={`Blank ${gapIndex + 1}`}
-              className={`inline-block w-28 sm:w-36 h-8 px-2.5 rounded-lg border text-xs sm:text-sm font-semibold shadow-2xs transition-all focus:outline-none ${tone}`}
+              className={`inline-block w-32 sm:w-40 h-9 px-3 rounded-lg border text-sm sm:text-[15px] font-semibold shadow-2xs transition-all focus:outline-none ${tone}`}
             />
             {isReviewed && (
               <span className="ml-1.5 inline-flex items-center gap-1 text-xs">

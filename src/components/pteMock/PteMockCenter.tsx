@@ -11,6 +11,8 @@ import { usePteMockCatalog } from '@/lib/hooks/usePteMock';
 import { useMockPapers } from '@/lib/hooks/useMockPapers';
 import { formatMinutes, pteMockHref, pteMockMeta, pteReportHref } from '@/lib/pteMock/catalog';
 import { PteCatalogEntry } from '@/lib/pteMock/types';
+import { useApp } from '@/context/AppContext';
+import { PteExamVariant } from '@/lib/pteExamConfig';
 
 /**
  * The PTE mock test centre: the full test first, then one sectional test per
@@ -20,6 +22,7 @@ import { PteCatalogEntry } from '@/lib/pteMock/types';
 export default function PteMockCenter({ header }: { header: React.ReactNode }) {
   const navigate = useNavigate();
   const toast = useToast();
+  const { pteVariant, setPteVariant } = useApp();
   const { data, isPending, error } = usePteMockCatalog();
 
   useEffect(() => {
@@ -34,6 +37,32 @@ export default function PteMockCenter({ header }: { header: React.ReactNode }) {
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
       {header}
+
+      {/* PTE Academic vs PTE Core Switcher Tabs in Mock Center */}
+      <div className="flex items-center gap-1.5 p-1 bg-muted/70 rounded-xl w-fit border border-border">
+        <button
+          type="button"
+          onClick={() => setPteVariant('academic')}
+          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            pteVariant === 'academic'
+              ? 'bg-[#00c4a7] text-white shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          PTE Academic / UKVI
+        </button>
+        <button
+          type="button"
+          onClick={() => setPteVariant('core')}
+          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            pteVariant === 'core'
+              ? 'bg-[#00c4a7] text-white shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          PTE Core
+        </button>
+      </div>
 
       {live.length > 0 && (
         <div className="space-y-2">
@@ -63,18 +92,25 @@ export default function PteMockCenter({ header }: { header: React.ReactNode }) {
         </div>
       ) : entries.length === 0 ? null : (
         <>
-          {full && <FullTestCard entry={full} onOpen={() => navigate(pteMockHref('full'))} onReport={id => navigate(pteReportHref(id))} />}
+          {full && <FullTestCard entry={full} variant={pteVariant} onOpen={() => navigate(pteMockHref('full'))} onReport={id => navigate(pteReportHref(id))} />}
 
           <section className="space-y-3">
             <div>
-              <h2 className="font-display text-lg font-bold text-foreground">Sectional tests</h2>
-              <p className="text-xs text-muted-foreground">One skill at a time, timed and run exactly as that part of the test.</p>
+              <h2 className="font-display text-lg font-bold text-foreground">
+                {pteVariant === 'core' ? 'PTE Core Sectional Tests' : 'Sectional tests'}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {pteVariant === 'core'
+                  ? 'One skill at a time, timed and structured according to PTE Core specifications.'
+                  : 'One skill at a time, timed and run exactly as that part of the test.'}
+              </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
               {sections.map(entry => (
                 <SectionCard
                   key={entry.kind}
                   entry={entry}
+                  variant={pteVariant}
                   onOpen={() => navigate(pteMockHref(entry.kind))}
                   onReport={id => navigate(pteReportHref(id))}
                 />
@@ -87,25 +123,49 @@ export default function PteMockCenter({ header }: { header: React.ReactNode }) {
   );
 }
 
-function FullTestCard({ entry, onOpen, onReport }: { entry: PteCatalogEntry; onOpen: () => void; onReport: (id: string) => void }) {
+function FullTestCard({
+  entry,
+  variant,
+  onOpen,
+  onReport,
+}: {
+  entry: PteCatalogEntry;
+  variant: PteExamVariant;
+  onOpen: () => void;
+  onReport: (id: string) => void;
+}) {
   const meta = pteMockMeta('full');
   const { data: fullPapers = [] } = useMockPapers('pte', 'full');
+  const isCore = variant === 'core';
+  const title = isCore ? 'PTE Core Full Mock Test' : entry.title;
+  const description = isCore
+    ? 'All three parts adapted for PTE Core: Speaking (RA, RS, DI, ASQ, RTS), Writing (SWT, Write Email), Reading, and Listening. Timed and scored 10-90.'
+    : entry.description;
+
   return (
     <Card className="overflow-hidden">
-      <div className={`bg-gradient-to-r ${meta.accent} p-6 sm:p-8 text-white grid grid-cols-1 lg:grid-cols-3 gap-6`}>
-        <div className="lg:col-span-2 space-y-3">
-          <Badge className="bg-white/20 text-white border-transparent">Recommended · Full test</Badge>
-          <h2 className="font-display text-2xl sm:text-3xl font-extrabold">{entry.title}</h2>
-          <p className="text-sm text-white/85 max-w-xl">{entry.description}</p>
-          <div className="flex flex-wrap gap-2 text-xs font-semibold">
-            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1"><Clock className="h-3.5 w-3.5" /> About {formatMinutes(entry.estimatedMinutes)}</span>
-            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1"><ListChecks className="h-3.5 w-3.5" /> {fullPapers.length > 0 ? `${fullPapers.length} tests · ` : ''}{entry.availableItems} items</span>
-            {entry.parts.map((p, i) => (
-              <span key={p.part} className="rounded-full bg-white/15 px-3 py-1">Part {i + 1}: {p.label} · {p.items}</span>
+      <div className={`relative overflow-hidden bg-gradient-to-r ${meta.accent} p-4 sm:p-6 text-white grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5`}>
+        <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10" />
+        <div className="relative lg:col-span-2 space-y-2.5">
+          <div className="flex items-center gap-2">
+            <Badge className="bg-white/20 text-white border-transparent text-[10px] px-2 py-0.5">
+              {isCore ? 'PTE Core · Full test' : 'Recommended · Full test'}
+            </Badge>
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-white/85"><Clock className="h-3 w-3" /> {formatMinutes(entry.estimatedMinutes)}</span>
+          </div>
+          <h2 className="font-display text-xl sm:text-2xl font-extrabold leading-tight">{title}</h2>
+          <p className="text-xs sm:text-sm text-white/85 max-w-xl line-clamp-2 sm:line-clamp-none">{description}</p>
+          <div className="grid grid-cols-3 gap-2 max-w-md text-center">
+            {entry.parts.map(p => (
+              <div key={p.part} className="rounded-lg bg-white/15 px-2 py-1.5">
+                <span className="block text-sm font-extrabold tabular-nums leading-none">{p.items}</span>
+                <span className="block text-[10px] font-semibold text-white/80 mt-1 leading-tight">{p.label}</span>
+              </div>
             ))}
           </div>
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-white/80"><ListChecks className="h-3 w-3" /> {fullPapers.length > 0 ? `${fullPapers.length} tests · ` : ''}{entry.availableItems} items</p>
         </div>
-        <div className="flex flex-col justify-center gap-3 lg:items-end">
+        <div className="relative flex flex-col justify-center gap-2 lg:items-end">
           {entry.latest?.headline != null && (
             <button type="button" onClick={() => onReport(entry.latest!.id)} className="flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2 text-left hover:bg-white/25">
               <Trophy className="h-5 w-5" />
@@ -115,21 +175,47 @@ function FullTestCard({ entry, onOpen, onReport }: { entry: PteCatalogEntry; onO
               </span>
             </button>
           )}
-          <Button onClick={onOpen} disabled={!entry.available && !entry.live} className="bg-white text-primary hover:bg-white/90 font-bold h-11 px-6 gap-2">
+          <Button onClick={onOpen} disabled={!entry.available && !entry.live} className="bg-white text-primary hover:bg-white/90 font-bold h-10 px-6 gap-2 shadow-md">
             {entry.live ? <RotateCcw className="h-4 w-4" /> : <PlayCircle className="h-4 w-4" />}
             {entry.live ? 'Resume full test' : 'Start full test'}
           </Button>
-          <p className="text-[11px] text-white/75">Uses one full mock test from your plan.</p>
+          <p className="hidden sm:block text-[11px] text-white/75">Uses one full mock test from your plan.</p>
         </div>
       </div>
     </Card>
   );
 }
 
-function SectionCard({ entry, onOpen, onReport }: { entry: PteCatalogEntry; onOpen: () => void; onReport: (id: string) => void }) {
+function SectionCard({
+  entry,
+  variant,
+  onOpen,
+  onReport,
+}: {
+  entry: PteCatalogEntry;
+  variant: PteExamVariant;
+  onOpen: () => void;
+  onReport: (id: string) => void;
+}) {
   const meta = pteMockMeta(entry.kind);
   const Icon = meta.icon;
   const { data: papers = [] } = useMockPapers('pte', entry.kind);
+  const isCore = variant === 'core';
+
+  let description = entry.description;
+  let taskList = entry.tasks;
+  if (isCore) {
+    if (entry.kind === 'speaking') {
+      description = 'Read Aloud, Repeat Sentence, Describe Image, Answer Short Question, and Respond to a Situation.';
+      taskList = taskList.filter(t => t.code !== 'RL' && t.code !== 'SGD');
+    } else if (entry.kind === 'writing') {
+      description = 'Summarize Written Text and Write Email, timed and evaluated.';
+      taskList = taskList.map(t => (t.code === 'WE' ? { ...t, code: 'EMAIL', name: 'Write Email' } : t));
+    } else if (entry.kind === 'listening') {
+      description = 'Summarize Spoken Text, dictation, blanks, and comprehension tasks (HCS excluded).';
+      taskList = taskList.filter(t => t.code !== 'HCS');
+    }
+  }
   return (
     <Card className="p-5 flex flex-col gap-3 hover:border-primary/40 transition-colors">
       <div className="flex items-start justify-between gap-2">
@@ -153,11 +239,13 @@ function SectionCard({ entry, onOpen, onReport }: { entry: PteCatalogEntry; onOp
         </div>
       </div>
       <div className="space-y-1 flex-1">
-        <h3 className="font-display text-base font-bold text-foreground">{entry.title}</h3>
-        <p className="text-xs text-muted-foreground leading-relaxed">{entry.description}</p>
+        <h3 className="font-display text-base font-bold text-foreground">
+          {isCore ? `${entry.title} (Core)` : entry.title}
+        </h3>
+        <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
       </div>
       <div className="flex flex-wrap gap-1">
-        {entry.tasks.map(t => (
+        {taskList.map(t => (
           <Badge key={t.code} variant="outline" className={`font-mono text-[10px] ${t.available === 0 ? 'opacity-40 line-through' : ''}`}>
             {t.code}
           </Badge>
