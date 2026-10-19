@@ -105,7 +105,7 @@ export function mobileTitle(pathname: string, searchParams: URLSearchParams, act
   if (pathname === '/subscription' || pathname === '/account') return 'Your Plan';
   if (pathname === '/referrals') return 'Earn Rewards';
   if (pathname === '/reports') return 'My Reports';
-  if (pathname === '/mistakes') return 'Mistake Bank';
+  if (pathname === '/mistakes' || pathname === '/history') return 'History Bank';
   if (pathname === '/evaluations') return 'AI Evaluator';
   if (pathname === '/leaderboard') return 'Leaderboard';
   if (pathname === '/admin') return 'Admin';

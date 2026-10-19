@@ -1,4 +1,4 @@
-import { subTestsLeft, usagePercent } from '@/lib/subscriptions';
+import { subTestsLeft } from '@/lib/subscriptions';
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
@@ -14,25 +14,15 @@ import {
   Volume2,
   LayoutList,
   PanelRight,
-  PlayCircle,
-  AlertTriangle,
   RotateCcw,
   Lock,
 } from 'lucide-react';
 import { isPteTaskAvailable, getPteTaskLockedReason, findPteTaskConfig } from '@/lib/pteExamConfig';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import AudioRecorder from '@/components/practice/AudioRecorder';
+import AudioRecorder, { type RecorderStatus } from '@/components/practice/AudioRecorder';
 import QuestionFigure from '@/components/practice/QuestionFigure';
 import PromptAudio from '@/components/practice/PromptAudio';
 import KoreanHelp from '@/components/practice/KoreanHelp';
@@ -49,6 +39,7 @@ import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isPremiumUse
 import FreePlanNotice from '@/institution/FreePlanNotice';
 import PracticeActionBar, { gradingUnits, notesFor, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
 import MyScore from '@/components/practice/flow/MyScore';
+import RecordingPlayback from '@/components/practice/flow/RecordingPlayback';
 
 const ReadingPracticePanel = lazy(() => import('@/components/reading/ReadingPracticePanel'));
 const ReadingMockPanel = lazy(() => import('@/components/reading/ReadingMockPanel'));
@@ -79,7 +70,7 @@ import type { Delivery } from '@/lib/delivery';
 import { useProgressStage } from '@/lib/hooks/useProgressStage';
 import { loadCompleted, saveCompleted, unlockedIndex } from '@/lib/practiceProgress';
 import QuestionDrawer from '@/components/practice/QuestionDrawer';
-import { recordQuestionAttempt, formatQuestionDisplayNumber } from '@/lib/questionStorage';
+import { recordQuestionAttempt } from '@/lib/questionStorage';
 
 function getSubtaskTitle(exam: ExamType, skill: SkillType, typeKey?: string | null, mistakeId?: string): string {
   if (mistakeId) return 'Targeted Mistake Practice';
@@ -97,7 +88,7 @@ function getSubtaskTitle(exam: ExamType, skill: SkillType, typeKey?: string | nu
 
 import { useToast } from '@/components/ui/toast';
 
-const PILL = 'h-9 gap-1.5 rounded-full px-5 text-xs font-bold';
+const PILL = 'h-9 gap-1.5 rounded-full px-4 text-xs font-bold';
 
 const GRADING: Record<SkillType, 'deterministic' | 'ai' | 'speech'> = {
   reading: 'deterministic',
@@ -181,7 +172,6 @@ function PracticePageContent() {
   const [loading, setLoading] = useState(
     () => !mistakeId && !readingList && Boolean(typeParam || drawerParam === 'open' || drawerParam === '1'),
   );
-  const [pendingQuestionToStart, setPendingQuestionToStart] = useState<Question | null>(null);
   // The list of questions (or mock papers) opens with the page, so the learner
   // picks one straight away. A link to one particular item keeps it shut.
   const opensOnList =
@@ -274,6 +264,8 @@ function PracticePageContent() {
 
   const handleSelectQuestionFromDrawer = async (question: Question) => {
     closeTutorialVideo?.();
+    setIsDrawerOpen(false);
+    autoStartedFor.current = question.id;
     setCurrentQuestion(question);
     resetAnswer();
 
@@ -297,6 +289,9 @@ function PracticePageContent() {
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [blankResponses, setBlankResponses] = useState<Record<string, string>>({});
   const [recording, setRecording] = useState<Blob | null>(null);
+  // The recorder's phase and mic action, for the recording pill in the action bar.
+  const [recorderStatus, setRecorderStatus] = useState<RecorderStatus | null>(null);
+  const recorderControl = useRef<(() => void) | null>(null);
   // The question whose prompt audio has played through. Keyed by id, so moving
   // to the next question starts out not heard.
   const [heardPromptFor, setHeardPromptFor] = useState<string | null>(null);
@@ -340,6 +335,9 @@ function PracticePageContent() {
   const speakingUnscored =
     isSpeakingTask && capabilities?.speaking === false && !scoreFromTranscript;
   const subTestsRemaining = subTestsLeft(user?.subscription);
+
+  // A question starts on its own once; after a stop or a refused start the start screen is shown instead.
+  const autoStartedFor = useRef<string | null>(null);
 
   const handleStart = async () => {
     closeTutorialVideo?.();
@@ -402,6 +400,7 @@ function PracticePageContent() {
           targetQuestion = list[0] ?? null;
         }
         setCurrentQuestion(targetQuestion);
+        autoStartedFor.current = targetQuestion.id;
       }
 
       if (!targetQuestion) {
@@ -696,7 +695,11 @@ function PracticePageContent() {
     startPending.current = true;
     setIsStarting(true);
     setCurrentQuestion(next);
+    autoStartedFor.current = next.id;
     resetAnswer();
+    // Shown in place straight away, as before submitting; a refused start falls back to the start screen.
+    const nextKey = `${activeExam}:${selectedSkill}:${next.id}`;
+    setStartedTask(nextKey);
     // The answer was read at the bottom; the new attempt starts at the top.
     document.querySelector('[data-practice-workspace]')?.scrollIntoView?.({ block: 'start' });
     try {
@@ -705,10 +708,10 @@ function PracticePageContent() {
         skill: selectedSkill,
         questionId: next.id,
       });
-      setStartedTask(`${activeExam}:${selectedSkill}:${next.id}`);
       setStartedAt(Date.now());
       await refreshUser();
     } catch (err) {
+      setStartedTask(prev => (prev === nextKey ? null : prev));
       if (err instanceof ApiError && err.isLimitReached) {
         toast.warning('Daily limit reached', 'You have reached your daily sub-test allowance.');
       } else {
@@ -720,12 +723,17 @@ function PracticePageContent() {
     }
   };
 
-  // Arrows and the number list: straight on after a marked answer, as Next was;
-  // mid-answer, the start dialog first says the attempt will be dropped.
+  // Arrows and the number list open the question straight away.
   const openQuestion = (question: Question | undefined) => {
     if (!question || question.id === currentQuestion?.id) return;
     if (result) void goToNextQuestion(question);
-    else setPendingQuestionToStart(question);
+    else void handleSelectQuestionFromDrawer(question);
+  };
+
+  // Try again on the same question: a clean answer, started again on its own.
+  const retryQuestion = () => {
+    autoStartedFor.current = null;
+    resetAnswer();
   };
 
   const restartSet = () => {
@@ -800,8 +808,16 @@ function PracticePageContent() {
             exam={activeExam}
           />
         </Suspense>
-      ) : isStarting ? (
+      ) : isStarting && !hasStarted ? (
         <PracticePageSkeleton />
+      ) : !hasStarted && subTestsRemaining > 0 && autoStartedFor.current !== (currentQuestion?.id ?? listKey) ? (
+        <AutoStart
+          ready={!isDrawerOpen}
+          onStart={() => {
+            autoStartedFor.current = currentQuestion?.id ?? listKey;
+            void handleStart();
+          }}
+        />
       ) : !hasStarted ? (
         <div className="relative w-full min-h-[calc(100vh-4rem)]">
           <PreTestBlurOverlay
@@ -863,7 +879,7 @@ function PracticePageContent() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setPendingQuestionToStart(questions[0])}
+                    onClick={() => void handleSelectQuestionFromDrawer(questions[0])}
                     className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
                   >
                     <span>Start First Question</span>
@@ -907,8 +923,8 @@ function PracticePageContent() {
                 </Button>
               </div>
             )}
-            {/* Main Unified Card */}
-            <Card className="p-4 sm:p-6 space-y-4 bg-card dark:bg-[#0f141f] border-0 shadow-none rounded-2xl">
+            {/* Main Unified Card; !shadow-none beats the global card lift in globals.css */}
+            <Card className="p-4 sm:p-6 space-y-4 bg-card dark:bg-[#0f141f] border-0 !shadow-none rounded-2xl">
               {/* Task type first, as the heading */}
               <div className="flex items-center gap-3 border-b border-primary/30 pb-3">
                 <span className="inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-primary px-2 text-xs font-bold text-primary-foreground">
@@ -1011,15 +1027,16 @@ function PracticePageContent() {
                     {waitingForPrompt && (
                       <p role="status" className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                         <Volume2 className="w-3.5 h-3.5" aria-hidden />
-                        Play the audio above. Recording starts on its own when it finishes, as in the exam.
+                        Play the audio above, then click to start recording.
                       </p>
                     )}
                     <AudioRecorder
                       key={`${currentQuestion.id}-${answerRound}`}
-                      prepSeconds={Math.max(10, currentQuestion.prepTimeSeconds ?? 10)}
+                      prepSeconds={0}
                       maxSeconds={currentQuestion.timeLimitSeconds}
                       disabled={submitting || result !== null || waitingForPrompt}
-                      autoStart
+                      controlRef={recorderControl}
+                      onStatus={setRecorderStatus}
                       onRecorded={(blob, transcript, measured) => {
                         setRecording(blob);
                         setSpokenTranscript(transcript ?? '');
@@ -1155,8 +1172,9 @@ function PracticePageContent() {
                 open={showResult}
                 onOpenChange={setShowResult}
                 busy={isStarting}
+                taskType={activeExam === 'PTE' ? currentQuestion?.typeId : undefined}
                 redoLabel={mistakeId ? 'Try again' : 'Redo'}
-                onRedo={() => (mistakeId ? resetAnswer() : void goToNextQuestion(currentQuestion ?? undefined))}
+                onRedo={() => (mistakeId ? retryQuestion() : void goToNextQuestion(currentQuestion ?? undefined))}
                 onNext={mistakeId || isLast ? undefined : () => void goToNextQuestion()}
               />
             )}
@@ -1171,6 +1189,15 @@ function PracticePageContent() {
                 openQuestion(others[Math.floor(Math.random() * others.length)]);
               }}
               disabled={isStarting || submitting}
+              middle={grading === 'speech' ? (
+                <RecordingPlayback
+                  recording={recording}
+                  status={recorderStatus}
+                  maxSeconds={currentQuestion.timeLimitSeconds}
+                  onControl={() => recorderControl.current?.()}
+                  disabled={submitting || result !== null || waitingForPrompt}
+                />
+              ) : undefined}
               actions={
                 <>
                   {result && mistakeId ? (
@@ -1180,7 +1207,7 @@ function PracticePageContent() {
                       {result.attempt?.isCorrect && !resolution.resolved ? (
                         <Button disabled={resolution.saving} onClick={() => void resolution.finish(true)} className={PILL}>Retry saving resolution</Button>
                       ) : (
-                        <Button variant="outline" onClick={() => { resetAnswer(); }} className={PILL}>Try again</Button>
+                        <Button variant="outline" onClick={retryQuestion} className={PILL}>Try again</Button>
                       )}
                     </>
                   ) : result ? (
@@ -1337,7 +1364,7 @@ function PracticePageContent() {
           currentQuestionId={currentQuestion?.id}
           completedIds={completedIds}
           isLoading={loading || (questions.length === 0 && Boolean(typeParam) && !mistakeId)}
-          onSelectQuestion={question => setPendingQuestionToStart(question)}
+          onSelectQuestion={question => void handleSelectQuestionFromDrawer(question)}
           onResetCompleted={() => {
             setCompletedIds([]);
             saveCompleted(activeExam, selectedSkill, typeParam, []);
@@ -1345,92 +1372,16 @@ function PracticePageContent() {
         />
       )}
 
-      {/* Confirmation Dialog before starting a question */}
-      <Dialog
-        open={pendingQuestionToStart !== null}
-        onOpenChange={open => {
-          if (!open) setPendingQuestionToStart(null);
-        }}
-      >
-        <DialogContent centered className="max-w-[400px] gap-0 p-6 sm:p-7 text-center rounded-2xl">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-teal-500/10 ring-8 ring-teal-500/5">
-            <PlayCircle className="h-6 w-6 text-teal-600 dark:text-teal-400" />
-          </div>
-
-          <DialogHeader className="space-y-1.5 sm:text-center">
-            <DialogTitle className="text-lg font-bold leading-snug">
-              Do you want to start this question?
-            </DialogTitle>
-            {pendingQuestionToStart && (() => {
-              const pIdx = questions.findIndex(q => q.id === pendingQuestionToStart.id);
-              const pNum = formatQuestionDisplayNumber(pendingQuestionToStart.id, pendingQuestionToStart.title, pIdx >= 0 ? pIdx : 0);
-              const pTitle = pendingQuestionToStart.title
-                ? pendingQuestionToStart.title.replace(/^#\d+[:\s-]*/i, '').replace(/^question\s*\d+[:\s-]*/i, '')
-                : `Question #${pNum}`;
-              return (
-                <DialogDescription className="text-xs sm:text-sm font-medium text-muted-foreground">
-                  <span className="font-bold text-foreground">#{pNum}</span> {pTitle}
-                </DialogDescription>
-              );
-            })()}
-          </DialogHeader>
-
-          <div className="mt-4 space-y-3">
-            {hasStarted && !result && currentQuestion && currentQuestion.id !== pendingQuestionToStart?.id && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300 text-left space-y-1">
-                <p className="font-bold flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                  Active attempt in progress
-                </p>
-                <p className="text-[11px] leading-relaxed">
-                  Starting this new question will end your current attempt and discard any unsaved progress.
-                </p>
-              </div>
-            )}
-
-            {Boolean(user?.subscription?.unlimited) ? (
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Ready to practice? Your timers and recording will begin immediately upon starting.
-              </p>
-            ) : (
-              <div className="rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 p-3 text-xs space-y-1 text-left">
-                <p className="font-semibold text-amber-800 dark:text-amber-200">
-                  Starting this question will cost <span className="font-bold">1 practice credit</span>.
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  {Number.isFinite(subTestsRemaining) && user?.subscription
-                    ? `${usagePercent(user.subscription.dailySubTestsUsed, user.subscription.dailySubTestsLimit)}% of today's credits used.`
-                    : 'Credits will be deducted from your daily allowance.'}
-                </p>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="mt-6 grid grid-cols-2 gap-3 sm:flex-none">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 w-full rounded-xl font-medium cursor-pointer"
-              onClick={() => setPendingQuestionToStart(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              className="h-10 w-full rounded-xl font-bold bg-teal-600 hover:bg-teal-700 text-white cursor-pointer shadow-md"
-              onClick={() => {
-                if (!pendingQuestionToStart) return;
-                const q = pendingQuestionToStart;
-                setPendingQuestionToStart(null);
-                setIsDrawerOpen(false);
-                handleSelectQuestionFromDrawer(q);
-              }}
-            >
-              {Boolean(user?.subscription?.unlimited) ? 'Start Question' : 'Start (1 Credit)'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
+}
+
+/** Starts the task as soon as the question list is out of the way; a skeleton until then. */
+function AutoStart({ ready, onStart }: { ready: boolean; onStart: () => void }) {
+  const start = useRef(onStart);
+  start.current = onStart;
+  useEffect(() => {
+    if (ready) start.current();
+  }, [ready]);
+  return <PracticePageSkeleton />;
 }

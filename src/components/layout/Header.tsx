@@ -21,7 +21,7 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
     if (path?.startsWith('/practice')) return 'Practice Studio';
     if (path?.startsWith('/mocks')) return 'Mock Exams';
     if (path?.startsWith('/evaluations')) return 'AI Evaluator';
-    if (path === '/mistakes') return 'Mistake Bank';
+    if (path === '/mistakes' || path === '/history') return 'History Bank';
     if (path === '/leaderboard') return 'Nepal Leaderboard';
     if (path === '/subscription' || path === '/account') return 'Subscriptions (NPR)';
     if (path === '/referrals') return 'Earn Rewards';

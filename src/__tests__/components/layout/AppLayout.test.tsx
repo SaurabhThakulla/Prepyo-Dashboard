@@ -69,7 +69,7 @@ describe('AppLayout active test session protection', () => {
     expect(mocks.toast.error).not.toHaveBeenCalled();
   });
 
-  it('asks before ending an active task and only leaves on yes', async () => {
+  it('ends an active task without asking, then carries out the click', async () => {
     const onStop = vi.fn();
     mocks.activeTestSession = {
       isActive: true,
@@ -90,41 +90,16 @@ describe('AppLayout active test session protection', () => {
     );
     screen.getByTestId('sidebar-nav-button').addEventListener('click', onNavButton);
 
-    // Clicking inside the workspace is not interrupted.
+    // Clicking inside the workspace does not end the task.
     fireEvent.click(screen.getByTestId('practice-submit-button'));
-    expect(screen.queryByText('End this task?')).toBeNull();
-
-    // Clicking a sidebar button asks first, and "No" keeps the task running.
-    fireEvent.click(screen.getByTestId('sidebar-nav-button'));
-    expect(screen.getByText('End this task?')).toBeTruthy();
-    expect(onNavButton).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByText('Keep going'));
-    await waitFor(() => expect(screen.queryByText('End this task?')).toBeNull());
     expect(onStop).not.toHaveBeenCalled();
 
-    // "Yes" ends the task, then carries out the original click.
-    fireEvent.click(screen.getByTestId('sidebar-mocks-link'));
-    fireEvent.click(screen.getByText('End task'));
-    await waitFor(() => expect(mocks.setActiveTestSession).toHaveBeenCalledWith(null));
-    expect(onStop).toHaveBeenCalledTimes(1);
-  });
-
-  it('replays the clicked control after the task ends', async () => {
-    mocks.activeTestSession = { isActive: true, title: 'PTE Speaking Task' };
-    const onNavButton = vi.fn();
-
-    render(
-      <MemoryRouter initialEntries={['/practice']}>
-        <AppLayout>
-          <div>Practice Screen</div>
-        </AppLayout>
-      </MemoryRouter>
-    );
-    screen.getByTestId('sidebar-nav-button').addEventListener('click', onNavButton);
-
+    // Clicking a sidebar button ends the task with no dialog, then the click goes through.
     fireEvent.click(screen.getByTestId('sidebar-nav-button'));
-    fireEvent.click(screen.getByText('End task'));
+    expect(screen.queryByText('End this task?')).toBeNull();
     await waitFor(() => expect(onNavButton).toHaveBeenCalledTimes(1));
+    expect(onStop).toHaveBeenCalledTimes(1);
+    expect(mocks.setActiveTestSession).toHaveBeenCalledWith(null);
   });
 });
 

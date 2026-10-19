@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import MistakePracticeLink from '@/components/mistakes/MistakePracticeLink';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   CheckCircle2,
+  History,
   XCircle,
   Sparkles,
   Search,
@@ -32,7 +33,7 @@ import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
-import { useMistakes, useMistakeAnalytics } from '@/lib/hooks/useResources';
+import { useMistakes, useMistakeAnalytics, usePracticeAttempts } from '@/lib/hooks/useResources';
 import { SkillType, ExamType, Mistake, MistakeAnalytics, isAdmin } from '@/lib/types';
 
 function renderResponseBadges(text: string, isWrong: boolean) {
@@ -275,11 +276,13 @@ export default function MistakesPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const [selectedSkill, setSelectedSkill] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'unresolved' | 'resolved'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly');
 
-  // Both queries receive the active period so all components reflect it!
+  // Queries for mistakes, analytics, and all practice attempts
   const { data, isPending, error } = useMistakes(activeExam, selectedSkill, false, period);
+  const { data: attemptsData, isPending: attemptsPending } = usePracticeAttempts(activeExam, selectedSkill);
   const { data: analyticsData, error: analyticsError } = useMistakeAnalytics(
     activeExam,
     period
@@ -298,21 +301,73 @@ export default function MistakesPage() {
   const rawMistakes = isSuru
     ? (DUMMY_MISTAKES[activeExam] ?? DUMMY_MISTAKES.PTE ?? [])
     : (data?.mistakes ?? []);
+  const rawAttempts = attemptsData?.attempts ?? [];
+
+  const mistakesByQuestion = React.useMemo(() => {
+    const map = new Map<string, Mistake>();
+    for (const m of rawMistakes) {
+      map.set(m.questionId, m);
+    }
+    return map;
+  }, [rawMistakes]);
+
+  // Combine practice attempts and mistakes into comprehensive history items
+  const historyItems = React.useMemo(() => {
+    if (isSuru) return rawMistakes.map(m => ({ ...m, isCorrect: m.resolved }));
+    if (rawAttempts.length > 0) {
+      const seen = new Set<string>();
+      const items = rawAttempts.map(att => {
+        seen.add(att.questionId);
+        const matchingMistake = mistakesByQuestion.get(att.questionId);
+        return {
+          id: matchingMistake?.id || att.id,
+          questionId: att.questionId,
+          questionTitle: att.questionTitle || matchingMistake?.questionTitle || `Question ${att.questionId}`,
+          exam: att.exam,
+          skill: att.skill || matchingMistake?.skill || 'reading',
+          typeName: att.typeName || matchingMistake?.typeName || 'Practice Task',
+          prompt: att.prompt || matchingMistake?.prompt || '',
+          userResponse: att.userResponse || matchingMistake?.userResponse || '',
+          correctResponse: att.isCorrect ? (att.userResponse || 'Correct') : (matchingMistake?.correctResponse || ''),
+          explanation: matchingMistake?.explanation || att.feedback || '',
+          errorTag: matchingMistake?.errorTag || (!att.isCorrect ? 'Needs Review' : ''),
+          failedCount: matchingMistake?.failedCount || (att.isCorrect ? 0 : 1),
+          resolved: att.isCorrect || matchingMistake?.resolved || false,
+          isCorrect: att.isCorrect,
+          lastAttemptedAt: att.createdAt,
+        };
+      });
+
+      for (const m of rawMistakes) {
+        if (!seen.has(m.questionId)) {
+          items.push({
+            ...m,
+            isCorrect: false,
+          });
+        }
+      }
+      return items;
+    }
+    return rawMistakes.map(m => ({ ...m, isCorrect: m.resolved }));
+  }, [isSuru, rawAttempts, rawMistakes, mistakesByQuestion]);
+
   const analytics = isSuru
     ? (DUMMY_ANALYTICS[activeExam] ?? DUMMY_ANALYTICS.PTE)
     : analyticsData?.analytics;
-  const loading = isSuru ? false : isPending;
+  const loading = isSuru ? false : (isPending && attemptsPending);
 
   useEffect(() => {
     if (error && !isForbidden && !isSuru) {
-      toast.error('Could not load your mistake bank', errorMessage(error));
+      toast.error('Could not load your history bank', errorMessage(error));
     }
   }, [error, isForbidden, isSuru]);
 
   const skillFilters = ['all', 'reading', 'listening', 'writing', 'speaking'];
 
-  const filteredMistakes = rawMistakes.filter(item => {
+  const filteredMistakes = historyItems.filter(item => {
     if (selectedSkill !== 'all' && item.skill !== selectedSkill) return false;
+    if (statusFilter === 'unresolved' && (item.resolved || item.isCorrect)) return false;
+    if (statusFilter === 'resolved' && !(item.resolved || item.isCorrect)) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -327,9 +382,12 @@ export default function MistakesPage() {
   const periodLabel =
     period === 'weekly' ? 'Past 7 Days' : 'Past 4 Weeks';
 
-  const recoveryRate = analytics?.total && analytics.total > 0
-    ? Math.round((analytics.resolved / analytics.total) * 100)
-    : 0;
+  const totalPracticed = historyItems.length || analytics?.total || 0;
+  const unresolvedCount = historyItems.filter(i => !i.resolved && !i.isCorrect).length || analytics?.unresolved || 0;
+  const resolvedCount = historyItems.filter(i => i.resolved || i.isCorrect).length || analytics?.resolved || 0;
+  const accuracyRate = totalPracticed > 0
+    ? Math.round((resolvedCount / totalPracticed) * 100)
+    : (analytics?.total && analytics.total > 0 ? Math.round((analytics.resolved / analytics.total) * 100) : 0);
 
   return (
     <div className="relative w-full pb-16 overflow-hidden">
@@ -352,14 +410,14 @@ export default function MistakesPage() {
               <div className="space-y-1">
                 <div className="flex items-center gap-2.5">
                   <h2 className="text-lg sm:text-xl font-black text-foreground tracking-tight">
-                    Mistake Bank
+                    History Bank
                   </h2>
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-primary/10 text-primary border border-primary/20 tracking-wider">
                     {activeExam}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Review questions missed during practice &amp; mocks in the{' '}
+                  Review all questions practiced during study sessions &amp; mock exams in the{' '}
                   <span className="font-semibold text-foreground font-mono">{periodLabel}</span> to target weak areas.
                 </p>
               </div>
@@ -388,7 +446,7 @@ export default function MistakesPage() {
               <div className="group relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-indigo-50/40 dark:to-indigo-950/20 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-indigo-400/40 transition-all duration-200">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                    Total Logged
+                    Total Practiced
                   </span>
                   <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                     <Layers className="w-4 h-4" />
@@ -396,7 +454,7 @@ export default function MistakesPage() {
                 </div>
                 <div className="mt-2.5 flex items-baseline gap-2">
                   <span className="text-2xl sm:text-3xl font-black text-foreground font-mono tracking-tight">
-                    {analytics?.total ?? 0}
+                    {totalPracticed}
                   </span>
                   <span className="text-[11px] font-medium text-muted-foreground">questions</span>
                 </div>
@@ -409,7 +467,7 @@ export default function MistakesPage() {
               <div className="group relative overflow-hidden rounded-2xl border border-rose-200/80 dark:border-rose-900/40 bg-gradient-to-br from-card via-card to-rose-50/40 dark:to-rose-950/20 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-rose-400/40 transition-all duration-200">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">
-                    Unresolved
+                    Needs Review
                   </span>
                   <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
                     <Flame className="w-4 h-4" />
@@ -417,7 +475,7 @@ export default function MistakesPage() {
                 </div>
                 <div className="mt-2.5 flex items-baseline gap-2">
                   <span className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight">
-                    {analytics?.unresolved ?? 0}
+                    {unresolvedCount}
                   </span>
                   <span className="text-[11px] font-semibold text-rose-600/80">needs retry</span>
                 </div>
@@ -438,16 +496,16 @@ export default function MistakesPage() {
                 </div>
                 <div className="mt-2.5 flex items-baseline gap-2">
                   <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
-                    {analytics?.resolved ?? 0}
+                    {resolvedCount}
                   </span>
                   <span className="text-[11px] font-semibold text-emerald-600/80">
-                    {recoveryRate}% recovery
+                    {accuracyRate}% recovery
                   </span>
                 </div>
                 <div className="mt-2 w-full bg-muted/60 h-1.5 rounded-full overflow-hidden">
                   <div
                     className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${recoveryRate}%` }}
+                    style={{ width: `${accuracyRate}%` }}
                   />
                 </div>
               </div>
@@ -504,6 +562,28 @@ export default function MistakesPage() {
               })}
             </div>
 
+            {/* Status Filter Toggle */}
+            <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/60 self-start sm:self-auto">
+              {(['all', 'unresolved', 'resolved'] as const).map(s => {
+                const isSelected = statusFilter === s;
+                const label = s === 'all' ? 'All' : s === 'unresolved' ? 'Needs Review' : 'Mastered / Correct';
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setStatusFilter(s)}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                      isSelected
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Search Input */}
             <div className="relative w-full sm:w-auto sm:min-w-[240px] sm:max-w-xs">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -537,12 +617,12 @@ export default function MistakesPage() {
               <div className="space-y-1.5 max-w-md mx-auto">
                 <CardTitle className="text-base sm:text-lg font-bold">
                   {rawMistakes.length === 0
-                    ? `No mistakes recorded in the ${periodLabel.toLowerCase()}`
-                    : 'No matching mistakes found'}
+                    ? `No questions recorded in the ${periodLabel.toLowerCase()}`
+                    : 'No matching questions found'}
                 </CardTitle>
                 <CardDescription className="text-xs sm:text-sm leading-relaxed">
                   {rawMistakes.length === 0
-                    ? `Questions you miss during practice and full mock exams within the ${periodLabel.toLowerCase()} will appear here automatically.`
+                    ? `Questions you practice during study sessions and full mock exams within the ${periodLabel.toLowerCase()} will appear here automatically.`
                     : 'Try clearing your search query or switching to another skill filter.'}
                 </CardDescription>
               </div>
@@ -561,7 +641,7 @@ export default function MistakesPage() {
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground px-1">
                 <span>
-                  Showing <strong className="text-foreground">{filteredMistakes.length}</strong> mistakes from <strong className="text-foreground">{periodLabel}</strong>
+                  Showing <strong className="text-foreground">{filteredMistakes.length}</strong> questions from <strong className="text-foreground">{periodLabel}</strong>
                 </span>
                 {selectedSkill !== 'all' && (
                   <span className="capitalize">
@@ -596,7 +676,12 @@ export default function MistakesPage() {
                         </span>
 
                         {/* Status Pill */}
-                        {item.resolved ? (
+                        {'isCorrect' in item && item.isCorrect ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/25">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                            <span>Correct</span>
+                          </span>
+                        ) : item.resolved ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/25">
                             <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                             <span>Mastered</span>
@@ -604,7 +689,7 @@ export default function MistakesPage() {
                         ) : (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 dark:text-rose-300 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/25">
                             <Flame className="w-3 h-3 text-rose-500" />
-                            <span>Unresolved</span>
+                            <span>Needs Review</span>
                           </span>
                         )}
 
@@ -648,19 +733,31 @@ export default function MistakesPage() {
 
                     {/* Responses Comparison: Your Answer vs Correct Answer */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                      {/* Previous (Wrong) Response */}
-                      <div className="rounded-xl border border-rose-200/70 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/20 p-3 sm:p-3.5 space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-rose-700 dark:text-rose-400">
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>Previous response</span>
+                      {/* Previous / User Response */}
+                      <div className={`rounded-xl border p-3 sm:p-3.5 space-y-1.5 ${
+                        'isCorrect' in item && item.isCorrect
+                          ? 'border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/20'
+                          : 'border-rose-200/70 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/20'
+                      }`}>
+                        <div className={`flex items-center gap-1.5 text-xs font-bold ${
+                          'isCorrect' in item && item.isCorrect
+                            ? 'text-emerald-700 dark:text-emerald-400'
+                            : 'text-rose-700 dark:text-rose-400'
+                        }`}>
+                          {'isCorrect' in item && item.isCorrect ? (
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          ) : (
+                            <XCircle className="w-3.5 h-3.5" />
+                          )}
+                          <span>{'isCorrect' in item && item.isCorrect ? 'Your response' : 'Previous response'}</span>
                         </div>
                         <div className="pt-0.5">
-                          {renderResponseBadges(item.userResponse, true)}
+                          {renderResponseBadges(item.userResponse, !('isCorrect' in item && item.isCorrect))}
                         </div>
                       </div>
 
-                      {/* Correct Answer (if available) */}
-                      {item.correctResponse && (
+                      {/* Correct Answer (if available and not already correct) */}
+                      {item.correctResponse && !('isCorrect' in item && item.isCorrect) && (
                         <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/20 p-3 sm:p-3.5 space-y-1.5">
                           <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                             <CheckCircle2 className="w-3.5 h-3.5" />
@@ -687,7 +784,28 @@ export default function MistakesPage() {
                     )}
 
                     {/* Action link */}
-                    {!isSuru && <MistakePracticeLink mistake={item} />}
+                    {!isSuru && (
+                      'isCorrect' in item && item.isCorrect ? (
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-border/70 pt-3.5 mt-1">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 px-2.5 py-1 rounded-lg">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Completed Correctly
+                          </span>
+                          <Button
+                            asChild
+                            variant="outline"
+                            className="h-10 sm:h-9 w-full sm:w-auto px-4 rounded-xl text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all group"
+                          >
+                            <Link to={`/practice?skill=${item.skill}`} className="inline-flex items-center justify-center gap-1.5">
+                              <span>Practice Again</span>
+                              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                            </Link>
+                          </Button>
+                        </div>
+                      ) : (
+                        <MistakePracticeLink mistake={item as Mistake} />
+                      )
+                    )}
                   </div>
                 );
               })}
@@ -720,7 +838,7 @@ export default function MistakesPage() {
               {/* Title & Description */}
               <div className="space-y-1">
                 <h2 className="font-display text-xl sm:text-2xl font-black text-foreground tracking-tight">
-                  Unlock Your Mistake Bank
+                  Unlock Your History Bank
                 </h2>
                 <p className="text-xs text-muted-foreground leading-relaxed max-w-sm mx-auto">
                   Every question you miss during practice and full mock exams is automatically cataloged with examiner explanations and recovery timelines.
@@ -734,7 +852,7 @@ export default function MistakesPage() {
                   className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
                 >
                   <span className="sm:hidden">Upgrade to unlock</span>
-                  <span className="hidden sm:inline">Upgrade to Unlock Full Mistake Bank</span>
+                  <span className="hidden sm:inline">Upgrade to Unlock Full History Bank</span>
                   <ArrowRight className="w-4 h-4" />
                 </Button>
                 <p className="text-[11px] text-muted-foreground font-medium">

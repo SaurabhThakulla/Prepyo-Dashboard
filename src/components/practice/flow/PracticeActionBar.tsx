@@ -10,8 +10,10 @@ export function gradingUnits(skill: SkillType, typeId?: string): number | null {
 }
 
 interface Props {
-  /** Submit, Redo and the like, in the right corner. */
+  /** Submit, Redo and the like, in the left corner. */
   actions: ReactNode;
+  /** Shown in the middle of the row, e.g. playback of a recording. */
+  middle?: ReactNode;
   cost?: number | null;
   /** Position in the list, 0-based; navigation is hidden without a list. */
   index?: number;
@@ -21,24 +23,27 @@ interface Props {
   disabled?: boolean;
 }
 
-// One look for every control on the left: same height, border and surface.
+// One look for every control on the right: same height, border and surface.
 const CHIP = 'inline-flex h-9 shrink-0 items-center rounded-full border border-border bg-background shadow-2xs';
 const ARROW = 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-30';
 
-/** The row under every practice item: cost, shuffle, and pagination on the left; actions in the right corner. */
-export default function PracticeActionBar({ actions, cost, index = -1, total = 0, onJump, onShuffle, disabled }: Props) {
+/** The row under every practice item: actions on the left; cost, shuffle, and pagination in the right corner. */
+export default function PracticeActionBar({ actions, middle, cost, index = -1, total = 0, onJump, onShuffle, disabled }: Props) {
   const nav = onJump && total > 0;
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2">{actions}</div>
+      {/* The recorder gets its own row above the buttons until there is room for one line. */}
+      {middle && <div className="order-first flex w-full justify-center xl:order-none xl:w-auto xl:flex-1">{middle}</div>}
+      <div className="ml-auto flex items-center gap-2">
         {cost != null && (
           <div
             title={`Marking this answer uses ${cost} AI-grading units of your allowance`}
-            className={cn(CHIP, 'gap-1.5 px-3.5 text-sm')}
+            className={cn(CHIP, 'gap-1.5 px-3 text-sm sm:px-3.5')}
           >
             <Coins className="h-4 w-4 text-amber-500" aria-hidden />
             <span className="font-semibold tabular-nums text-foreground">{cost}</span>
-            <span className="text-muted-foreground">credits</span>
+            <span className="sr-only text-muted-foreground sm:not-sr-only">credits</span>
           </div>
         )}
         {onShuffle && (
@@ -96,7 +101,6 @@ export default function PracticeActionBar({ actions, cost, index = -1, total = 0
           </div>
         )}
       </div>
-      <div className="ml-auto flex flex-wrap items-center justify-end gap-2.5">{actions}</div>
     </div>
   );
 }

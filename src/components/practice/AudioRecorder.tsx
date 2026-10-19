@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Mic, MicOff, Square, RotateCcw, Loader2, AlertCircle, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Mic, MicOff, Square, Loader2, AlertCircle, Check } from 'lucide-react';
 import { canRecord, formatDuration, pickRecorderMimeType, beep } from '@/lib/audio';
 import { startTranscribing, type TranscriptSession } from '@/lib/speech';
 import { createDeliveryMeter, type Delivery, type DeliveryMeter } from '@/lib/delivery';
@@ -11,6 +10,12 @@ import { createDeliveryMeter, type Delivery, type DeliveryMeter } from '@/lib/de
  * practice easier than the real thing in the one way that matters most.
  */
 type Phase = 'idle' | 'prep' | 'recording' | 'review';
+
+/** Where the recorder is, for controls drawn outside it. */
+export interface RecorderStatus {
+  phase: Phase;
+  remaining: number;
+}
 
 interface AudioRecorderProps {
   /** Think time before recording begins. 0 means recording starts immediately. */
@@ -32,6 +37,10 @@ interface AudioRecorderProps {
    * offer then, because a missing transcript is not a failed recording.
    */
   onRecorded: (recording: Blob | null, transcript?: string, delivery?: Delivery) => void;
+  /** Set to what the mic button does now (start, start now, stop), so another control can do it too. */
+  controlRef?: React.MutableRefObject<(() => void) | null>;
+  /** Called with the phase and seconds left whenever either changes. */
+  onStatus?: (status: RecorderStatus) => void;
 }
 
 export default function AudioRecorder({
@@ -40,6 +49,8 @@ export default function AudioRecorder({
   disabled = false,
   autoStart = false,
   onRecorded,
+  controlRef,
+  onStatus,
 }: AudioRecorderProps) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [remaining, setRemaining] = useState(0);
@@ -49,7 +60,6 @@ export default function AudioRecorder({
   const waveRef = useRef<number[]>(Array(WAVE_BARS).fill(0));
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
-  const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
 
   const streamRef = useRef<MediaStream | null>(null);
   const transcriberRef = useRef<TranscriptSession | null>(null);
@@ -142,11 +152,6 @@ export default function AudioRecorder({
     [releaseMic],
   );
 
-  useEffect(() => {
-    if (!playbackUrl) return;
-    return () => URL.revokeObjectURL(playbackUrl);
-  }, [playbackUrl]);
-
   /** Drives the input meter, so a muted or unplugged mic is visible immediately. */
   const watchLevel = useCallback((stream: MediaStream) => {
     const Ctor = window.AudioContext ?? (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -228,7 +233,6 @@ export default function AudioRecorder({
     recorder.onstop = () => {
       const recording = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
       releaseMic();
-      setPlaybackUrl(URL.createObjectURL(recording));
       setPhase('review');
 
       // The recogniser needs a moment to flush its last phrase, so the answer
@@ -324,17 +328,18 @@ export default function AudioRecorder({
     void beginRecording();
   }, [beginRecording, clearTimer]);
 
-  const handleRetake = useCallback(() => {
-    isStartingRecordingRef.current = false;
-    void transcriberRef.current?.stop();
-    transcriberRef.current = null;
-    deliveryRef.current = null;
-    setPlaybackUrl(null);
-    setPhase('idle');
-    setRemaining(0);
-    setError(null);
-    onRecorded(null);
-  }, [onRecorded]);
+  useEffect(() => {
+    if (!controlRef) return;
+    controlRef.current =
+      phase === 'idle' ? () => void handleStart() : phase === 'prep' ? handleSkipPrep : phase === 'recording' ? handleStopEarly : null;
+    return () => {
+      controlRef.current = null;
+    };
+  }, [controlRef, phase, handleStart, handleSkipPrep, handleStopEarly]);
+
+  useEffect(() => {
+    if (supported) onStatus?.({ phase, remaining });
+  }, [onStatus, phase, remaining, supported]);
 
   if (!supported) {
     return (
@@ -367,7 +372,7 @@ export default function AudioRecorder({
           ? silent
             ? 'No sound is reaching your microphone yet.'
             : 'Speaking. Keep going until the timer ends.'
-          : 'Listen back before you submit. Re-recording replaces this answer and costs nothing.';
+          : '';
 
   const tone =
     phase === 'recording'
@@ -448,28 +453,18 @@ export default function AudioRecorder({
         </div>
       </div>
 
-      {phase === 'review' && playbackUrl && (
-        <audio controls src={playbackUrl} className="mt-3 h-10 w-full">
-          Audio can't play on this device.
-        </audio>
+      {/* Playback and redo live in the practice action bar, not here. */}
+      {status && (
+        <p className={`mt-3 text-xs leading-relaxed ${silent ? 'font-semibold text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>
+          {status}
+        </p>
       )}
-
-      <p className={`mt-3 text-xs leading-relaxed ${silent ? 'font-semibold text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>
-        {status}
-      </p>
 
       {error && (
         <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
           <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">{error}</p>
         </div>
-      )}
-
-      {phase === 'review' && (
-        <Button onClick={handleRetake} disabled={disabled} size="sm" variant="outline" className={`mt-3 ${ACTION}`}>
-          <RotateCcw className="h-3.5 w-3.5" />
-          <span>Record again</span>
-        </Button>
       )}
     </div>
   );
@@ -479,9 +474,6 @@ const clock = (seconds: number) => {
   const s = Math.max(0, Math.round(seconds));
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 };
-
-// The one action of each phase: the full width and a thumb-sized target on a phone.
-const ACTION = 'h-11 w-full gap-1.5 rounded-full px-4 text-sm font-bold sm:h-8 sm:w-auto sm:text-[11px]';
 
 // Resting shape, and a little per-bar texture on the live wave.
 const WAVE_BARS = 40;

@@ -39,10 +39,12 @@ describe('delivery meter', () => {
     expect(delivery.pauseCount).toBe(0);
   });
 
-  it('does not count the silence before a learner starts', () => {
-    const delivery = measure([...silent(3), ...speaking(4)]);
+  it('does not count the silence before a learner starts or after they finish', () => {
+    // A recorder left running after the last word must not make the reading look slow.
+    const delivery = measure([...silent(3), ...speaking(4), ...silent(10)]);
     expect(delivery.pauseCount).toBe(0);
-    expect(delivery.speakingRatio).toBeLessThan(0.8);
+    expect(delivery.durationSeconds).toBe(4);
+    expect(delivery.speakingRatio).toBeGreaterThan(0.9);
   });
 
   it('drops frames from a backgrounded tab rather than scoring them', () => {

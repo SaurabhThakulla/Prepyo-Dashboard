@@ -26,7 +26,7 @@ vi.mock('@/lib/api', async importOriginal => ({
   api: { get: vi.fn(), post: vi.fn() },
 }));
 // The recorder reports whether it has been held back and whether it would
-// start on its own; the prompt player can be "played to the end" on demand.
+// start on its own (it no longer does: the learner clicks); the prompt player can be "played to the end" on demand.
 vi.mock('@/components/practice/AudioRecorder', () => ({
   default: ({ disabled, autoStart }: { disabled?: boolean; autoStart?: boolean }) => (
     <div data-testid="recorder" data-disabled={String(Boolean(disabled))} data-autostart={String(Boolean(autoStart))} />
@@ -56,7 +56,7 @@ afterEach(cleanup);
 
 async function startTask() {
   render(<MemoryRouter initialEntries={['/practice?skill=speaking']}><PracticePage /></MemoryRouter>);
-  fireEvent.click(await screen.findByRole('button', { name: /Start Practice/ }));
+  fireEvent.click(await screen.findByTitle('Close drawer'));
   return screen.findByTestId('recorder');
 }
 
@@ -66,19 +66,19 @@ describe('speaking tasks with prompt audio', () => {
 
     const recorder = await startTask();
     expect(recorder.dataset.disabled).toBe('true');
-    expect(screen.getByText(/Recording starts on its own when it finishes/)).toBeTruthy();
+    expect(screen.getByText(/then click to start recording/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Finish prompt audio' }));
     expect(screen.getByTestId('recorder').dataset.disabled).toBe('false');
-    expect(screen.getByTestId('recorder').dataset.autostart).toBe('true');
-    expect(screen.queryByText(/Recording starts on its own when it finishes/)).toBeNull();
+    expect(screen.getByTestId('recorder').dataset.autostart).toBe('false');
+    expect(screen.queryByText(/then click to start recording/)).toBeNull();
   });
 
-  it('starts straight away when there is nothing to listen to', async () => {
+  it('waits for a click when there is nothing to listen to', async () => {
     mocks.question = { ...BASE, id: 'di-1', title: 'Describe Image', typeName: 'Describe Image' };
 
     const recorder = await startTask();
     expect(recorder.dataset.disabled).toBe('false');
-    expect(recorder.dataset.autostart).toBe('true');
+    expect(recorder.dataset.autostart).toBe('false');
   });
 });

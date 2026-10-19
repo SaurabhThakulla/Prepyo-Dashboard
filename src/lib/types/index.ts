@@ -446,6 +446,11 @@ export interface AnswerSubmission {
 export interface PracticeAttempt {
   id: string;
   questionId: string;
+  questionTitle?: string;
+  skill?: SkillType;
+  typeName?: string;
+  prompt?: string;
+  exam?: ExamType;
   examVersionId: string;
   isCorrect: boolean;
   score: number;

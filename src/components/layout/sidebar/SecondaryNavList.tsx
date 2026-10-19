@@ -43,6 +43,15 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { SecondaryNavItem } from './navigation';
+import { SkillType } from '@/lib/types';
+
+/** Skill colours for PTE score contributions: text on the white pill, text and bar in the tooltip. */
+const SKILL_COLORS: Record<SkillType, { pill: string; text: string; bar: string; label: string }> = {
+  speaking: { pill: 'text-orange-500', text: 'text-orange-500 dark:text-orange-400', bar: 'bg-orange-400', label: 'Speaking' },
+  writing: { pill: 'text-sky-500', text: 'text-sky-500 dark:text-sky-400', bar: 'bg-sky-400', label: 'Writing' },
+  reading: { pill: 'text-emerald-600', text: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500', label: 'Reading' },
+  listening: { pill: 'text-blue-900', text: 'text-blue-900 dark:text-blue-300', bar: 'bg-blue-900 dark:bg-blue-400', label: 'Listening' },
+};
 
 interface SecondaryNavListProps {
   items: SecondaryNavItem[];
@@ -321,7 +330,7 @@ function TooltipItem({
       >
         <div className="font-bold text-xs text-foreground flex items-center gap-1.5 flex-wrap">
           <span>{item.label}</span>
-          {item.weight && (
+          {item.weight && !item.contributions && (
             <span className="text-[10px] bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded font-mono font-bold">
               Weight: {renderWeightBadge(item.weight)}
             </span>
@@ -332,6 +341,20 @@ function TooltipItem({
             </span>
           )}
         </div>
+        {item.contributions && (
+          <div className="pt-1.5 pb-1 w-[200px] space-y-1.5">
+            <p className={`text-[11px] font-semibold ${SKILL_COLORS[item.contributions[0].skill].text}`}>Contribution</p>
+            {item.contributions.map(({ skill, percent }) => (
+              <div key={skill} className="flex items-center gap-2 text-[11px]">
+                <span className="w-14 shrink-0 text-muted-foreground">{SKILL_COLORS[skill].label}</span>
+                <span className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
+                  <span className={`block h-full rounded-full ${SKILL_COLORS[skill].bar}`} style={{ width: `${percent}%` }} />
+                </span>
+                <span className={`w-8 shrink-0 text-right font-mono font-bold ${SKILL_COLORS[skill].text}`}>{percent}%</span>
+              </div>
+            ))}
+          </div>
+        )}
         {item.isLocked && item.lockedReason && (
           <p className="text-[11px] font-semibold text-amber-500 dark:text-amber-400 flex items-center gap-1 pt-0.5">
             <Lock className="w-3 h-3 shrink-0" /> {item.lockedReason}
@@ -347,14 +370,15 @@ function TooltipItem({
   );
 }
 
-interface NavItemProps {
+// Extends the HTML props so the tooltip trigger's hover and focus handlers reach the link.
+interface NavItemProps extends React.HTMLAttributes<HTMLElement> {
   item: SecondaryNavItem;
   isActive: boolean;
   onNavigate: () => void;
 }
 
 const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
-  { item, isActive, onNavigate },
+  { item, isActive, onNavigate, onClick: triggerClick, className: _className, ...triggerProps },
   ref,
 ) {
   const toast = useToast();
@@ -365,9 +389,11 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
   if (item.isLocked) {
     return (
       <button
+        {...triggerProps}
         ref={ref as React.Ref<HTMLButtonElement>}
         type="button"
-        onClick={() => {
+        onClick={e => {
+          triggerClick?.(e);
           toast.warning('Task unavailable', item.lockedReason ?? 'This task is not included in your selected exam.');
         }}
         className="group flex items-center justify-between w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all duration-150 outline-none text-white/40 hover:text-white/60 hover:bg-white/5 cursor-not-allowed font-medium select-none"
@@ -413,7 +439,17 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
         )}
       </div>
 
-      {item.weight && (
+      {item.contributions ? (
+        <span
+          className={`text-[11px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ml-auto font-mono inline-flex items-center gap-1.5 transition-transform group-hover:scale-105 ${
+            isActive ? 'bg-slate-100 shadow-sm' : 'bg-white shadow-xs'
+          }`}
+        >
+          {item.contributions.map(({ skill, percent }) => (
+            <span key={skill} className={SKILL_COLORS[skill].pill}>{percent}%</span>
+          ))}
+        </span>
+      ) : item.weight && (
         <span
           className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ml-auto font-mono shadow-xs transition-transform group-hover:scale-105 min-w-[36px] text-center inline-flex items-center justify-center ${
             isActive
@@ -460,9 +496,13 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
 
     return (
       <Link
+        {...triggerProps}
         ref={ref as React.Ref<HTMLAnchorElement>}
         to={toHref}
-        onClick={onNavigate}
+        onClick={e => {
+          triggerClick?.(e);
+          onNavigate();
+        }}
         className={className}
       >
         {content}
@@ -472,9 +512,11 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
 
   return (
     <button
+      {...triggerProps}
       ref={ref as React.Ref<HTMLButtonElement>}
       type="button"
-      onClick={() => {
+      onClick={e => {
+        triggerClick?.(e);
         item.onClick?.();
         onNavigate();
       }}

@@ -1,6 +1,6 @@
 import React, { useMemo, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, BookOpenCheck, ChevronRight, Lock, LucideIcon, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowRight, BookOpenCheck, ChevronRight, History, Lock, LucideIcon, RotateCcw, Sparkles } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useNavSections } from '@/components/layout/sidebar/useNavSections';
 import { SecondaryNavItem } from '@/components/layout/sidebar/navigation';
@@ -88,7 +88,7 @@ export default function PracticeHubPage() {
 
       {!isAdmin(user) && (
         <div className="mt-1 grid grid-cols-2 gap-3 sm:mt-4">
-          <QuickLink to="/mistakes" icon={RotateCcw} label="Mistake Bank" sublabel="Retry what you missed" tint="bg-orange-500/10 text-orange-600 dark:text-orange-400" />
+          <QuickLink to="/history" icon={History} label="History Bank" sublabel="All questions you practiced" tint="bg-orange-500/10 text-orange-600 dark:text-orange-400" />
           <QuickLink to="/evaluations" icon={Sparkles} label="AI Evaluator" sublabel="Your graded answers" tint="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" />
         </div>
       )}

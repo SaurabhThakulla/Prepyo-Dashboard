@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
  */
 export default function QuestionFigure({ src, alt, className }: { src: string; alt: string; className?: string }) {
   return (
-    <div className={cn('mx-auto w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-white ring-1 ring-black/5', className)}>
+    <div className={cn('mx-auto w-full max-w-3xl overflow-hidden rounded-xl bg-white', className)}>
       <div className="overflow-x-auto overscroll-x-contain p-3 sm:p-4">
         <div className="relative w-[520px] sm:w-full" style={{ aspectRatio: '19 / 11' }}>
           <img src={src} alt={alt} decoding="async" className="absolute inset-0 h-full w-full object-contain" />

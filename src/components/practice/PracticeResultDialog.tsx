@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import PracticeResultCard from './PracticeResultCard';
 import SpeakingResult from './SpeakingResult';
+import PteSkillScores from './PteSkillScores';
 import type { PracticeResult } from '@/lib/hooks/usePracticeSession';
 
 interface Props {
@@ -19,10 +20,12 @@ interface Props {
   /** Omitted on the last question or when retrying a mistake. */
   onNext?: () => void;
   busy?: boolean;
+  /** A PTE question's type id, to score each skill its task counts towards. */
+  taskType?: string;
 }
 
 /** An answer's result as a pop-up; clicking outside closes it. */
-export default function PracticeResultDialog({ result, answerText, blankAnswers, recording, open, onOpenChange, onRedo, redoLabel = 'Redo', onNext, busy, title = 'Your result' }: Props & { title?: string }) {
+export default function PracticeResultDialog({ result, answerText, blankAnswers, recording, open, onOpenChange, onRedo, redoLabel = 'Redo', onNext, busy, taskType, title = 'Your result' }: Props & { title?: string }) {
   const spoken = result.evaluation?.skill === 'speaking' ? result.evaluation : null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -31,6 +34,8 @@ export default function PracticeResultDialog({ result, answerText, blankAnswers,
           <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
           <DialogDescription className="text-sm">How this answer was marked, and what to work on next.</DialogDescription>
         </div>
+
+        {taskType && <PteSkillScores taskType={taskType} result={result} />}
 
         {spoken ? (
           <SpeakingResult evaluation={spoken} xpAwarded={result.xpAwarded} recording={recording} />

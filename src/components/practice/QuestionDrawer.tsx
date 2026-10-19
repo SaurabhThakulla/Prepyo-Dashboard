@@ -174,7 +174,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
       <button
         type="button"
         id="question-drawer-toggle"
-        data-nav
+        data-stay
         onClick={onToggle}
         title={isOpen ? 'Collapse Questions List' : 'Browse Questions List'}
         aria-label={isOpen ? 'Collapse Questions List' : 'Browse Questions List'}
@@ -205,6 +205,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
       {/* Sliding Sideways Drawer Panel (inset-y-0 full height, no top gap) */}
       <aside
         id="question-drawer-panel"
+        data-stay
         aria-label="Practice Questions Drawer"
         className={`fixed inset-y-0 right-0 w-full sm:w-[560px] md:w-[620px] lg:w-[680px] xl:w-[720px] max-w-full bg-slate-50 dark:bg-[#0c111b] border-l border-slate-200 dark:border-white/10 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'

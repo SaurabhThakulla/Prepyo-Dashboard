@@ -464,6 +464,23 @@ const PTE_TASK_KEY_ALIASES: Record<string, string> = {
   'highlightincorrectword': 'hiw',
   'highlightincorrectwords': 'hiw',
   'writefromdictation': 'wfd',
+
+  // Question bank type ids the names above do not cover
+  'pteanswershortquestion': 'asq',
+  'ptesummarisegroupdiscussion': 'sgd',
+  'ptesummarizegroupdiscussion': 'sgd',
+  'pterespondtosituation': 'rts',
+  'respondtosituation': 'rts',
+  'fillinblanksrw': 'fib_d',
+  'readingmcqmultiple': 'mcma_r',
+  'ptereadingmcma': 'mcma_r',
+  'fillinblanksr': 'fib_r',
+  'readingmcqsingle': 'mcsa_r',
+  'ptereadingmcsa': 'mcsa_r',
+  'ptelisteningmcma': 'mcma_l',
+  'ptelisteningfib': 'fib_l',
+  'ptelisteningmcsa': 'mcsa_l',
+  'ptehighlightincorrectword': 'hiw',
 };
 
 /**
@@ -494,6 +511,54 @@ export function getPteTaskWeight(variant: PteExamVariant, keyOrName: string): st
   if (!config) return undefined;
   const info = variant === 'core' ? config.core : config.academic;
   return info.active ? info.weight : undefined;
+}
+
+export interface PteSkillContribution {
+  skill: SkillType;
+  percent: number;
+}
+
+/**
+ * Share of each skill score a PTE Academic task makes up, task's own skill
+ * first. Estimates from AlfaPTE's task chart; Pearson does not publish them.
+ */
+const PTE_ACADEMIC_CONTRIBUTIONS: Record<string, PteSkillContribution[]> = {
+  ra: [{ skill: 'speaking', percent: 9 }],
+  rs: [{ skill: 'speaking', percent: 16 }, { skill: 'listening', percent: 17 }],
+  di: [{ skill: 'speaking', percent: 31 }],
+  rl: [{ skill: 'speaking', percent: 13 }, { skill: 'listening', percent: 13 }],
+  asq: [{ skill: 'listening', percent: 4 }],
+  sgd: [{ skill: 'speaking', percent: 19 }, { skill: 'listening', percent: 20 }],
+  rts: [{ skill: 'speaking', percent: 13 }],
+  swt: [{ skill: 'writing', percent: 28 }, { skill: 'reading', percent: 23 }],
+  we: [{ skill: 'writing', percent: 31 }],
+  fib_d: [{ skill: 'reading', percent: 25 }],
+  mcma_r: [{ skill: 'reading', percent: 5 }],
+  ro: [{ skill: 'reading', percent: 9 }],
+  fib_r: [{ skill: 'reading', percent: 20 }],
+  mcsa_r: [{ skill: 'reading', percent: 3 }],
+  sst: [{ skill: 'listening', percent: 10 }, { skill: 'writing', percent: 18 }],
+  mcma_l: [{ skill: 'listening', percent: 3 }],
+  fib_l: [{ skill: 'listening', percent: 8 }],
+  hcs: [{ skill: 'listening', percent: 2 }, { skill: 'reading', percent: 3 }],
+  mcsa_l: [{ skill: 'listening', percent: 2 }],
+  smw: [{ skill: 'listening', percent: 1 }],
+  hiw: [{ skill: 'listening', percent: 8 }, { skill: 'reading', percent: 13 }],
+  wfd: [{ skill: 'listening', percent: 13 }, { skill: 'writing', percent: 23 }],
+};
+
+/**
+ * Per-skill contributions for a task, or undefined where none are known
+ * (PTE Core, or a task not offered in the variant).
+ */
+export function getPteTaskContributions(
+  variant: PteExamVariant,
+  keyOrName: string,
+): PteSkillContribution[] | undefined {
+  if (variant !== 'academic') return undefined;
+  const config = findPteTaskConfig(keyOrName);
+  if (!config || !config.academic.active) return undefined;
+  return PTE_ACADEMIC_CONTRIBUTIONS[config.id];
 }
 
 /**

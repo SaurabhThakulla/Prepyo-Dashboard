@@ -388,7 +388,7 @@ export default function PromptAudio({
   // A missing speech API is different from voices still loading.
   if (!canSpeak) {
     return (
-      <div className="p-4 rounded-xl bg-background border border-border space-y-1.5">
+      <div className="p-4 rounded-xl bg-primary/[0.05] space-y-1.5">
         <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
           <Volume2 className="w-4 h-4 text-muted-foreground" /> Listen
         </span>
@@ -753,10 +753,10 @@ function VoicePanel({ disabled = false, playing, progress, status, onToggle, tog
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border p-4 sm:p-5 transition-colors duration-500 ${
+      className={`relative overflow-hidden rounded-xl p-4 sm:p-5 transition-colors duration-500 ${
         playing
-          ? 'border-primary/40 bg-gradient-to-br from-primary/10 via-background to-indigo-500/10'
-          : 'border-border bg-gradient-to-br from-muted/40 via-background to-background'
+          ? 'bg-gradient-to-br from-primary/10 via-primary/[0.04] to-indigo-500/10'
+          : 'bg-primary/[0.05]'
       }`}
     >
       {playing && (

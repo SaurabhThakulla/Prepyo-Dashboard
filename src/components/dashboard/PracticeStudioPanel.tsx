@@ -94,9 +94,9 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
           action="Schedule"
         />
         <TestRow
-          title="Mistake bank"
-          sub={`${mistakeCount} items waiting for review`}
-          href="/mistakes"
+          title="History bank"
+          sub="All questions you have practiced"
+          href="/history"
           action="Review"
           highlight
         />

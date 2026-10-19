@@ -9,6 +9,7 @@ import {
   Mock,
   MockAttempt,
   Pagination,
+  PracticeAttempt,
   Question,
   SkillType,
   SubscriptionPlan,
@@ -65,6 +66,18 @@ export function useMistakes(
         skill: skill === 'all' ? undefined : skill,
         unresolved: unresolvedOnly ? 'true' : undefined,
         period: period ?? 'weekly',
+      }),
+  });
+}
+
+export function usePracticeAttempts(exam?: ExamType, skill?: string) {
+  return useQuery({
+    queryKey: ['practice-attempts', exam, skill],
+    queryFn: () =>
+      api.get<{ attempts: PracticeAttempt[]; pagination: Pagination }>('/practice/attempts', {
+        exam,
+        skill: skill === 'all' ? undefined : skill,
+        limit: 100,
       }),
   });
 }

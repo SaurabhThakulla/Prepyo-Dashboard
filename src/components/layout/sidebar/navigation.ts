@@ -13,6 +13,7 @@ import {
   ChartColumn,
   Sparkles,
   RotateCcw,
+  History,
   Trophy,
   Bot,
   HelpCircle,
@@ -34,7 +35,7 @@ import { SYLLABUS, syllabusFor, taskSummary, typeKey } from '@/lib/syllabus';
 import { typeIdsFor } from '@/lib/readingTypes';
 import { EXAM_LABELS, ExamType, ieltsModuleOf, isAdmin, SkillType, skillsFor, UserProfile } from '@/lib/types';
 import { PTE_MOCK_KINDS, pteMockHref } from '@/lib/pteMock/catalog';
-import { getPteTaskWeight, isPteTaskAvailable, getPteTaskLockedReason, PteExamVariant } from '@/lib/pteExamConfig';
+import { getPteTaskWeight, getPteTaskContributions, isPteTaskAvailable, getPteTaskLockedReason, PteExamVariant, PteSkillContribution } from '@/lib/pteExamConfig';
 
 /**
  * What goes in the sidebar, and which item is highlighted.
@@ -63,6 +64,8 @@ export interface SecondaryNavItem {
   groupHref?: string;
   /** Score weight shown alongside the task in the secondary sidebar (e.g. "16%", "4%"). */
   weight?: string;
+  /** Share of each skill score the task makes up; shown instead of `weight`. */
+  contributions?: PteSkillContribution[];
   /** Set when a task is not part of the active exam/variant. */
   isLocked?: boolean;
   /** Why the task is locked, e.g. "PTE Academic only". */
@@ -188,10 +191,10 @@ export function buildSections(
             ]
           : []),
         {
-          href: '/mistakes',
-          label: 'Mistake Bank',
-          icon: RotateCcw,
-          sublabel: 'Retry saved weak questions',
+          href: '/history',
+          label: 'History Bank',
+          icon: History,
+          sublabel: 'All questions you have practiced',
           group: 'Study Resources',
         },
         {
@@ -244,6 +247,7 @@ export function buildSections(
               group: label,
               groupHref: `/practice?skill=${skill}`,
               weight: pteWeight,
+              contributions: isPTE ? getPteTaskContributions(pteVariant, name) : undefined,
               isLocked: !pteAvailable,
               lockedReason: pteLockedReason,
             };
@@ -277,6 +281,7 @@ export function buildSections(
             group: label,
             groupHref: `/practice?skill=${skill}`,
             weight: pteWeight,
+            contributions: isPTE ? getPteTaskContributions(pteVariant, name) : undefined,
             isLocked: !pteAvailable,
             lockedReason: pteLockedReason,
           };

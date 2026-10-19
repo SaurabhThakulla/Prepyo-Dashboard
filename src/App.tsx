@@ -80,6 +80,7 @@ export default function App() {
         <Route path="/mocks" element={<Suspense fallback={<AppPageSkeleton />}><MocksPage /></Suspense>} />
         <Route path="/mocks/pte/report/:sessionId" element={<Suspense fallback={<AppPageSkeleton />}><PteMockPage /></Suspense>} />
         <Route path="/mocks/pte/:kind" element={<Suspense fallback={<AppPageSkeleton />}><PteMockPage /></Suspense>} />
+        <Route path="/history" element={<Suspense fallback={<AppPageSkeleton />}><MistakesPage /></Suspense>} />
         <Route path="/mistakes" element={<Suspense fallback={<AppPageSkeleton />}><MistakesPage /></Suspense>} />
         <Route path="/evaluations" element={<Suspense fallback={<AppPageSkeleton />}><EvaluationsPage /></Suspense>} />
         <Route path="/leaderboard" element={<Suspense fallback={<AppPageSkeleton />}><LeaderboardPage /></Suspense>} />
