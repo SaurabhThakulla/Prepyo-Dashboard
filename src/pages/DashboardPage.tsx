@@ -5,6 +5,7 @@ import ExamCountdown from '@/components/dashboard/ExamCountdown';
 import SkillQuestionCard from '@/components/dashboard/SkillQuestionCard';
 import PracticeStudioPanel, { SkillRow } from '@/components/dashboard/PracticeStudioPanel';
 import CurrentPlanCard from '@/components/dashboard/CurrentPlanCard';
+import DashboardQuickTests from '@/components/dashboard/DashboardQuickTests';
 import { formatScore, planHeadline } from '@/components/onboarding/onboarding';
 import { useDashboardSummary } from '@/lib/hooks/useDashboardSummary';
 import { daysUntilExam, formatExamDate } from '@/lib/dates';
@@ -51,7 +52,7 @@ function buildSkillRows(exam: ExamType, progress: ProgressSummary | null): Skill
 }
 
 export default function DashboardPage() {
-  const { user, activeExam } = useApp();
+  const { user, activeExam, pteVariant } = useApp();
   const [isExamDateOpen, setIsExamDateOpen] = useState(false);
   const { progress, unresolvedMistakes, isLoading } = useDashboardSummary(activeExam);
 
@@ -67,6 +68,13 @@ export default function DashboardPage() {
 
   const skillProgress = new Map((progress?.skills ?? []).map(row => [row.skill, row]));
 
+  const examDisplayName =
+    activeExam === 'PTE'
+      ? pteVariant === 'core'
+        ? 'PTE Core'
+        : 'PTE Academic'
+      : EXAM_LABELS[activeExam];
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
       {/* Greeting hero in the sidebar's blue */}
@@ -78,7 +86,7 @@ export default function DashboardPage() {
             Namaste, {userName}
           </h1>
           <p className="text-sm text-white/75 mt-1.5 font-medium">
-            {user ? planHeadline(user) : `Preparing for ${EXAM_LABELS[activeExam]}`}
+            {user ? planHeadline(user) : `Preparing for ${examDisplayName}`}
           </p>
         </div>
 
@@ -106,6 +114,11 @@ export default function DashboardPage() {
           );
         })}
       </div>
+
+      {/* Quick Tests: Speech Test & Listening Test */}
+      {activeExam === 'PTE' && (
+        <DashboardQuickTests />
+      )}
 
       {/* Full-width Current Plan Banner */}
       <CurrentPlanCard user={user} />
