@@ -93,7 +93,7 @@ export default function NotificationDrawer({ open, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label="Notifications">
+    <div data-stay className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label="Notifications">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={close} />
 
       <div className="fixed top-0 right-0 z-50 flex h-dvh w-full max-w-sm sm:max-w-md flex-col border-l border-border bg-card shadow-2xl animate-in slide-in-from-right duration-200">

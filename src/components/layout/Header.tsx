@@ -85,8 +85,9 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
             <span className="text-xs font-bold text-foreground tabular-nums">{user?.xp ?? 0} XP</span>
           </div>
 
-          {/* Notifications */}
+          {/* Notifications: data-stay so opening them does not end a running practice. */}
           <Button
+            data-stay
             variant="ghost"
             size="icon"
             onClick={() => setShowNotifications(!showNotifications)}

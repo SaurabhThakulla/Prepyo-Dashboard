@@ -19,6 +19,8 @@ interface AppSidebarProps {
   setIsOpen: (open: boolean) => void;
   isSecondaryOpen: boolean;
   setIsSecondaryOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
+  /** Tablet width: the panel covers the page, so picking a link closes it. */
+  panelOverlays?: boolean;
 }
 
 /**
@@ -35,6 +37,7 @@ export default function AppSidebar({
   setIsOpen,
   isSecondaryOpen,
   setIsSecondaryOpen,
+  panelOverlays = false,
 }: AppSidebarProps) {
   const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
@@ -140,7 +143,10 @@ export default function AppSidebar({
             setIsTutorOpen(true);
             setIsOpen(false);
           }}
-          onNavigate={closeMobileSidebar}
+          onNavigate={() => {
+            closeMobileSidebar();
+            if (panelOverlays) setIsSecondaryOpen(false);
+          }}
         />
       </div>
 

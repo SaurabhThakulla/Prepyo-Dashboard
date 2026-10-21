@@ -70,6 +70,7 @@ export default function MobileTopBar() {
 
         <button
           type="button"
+          data-stay
           onClick={() => setShowNotifications(open => !open)}
           aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
           className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted [-webkit-tap-highlight-color:transparent]"

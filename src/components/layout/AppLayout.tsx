@@ -11,6 +11,7 @@ import { isFocusRoute } from './mobile/mobileNav';
 import RequireAuth from '@/components/auth/RequireAuth';
 import { shouldShowOnboarding } from '@/components/onboarding/onboarding';
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
+import AppTour from '@/components/tour/AppTour';
 import { useClipboardGuard } from '@/lib/hooks/useClipboardGuard';
 import { isAdmin } from '@/lib/types';
 import { isInstitutionPath } from '@/institution/paths';
@@ -19,6 +20,7 @@ const AITutorDrawer = lazy(() => import('@/components/ai/AITutorDrawer'));
 const GlobalMiniPlayer = lazy(() => import('@/components/tutorials/GlobalMiniPlayer'));
 
 const ONBOARDING_PENDING_KEY = 'prepyo_onboarding_pending';
+const WIDE_MIN = 1280;
 
 const PROTECTED_PREFIXES = [
   '/dashboard',
@@ -117,7 +119,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isSecondaryOpen, setIsSecondaryOpen] = useState(true);
+  // Below 1280px (tablets) the menu panel opens over the page instead of
+  // beside it, so the page keeps its width; it starts closed there.
+  const [isWide, setIsWide] = useState(() => typeof window === 'undefined' || window.innerWidth >= WIDE_MIN);
+  const [isSecondaryOpen, setIsSecondaryOpen] = useState(isWide);
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const query = window.matchMedia(`(min-width: ${WIDE_MIN}px)`);
+    const onChange = (e: MediaQueryListEvent) => {
+      setIsWide(e.matches);
+      setIsSecondaryOpen(e.matches);
+    };
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, []);
+  const panelPushes = isSecondaryOpen && isWide;
   const [onboardingClosedFor, setOnboardingClosedFor] = useState<string | null>(null);
 
   const isAuthPage =
@@ -203,11 +219,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         setIsOpen={setIsSidebarOpen}
         isSecondaryOpen={isSecondaryOpen}
         setIsSecondaryOpen={setIsSecondaryOpen}
+        panelOverlays={!isWide}
       />
 
+      {/* On a tablet the open panel covers the page; a tap outside closes it. */}
+      {isSecondaryOpen && !isWide && (
+        <div
+          data-stay
+          aria-hidden
+          className="fixed inset-0 z-[35] hidden lg:block bg-black/30 backdrop-blur-[1px]"
+          onClick={() => setIsSecondaryOpen(false)}
+        />
+      )}
+
       <div
-        style={{ '--sidebar-offset': isSecondaryOpen ? '416px' : '64px' } as React.CSSProperties}
-        className={`${isSecondaryOpen ? 'lg:pl-[416px]' : 'lg:pl-16'
+        style={{ '--sidebar-offset': panelPushes ? '416px' : '64px' } as React.CSSProperties}
+        className={`${panelPushes ? 'lg:pl-[416px]' : 'lg:pl-16'
           } flex w-full min-w-0 flex-col min-h-screen transition-[padding] duration-300 ease-in-out`}
       >
         <MobileTopBar />
@@ -236,6 +263,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <GlobalMiniPlayer />
       </Suspense>
     </div>
+
+    {/* Outside the click guard above, so tour buttons never end a running practice. */}
+    <AppTour />
 
     </>
   );

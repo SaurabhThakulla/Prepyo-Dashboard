@@ -1,6 +1,6 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Bug, User, CreditCard, LogOut, MessageSquare, Sun, Moon, Gift } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Bug, Compass, User, CreditCard, LogOut, MessageSquare, Sun, Moon, Gift } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -14,8 +14,9 @@ import {
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import AnimatedLogo from '../AnimatedLogo';
 import { PrimarySectionConfig, PrimarySectionId } from './navigation';
-import { UserProfile } from '@/lib/types';
+import { isAdmin, UserProfile } from '@/lib/types';
 import { useApp } from '@/context/AppContext';
+import { startTour } from '@/components/tour/tourStore';
 
 interface PrimaryIconRailProps {
   sections: PrimarySectionConfig[];
@@ -44,6 +45,7 @@ export default function PrimaryIconRail({
   onSignOut,
 }: PrimaryIconRailProps) {
   const { theme, setTheme } = useApp();
+  const navigate = useNavigate();
 
   return (
     <aside className="w-16 shrink-0 border-r border-white/15 bg-black/15 flex flex-col overflow-y-auto overscroll-contain no-scrollbar justify-between items-center py-4 px-1.5 z-20 select-none">
@@ -59,7 +61,7 @@ export default function PrimaryIconRail({
       </div>
 
       <TooltipProvider delayDuration={100}>
-        <nav className="flex flex-col items-center gap-2 mb-auto w-full">
+        <nav data-tour="nav" className="flex flex-col items-center gap-2 mb-auto w-full">
           {sections.map(section => {
             const Icon = section.icon;
             const isSelected = activeSection === section.id;
@@ -108,6 +110,28 @@ export default function PrimaryIconRail({
       <div className="flex flex-col items-center gap-3 mt-auto w-full">
         <span className="h-px w-8 bg-white/30 mb-1" />
         <TooltipProvider delayDuration={100}>
+          {/* TEMPORARY: replays the app tour from any page while it is being tested. */}
+          {user && !isAdmin(user) && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="App tour"
+                  onClick={() => {
+                    navigate('/dashboard');
+                    startTour(user.id);
+                  }}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition-all hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white outline-none"
+                >
+                  <Compass className="w-5 h-5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={10} className="px-3 py-1.5 font-bold">
+                <div className="text-xs font-bold text-foreground">App tour</div>
+                <div className="text-[10px] text-muted-foreground font-normal">Start the guided tour again</div>
+              </TooltipContent>
+            </Tooltip>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <button

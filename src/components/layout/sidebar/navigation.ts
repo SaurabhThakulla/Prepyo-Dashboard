@@ -287,62 +287,7 @@ export function buildSections(
           };
         });
 
-        // Mock tests sit under the same heading as the practice tasks for each skill.
-        // PTE runs every sectional test on its own test player. The IELTS mocks
-        // below are IELTS papers, so an EPS-TOPIK heading lists practice only.
-        if (isEPS) return links;
-        if (isPTE && links.length > 0) {
-          links.push({
-            href: pteMockHref(skill),
-            label: `${label} Sectional Test`,
-            icon: BookOpenCheck,
-            sublabel: 'Timed, in test order, scored 10-90',
-            badge: 'MOCK',
-            group: label,
-            groupHref: `/practice?skill=${skill}`,
-          });
-        } else if (skill === 'reading' && mockPassageCount > 0 && links.length > 0) {
-          links.push({
-            href: READING_MOCK_HREF,
-            label: 'Reading Mock Test',
-            icon: BookOpenCheck,
-            sublabel: `${mockPassageCount} full passages, timed and graded on the server`,
-            badge: 'MOCK',
-            group: label,
-            groupHref: `/practice?skill=${skill}`,
-          });
-        } else if (skill === 'speaking' && links.length > 0) {
-          links.push({
-            href: SPEAKING_MOCK_HREF,
-            label: 'Speaking Mock Test',
-            icon: BookOpenCheck,
-            sublabel: 'Full speaking section, timed and evaluated',
-            badge: 'MOCK',
-            group: label,
-            groupHref: `/practice?skill=${skill}`,
-          });
-        } else if (skill === 'writing' && links.length > 0) {
-          links.push({
-            href: WRITING_MOCK_HREF,
-            label: 'Writing Mock Test',
-            icon: BookOpenCheck,
-            sublabel: 'Full writing tasks, timed and evaluated',
-            badge: 'MOCK',
-            group: label,
-            groupHref: `/practice?skill=${skill}`,
-          });
-        } else if (skill === 'listening' && links.length > 0) {
-          links.push({
-            href: LISTENING_MOCK_HREF,
-            label: 'Listening Mock Test',
-            icon: BookOpenCheck,
-            sublabel: 'Full listening section, timed and graded',
-            badge: 'MOCK',
-            group: label,
-            groupHref: `/practice?skill=${skill}`,
-          });
-        }
-
+        // Sectional mock tests live only in the Mock sidebar.
         return links;
       }),
     },
