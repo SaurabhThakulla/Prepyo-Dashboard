@@ -1,5 +1,5 @@
 import { subTestsLeft } from '@/lib/subscriptions';
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { AlertCircle, Bot, CheckCircle2, RefreshCw, RotateCcw, Send, Shuffle, Square, Play } from 'lucide-react';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
 import { api, ApiError } from '@/lib/api';
@@ -15,11 +15,12 @@ import { READING_TYPES, typeIdsFor, needsParagraphLabels, familyOf } from '@/lib
 import { ExamType, ReadingGroup, ReadingTaskType } from '@/lib/types';
 import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
 import { ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useQueryClient } from '@tanstack/react-query';
-import PracticeActionBar, { notesFor, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
+import PracticeActionBar, { notesFor, ON_BAR, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
 import MyScore from '@/components/practice/flow/MyScore';
 
-const PILL = 'h-9 gap-1.5 rounded-full px-4 text-xs font-bold';
+const PILL = 'h-9 gap-1.5 rounded-full px-3 text-xs font-bold sm:px-4';
 
 interface ReadingPracticePanelProps {
   /** The `?type=` key the sidebar linked with, if any. */
@@ -265,13 +266,33 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
     [displayedGroups],
   );
 
+  // A passage picked from the list replaces the one on screen in place.
+  const pickedPassage = useRef(passageId);
+  const [pendingPassage, setPendingPassage] = useState<string | null>(null);
+  useEffect(() => {
+    if (passageId === pickedPassage.current) return;
+    pickedPassage.current = passageId;
+    if (passageId && set) setPendingPassage(passageId);
+  }, [passageId, set]);
+  useEffect(() => {
+    if (!pendingPassage || isStarting || isStopping) return;
+    if (isSessionActive) {
+      void handleStop();
+      return;
+    }
+    setPendingPassage(null);
+    void handleStart(pendingPassage);
+  }, [pendingPassage, isSessionActive, isStarting, isStopping, handleStart, handleStop]);
+
   const linked = firstAvailable(typeIdsFor(initialTypeKey), types);
   const targetTypeId = linked ?? currentTypeId ?? types[0]?.typeId;
+  // With a passage already on screen, the next one loads inside the same layout.
+  const loadingNext = practice.dealing || isStarting || pendingPassage !== null;
 
   // Confirmation / Protection screen: Shown prior to starting.
   // Absolutely no database load or passage dealt until Start is clicked.
-  if (!isSessionActive && !practice.checked) {
-    if (isStarting || practice.dealing) {
+  if (!isSessionActive && !practice.checked && !(loadingNext && set)) {
+    if (loadingNext) {
       return <ReadingPracticeSkeleton />;
     }
 
@@ -288,8 +309,8 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
     );
   }
 
-  // Once started, while backend is dealing the set or starting session:
-  if (practice.dealing || isStarting) {
+  // Once started, while backend is dealing the first set or starting session:
+  if (loadingNext && !set) {
     return <ReadingPracticeSkeleton />;
   }
 
@@ -321,19 +342,20 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
           {/* Left Pane: Reading Passage (Independent scroll only) */}
           {hasPassage && (
             <div className="w-full lg:w-1/2 lg:h-full min-h-0 flex flex-col lg:overflow-hidden">
-              <PassageReader
+              {loadingNext ? <PaneSkeleton lines={8} /> : <PassageReader
                 passage={set.passage!}
                 scroll={true}
                 passageNumber={1}
                 questionRange={`Questions 1–${displayedQuestionCount || practice.totalQuestions}`}
                 showLabels={displayedGroups.some((group: ReadingGroup) => needsParagraphLabels(group.typeId))}
-              />
+              />}
             </div>
           )}
 
           {/* Right Pane: Questions & Answer Cards (Independent scroll only) */}
           <div className={`w-full ${hasPassage ? 'lg:w-1/2' : 'lg:w-full'} lg:h-full min-h-0 flex flex-col lg:overflow-hidden`}>
             <div className="flex-1 min-h-0 lg:overflow-y-auto px-3 lg:pl-1 lg:pr-2 space-y-2 scrollbar-thin">
+              {loadingNext ? <PaneSkeleton lines={4} tall /> : <>
               {displayedGroups.map((group: ReadingGroup, index: number) => (
                 <ReadingGroupCard
                   key={group.id}
@@ -349,7 +371,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
               ))}
 
               {practice.checked && (
-                <Card className="border-primary/40 border-r-0 rounded-r-none rounded-l-lg p-3 space-y-1.5 bg-card/60">
+                <Card data-tour="practice-result" className="border-primary/40 border-r-0 rounded-r-none rounded-l-lg p-3 space-y-1.5 bg-card/60">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                     <CardTitle className="text-sm">
@@ -366,6 +388,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
                 <PracticeNotes notes={notesFor('reading')} />
                 <MyScore questionIds={shownQuestionIds} bySitting />
               </div>
+              </>}
             </div>
 
             {/* Bottom Sticky Action Bar - Compact */}
@@ -375,7 +398,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
                 total={mistakeId ? 0 : passageIds.length}
                 onJump={mistakeId ? undefined : i => void handleStart(passageIds[i])}
                 onShuffle={mistakeId ? undefined : () => void handleStart()}
-                disabled={isSessionActive || practice.checking}
+                disabled={isSessionActive || practice.checking || loadingNext}
                 actions={
                   <>
                     {practice.checked && mistakeId && practice.correctCount > 0 && !resolution.resolved ? (
@@ -431,9 +454,9 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
                         <span>Stop Practice</span>
                       </Button>
                     )}
-                    <Button variant="ghost" onClick={askTutor} className={PILL}>
-                      <Bot className="w-3.5 h-3.5 text-primary" />
-                      <span>Ask AI Coach</span>
+                    <Button variant="ghost" onClick={askTutor} className={`${PILL} ${ON_BAR}`}>
+                      <Bot className="w-3.5 h-3.5" />
+                      <span><span className="hidden sm:inline">Ask </span>AI Coach</span>
                     </Button>
                   </>
                 }
@@ -443,5 +466,15 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
         </div>
       </div>
     </div>
+  );
+}
+
+/** Stands in for one pane while the next passage loads, so the layout around it stays put. */
+function PaneSkeleton({ lines, tall = false }: { lines: number; tall?: boolean }) {
+  return (
+    <Card role="status" aria-label="Loading the next passage" className="h-full p-6 space-y-3 overflow-hidden">
+      <Skeleton className="h-6 w-1/2 mb-2" />
+      {Array.from({ length: lines }).map((_, i) => <Skeleton key={i} className={tall ? 'h-16 w-full rounded-xl' : 'h-4 w-full'} />)}
+    </Card>
   );
 }

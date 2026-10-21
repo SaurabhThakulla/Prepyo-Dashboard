@@ -44,7 +44,7 @@ export default function PreTestBlurOverlay({
 
   return (
     <div className="relative z-20 flex min-h-[calc(100dvh-4rem)] items-center justify-center p-4 bg-background/60 backdrop-blur-[2px] animate-in fade-in duration-200">
-      <Card className="w-full max-w-lg p-6 sm:p-8 text-center space-y-5 bg-card/95 border-border/90 shadow-2xl rounded-2xl backdrop-blur-xl">
+      <Card data-tour="practice-start" className="w-full max-w-lg p-6 sm:p-8 text-center space-y-5 bg-card/95 border-border/90 shadow-2xl rounded-2xl backdrop-blur-xl">
         <div className="space-y-2">
           <CardTitle className="font-display text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
             {title}

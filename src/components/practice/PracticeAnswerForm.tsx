@@ -53,7 +53,7 @@ export default function PracticeAnswerForm({
       {grading === 'ai' && (
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-foreground">Your response</span>
+            <span className="text-sm font-bold text-foreground">Your response</span>
             <Badge variant={wordCount >= (target ?? minWords) ? 'success' : 'warning'}>
               {target ? `${wordCount} / ${target} words` : `${wordCount} words`}
             </Badge>
@@ -63,8 +63,9 @@ export default function PracticeAnswerForm({
             value={session.textAnswer}
             onChange={event => session.setTextAnswer(event.target.value)}
             placeholder="Write your response here…"
+            className="border-2 border-primary bg-background px-4 py-3 text-[15px] leading-7 text-foreground placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-primary/30"
           />
-          <p className="text-[11px] text-muted-foreground">{writingLengthNote(question)}</p>
+          <p className="text-xs leading-relaxed text-foreground/75">{writingLengthNote(question)}</p>
         </div>
       )}
 

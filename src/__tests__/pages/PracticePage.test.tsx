@@ -357,7 +357,7 @@ describe('practice credit lifecycle', () => {
     fireEvent.click(await openPractice('writing'));
     await waitFor(() => expect(mocks.toast.error).toHaveBeenCalled());
     expect(screen.queryByPlaceholderText('Write your response here…')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Start Practice (1 Credit)' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Start practice' })).toBeDefined();
     expect(api.post).toHaveBeenCalledTimes(1);
   });
 

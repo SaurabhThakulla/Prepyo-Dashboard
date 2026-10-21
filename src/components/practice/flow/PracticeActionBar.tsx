@@ -25,17 +25,20 @@ interface Props {
 
 // One look for every control on the right: same height, border and surface.
 const CHIP = 'inline-flex h-9 shrink-0 items-center rounded-full border border-border bg-background shadow-2xs';
+// For see-through buttons placed on the dark blue bar.
+export const ON_BAR = 'text-white hover:bg-white/15 hover:text-white';
 const ARROW = 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-30';
 
 /** The row under every practice item: actions on the left; cost, shuffle, and pagination in the right corner. */
 export default function PracticeActionBar({ actions, middle, cost, index = -1, total = 0, onJump, onShuffle, disabled }: Props) {
   const nav = onJump && total > 0;
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="flex flex-wrap items-center gap-2">{actions}</div>
+    <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-[#0f2a6b] bg-[#13307f] p-2.5 shadow-md sm:gap-3 sm:p-3">
+      {/* On a phone: buttons on one row, credits and paging on the next. */}
+      <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:gap-2">{actions}</div>
       {/* The recorder gets its own row above the buttons until there is room for one line. */}
       {middle && <div className="order-first flex w-full justify-center xl:order-none xl:w-auto xl:flex-1">{middle}</div>}
-      <div className="ml-auto flex items-center gap-2">
+      <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
         {cost != null && (
           <div
             title={`Marking this answer uses ${cost} AI-grading units of your allowance`}
@@ -59,7 +62,7 @@ export default function PracticeActionBar({ actions, middle, cost, index = -1, t
           </button>
         )}
         {nav && (
-          <div className={CHIP}>
+          <div className={cn(CHIP, 'ml-auto')}>
             <button
               type="button"
               onClick={() => onJump(index - 1)}

@@ -12,6 +12,8 @@ import {
   Award,
   Filter,
   Play,
+  RefreshCw,
+  WifiOff,
 } from 'lucide-react';
 import { EXAM_LABELS, EXAM_MAX_SCORE, ExamType, SkillType } from '@/lib/types';
 import { taskInstruction } from '@/lib/syllabus';
@@ -44,6 +46,8 @@ interface QuestionDrawerProps<T extends DrawerItem> {
   currentQuestionId?: string | null;
   completedIds: string[];
   isLoading?: boolean;
+  /** Set when the list could not be fetched: shows a retry instead of "No questions found". */
+  onRetry?: () => void;
   onSelectQuestion: (question: T) => void;
   onResetCompleted?: () => void;
 }
@@ -64,6 +68,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
   currentQuestionId,
   completedIds,
   isLoading = false,
+  onRetry,
   onSelectQuestion,
   onResetCompleted,
 }: QuestionDrawerProps<T>) {
@@ -344,6 +349,21 @@ export default function QuestionDrawer<T extends DrawerItem>({
                   <Skeleton className="h-8 w-20 rounded-full bg-slate-200/70 dark:bg-slate-800/70 shrink-0" />
                 </div>
               ))}
+            </div>
+          ) : onRetry ? (
+            <div className="p-10 text-center space-y-3">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                <WifiOff className="w-7 h-7" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">Couldn't load the questions</h3>
+              <p className="text-xs text-slate-500 max-w-xs mx-auto">Check your internet connection and try again.</p>
+              <button
+                type="button"
+                onClick={onRetry}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Try again
+              </button>
             </div>
           ) : displayedQuestions.length === 0 ? (
             <div className="p-10 text-center space-y-3">

@@ -29,7 +29,7 @@ export default function PracticeResultDialog({ result, answerText, blankAnswers,
   const spoken = result.evaluation?.skill === 'speaking' ? result.evaluation : null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl gap-5">
+      <DialogContent data-tour="practice-result" className="max-w-5xl gap-5">
         <div className="space-y-1 border-b border-border pb-4 pr-8">
           <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
           <DialogDescription className="text-sm">How this answer was marked, and what to work on next.</DialogDescription>

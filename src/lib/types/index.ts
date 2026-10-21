@@ -571,6 +571,11 @@ export interface Evaluation {
   /** Read Aloud / Repeat Sentence: the given text marked word by word. */
   words?: WordMark[];
   createdAt: string;
+  /** True while the spoken answer's recording can be replayed (30 days). */
+  hasRecording?: boolean;
+  /** On the history list only. */
+  questionTitle?: string;
+  typeName?: string;
 }
 
 export interface WordMark {

@@ -371,7 +371,7 @@ export default function AudioRecorder({
         : phase === 'recording'
           ? silent
             ? 'No sound is reaching your microphone yet.'
-            : 'Speaking. Keep going until the timer ends.'
+            : 'Speaking. Stops on its own when the timer ends, or click anywhere here to stop now.'
           : '';
 
   const tone =
@@ -392,19 +392,33 @@ export default function AudioRecorder({
       : phase === 'prep'
         ? `Recording begins in ${remaining}s`
         : phase === 'recording'
-          ? 'Recording…'
+          ? 'Click here to stop'
           : 'Completed';
   const micAction = phase === 'idle' ? handleStart : phase === 'prep' ? handleSkipPrep : phase === 'recording' ? handleStopEarly : undefined;
   const micLabel = phase === 'idle' ? 'Start recording' : phase === 'prep' ? 'Start now' : phase === 'recording' ? 'Stop recording' : 'Recorded';
+  // The whole panel is the button: it starts recording, and while recording it stops it.
+  const panelStarts = phase === 'idle' && !disabled && !starting;
+  const panelStops = phase === 'recording';
+  const panelAction = panelStarts ? handleStart : panelStops ? handleStopEarly : undefined;
 
   return (
-    <div className={`relative overflow-hidden rounded-xl p-4 transition-colors duration-500 sm:px-5 ${tone.panel}`}>
+    <div
+      onClick={panelAction}
+      role={panelAction ? 'button' : undefined}
+      aria-label={panelStops ? 'Stop recording' : undefined}
+      className={`relative overflow-hidden rounded-xl p-4 transition-colors duration-500 sm:px-5 ${tone.panel} ${
+        panelStarts ? 'cursor-pointer hover:bg-primary/[0.1]' : panelStops ? 'cursor-pointer hover:bg-rose-500/[0.12]' : ''
+      }`}
+    >
       <p className="text-center text-sm font-semibold text-foreground" aria-live="polite">{headline}</p>
 
       <div className="mt-2 flex items-center gap-3 sm:gap-4">
         <button
           type="button"
-          onClick={micAction}
+          onClick={e => {
+            e.stopPropagation();
+            micAction?.();
+          }}
           disabled={phase === 'review' || (phase === 'idle' && (disabled || starting))}
           aria-label={micLabel}
           title={micLabel}

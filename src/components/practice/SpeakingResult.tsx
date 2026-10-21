@@ -13,7 +13,9 @@ interface Props {
 
 /** A spoken answer's result, laid out like every other result, plus the recording and the marked text. */
 export default function SpeakingResult({ evaluation, xpAwarded, recording }: Props) {
-  const recordingUrl = useObjectUrl(recording);
+  // A past answer replays the copy kept for 30 days; a fresh one plays straight from the device.
+  const recordingUrl = useObjectUrl(recording)
+    ?? (evaluation.hasRecording ? `/api/v1/evaluations/${encodeURIComponent(evaluation.id)}/recording` : null);
   const criteria = evaluation.criteria ?? [];
   const words = evaluation.words ?? [];
   // Free speech has no script: colour what the grader corrected and the fillers instead.

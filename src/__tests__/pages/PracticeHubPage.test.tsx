@@ -31,11 +31,11 @@ describe('the practice hub', () => {
     expect(screen.getByRole('tab', { name: /Speaking/ }).getAttribute('aria-selected')).toBe('true');
   });
 
-  it('lists the skill’s tasks as cards and its sectional test on its own', () => {
+  it('lists the skill’s tasks as cards, with sectional tests left to the Mock menu', () => {
     renderAt('/practice/tasks?skill=speaking');
     const panel = screen.getByRole('tabpanel', { name: 'Speaking' });
     expect(within(panel).getByRole('link', { name: /Read Aloud/ }).getAttribute('href')).toContain('skill=speaking');
-    expect(within(panel).getByRole('link', { name: /Speaking Sectional Test/ })).toBeDefined();
+    expect(within(panel).queryByRole('link', { name: /Sectional Test/ })).toBeNull();
   });
 
   it('switches skill from the tabs', () => {

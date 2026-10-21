@@ -23,6 +23,8 @@ export interface MockPaperListProps {
   onResume: (paper: MockPaperItem) => void;
   onReview: (paper: MockPaperItem) => void;
   onRetake: (paper: MockPaperItem) => void;
+  /** 'page' lays the tests out as a grid on an open page instead of a scrolling panel. */
+  variant?: 'panel' | 'page';
 }
 
 type FilterTab = 'all' | 'done' | 'remaining';
@@ -37,7 +39,9 @@ export default function MockPaperList({
   onResume,
   onReview,
   onRetake,
+  variant = 'panel',
 }: MockPaperListProps) {
+  const page = variant === 'page';
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
 
@@ -95,9 +99,9 @@ export default function MockPaperList({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-[#0f141f]">
+    <div className={page ? 'flex flex-col gap-3' : 'flex flex-col h-full bg-white dark:bg-[#0f141f]'}>
       {/* 1. Search Box */}
-      <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-white/5 space-y-3 bg-white dark:bg-[#111622] shrink-0">
+      <div className={page ? '' : 'p-3.5 sm:p-4 border-b border-slate-100 dark:border-white/5 space-y-3 bg-white dark:bg-[#111622] shrink-0'}>
         <div className="relative">
           <input
             type="text"
@@ -120,7 +124,7 @@ export default function MockPaperList({
       </div>
 
       {/* 2. Filter Tabs: All, Done, Remaining */}
-      <div className="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-slate-100 dark:border-white/5 bg-slate-50/80 dark:bg-[#131926] shrink-0">
+      <div className={page ? 'max-w-md' : 'px-3 sm:px-4 py-2 sm:py-2.5 border-b border-slate-100 dark:border-white/5 bg-slate-50/80 dark:bg-[#131926] shrink-0'}>
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
           {[
             { id: 'all' as const, label: 'All', fullLabel: 'All Tests', count: papers.length },
@@ -157,7 +161,7 @@ export default function MockPaperList({
       </div>
 
       {/* 3. Stats Summary Strip */}
-      <div className="px-4 py-2 bg-slate-50 dark:bg-[#131926] border-b border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 shrink-0">
+      <div className={page ? 'text-xs font-medium text-slate-500 dark:text-slate-400' : 'px-4 py-2 bg-slate-50 dark:bg-[#131926] border-b border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 shrink-0'}>
         <div>
           Done <span className="font-bold text-teal-600 dark:text-teal-400">{doneCount}</span>, Found{' '}
           <span className="font-bold text-slate-800 dark:text-white">{filteredPapers.length}</span> Tests
@@ -165,14 +169,14 @@ export default function MockPaperList({
       </div>
 
       {/* 4. Papers List */}
-      <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-white/5 p-3 sm:p-4 space-y-3">
+      <div className={page ? 'flex flex-col gap-2' : 'flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-white/5 p-3 sm:p-4 space-y-3'}>
         {isLoading ? (
-          <div className="p-8 text-center space-y-3">
+          <div className="col-span-full p-8 text-center space-y-3">
             <div className="w-8 h-8 border-3 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-xs text-slate-500">Loading {section} mock tests…</p>
           </div>
         ) : filteredPapers.length === 0 ? (
-          <div className="p-10 text-center space-y-3">
+          <div className="col-span-full p-10 text-center space-y-3">
             <Sparkles className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto" />
             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">No mock tests found</h3>
             <p className="text-xs text-slate-500 max-w-xs mx-auto">
@@ -198,14 +202,14 @@ export default function MockPaperList({
               <div
                 key={paper.id}
                 id={`mock-paper-item-${paper.number}`}
-                className={`p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 bg-white dark:bg-[#111622] space-y-3 ${
+                className={`p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 bg-white dark:bg-[#111622] ${page ? 'flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4' : 'space-y-3'} ${
                   isSelected
                     ? 'border-primary/60 ring-2 ring-primary/20 shadow-md'
                     : 'border-slate-200/80 dark:border-white/10 hover:border-primary/40 dark:hover:border-primary/40 shadow-xs'
                 }`}
               >
                 {/* Header row: Test Number + Title + Status badges */}
-                <div className="flex items-start justify-between gap-2.5">
+                <div className={`flex items-start justify-between gap-2.5 ${page ? 'flex-1 min-w-0 sm:items-center' : ''}`}>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-sm sm:text-base text-slate-900 dark:text-white">
@@ -268,7 +272,7 @@ export default function MockPaperList({
                 </div>
 
                 {/* Action buttons row */}
-                <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-white/5">
+                <div className={`flex items-center justify-end gap-2 ${page ? 'shrink-0' : 'pt-1 border-t border-slate-100 dark:border-white/5'}`}>
                   {paper.status === 'not_started' && (
                     <button
                       type="button"
