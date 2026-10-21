@@ -1,80 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import MistakePracticeLink from '@/components/mistakes/MistakePracticeLink';
+import { mistakePracticeHref } from '@/lib/mistakePractice';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   CheckCircle2,
   History,
-  XCircle,
   Sparkles,
   Search,
-  Tag,
   AlertTriangle,
   RotateCcw,
   BarChart3,
   Lock,
   Crown,
   ArrowRight,
-  Clock,
   Flame,
   BookOpen,
   Headphones,
   SquarePen,
   Mic,
-  Lightbulb,
   Layers,
   X,
-  Target,
+  ChevronRight,
 } from 'lucide-react';
 import { MistakesPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
-import { useMistakes, useMistakeAnalytics, usePracticeAttempts } from '@/lib/hooks/useResources';
-import { SkillType, ExamType, Mistake, MistakeAnalytics, isAdmin } from '@/lib/types';
-
-function renderResponseBadges(text: string, isWrong: boolean) {
-  if (!text) return <span className="text-muted-foreground italic text-xs">No response</span>;
-
-  if (/b\d+:/.test(text)) {
-    const parts = text.split(/,\s*/);
-    return (
-      <div className="flex flex-wrap gap-1.5">
-        {parts.map((part, i) => {
-          const colonIdx = part.indexOf(':');
-          const key = colonIdx > -1 ? part.slice(0, colonIdx) : `Gap ${i + 1}`;
-          const val = colonIdx > -1 ? part.slice(colonIdx + 1).trim() : part.trim();
-          return (
-            <span
-              key={i}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-medium border ${
-                isWrong
-                  ? 'bg-rose-50/80 dark:bg-rose-950/30 border-rose-200/80 dark:border-rose-900/50 text-rose-700 dark:text-rose-300'
-                  : 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-300'
-              }`}
-            >
-              <span className="font-bold opacity-70">{key}:</span>
-              <span>{val || '—'}</span>
-            </span>
-          );
-        })}
-      </div>
-    );
-  }
-
-  return (
-    <p
-      className={`text-xs sm:text-sm font-medium leading-relaxed break-words ${
-        isWrong ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300'
-      }`}
-    >
-      {text}
-    </p>
-  );
-}
+import { useMistakes, useMistakeAnalytics, usePracticeAttempts, useEvaluationHistory } from '@/lib/hooks/useResources';
+import { SCALE } from '@/components/practice/PracticeResultCard';
+import { matchesTypeKey, SYLLABUS, typeKey } from '@/lib/syllabus';
+import { SkillType, ExamType, Evaluation, Mistake, MistakeAnalytics, PracticeAttempt, isAdmin } from '@/lib/types';
+import PracticeResultDialog from '@/components/practice/PracticeResultDialog';
 
 const SKILL_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   all: Layers,
@@ -84,11 +41,11 @@ const SKILL_ICONS: Record<string, React.ComponentType<{ className?: string }>> =
   speaking: Mic,
 };
 
-const SKILL_STYLES: Record<string, string> = {
-  reading: 'bg-blue-50/90 text-blue-700 border-blue-200/80 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50',
-  listening: 'bg-purple-50/90 text-purple-700 border-purple-200/80 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900/50',
-  writing: 'bg-indigo-50/90 text-indigo-700 border-indigo-200/80 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-900/50',
-  speaking: 'bg-amber-50/90 text-amber-700 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50',
+const SKILL_TILES: Record<string, string> = {
+  reading: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  listening: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+  writing: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+  speaking: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
 };
 
 
@@ -279,10 +236,13 @@ export default function MistakesPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'unresolved' | 'resolved'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly');
+  const [opened, setOpened] = useState<HistoryItem | null>(null);
 
   // Queries for mistakes, analytics, and all practice attempts
   const { data, isPending, error } = useMistakes(activeExam, selectedSkill, false, period);
   const { data: attemptsData, isPending: attemptsPending } = usePracticeAttempts(activeExam, selectedSkill);
+  // Speaking and writing are AI-scored, so they live in evaluations, not practice attempts.
+  const { data: evaluationsData } = useEvaluationHistory(100);
   const { data: analyticsData, error: analyticsError } = useMistakeAnalytics(
     activeExam,
     period
@@ -312,11 +272,11 @@ export default function MistakesPage() {
   }, [rawMistakes]);
 
   // Combine practice attempts and mistakes into comprehensive history items
-  const historyItems = React.useMemo(() => {
+  const practiceItems = React.useMemo((): HistoryItem[] => {
     if (isSuru) return rawMistakes.map(m => ({ ...m, isCorrect: m.resolved }));
     if (rawAttempts.length > 0) {
       const seen = new Set<string>();
-      const items = rawAttempts.map(att => {
+      const items: HistoryItem[] = rawAttempts.map(att => {
         seen.add(att.questionId);
         const matchingMistake = mistakesByQuestion.get(att.questionId);
         return {
@@ -330,10 +290,13 @@ export default function MistakesPage() {
           userResponse: att.userResponse || matchingMistake?.userResponse || '',
           correctResponse: att.isCorrect ? (att.userResponse || 'Correct') : (matchingMistake?.correctResponse || ''),
           explanation: matchingMistake?.explanation || att.feedback || '',
-          errorTag: matchingMistake?.errorTag || (!att.isCorrect ? 'Needs Review' : ''),
+          errorTag: matchingMistake?.errorTag || '',
           failedCount: matchingMistake?.failedCount || (att.isCorrect ? 0 : 1),
           resolved: att.isCorrect || matchingMistake?.resolved || false,
           isCorrect: att.isCorrect,
+          score: att.score,
+          maxScore: att.maxScore,
+          attempt: att,
           lastAttemptedAt: att.createdAt,
         };
       });
@@ -350,6 +313,14 @@ export default function MistakesPage() {
     }
     return rawMistakes.map(m => ({ ...m, isCorrect: m.resolved }));
   }, [isSuru, rawAttempts, rawMistakes, mistakesByQuestion]);
+
+  const historyItems = React.useMemo(() => {
+    if (isSuru) return practiceItems;
+    const scored = (evaluationsData?.evaluations ?? [])
+      .filter(e => e.exam === activeExam && (selectedSkill === 'all' || e.skill === selectedSkill))
+      .map(evaluationItem);
+    return [...scored, ...practiceItems].sort((a, b) => (b.lastAttemptedAt ?? '').localeCompare(a.lastAttemptedAt ?? ''));
+  }, [isSuru, practiceItems, evaluationsData, activeExam, selectedSkill]);
 
   const analytics = isSuru
     ? (DUMMY_ANALYTICS[activeExam] ?? DUMMY_ANALYTICS.PTE)
@@ -389,430 +360,160 @@ export default function MistakesPage() {
     ? Math.round((resolvedCount / totalPracticed) * 100)
     : (analytics?.total && analytics.total > 0 ? Math.round((analytics.resolved / analytics.total) * 100) : 0);
 
+  const statusOptions = [
+    { value: 'all', label: 'All' },
+    { value: 'unresolved', label: 'To review' },
+    { value: 'resolved', label: 'Mastered' },
+  ] as const;
+
+  const groups = groupByDay(filteredMistakes);
+
   return (
     <div className="relative w-full pb-16 overflow-hidden">
-      {/* ======================================================================= */}
-      {/* Full Page Content: Regular for Paid Users, Blurred Out with Dummy Data for Suru */}
-      {/* ======================================================================= */}
+      {/* Paid users see their own history; Suru sees blurred sample data under the upgrade card. */}
       <div
-        className={`w-full space-y-6 ${
+        className={`mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 ${
           isSuru ? 'filter blur-[5px] opacity-60 pointer-events-none select-none transition-all' : ''
         }`}
         aria-hidden={isSuru ? 'true' : undefined}
       >
-        {/* ======================================================================= */}
-        {/* Analytics Dashboard Header & KPI Summary Cards */}
-        {/* ======================================================================= */}
-        <div className="w-full">
-          <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
-            {/* Header row: Title & Timeframe Toggle */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2.5">
-                  <h2 className="text-lg sm:text-xl font-black text-foreground tracking-tight">
-                    History Bank
-                  </h2>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-primary/10 text-primary border border-primary/20 tracking-wider">
-                    {activeExam}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Review all questions practiced during study sessions &amp; mock exams in the{' '}
-                  <span className="font-semibold text-foreground font-mono">{periodLabel}</span> to target weak areas.
-                </p>
-              </div>
-
-              {/* Period Switcher Button Group */}
-              <div className="inline-flex self-start sm:self-auto bg-muted/60 p-1 rounded-2xl border border-border/80 shadow-2xs">
-                {(['weekly', 'monthly'] as const).map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setPeriod(p)}
-                    className={`px-3.5 py-1.5 text-xs font-bold capitalize rounded-xl transition-all ${
-                      period === p
-                        ? 'bg-background text-foreground shadow-xs'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {p === 'weekly' ? 'Weekly' : 'Monthly'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* KPI Summary Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              {/* Total Logged */}
-              <div className="group relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-indigo-50/40 dark:to-indigo-950/20 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-indigo-400/40 transition-all duration-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                    Total Practiced
-                  </span>
-                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                    <Layers className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="mt-2.5 flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-foreground font-mono tracking-tight">
-                    {totalPracticed}
-                  </span>
-                  <span className="text-[11px] font-medium text-muted-foreground">questions</span>
-                </div>
-                <p className="mt-1 text-[11px] text-muted-foreground/80 truncate">
-                  Logged in {periodLabel.toLowerCase()}
-                </p>
-              </div>
-
-              {/* Unresolved / Needs Review */}
-              <div className="group relative overflow-hidden rounded-2xl border border-rose-200/80 dark:border-rose-900/40 bg-gradient-to-br from-card via-card to-rose-50/40 dark:to-rose-950/20 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-rose-400/40 transition-all duration-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">
-                    Needs Review
-                  </span>
-                  <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-                    <Flame className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="mt-2.5 flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight">
-                    {unresolvedCount}
-                  </span>
-                  <span className="text-[11px] font-semibold text-rose-600/80">needs retry</span>
-                </div>
-                <p className="mt-1 text-[11px] text-muted-foreground/80 truncate">
-                  Awaiting practice retry
-                </p>
-              </div>
-
-              {/* Mastered / Resolved */}
-              <div className="group relative overflow-hidden rounded-2xl border border-emerald-200/80 dark:border-emerald-900/40 bg-gradient-to-br from-card via-card to-emerald-50/40 dark:to-emerald-950/20 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-emerald-400/40 transition-all duration-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
-                    Mastered
-                  </span>
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="mt-2.5 flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
-                    {resolvedCount}
-                  </span>
-                  <span className="text-[11px] font-semibold text-emerald-600/80">
-                    {accuracyRate}% recovery
-                  </span>
-                </div>
-                <div className="mt-2 w-full bg-muted/60 h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${accuracyRate}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Repeat Traps */}
-              <div className="group relative overflow-hidden rounded-2xl border border-amber-200/80 dark:border-amber-900/40 bg-gradient-to-br from-card via-card to-amber-50/40 dark:to-amber-950/20 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-amber-400/40 transition-all duration-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
-                    Repeat Traps
-                  </span>
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                    <RotateCcw className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="mt-2.5 flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono tracking-tight">
-                    {analytics?.repeatCount ?? 0}
-                  </span>
-                  <span className="text-[11px] font-semibold text-amber-600/80">missed &gt;1x</span>
-                </div>
-                <p className="mt-1 text-[11px] text-muted-foreground/80 truncate">
-                  High priority revision
-                </p>
-              </div>
-            </div>
+        <header className="flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0 space-y-1.5">
+            <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+              <History className="w-3.5 h-3.5" />
+              <span>{activeExam} practice</span>
+            </p>
+            <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-foreground">History Bank</h1>
+            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+              Every question you answered in the {periodLabel.toLowerCase()}: what you said, the right answer, and why.
+            </p>
           </div>
-        </div>
+          <Segmented
+            label="Time period"
+            value={period}
+            onChange={setPeriod}
+            options={[{ value: 'weekly', label: '7 days' }, { value: 'monthly', label: '4 weeks' }]}
+          />
+        </header>
 
-        {/* Main Container for Filter & Mistake List */}
-        <div className="w-full px-4 sm:px-6 lg:px-8 space-y-4 sm:space-y-6">
-          {/* Filter Tag & Search Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-muted/30 p-2.5 sm:p-3 rounded-2xl border border-border/80 shadow-2xs">
-            {/* Skill Buttons */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+        <section aria-label="Summary" className="grid grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/70 shadow-card">
+          <Stat icon={Layers} tone="text-indigo-600 dark:text-indigo-400" label="Practiced" value={totalPracticed} hint="questions answered" />
+          <Stat icon={Flame} tone="text-rose-600 dark:text-rose-400" label="To review" value={unresolvedCount} hint="still to get right" />
+          <Stat icon={CheckCircle2} tone="text-emerald-600 dark:text-emerald-400" label="Mastered" value={resolvedCount} hint={`${accuracyRate}% of all answers`}>
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${accuracyRate}%` }} />
+            </div>
+          </Stat>
+          <Stat icon={RotateCcw} tone="text-amber-600 dark:text-amber-400" label="Repeat traps" value={analytics?.repeatCount ?? 0} hint="missed more than once" />
+        </section>
+
+        <section aria-label="Filters" className="space-y-3">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search titles, topics, types"
+              aria-label="Search your history"
+              className="h-11 pl-10 pr-10 text-sm bg-card rounded-xl border-border/80 shadow-2xs focus-visible:ring-1 focus-visible:ring-primary"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-full"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 max-w-full items-center gap-1.5 overflow-x-auto no-scrollbar">
               {skillFilters.map(t => {
                 const Icon = SKILL_ICONS[t] || Layers;
                 const isSelected = selectedSkill === t;
                 return (
-                  <Button
+                  <button
                     key={t}
-                    size="sm"
-                    variant={isSelected ? 'default' : 'outline'}
+                    type="button"
+                    aria-pressed={isSelected}
                     onClick={() => setSelectedSkill(t)}
-                    className={`h-9 px-3 rounded-xl capitalize text-xs font-semibold whitespace-nowrap transition-all duration-150 flex items-center gap-1.5 ${
+                    className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium capitalize whitespace-nowrap transition-colors ${
                       isSelected
-                        ? 'shadow-xs font-bold'
-                        : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground border-border/60'
+                        ? 'border-foreground bg-foreground text-background'
+                        : 'border-border/80 bg-card text-muted-foreground hover:text-foreground hover:border-foreground/30'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
-                    <span>{t}</span>
-                  </Button>
-                );
-              })}
-            </div>
-
-            {/* Status Filter Toggle */}
-            <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/60 self-start sm:self-auto">
-              {(['all', 'unresolved', 'resolved'] as const).map(s => {
-                const isSelected = statusFilter === s;
-                const label = s === 'all' ? 'All' : s === 'unresolved' ? 'Needs Review' : 'Mastered / Correct';
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setStatusFilter(s)}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                      isSelected
-                        ? 'bg-background text-foreground shadow-xs'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {label}
+                    {t}
                   </button>
                 );
               })}
             </div>
-
-            {/* Search Input */}
-            <div className="relative w-full sm:w-auto sm:min-w-[240px] sm:max-w-xs">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              <Input
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search mistakes or topics…"
-                className="h-10 sm:h-9 pl-9 pr-8 text-xs bg-background rounded-xl border-border/80 focus-visible:ring-1 focus-visible:ring-primary"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full"
-                  aria-label="Clear search"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+            <Segmented label="Status" value={statusFilter} onChange={setStatusFilter} options={statusOptions} />
           </div>
+        </section>
 
-          {/* Mistake Cards List */}
-          {loading ? (
-            <MistakesPageSkeleton bare />
-          ) : filteredMistakes.length === 0 ? (
-            <Card className="p-12 text-center space-y-4 rounded-3xl border border-dashed border-border/80 bg-muted/10">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-2xs">
-                <CheckCircle2 className="w-7 h-7" />
-              </div>
-              <div className="space-y-1.5 max-w-md mx-auto">
-                <CardTitle className="text-base sm:text-lg font-bold">
-                  {rawMistakes.length === 0
-                    ? `No questions recorded in the ${periodLabel.toLowerCase()}`
-                    : 'No matching questions found'}
-                </CardTitle>
-                <CardDescription className="text-xs sm:text-sm leading-relaxed">
-                  {rawMistakes.length === 0
-                    ? `Questions you practice during study sessions and full mock exams within the ${periodLabel.toLowerCase()} will appear here automatically.`
-                    : 'Try clearing your search query or switching to another skill filter.'}
-                </CardDescription>
-              </div>
-              {searchQuery && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSearchQuery('')}
-                  className="rounded-xl text-xs"
-                >
-                  Clear Search Filter
-                </Button>
-              )}
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground px-1">
-                <span>
-                  Showing <strong className="text-foreground">{filteredMistakes.length}</strong> questions from <strong className="text-foreground">{periodLabel}</strong>
-                </span>
-                {selectedSkill !== 'all' && (
-                  <span className="capitalize">
-                    Filtered by: <strong className="text-foreground">{selectedSkill}</strong>
-                  </span>
-                )}
-              </div>
-
-              {filteredMistakes.map(item => {
-                const SkillIcon = SKILL_ICONS[item.skill] || Layers;
-                const skillStyle = SKILL_STYLES[item.skill] || 'bg-muted text-muted-foreground border-border';
-
-                return (
-                  <div
-                    key={item.id}
-                    className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs hover:border-primary/40 hover:shadow-md transition-all duration-200 space-y-4"
-                  >
-                    {/* Header row: Skill, question type, repeat count & timestamp */}
-                    <div className="flex items-start justify-between gap-2.5">
-                      <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
-                        {/* Skill Pill */}
-                        {item.skill && (
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider border ${skillStyle}`}>
-                            <SkillIcon className="w-3 h-3" />
-                            <span>{item.skill}</span>
-                          </span>
-                        )}
-
-                        {/* Question Type */}
-                        <span className="px-3 py-1 rounded-lg text-[11px] font-bold tracking-tight bg-secondary/80 text-secondary-foreground border border-border/60">
-                          {item.typeName}
-                        </span>
-
-                        {/* Status Pill */}
-                        {'isCorrect' in item && item.isCorrect ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/25">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                            <span>Correct</span>
-                          </span>
-                        ) : item.resolved ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/25">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                            <span>Mastered</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 dark:text-rose-300 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/25">
-                            <Flame className="w-3 h-3 text-rose-500" />
-                            <span>Needs Review</span>
-                          </span>
-                        )}
-
-                        {/* Error Tag */}
-                        {item.errorTag && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
-                            <Tag className="w-3 h-3" />
-                            <span>{item.errorTag}</span>
-                          </span>
-                        )}
-
-                        {/* Repeat Count */}
-                        {item.failedCount > 1 && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 dark:text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/25">
-                            <RotateCcw className="w-3 h-3" />
-                            <span>Missed {item.failedCount}x</span>
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Timestamp */}
-                      {item.lastAttemptedAt && (
-                        <span className="shrink-0 inline-flex items-center gap-1 pt-1 text-[11px] font-mono text-muted-foreground">
-                          <Clock className="w-3 h-3" />
-                          {new Date(item.lastAttemptedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Title & Prompt Context */}
-                    <div className="space-y-2">
-                      <h3 className="font-display font-bold text-base sm:text-lg text-foreground tracking-tight break-words">
-                        {item.questionTitle}
-                      </h3>
-                      {item.prompt && (
-                        <div className="text-xs sm:text-[13px] text-muted-foreground/90 bg-muted/20 border-l-2 border-primary/40 pl-3 py-1.5 rounded-r-lg leading-relaxed break-words">
-                          {item.prompt}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Responses Comparison: Your Answer vs Correct Answer */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                      {/* Previous / User Response */}
-                      <div className={`rounded-xl border p-3 sm:p-3.5 space-y-1.5 ${
-                        'isCorrect' in item && item.isCorrect
-                          ? 'border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/20'
-                          : 'border-rose-200/70 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/20'
-                      }`}>
-                        <div className={`flex items-center gap-1.5 text-xs font-bold ${
-                          'isCorrect' in item && item.isCorrect
-                            ? 'text-emerald-700 dark:text-emerald-400'
-                            : 'text-rose-700 dark:text-rose-400'
-                        }`}>
-                          {'isCorrect' in item && item.isCorrect ? (
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                          ) : (
-                            <XCircle className="w-3.5 h-3.5" />
-                          )}
-                          <span>{'isCorrect' in item && item.isCorrect ? 'Your response' : 'Previous response'}</span>
-                        </div>
-                        <div className="pt-0.5">
-                          {renderResponseBadges(item.userResponse, !('isCorrect' in item && item.isCorrect))}
-                        </div>
-                      </div>
-
-                      {/* Correct Answer (if available and not already correct) */}
-                      {item.correctResponse && !('isCorrect' in item && item.isCorrect) && (
-                        <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/20 p-3 sm:p-3.5 space-y-1.5">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Correct answer</span>
-                          </div>
-                          <div className="pt-0.5">
-                            {renderResponseBadges(item.correctResponse, false)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Examiner Explanation Box */}
-                    {item.explanation && (
-                      <div className="rounded-xl border border-amber-200/60 dark:border-amber-900/40 bg-amber-500/5 p-3.5 space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
-                          <Lightbulb className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                          <span>Examiner Explanation &amp; Key Learning</span>
-                        </div>
-                        <p className="text-xs sm:text-[13px] text-muted-foreground leading-relaxed pl-5">
-                          {item.explanation}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Action link */}
-                    {!isSuru && (
-                      'isCorrect' in item && item.isCorrect ? (
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-border/70 pt-3.5 mt-1">
-                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 px-2.5 py-1 rounded-lg">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Completed Correctly
-                          </span>
-                          <Button
-                            asChild
-                            variant="outline"
-                            className="h-10 sm:h-9 w-full sm:w-auto px-4 rounded-xl text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all group"
-                          >
-                            <Link to={`/practice?skill=${item.skill}`} className="inline-flex items-center justify-center gap-1.5">
-                              <span>Practice Again</span>
-                              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                            </Link>
-                          </Button>
-                        </div>
-                      ) : (
-                        <MistakePracticeLink mistake={item as Mistake} />
-                      )
-                    )}
-                  </div>
-                );
-              })}
+        {loading ? (
+          <MistakesPageSkeleton bare />
+        ) : filteredMistakes.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border/80 bg-card/60 px-6 py-14 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              {historyItems.length === 0 ? <History className="w-6 h-6" /> : <Search className="w-6 h-6" />}
             </div>
-          )}
-        </div>
+            <h2 className="font-display text-lg font-semibold text-foreground">
+              {historyItems.length === 0 ? `Nothing practiced in the ${periodLabel.toLowerCase()}` : 'No questions match'}
+            </h2>
+            <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
+              {historyItems.length === 0
+                ? 'Questions you answer in practice and mock exams show up here automatically.'
+                : 'Try another search, skill or status.'}
+            </p>
+            {searchQuery && (
+              <Button variant="outline" size="sm" onClick={() => setSearchQuery('')} className="mt-5 rounded-xl">
+                Clear search
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-8">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground tabular-nums">{filteredMistakes.length}</span>{' '}
+              {filteredMistakes.length === 1 ? 'question' : 'questions'}
+              {selectedSkill !== 'all' && <> in <span className="capitalize">{selectedSkill}</span></>}
+            </p>
+            {groups.map(group => (
+              <section key={group.label} aria-label={group.label} className="space-y-3">
+                <h2 className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="shrink-0">{group.label}</span>
+                  <span className="h-px flex-1 bg-border/70" aria-hidden="true" />
+                </h2>
+                <div className="space-y-3">
+                  {group.items.map((item, i) => (
+                    // Several attempts can share one mistake id, so the index keeps keys unique.
+                    <HistoryCard key={`${item.id}-${i}`} item={item} onOpen={isSuru ? undefined : () => setOpened(item)} />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
       </div>
+
+      {opened && (
+        <PracticeResultDialog
+          title={opened.questionTitle}
+          result={opened.evaluation
+            ? { evaluation: opened.evaluation, xpAwarded: 0 }
+            : { attempt: opened.attempt ?? attemptFromMistake(opened), xpAwarded: 0 }}
+          recording={null}
+          open
+          onOpenChange={o => !o && setOpened(null)}
+          onRedo={() => navigate(redoHref(opened))}
+        />
+      )}
 
       {/* ======================================================================= */}
       {/* Premium Upgrade Modal Overlay for Suru Users (Fixed & Non-movable) */}
@@ -891,5 +592,194 @@ export default function MistakesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+type HistoryItem = Omit<Mistake, 'exam'> & {
+  exam?: ExamType;
+  isCorrect: boolean;
+  score?: number;
+  maxScore?: number;
+  attempt?: PracticeAttempt;
+  evaluation?: Evaluation;
+};
+
+// An AI-scored answer counts as mastered from 70% of its scale, the same line the result ring turns green.
+function evaluationItem(e: Evaluation): HistoryItem {
+  const scale = SCALE[e.exam] ?? SCALE.PTE;
+  const score = e.estimatedScore;
+  return {
+    id: e.id,
+    questionId: e.questionId ?? '',
+    questionTitle: e.questionTitle || e.typeName || `${e.skill[0].toUpperCase()}${e.skill.slice(1)} answer`,
+    exam: e.exam,
+    skill: e.skill,
+    typeName: e.typeName ?? '',
+    prompt: '',
+    userResponse: e.transcript ?? '',
+    correctResponse: '',
+    explanation: e.summary,
+    errorTag: '',
+    failedCount: 0,
+    resolved: score !== null && (score - scale.min) / (scale.max - scale.min) >= 0.7,
+    isCorrect: false,
+    score: score ?? undefined,
+    maxScore: scale.max,
+    lastAttemptedAt: e.createdAt,
+    evaluation: e,
+  };
+}
+
+function startOfDay(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+// Buckets items by the day they were answered, newest day first.
+function groupByDay(items: HistoryItem[]) {
+  const today = startOfDay(new Date());
+  const groups = new Map<string, { label: string; time: number; items: HistoryItem[] }>();
+  for (const item of items) {
+    const date = item.lastAttemptedAt ? new Date(item.lastAttemptedAt) : null;
+    const time = date && !Number.isNaN(date.getTime()) ? startOfDay(date) : -Infinity;
+    const days = Math.round((today - time) / 86_400_000);
+    const label = !date || time === -Infinity
+      ? 'Earlier'
+      : days === 0
+        ? 'Today'
+        : days === 1
+          ? 'Yesterday'
+          : date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+    const group = groups.get(label) ?? { label, time, items: [] };
+    group.items.push(item);
+    groups.set(label, group);
+  }
+  return [...groups.values()].sort((a, b) => b.time - a.time);
+}
+
+function Segmented<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: readonly { value: T; label: string }[];
+}) {
+  return (
+    <div role="group" aria-label={label} className="inline-flex shrink-0 rounded-xl border border-border/80 bg-muted/60 p-1">
+      {options.map(o => (
+        <button
+          key={o.value}
+          type="button"
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={`rounded-lg px-3 py-1.5 text-[13px] font-medium whitespace-nowrap transition-colors ${
+            value === o.value ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Stat({
+  icon: Icon,
+  tone,
+  label,
+  value,
+  hint,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  tone: string;
+  label: string;
+  value: number;
+  hint: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0 bg-card p-4 sm:p-5">
+      <p className={`flex items-center gap-1.5 text-xs font-semibold ${tone}`}>
+        <Icon className="w-3.5 h-3.5 shrink-0" />
+        <span className="truncate">{label}</span>
+      </p>
+      <p className="mt-2 font-display text-3xl font-bold tabular-nums tracking-tight text-foreground">{value}</p>
+      <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{hint}</p>
+      {children}
+    </div>
+  );
+}
+
+function redoHref(item: HistoryItem): string {
+  if (item.evaluation) {
+    const label = SYLLABUS[item.evaluation.exam]?.[item.skill]?.find(name =>
+      matchesTypeKey(name, typeKey(item.typeName))) ?? item.typeName;
+    const params = new URLSearchParams({ skill: item.skill, type: typeKey(label), questionId: item.questionId, exam: item.evaluation.exam });
+    return `/practice?${params}`;
+  }
+  return item.isCorrect ? `/practice?skill=${item.skill}` : mistakePracticeHref(item as Mistake);
+}
+
+// A mistake with no stored attempt still opens the same score card.
+function attemptFromMistake(item: HistoryItem): PracticeAttempt {
+  const correct = item.isCorrect || item.resolved;
+  return {
+    id: item.id,
+    questionId: item.questionId,
+    questionTitle: item.questionTitle,
+    skill: item.skill,
+    typeName: item.typeName,
+    prompt: item.prompt,
+    exam: item.exam,
+    examVersionId: '',
+    isCorrect: correct,
+    score: item.score ?? (correct ? 1 : 0),
+    maxScore: item.maxScore ?? 1,
+    accuracyPercentage: correct ? 100 : 0,
+    feedback: [!correct && item.correctResponse ? `Correct answer: ${item.correctResponse}.` : '', item.explanation].filter(Boolean).join(' '),
+    userResponse: item.userResponse,
+    timeSpentSeconds: 0,
+    createdAt: item.lastAttemptedAt,
+  };
+}
+
+function HistoryCard({ item, onOpen }: { item: HistoryItem; onOpen?: () => void }) {
+  const SkillIcon = SKILL_ICONS[item.skill] || Layers;
+  const hasScore = typeof item.score === 'number' && typeof item.maxScore === 'number' && item.maxScore > 0;
+  const ratio = hasScore ? item.score! / item.maxScore! : item.isCorrect || item.resolved ? 1 : 0;
+  const scoreTone = ratio >= 1
+    ? 'text-emerald-600 dark:text-emerald-400'
+    : ratio > 0
+      ? 'text-amber-600 dark:text-amber-400'
+      : 'text-rose-600 dark:text-rose-400';
+
+  const body = (
+    <>
+      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${SKILL_TILES[item.skill] ?? 'bg-muted text-muted-foreground'}`}>
+        <SkillIcon className="w-5 h-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[15px] font-semibold leading-snug text-foreground line-clamp-2 break-words">
+          {item.questionTitle}
+        </span>
+        <span className="mt-0.5 block text-xs font-medium capitalize text-muted-foreground">{item.skill}</span>
+      </span>
+      <span className={`shrink-0 font-display text-lg font-bold tabular-nums ${scoreTone}`}>
+        {hasScore ? <>{item.score}<span className="text-sm font-semibold text-muted-foreground">/{item.maxScore}</span></> : item.evaluation ? '—' : ratio >= 1 ? 'Correct' : 'Wrong'}
+      </span>
+    </>
+  );
+
+  const className = 'flex w-full items-center gap-3 rounded-2xl border border-border/70 bg-card p-3.5 text-left shadow-card transition-shadow';
+  if (!onOpen) return <div className={className}>{body}</div>;
+  return (
+    <button type="button" data-tour="history-item" onClick={onOpen} className={`${className} group/card hover:shadow-md hover:border-primary/30`}>
+      {body}
+      <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground transition-transform group-hover/card:translate-x-0.5" />
+    </button>
   );
 }
