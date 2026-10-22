@@ -69,6 +69,8 @@ import type { Delivery } from '@/lib/delivery';
 import { useProgressStage } from '@/lib/hooks/useProgressStage';
 import { loadCompleted, saveCompleted, unlockedIndex } from '@/lib/practiceProgress';
 import QuestionDrawer from '@/components/practice/QuestionDrawer';
+import { useExclusivePanel } from '@/components/layout/sidePanels';
+import ScoringProgress from '@/components/practice/ScoringProgress';
 import { recordQuestionAttempt } from '@/lib/questionStorage';
 
 function getSubtaskTitle(exam: ExamType, skill: SkillType, typeKey?: string | null, mistakeId?: string): string {
@@ -160,7 +162,8 @@ function PracticePageContent() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const isMockMode = Boolean(searchParams.get('mock'));
-  const drawerParam = searchParams.get('drawer');
+  // Task links add drawer=open; practice ignores it and opens on its first question instead.
+  const drawerParam = isMockMode ? searchParams.get('drawer') : null;
   // EPS-TOPIK reading items stand alone rather than sitting on a passage, so
   // they are dealt one at a time like listening, not from the passage list.
   const readingList =
@@ -171,11 +174,11 @@ function PracticePageContent() {
   const [loading, setLoading] = useState(
     () => !mistakeId && !readingList && Boolean(typeParam || drawerParam === 'open' || drawerParam === '1'),
   );
-  // The list of questions (or mock papers) opens with the page, so the learner
-  // picks one straight away. A link to one particular item keeps it shut, and so
-  // does reading with no task type: its passage list needs one, and Start deals any passage.
+  // The list of mock papers opens with the page, so the learner picks one straight away.
+  // Practice opens on its first question instead (a start costs a credit), with the list a tap away.
+  // A link to one particular item keeps it shut, and so does reading with no task type.
   const opensOnList =
-    !mistakeId && !searchParams.get('paper') && !searchParams.get('passage') && !searchParams.get('questionId') &&
+    isMockMode && !mistakeId && !searchParams.get('paper') && !searchParams.get('passage') && !searchParams.get('questionId') &&
     !(readingList && typeIdsFor(typeParam).length === 0);
   const [isDrawerOpen, setIsDrawerOpen] = useState(
     () => opensOnList || drawerParam === 'open' || drawerParam === '1',
@@ -413,7 +416,7 @@ function PracticePageContent() {
       }
 
       const startingKey = `${activeExam}:${selectedSkill}:${targetQuestion.id}`;
-      await api.post('/practice/start', {
+      const started = await api.post<{ scored?: boolean }>('/practice/start', {
         exam: activeExam,
         skill: selectedSkill,
         questionId: targetQuestion.id,
@@ -424,7 +427,8 @@ function PracticePageContent() {
       await refreshUser();
       toast.success(
         'Practice started',
-        speakingUnscored
+        // The server's answer: the capability check may not have returned when the page starts on its own.
+        speakingUnscored || started?.scored === false
           ? 'Recording practice - no sub-test credit used.'
           : !Number.isFinite(subTestsRemaining)
           ? 'Unlimited practice active. Good luck!'
@@ -483,6 +487,9 @@ function PracticePageContent() {
   // so they are practised and authored like any other single question.
   const isReading = selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK';
   const isAdminUser = isAdmin(user);
+  // The list (rendered at the bottom) only shows for these; while it shows, the left menu stays shut.
+  const drawerShown = readingList || (!isAdminUser && !mistakeId && !isMockMode);
+  useExclusivePanel('right', isDrawerOpen && drawerShown, () => setIsDrawerOpen(false));
 
   // When switching exam, skill, subtask, or mistake, reset state cleanly without querying backend/database.
   useEffect(() => {
@@ -659,11 +666,7 @@ function PracticePageContent() {
   const submitStage = useProgressStage(
     submitting,
     grading === 'speech'
-      ? [
-        { afterSeconds: 0, label: 'Sending your answer…' },
-        { afterSeconds: 3, label: 'Marking content and grammar…' },
-        { afterSeconds: 18, label: 'Writing your feedback…' },
-      ]
+      ? [{ afterSeconds: 0, label: 'Scoring…' }] // the steps show in ScoringProgress below
       : grading === 'ai'
         ? [
           { afterSeconds: 0, label: 'Sending your response…' },
@@ -802,6 +805,7 @@ function PracticePageContent() {
             exam={activeExam}
             passageId={passageParam ?? undefined}
             passageIds={readingPassages.map(passage => passage.id)}
+            listOpen={isDrawerOpen}
           />
         </Suspense>
       ) : isAdminUser ? (
@@ -1293,6 +1297,8 @@ function PracticePageContent() {
                 </>
               }
             />
+
+            {submitting && grading === 'speech' && <ScoringProgress />}
 
             <PracticeNotes notes={speakingUnscored ? [] : notesFor(selectedSkill)} />
 

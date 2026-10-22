@@ -60,8 +60,8 @@ describe('Mistake Bank navigates to the real Practice screen', () => {
     expect(link.getAttribute('href')).toContain(`skill=${skill}&type=multiplechoice`);
     expect(mocks.get).not.toHaveBeenCalled();
     fireEvent.click(link);
-    // Reading passages keep their own start screen.
-    if (skill === 'reading') fireEvent.click(await screen.findByRole('button', { name: /Start Practice/ }, { timeout: 5000 }));
+    // Every task, reading included, opens straight into the question: no start screen.
+    expect(screen.queryByRole('button', { name: /Start Practice/ })).toBeNull();
     const wrong = await screen.findByRole('radio', { name: /Wrong choice/ }, { timeout: 5000 });
     if (skill === 'reading') expect(screen.getByText('The original passage text.')).toBeDefined();
     fireEvent.click(wrong);

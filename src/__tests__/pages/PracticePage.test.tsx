@@ -43,7 +43,7 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-// The question list opens with the page; closing it starts the task.
+// Closing the question list (shut for practice, so a no-op there) starts the task.
 const closeList = async () => fireEvent.click(await screen.findByTitle('Close drawer'));
 
 async function openPractice(skill: string) {
@@ -303,10 +303,8 @@ describe('practice credit lifecycle', () => {
       // Keep the answer visible after a grading failure so the learner can retry.
       throw new Error('Scoring temporarily unavailable');
     });
-    const start = await openPractice(skill);
-    expect(api.post).not.toHaveBeenCalled();
-    expect(screen.queryByRole('button', { name: 'Submit Answer' })).toBeNull();
-    fireEvent.click(start);
+    // Practice opens on its first question: it starts without waiting for the list.
+    await openPractice(skill);
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/practice/start', {
       exam: 'IELTS', skill, questionId: 'question-1',
     }));

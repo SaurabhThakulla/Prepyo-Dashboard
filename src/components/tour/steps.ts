@@ -143,7 +143,7 @@ export const TOUR_STEPS: TourStep[] = [
         ? `${act(ctx)} Start Practice. The questions appear and your attempt begins.`
         : ctx.exam === 'EPS_TOPIK'
           ? `${act(ctx)} any question in the list. It opens straight away.`
-          : `${act(ctx)} any passage in the list, then Start Practice.`,
+          : `${act(ctx)} any passage in the list. It opens straight away.`,
     done: ({ visible }) => visible(SUBMIT),
     dim: true,
   },

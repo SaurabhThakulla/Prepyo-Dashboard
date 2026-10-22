@@ -31,6 +31,8 @@ interface ReadingPracticePanelProps {
   passageId?: string;
   /** The practice list's passages, in order, for the arrows and number list. */
   passageIds?: string[];
+  /** The practice list is open: the first passage waits until it closes (or one is picked from it). */
+  listOpen?: boolean;
 }
 
 /**
@@ -116,7 +118,7 @@ function labelForTypeKey(key?: string) {
  * Left pane: Reading passage with centered title and continuous natural paragraphs.
  * Right pane: Question notes completion card with inline inputs and circled numbers.
  */
-export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, passageId, passageIds = [] }: ReadingPracticePanelProps) {
+export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, passageId, passageIds = [], listOpen = false }: ReadingPracticePanelProps) {
   const { user, activeExam: contextExam, refreshUser, setIsTutorOpen, setTutorContextPrompt, activeTestSession, setActiveTestSession } = useApp();
   const activeExam = exam ?? contextExam;
   const resolution = useMistakeResolution(mistakeId);
@@ -289,11 +291,27 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
   // With a passage already on screen, the next one loads inside the same layout.
   const loadingNext = practice.dealing || isStarting || pendingPassage !== null;
 
+  // Opening a task starts its first passage straight away, once; the start card is
+  // only for an empty allowance or after the learner stops a test.
+  const startKey = `${activeExam}:${initialTypeKey ?? ''}:${mistakeId ?? ''}`;
+  const autoStartedFor = useRef<string | null>(null);
+  const waitingToStart =
+    !isSessionActive && !practice.checked && !set && subTestsRemaining > 0 && autoStartedFor.current !== startKey;
+  useEffect(() => {
+    if (!waitingToStart || listOpen || isStarting || pendingPassage) return;
+    autoStartedFor.current = startKey;
+    void handleStart();
+  }, [waitingToStart, listOpen, isStarting, pendingPassage, startKey, handleStart]);
+
   // Confirmation / Protection screen: Shown prior to starting.
   // Absolutely no database load or passage dealt until Start is clicked.
   if (!isSessionActive && !practice.checked && !(loadingNext && set)) {
     if (loadingNext) {
       return <ReadingPracticeSkeleton />;
+    }
+    if (waitingToStart) {
+      // Blank behind the open practice list; the passage shows once it starts.
+      return <div className="w-full min-h-[calc(100dvh-4rem)] bg-background" />;
     }
 
     return (
