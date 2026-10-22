@@ -66,19 +66,19 @@ describe('speaking tasks with prompt audio', () => {
 
     const recorder = await startTask();
     expect(recorder.dataset.disabled).toBe('true');
-    expect(screen.getByText(/then click to start recording/)).toBeTruthy();
+    expect(screen.getByText(/Recording starts on its own when it ends/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Finish prompt audio' }));
     expect(screen.getByTestId('recorder').dataset.disabled).toBe('false');
-    expect(screen.getByTestId('recorder').dataset.autostart).toBe('false');
-    expect(screen.queryByText(/then click to start recording/)).toBeNull();
+    expect(screen.getByTestId('recorder').dataset.autostart).toBe('true');
+    expect(screen.queryByText(/Recording starts on its own when it ends/)).toBeNull();
   });
 
-  it('waits for a click when there is nothing to listen to', async () => {
+  it('starts the prep countdown at once when there is nothing to listen to', async () => {
     mocks.question = { ...BASE, id: 'di-1', title: 'Describe Image', typeName: 'Describe Image' };
 
     const recorder = await startTask();
     expect(recorder.dataset.disabled).toBe('false');
-    expect(recorder.dataset.autostart).toBe('false');
+    expect(recorder.dataset.autostart).toBe('true');
   });
 });

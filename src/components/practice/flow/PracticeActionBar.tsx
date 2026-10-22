@@ -14,6 +14,8 @@ interface Props {
   actions: ReactNode;
   /** Shown in the middle of the row, e.g. playback of a recording. */
   middle?: ReactNode;
+  /** On a phone, drop `middle` when it only repeats what is just above the bar. */
+  hideMiddleOnPhone?: boolean;
   cost?: number | null;
   /** Position in the list, 0-based; navigation is hidden without a list. */
   index?: number;
@@ -30,14 +32,16 @@ export const ON_BAR = 'text-white hover:bg-white/15 hover:text-white';
 const ARROW = 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-30';
 
 /** The row under every practice item: actions on the left; cost, shuffle, and pagination in the right corner. */
-export default function PracticeActionBar({ actions, middle, cost, index = -1, total = 0, onJump, onShuffle, disabled }: Props) {
+export default function PracticeActionBar({ actions, middle, hideMiddleOnPhone, cost, index = -1, total = 0, onJump, onShuffle, disabled }: Props) {
   const nav = onJump && total > 0;
   return (
     <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-[#0f2a6b] bg-[#13307f] p-2.5 shadow-md sm:gap-3 sm:p-3">
       {/* On a phone: buttons on one row, credits and paging on the next. */}
       <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:gap-2">{actions}</div>
       {/* The recorder gets its own row above the buttons until there is room for one line. */}
-      {middle && <div className="order-first flex w-full justify-center xl:order-none xl:w-auto xl:flex-1">{middle}</div>}
+      {middle && (
+        <div className={cn('order-first flex w-full justify-center xl:order-none xl:w-auto xl:flex-1', hideMiddleOnPhone && 'max-sm:hidden')}>{middle}</div>
+      )}
       <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
         {cost != null && (
           <div

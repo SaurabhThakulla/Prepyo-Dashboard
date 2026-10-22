@@ -1,12 +1,11 @@
 import { subTestsLeft } from '@/lib/subscriptions';
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import {
   RefreshCw,
   WifiOff,
-  Play,
   Clock,
   Bot,
   AlertCircle,
@@ -25,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import AudioRecorder, { type RecorderStatus } from '@/components/practice/AudioRecorder';
+import { prepSecondsFor } from '@/components/practice/prepTime';
 import QuestionFigure from '@/components/practice/QuestionFigure';
 import PromptAudio from '@/components/practice/PromptAudio';
 import KoreanHelp from '@/components/practice/KoreanHelp';
@@ -67,7 +67,7 @@ import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
 import { useAICapabilities } from '@/lib/hooks/useAICapabilities';
 import type { Delivery } from '@/lib/delivery';
 import { useProgressStage } from '@/lib/hooks/useProgressStage';
-import { loadCompleted, saveCompleted, unlockedIndex } from '@/lib/practiceProgress';
+import { loadCompleted, saveCompleted } from '@/lib/practiceProgress';
 import QuestionDrawer from '@/components/practice/QuestionDrawer';
 import { useExclusivePanel } from '@/components/layout/sidePanels';
 import ScoringProgress from '@/components/practice/ScoringProgress';
@@ -162,8 +162,8 @@ function PracticePageContent() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const isMockMode = Boolean(searchParams.get('mock'));
-  // Task links add drawer=open; practice ignores it and opens on its first question instead.
-  const drawerParam = isMockMode ? searchParams.get('drawer') : null;
+  // Task links add drawer=open: the question list opens so the learner picks one (no credit until then).
+  const drawerParam = searchParams.get('drawer');
   // EPS-TOPIK reading items stand alone rather than sitting on a passage, so
   // they are dealt one at a time like listening, not from the passage list.
   const readingList =
@@ -196,11 +196,13 @@ function PracticePageContent() {
   const readingPassages = readingPassagesQuery.data?.passages ?? [];
   const passageParam = searchParams.get('passage');
 
+  // Every click on a task link opens its list, even the task already on screen.
+  const { key: locationKey } = useLocation();
   useEffect(() => {
     if (drawerParam === 'open' || drawerParam === '1') {
       setIsDrawerOpen(true);
     }
-  }, [drawerParam]);
+  }, [drawerParam, locationKey]);
 
   // Moving to another task or mock without leaving the page opens its list too.
   const listKey = `${activeExam}:${selectedSkill}:${typeParam ?? ''}:${isMockMode ? 'mock' : 'practice'}`;
@@ -270,7 +272,6 @@ function PracticePageContent() {
   const handleSelectQuestionFromDrawer = async (question: Question) => {
     closeTutorialVideo?.();
     setIsDrawerOpen(false);
-    autoStartedFor.current = question.id;
     setCurrentQuestion(question);
     resetAnswer();
 
@@ -340,11 +341,9 @@ function PracticePageContent() {
   const speakingUnscored =
     isSpeakingTask && capabilities?.speaking === false && !scoreFromTranscript;
   const subTestsRemaining = subTestsLeft(user?.subscription);
-  // Starting costs nothing on an unlimited plan or for unscored speaking, so it need not wait for the list to close.
-  const startIsFree = !Number.isFinite(subTestsRemaining) || speakingUnscored;
 
-  // A question starts on its own once; after a stop or a refused start the start screen is shown instead.
-  const autoStartedFor = useRef<string | null>(null);
+  // A question starts on its own; only a refused start stops it retrying, and shows the start card instead.
+  const startFailedFor = useRef<string | null>(null);
 
   const handleStart = async () => {
     closeTutorialVideo?.();
@@ -352,9 +351,9 @@ function PracticePageContent() {
     startPending.current = true;
     setIsStarting(true);
 
+    let targetQuestion = currentQuestion;
     try {
       let qList = questions;
-      let targetQuestion = currentQuestion;
 
       // Lazy load questions only when user explicitly clicks Start Practice
       if (!targetQuestion || qList.length === 0) {
@@ -396,18 +395,9 @@ function PracticePageContent() {
         setQuestions(list);
         qList = list;
 
-        const isFreeNav = Boolean(
-          `${typeParam || ''} ${list[0]?.typeName || ''}`.toLowerCase().match(/agree|disagree|describe/),
-        );
-        targetQuestion = isFreeNav
-          ? list[0] ?? null
-          : list[unlockedIndex(list.map(q => q.id), new Set(known))] ?? null;
-
-        if (!targetQuestion) {
-          targetQuestion = list[0] ?? null;
-        }
+        // A task always opens on its first question; the list picks any other.
+        targetQuestion = list[0] ?? null;
         setCurrentQuestion(targetQuestion);
-        autoStartedFor.current = targetQuestion.id;
       }
 
       if (!targetQuestion) {
@@ -425,16 +415,13 @@ function PracticePageContent() {
       setStartedTask(startingKey);
       setStartedAt(Date.now());
       await refreshUser();
-      toast.success(
-        'Practice started',
-        // The server's answer: the capability check may not have returned when the page starts on its own.
-        speakingUnscored || started?.scored === false
-          ? 'Recording practice - no sub-test credit used.'
-          : !Number.isFinite(subTestsRemaining)
-          ? 'Unlimited practice active. Good luck!'
-          : '1 sub-test credit applied. Good luck!',
-      );
+      // Only a spent credit is worth a toast; free and unlimited starts stay quiet.
+      // The server's answer: the capability check may not have returned when the page starts on its own.
+      if (!speakingUnscored && started?.scored !== false && Number.isFinite(subTestsRemaining)) {
+        toast.success('Practice started', '1 sub-test credit applied. Good luck!');
+      }
     } catch (err) {
+      startFailedFor.current = targetQuestion?.id ?? listKey;
       if (err instanceof ApiError && err.isLimitReached) {
         toast.warning('Daily limit reached', 'You have reached your daily sub-test allowance.');
       } else {
@@ -507,9 +494,9 @@ function PracticePageContent() {
         isActive: true,
         title: `${selectedSkill.toUpperCase()}: ${currentQuestion.typeName || currentQuestion.title || 'Practice'}`,
         skill: selectedSkill,
-        onStop: () => {
-          resetAnswer();
-        },
+        // Clicking elsewhere keeps the answer: a reset would start (and charge) the task again on its own.
+        // Another task resets it anyway, and leaving the page unmounts it.
+        onStop: () => {},
       });
     } else {
       setActiveTestSession?.(null);
@@ -703,7 +690,6 @@ function PracticePageContent() {
     startPending.current = true;
     setIsStarting(true);
     setCurrentQuestion(next);
-    autoStartedFor.current = next.id;
     resetAnswer();
     // Shown in place straight away, as before submitting; a refused start falls back to the start screen.
     const nextKey = `${activeExam}:${selectedSkill}:${next.id}`;
@@ -720,6 +706,7 @@ function PracticePageContent() {
       await refreshUser();
     } catch (err) {
       setStartedTask(prev => (prev === nextKey ? null : prev));
+      startFailedFor.current = next.id;
       if (err instanceof ApiError && err.isLimitReached) {
         toast.warning('Daily limit reached', 'You have reached your daily sub-test allowance.');
       } else {
@@ -740,7 +727,7 @@ function PracticePageContent() {
 
   // Try again on the same question: a clean answer, started again on its own.
   const retryQuestion = () => {
-    autoStartedFor.current = null;
+    startFailedFor.current = null;
     resetAnswer();
   };
 
@@ -756,7 +743,7 @@ function PracticePageContent() {
       className={`w-full ${isReading && !isAdminUser
           ? 'min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] lg:overflow-hidden'
           : 'min-h-[calc(100vh-4rem)]'
-        } p-0 m-0 flex flex-col bg-background`}
+        } p-0 m-0 max-sm:pb-20 flex flex-col bg-background`}
     >
       {/* An admin has no reason to sit the paper. They add questions/passages instead. */}
       {user?.subscription?.aiBlocked && (selectedSkill === 'speaking' || selectedSkill === 'writing') ? (
@@ -830,21 +817,8 @@ function PracticePageContent() {
             <RefreshCw className="w-4 h-4" /> Try again
           </Button>
         </div>
-      ) : !hasStarted && subTestsRemaining > 0 && autoStartedFor.current !== (currentQuestion?.id ?? listKey) ? (
-        <AutoStart
-          ready={!isDrawerOpen || (startIsFree && Boolean(currentQuestion))}
-          onStart={() => {
-            autoStartedFor.current = currentQuestion?.id ?? listKey;
-            void handleStart();
-          }}
-        />
-      ) : !hasStarted && subTestsRemaining > 0 ? (
-        // After a stop or a failed start: one button, not the start card.
-        <div className="w-full min-h-[calc(100vh-4rem)] flex items-center justify-center p-8">
-          <Button onClick={() => void handleStart()} disabled={isStarting} className="h-11 rounded-xl px-6 gap-2 font-semibold">
-            <Play className="w-4 h-4 fill-current" /> Start practice
-          </Button>
-        </div>
+      ) : !hasStarted && subTestsRemaining > 0 && startFailedFor.current !== (currentQuestion?.id ?? listKey) ? (
+        <AutoStart ready={!isDrawerOpen || Boolean(currentQuestion)} onStart={() => void handleStart()} />
       ) : !hasStarted ? (
         <div className="relative w-full min-h-[calc(100vh-4rem)]">
           <PreTestBlurOverlay
@@ -950,38 +924,52 @@ function PracticePageContent() {
                 </Button>
               </div>
             )}
-            {/* Main Unified Card; !shadow-none beats the global card lift in globals.css */}
-            <Card className="p-4 sm:p-6 space-y-4 bg-card dark:bg-[#0f141f] border-0 !shadow-none rounded-2xl">
-              {/* Task type first, as the heading */}
-              <div className="flex items-center gap-3 border-b border-primary/30 pb-3">
-                <span className="inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-primary px-2 text-xs font-bold text-primary-foreground">
-                  {taskCode}
-                </span>
-                <h2 className="text-lg sm:text-xl font-bold text-primary leading-tight">{currentQuestion.typeName}</h2>
+            <div className="space-y-3.5">
+              {/* Task type, its instructions, and the time allowed */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <span className="inline-flex h-12 min-w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 px-2 text-sm font-bold text-primary-foreground shadow-md sm:h-14 sm:min-w-14">
+                    {taskCode}
+                  </span>
+                  <div className="min-w-0 space-y-1 pt-0.5">
+                    <h2 className="text-xl sm:text-2xl font-bold text-primary leading-tight">{currentQuestion.typeName}</h2>
+                    {currentQuestion.timeLimitSeconds > 0 && (
+                      <p className="flex items-center gap-1.5 text-xs font-semibold text-primary sm:hidden">
+                        <Clock className="h-3.5 w-3.5" aria-hidden /> {timeAllowed(currentQuestion.timeLimitSeconds)} per question
+                      </p>
+                    )}
+                    {/* Plain sentences flow across the full width; prompts with lists keep their lines. */}
+                    {currentQuestion.prompt && (/\S\r?\n\S/.test(currentQuestion.prompt.trim())
+                      ? currentQuestion.prompt.split(/\n\s*\n/).map((paragraph, i) => (
+                        <p key={i} className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                          {paragraph.trim()}
+                        </p>
+                      ))
+                      : <p className="text-sm text-muted-foreground leading-relaxed">{currentQuestion.prompt.trim().split(/\s*\n\s*\n\s*/).join(' ')}</p>)}
+                  </div>
+                </div>
+                {currentQuestion.timeLimitSeconds > 0 && (
+                  <div className="hidden shrink-0 items-center gap-3 self-start rounded-2xl bg-primary/[0.07] px-4 py-2.5 sm:flex">
+                    <Clock className="h-6 w-6 text-primary" aria-hidden />
+                    <div className="leading-tight">
+                      <p className="text-xs text-muted-foreground">Time per question</p>
+                      <p className="text-sm font-bold text-primary">{timeAllowed(currentQuestion.timeLimitSeconds)}</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Instructions as plain text, one paragraph per blank-line block */}
-              {currentQuestion.prompt && (
-                <div className="space-y-2">
-                  {currentQuestion.prompt.split(/\n\s*\n/).map((paragraph, i) => (
-                    <p key={i} className="text-sm sm:text-[15px] text-foreground/90 leading-relaxed whitespace-pre-line">
-                      {paragraph.trim()}
-                    </p>
-                  ))}
-                </div>
-              )}
-
-              {/* Blue bar with the question's number and title */}
+              {/* The question: blue bar with its number and title, then its content */}
+              <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
               {(questionHeading || (!isPteListening && currentIndex >= 0)) && (
-                <div className="flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-primary-foreground sm:px-5">
-                  {!isPteListening && currentIndex >= 0 && <span className="font-bold tabular-nums">#{currentIndex + 1}</span>}
-                  {!isPteListening && currentIndex >= 0 && questionHeading && <span className="opacity-60">|</span>}
+                <div className="flex items-center gap-3 bg-gradient-to-r from-primary to-primary/75 px-4 py-3 text-primary-foreground sm:px-5">
+                  {!isPteListening && currentIndex >= 0 && <span className="rounded-lg bg-white/15 px-2.5 py-0.5 font-bold tabular-nums">#{currentIndex + 1}</span>}
+                  {!isPteListening && currentIndex >= 0 && questionHeading && <span className="h-5 w-px bg-white/40" aria-hidden />}
                   {questionHeading && <h3 className="text-sm sm:text-base font-semibold leading-snug">{questionHeading}</h3>}
                 </div>
               )}
 
-              {/* The question itself, straight on the card */}
-              <div className="space-y-3">
+              <div className="p-3 sm:p-4 space-y-3 empty:hidden">
 
                 {currentQuestion.imageUrl && (
                   // On a phone the figure runs edge to edge across the card, for a larger table.
@@ -1030,12 +1018,16 @@ function PracticePageContent() {
                       onChange={setBlankResponses}
                     />
                   ) : (
-                    <div className="p-4 sm:p-5 rounded-xl bg-background border border-primary/40 text-[15px] sm:text-[16px] text-foreground leading-relaxed whitespace-pre-line max-h-72 overflow-y-auto">
+                    <div className="p-4 sm:p-5 rounded-xl bg-primary/[0.04] text-[15px] sm:text-[16px] text-foreground leading-[1.9] whitespace-pre-line sm:max-h-72 sm:overflow-y-auto">
                       {passageText(currentQuestion)}
                     </div>
                   )
                 )}
 
+              </div>
+              </div>
+
+              <div className="space-y-3">
                 {/* Question Inputs */}
                 {grading === 'speech' && (
                   <div className="space-y-3 pt-2">
@@ -1055,12 +1047,14 @@ function PracticePageContent() {
                     {waitingForPrompt && (
                       <p role="status" className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                         <Volume2 className="w-3.5 h-3.5" aria-hidden />
-                        Play the audio above, then click to start recording.
+                        Play the audio above. Recording starts on its own when it ends.
                       </p>
                     )}
                     <AudioRecorder
                       key={`${currentQuestion.id}-${answerRound}`}
-                      prepSeconds={0}
+                      prepSeconds={prepSecondsFor(currentQuestion.typeId, currentQuestion.prepTimeSeconds)}
+                      // Prep counts down in the recorder as soon as the task (or its audio) is done, then recording starts.
+                      autoStart
                       maxSeconds={currentQuestion.timeLimitSeconds}
                       disabled={submitting || result !== null || waitingForPrompt}
                       controlRef={recorderControl}
@@ -1189,7 +1183,7 @@ function PracticePageContent() {
                 )}
               </div>
 
-            </Card>
+            </div>
 
             {result && (
               <PracticeResultDialog
@@ -1217,6 +1211,7 @@ function PracticePageContent() {
                 openQuestion(others[Math.floor(Math.random() * others.length)]);
               }}
               disabled={isStarting || submitting}
+              hideMiddleOnPhone={recording === null}
               middle={grading === 'speech' ? (
                 <RecordingPlayback
                   recording={recording}
@@ -1367,6 +1362,14 @@ function PracticePageContent() {
 }
 
 /** Starts the task as soon as the question list is out of the way; a skeleton until then. */
+// "40 seconds", "2 minutes", "1 min 30 s".
+function timeAllowed(seconds: number): string {
+  if (seconds < 60) return `${seconds} seconds`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s ? `${m} min ${s} s` : `${m} ${m === 1 ? 'minute' : 'minutes'}`;
+}
+
 function AutoStart({ ready, onStart }: { ready: boolean; onStart: () => void }) {
   const start = useRef(onStart);
   start.current = onStart;

@@ -63,9 +63,6 @@ describe('speaking practice when nothing can score it', () => {
 
     expect(await screen.findByText(/Scoring for speaking answers is being set up/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Submit recording' })).toBeNull();
-    expect(mocks.toast.success).toHaveBeenCalledWith(
-      'Practice started',
-      expect.stringContaining('no sub-test credit'),
-    );
+    expect(mocks.toast.success).not.toHaveBeenCalledWith('Practice started', expect.anything());
   });
 });
