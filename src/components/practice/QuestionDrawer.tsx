@@ -212,7 +212,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
         id="question-drawer-panel"
         data-stay
         aria-label="Practice Questions Drawer"
-        className={`fixed inset-y-0 right-0 w-full sm:w-[560px] md:w-[620px] lg:w-[680px] xl:w-[720px] max-w-full bg-slate-50 dark:bg-[#0c111b] border-l border-slate-200 dark:border-white/10 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-out ${
+        className={`fixed inset-y-0 right-0 w-full sm:w-[644px] md:w-[713px] lg:w-[782px] xl:w-[828px] max-w-full bg-slate-50 dark:bg-[#0c111b] border-l border-slate-200 dark:border-white/10 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
         }`}
       >

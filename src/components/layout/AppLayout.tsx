@@ -15,6 +15,8 @@ import AppTour from '@/components/tour/AppTour';
 import { useClipboardGuard } from '@/lib/hooks/useClipboardGuard';
 import { isAdmin } from '@/lib/types';
 import { isInstitutionPath } from '@/institution/paths';
+import { useExclusivePanel } from './sidePanels';
+import DictionaryPopup from '@/components/dictionary/DictionaryPopup';
 
 const AITutorDrawer = lazy(() => import('@/components/ai/AITutorDrawer'));
 const GlobalMiniPlayer = lazy(() => import('@/components/tutorials/GlobalMiniPlayer'));
@@ -133,6 +135,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     query.addEventListener('change', onChange);
     return () => query.removeEventListener('change', onChange);
   }, []);
+  useExclusivePanel('left', isSecondaryOpen, () => setIsSecondaryOpen(false));
   const panelPushes = isSecondaryOpen && isWide;
   const [onboardingClosedFor, setOnboardingClosedFor] = useState<string | null>(null);
 
@@ -266,6 +269,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     {/* Outside the click guard above, so tour buttons never end a running practice. */}
     <AppTour />
+    <DictionaryPopup />
 
     </>
   );
