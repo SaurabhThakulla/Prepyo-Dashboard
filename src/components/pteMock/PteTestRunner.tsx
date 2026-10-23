@@ -118,7 +118,7 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
       <div className="sticky top-16 z-30 bg-slate-800 text-white dark:bg-slate-900 border-b border-slate-700">
         <div className="px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-widest text-slate-300 font-bold">PTE Academic · Mock</p>
+            <p className="text-xs uppercase tracking-widest text-slate-300 font-bold">PTE Academic · Mock</p>
             <h1 className="text-sm font-bold truncate">{session.title}</h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 text-xs">

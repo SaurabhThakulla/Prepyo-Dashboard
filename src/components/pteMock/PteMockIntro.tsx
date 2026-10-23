@@ -197,7 +197,7 @@ export default function PteMockIntro({ entry, serverTranscription, starting, onS
               {entry.tasks.map(t => (
                 <li key={t.code} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <span className="flex items-center gap-2 min-w-0">
-                    <Badge variant="outline" className="shrink-0 font-mono text-[10px]">{t.code}</Badge>
+                    <Badge variant="outline" className="shrink-0 font-mono text-xs">{t.code}</Badge>
                     <span className="truncate text-foreground">{t.name}</span>
                   </span>
                   <span className={`shrink-0 font-semibold tabular-nums ${t.available < t.count ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>

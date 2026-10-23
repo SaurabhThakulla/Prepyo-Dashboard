@@ -73,7 +73,7 @@ export default function ScoreReport({ attempt, outcome, onBack, onRedo }: ScoreR
               {attempt.totalCorrect}
               <span className="text-xs font-bold text-muted-foreground"> / {attempt.totalQuestions}</span>
             </div>
-            <p className="text-[10px] text-muted-foreground">Auto-graded questions</p>
+            <p className="text-xs text-muted-foreground">Auto-graded questions</p>
           </Card>
         )}
 
@@ -83,7 +83,7 @@ export default function ScoreReport({ attempt, outcome, onBack, onRedo }: ScoreR
             {Math.round(attempt.durationSeconds / 60)}
             <span className="text-xs font-bold text-muted-foreground"> min</span>
           </div>
-          {outcome && <p className="text-[10px] text-muted-foreground">+{outcome.xpAwarded} XP awarded</p>}
+          {outcome && <p className="text-xs text-muted-foreground">+{outcome.xpAwarded} XP awarded</p>}
         </Card>
       </div>
 

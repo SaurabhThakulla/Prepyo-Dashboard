@@ -148,7 +148,7 @@ function FullTestCard({
         <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10" />
         <div className="relative lg:col-span-2 space-y-2.5">
           <div className="flex items-center gap-2">
-            <Badge className="bg-white/20 text-white border-transparent text-[10px] px-2 py-0.5">
+            <Badge className="bg-white/20 text-white border-transparent text-xs px-2 py-0.5">
               {isCore ? 'PTE Core · Full test' : 'Recommended · Full test'}
             </Badge>
             <span className="flex items-center gap-1 text-[11px] font-semibold text-white/85"><Clock className="h-3 w-3" /> {formatMinutes(entry.estimatedMinutes)}</span>
@@ -159,7 +159,7 @@ function FullTestCard({
             {entry.parts.map(p => (
               <div key={p.part} className="rounded-lg bg-white/15 px-2 py-1.5">
                 <span className="block text-sm font-extrabold tabular-nums leading-none">{p.items}</span>
-                <span className="block text-[10px] font-semibold text-white/80 mt-1 leading-tight">{p.label}</span>
+                <span className="block text-xs font-semibold text-white/80 mt-1 leading-tight">{p.label}</span>
               </div>
             ))}
           </div>
@@ -170,7 +170,7 @@ function FullTestCard({
             <button type="button" onClick={() => onReport(entry.latest!.id)} className="flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2 text-left hover:bg-white/25">
               <Trophy className="h-5 w-5" />
               <span>
-                <span className="block text-[10px] uppercase tracking-wide text-white/75">Last overall</span>
+                <span className="block text-xs uppercase tracking-wide text-white/75">Last overall</span>
                 <span className="text-xl font-extrabold tabular-nums">{entry.latest.headline}</span>
               </span>
             </button>
@@ -224,13 +224,13 @@ function SectionCard({
         </div>
         <div className="flex items-center gap-2">
           {papers.length > 0 && (
-            <Badge variant="outline" className="font-semibold text-[10px]">
+            <Badge variant="outline" className="font-semibold text-xs">
               {papers.length} {papers.length === 1 ? 'test' : 'tests'}
             </Badge>
           )}
           {entry.latest?.headline != null ? (
             <button type="button" onClick={() => onReport(entry.latest!.id)} className="text-right">
-              <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">Last score</span>
+              <span className="block text-xs uppercase tracking-wide text-muted-foreground">Last score</span>
               <span className="text-lg font-extrabold tabular-nums text-foreground">{entry.latest.headline}</span>
             </button>
           ) : entry.live ? (
@@ -246,7 +246,7 @@ function SectionCard({
       </div>
       <div className="flex flex-wrap gap-1">
         {taskList.map(t => (
-          <Badge key={t.code} variant="outline" className={`font-mono text-[10px] ${t.available === 0 ? 'opacity-40 line-through' : ''}`}>
+          <Badge key={t.code} variant="outline" className={`font-mono text-xs ${t.available === 0 ? 'opacity-40 line-through' : ''}`}>
             {t.code}
           </Badge>
         ))}

@@ -127,7 +127,7 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
                   </div>
                 );
               })}
-              <div className="grid grid-cols-[80px_1fr_36px] gap-3 text-[10px] text-muted-foreground">
+              <div className="grid grid-cols-[80px_1fr_36px] gap-3 text-xs text-muted-foreground">
                 <span />
                 <div className="flex justify-between"><span>10</span><span>30</span><span>50</span><span>70</span><span>90</span></div>
                 <span />
@@ -160,7 +160,7 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
                 <div key={t.code} className="rounded-lg border border-border p-3 space-y-1.5">
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="flex items-center gap-1.5 min-w-0">
-                      <Badge variant="outline" className="font-mono text-[10px] shrink-0">{t.code}</Badge>
+                      <Badge variant="outline" className="font-mono text-xs shrink-0">{t.code}</Badge>
                       <span className="truncate font-medium text-foreground">{t.name}</span>
                     </span>
                     <span className="font-bold tabular-nums text-foreground">{t.scored ? `${t.percent}%` : '—'}</span>
@@ -168,12 +168,12 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
                   <Progress value={t.scored ? t.percent : 0} className="h-1.5" indicatorClassName={barColor(t.percent)} />
                   <div className="flex flex-wrap gap-1">
                     {SKILL_ORDER.filter(s => t.weights[s]).map(s => (
-                      <span key={s} className="text-[10px] text-muted-foreground">
+                      <span key={s} className="text-xs text-muted-foreground">
                         <span className={`inline-block h-1.5 w-1.5 rounded-full mr-1 ${SKILL_COLORS[s]}`} />
                         {SKILL_LABELS[s]}
                       </span>
                     ))}
-                    <span className="text-[10px] text-muted-foreground ml-auto">{t.items} item{t.items === 1 ? '' : 's'}</span>
+                    <span className="text-xs text-muted-foreground ml-auto">{t.items} item{t.items === 1 ? '' : 's'}</span>
                   </div>
                 </div>
               ))}
@@ -214,7 +214,7 @@ function ScoreRing({ score }: { score: number | null }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="font-display text-4xl font-extrabold tabular-nums">{score ?? '—'}</span>
-        <span className="text-[10px] text-white/75">out of 90</span>
+        <span className="text-xs text-white/75">out of 90</span>
       </div>
     </div>
   );
@@ -252,7 +252,7 @@ function ReviewRow({ item }: { item: PteReviewItem }) {
         ) : (
           <XCircle className="h-4 w-4 text-rose-500 shrink-0" />
         )}
-        <Badge variant="outline" className="font-mono text-[10px] shrink-0">{item.task}</Badge>
+        <Badge variant="outline" className="font-mono text-xs shrink-0">{item.task}</Badge>
         <span className="text-xs text-foreground truncate flex-1">{item.question.title || item.taskName}</span>
         <span className="text-[11px] text-muted-foreground hidden sm:inline">{STATUS_LABELS[item.status]}</span>
         <span className="text-xs font-bold tabular-nums w-10 text-right">{item.percent != null ? `${item.percent}%` : '—'}</span>
@@ -281,7 +281,7 @@ function ReviewRow({ item }: { item: PteReviewItem }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-0.5">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
       <div className="text-foreground leading-relaxed whitespace-pre-line">{children}</div>
     </div>
   );
