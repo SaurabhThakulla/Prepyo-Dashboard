@@ -176,7 +176,7 @@ export default function AdminPaymentsPage() {
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-sm text-foreground">{payment.userName}</span>
-                  <Badge variant="outline" className={`text-[10px] font-bold ${STATUS_STYLES[payment.status]}`}>
+                  <Badge variant="outline" className={`text-xs font-bold ${STATUS_STYLES[payment.status]}`}>
                     {payment.status}
                   </Badge>
                 </div>
@@ -310,7 +310,7 @@ export default function AdminPaymentsPage() {
 function Detail({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
-      <span className="block text-[10px] uppercase font-bold text-muted-foreground">{label}</span>
+      <span className="block text-xs uppercase font-bold text-muted-foreground">{label}</span>
       <span className={`text-foreground ${mono ? 'font-mono' : ''}`}>{value}</span>
     </div>
   );

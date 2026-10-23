@@ -140,7 +140,7 @@ export default function AdminConsultanciesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs min-w-[920px]">
               <thead>
-                <tr className="text-left text-[10px] uppercase text-muted-foreground font-bold border-b border-border">
+                <tr className="text-left text-xs uppercase text-muted-foreground font-bold border-b border-border">
                   <th className="py-2 pr-3">Consultancy</th>
                   <th className="py-2 pr-3">Admin</th>
                   <th className="py-2 pr-3">Created</th>
@@ -172,7 +172,7 @@ export default function AdminConsultanciesPage() {
                       </td>
                       <td className="py-2.5 pr-3">{date(c.createdAt)}</td>
                       <td className="py-2.5 pr-3">
-                        <Badge variant="outline" className={`text-[10px] font-bold ${STATUS_STYLES[c.status]}`}>
+                        <Badge variant="outline" className={`text-xs font-bold ${STATUS_STYLES[c.status]}`}>
                           {c.status}
                         </Badge>
                         {c.validUntil && <div className="text-[11px] text-muted-foreground">until {date(c.validUntil)}</div>}
@@ -229,7 +229,7 @@ function StudentsTable({ consultancyId, days, period }: { consultancyId: string;
         {students.length} students · usage over {period.toLowerCase()}
       </caption>
       <thead>
-        <tr className="text-left text-[10px] uppercase text-muted-foreground font-bold border-b border-border">
+        <tr className="text-left text-xs uppercase text-muted-foreground font-bold border-b border-border">
           <th className="py-1.5 pr-3">Student</th>
           <th className="py-1.5 pr-3">Exam</th>
           <th className="py-1.5 pr-3">Own plan</th>

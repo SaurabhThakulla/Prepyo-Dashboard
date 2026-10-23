@@ -239,7 +239,7 @@ export default function AdminPage() {
           ].map(item => (
             <div key={item.label} className="p-3.5 rounded-xl bg-background border border-border text-center space-y-1">
               <div className="font-display text-xl font-black text-foreground">{item.value.toLocaleString()}</div>
-              <span className="text-[10px] text-muted-foreground font-semibold">{item.label}</span>
+              <span className="text-xs text-muted-foreground font-semibold">{item.label}</span>
             </div>
           ))}
         </div>
@@ -262,11 +262,11 @@ export default function AdminPage() {
                 <span className="font-mono font-bold text-foreground">{row.model}</span>
                 <div className="flex gap-6 text-right">
                   <div>
-                    <span className="text-[10px] text-muted-foreground block">Requests</span>
+                    <span className="text-xs text-muted-foreground block">Requests</span>
                     <span className="font-bold text-foreground">{row.requests}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-muted-foreground block">Tokens</span>
+                    <span className="text-xs text-muted-foreground block">Tokens</span>
                     <span className="font-bold text-primary">
                       {(row.promptTokens + row.completionTokens).toLocaleString()}
                     </span>

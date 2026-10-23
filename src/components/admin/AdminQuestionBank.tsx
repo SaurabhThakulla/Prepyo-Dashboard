@@ -282,10 +282,10 @@ export default function AdminQuestionBank({
 
             <div className="p-3 rounded-xl bg-muted/60 border border-border/60 space-y-2">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <Badge variant="outline" className="text-[10px]">
+                <Badge variant="outline" className="text-xs">
                   {EXAM_LABELS[questionToDelete.exam] ?? questionToDelete.exam}
                 </Badge>
-                <Badge variant="secondary" className="text-[10px]">
+                <Badge variant="secondary" className="text-xs">
                   {questionToDelete.typeName}
                 </Badge>
               </div>
@@ -361,19 +361,19 @@ function QuestionCard({
   return (
     <div className="rounded-2xl border border-border/80 bg-card p-4 space-y-3 shadow-xs">
       <div className="flex items-center gap-1.5 flex-wrap">
-        <Badge variant="outline" className="text-[9px]">
+        <Badge variant="outline" className="text-xs">
           {EXAM_LABELS[question.exam] ?? question.exam}
         </Badge>
         {question.isPublished ? (
-          <Badge className="text-[9px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
+          <Badge className="text-xs bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
             Published
           </Badge>
         ) : (
-          <Badge variant="secondary" className="text-[9px]">
+          <Badge variant="secondary" className="text-xs">
             Draft
           </Badge>
         )}
-        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground truncate max-w-[180px]">
+        <span className="text-xs font-semibold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground truncate max-w-[180px]">
           {question.typeName}
         </span>
       </div>

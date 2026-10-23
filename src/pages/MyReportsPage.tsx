@@ -129,7 +129,7 @@ export default function MyReportsPage() {
                         <Badge
                           variant="outline"
                           className={cn(
-                            'text-[10px]',
+                            'text-xs',
                             listed.status === 'open'
                               ? 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400'
                               : 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',

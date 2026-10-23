@@ -295,12 +295,12 @@ function SetSummary({ set, startNumber }: { set: AuthoredSet; startNumber: numbe
         <span className="text-xs font-bold text-foreground truncate">
           {set.position}. {set.typeName}
           {set.exams?.length > 0 && (
-            <span className="ml-1.5 font-mono text-[10px] font-bold text-muted-foreground">
+            <span className="ml-1.5 font-mono text-xs font-bold text-muted-foreground">
               {set.exams.join(' · ')}
             </span>
           )}
         </span>
-        <span className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-muted-foreground">
+        <span className="shrink-0 flex items-center gap-1 text-xs font-bold text-muted-foreground">
           <CheckCircle2 className="w-3 h-3 text-emerald-500" />
           {set.questions.length === 1
             ? `Question ${startNumber}`

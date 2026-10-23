@@ -67,7 +67,7 @@ export default function StatCard({
         </div>
       ) : null}
 
-      <p className="text-[10px] text-muted-foreground">{note}</p>
+      <p className="text-xs text-muted-foreground">{note}</p>
     </Card>
   );
 }

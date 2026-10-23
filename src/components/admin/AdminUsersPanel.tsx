@@ -163,7 +163,7 @@ export default function AdminUsersPanel() {
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">All users</span>
+            <span className="text-xs font-bold text-muted-foreground uppercase">All users</span>
             <Users className="w-3.5 h-3.5 text-muted-foreground" />
           </div>
           <div className="font-display text-2xl font-black text-foreground">{totalUsers.toLocaleString()}</div>
@@ -178,11 +178,11 @@ export default function AdminUsersPanel() {
               roleFilter === entry.role ? 'border-primary bg-primary/5' : 'border-border bg-background hover:bg-muted/50'
             }`}
           >
-            <span className="text-[10px] font-bold text-muted-foreground uppercase block">
+            <span className="text-xs font-bold text-muted-foreground uppercase block">
               {ROLE_LABELS[entry.role] ?? entry.role}
             </span>
             <div className="font-display text-2xl font-black text-foreground">{entry.count.toLocaleString()}</div>
-            <span className="text-[10px] text-muted-foreground">{entry.plan ?? 'access level'}</span>
+            <span className="text-xs text-muted-foreground">{entry.plan ?? 'access level'}</span>
           </button>
         ))}
       </div>
@@ -222,7 +222,7 @@ export default function AdminUsersPanel() {
         <div className="overflow-x-auto">
           <table className="w-full text-xs min-w-[820px]">
             <thead>
-              <tr className="text-left text-[10px] uppercase text-muted-foreground font-bold border-b border-border">
+              <tr className="text-left text-xs uppercase text-muted-foreground font-bold border-b border-border">
                 <th className="py-2 pr-3">User</th>
                 <th className="py-2 pr-3">Role</th>
                 <th className="py-2 pr-3">Started</th>
@@ -243,7 +243,7 @@ export default function AdminUsersPanel() {
                   <td className="py-2.5 pr-3">
                     <Badge
                       variant="outline"
-                      className={`text-[10px] font-bold ${ROLE_STYLES[user.role] ?? ROLE_STYLES.suru}`}
+                      className={`text-xs font-bold ${ROLE_STYLES[user.role] ?? ROLE_STYLES.suru}`}
                     >
                       {ROLE_LABELS[user.role] ?? user.role}
                     </Badge>
@@ -355,7 +355,7 @@ function ExpiryCell({ validUntil }: { validUntil?: string }) {
   return (
     <span className={expired ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-foreground'}>
       {formatExamDate(validUntil)}
-      {expired && <span className="ml-1 text-[10px] font-bold uppercase">expired</span>}
+      {expired && <span className="ml-1 text-xs font-bold uppercase">expired</span>}
     </span>
   );
 }
