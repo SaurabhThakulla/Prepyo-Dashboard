@@ -29,8 +29,6 @@ const PROTECTED_PREFIXES = [
   '/practice',
   '/mocks',
   '/mistakes',
-  '/evaluations',
-  '/leaderboard',
   '/profile',
   '/referrals',
   '/subscription',
@@ -241,17 +239,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           } flex w-full min-w-0 flex-col min-h-screen transition-[padding] duration-300 ease-in-out`}
       >
         <MobileTopBar />
-        <Header
-          isSecondaryOpen={isSecondaryOpen}
-          onToggleSidebar={() => {
-            if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-              setIsSidebarOpen(prev => !prev);
-              setIsSecondaryOpen(true);
-            } else {
-              setIsSecondaryOpen(prev => !prev);
-            }
-          }}
-        />
+        <Header />
 
         <main className="flex-1 w-full min-w-0 p-0 pb-[var(--mobile-nav-h)] flex flex-col min-h-0">
           {isProtected ? <RequireAuth>{children}</RequireAuth> : children}

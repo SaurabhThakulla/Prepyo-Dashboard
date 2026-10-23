@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import ReportIssueDialog from '@/components/support/ReportIssueDialog';
 import PrimaryIconRail from './sidebar/PrimaryIconRail';
@@ -119,11 +120,7 @@ export default function AppSidebar({
           user={user}
           isSigningOut={isSigningOut}
           onSectionClick={handleSectionClick}
-          onLogoClick={() => {
-            setActiveSection('home');
-            setIsSecondaryOpen(true);
-            closeMobileSidebar();
-          }}
+          onLogoClick={closeMobileSidebar}
           onReportIssue={() => {
             setIsReportOpen(true);
             setIsOpen(false);
@@ -148,6 +145,21 @@ export default function AppSidebar({
             if (panelOverlays) setIsSecondaryOpen(false);
           }}
         />
+
+        {/* Round toggle halfway down the sidebar's edge: hides or shows the menu. */}
+        <button
+          type="button"
+          data-stay
+          onClick={() => setIsSecondaryOpen(prev => !prev)}
+          title={isSecondaryOpen ? 'Hide menu' : 'Show menu'}
+          aria-label={isSecondaryOpen ? 'Hide menu' : 'Show menu'}
+          aria-expanded={isSecondaryOpen}
+          className="group absolute -right-5 top-1/2 z-50 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-primary text-white shadow-xl shadow-primary/30 transition-all hover:scale-105 hover:bg-primary/90 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:border-slate-900"
+        >
+          {isSecondaryOpen
+            ? <ChevronLeft className="h-6 w-6 transition-transform group-hover:-translate-x-0.5" aria-hidden />
+            : <ChevronRight className="h-6 w-6 transition-transform group-hover:translate-x-0.5" aria-hidden />}
+        </button>
       </div>
 
       <ReportIssueDialog open={isReportOpen} onOpenChange={setIsReportOpen} />

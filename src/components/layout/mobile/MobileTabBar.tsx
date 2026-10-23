@@ -50,7 +50,7 @@ export default function MobileTabBar() {
         typing && 'translate-y-full',
       )}
     >
-      <ul className="mx-auto grid h-16 max-w-xl grid-cols-5">
+      <ul className="grid h-16 grid-cols-5">
         {tabs.map(tab => {
           const Icon = tab.icon;
           const active = tab.id === current;
