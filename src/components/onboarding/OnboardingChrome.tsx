@@ -387,7 +387,7 @@ export function OnboardingNavigation({
         ) : <span aria-hidden />}
         <div className="flex items-center gap-3">
           <span className={`hidden text-[11px] font-semibold text-slate-400 transition-opacity lg:inline ${disabled ? 'opacity-0' : ''}`}>
-            or press <kbd className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 font-sans text-[10px] text-slate-500">→</kbd>
+            or press <kbd className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 font-sans text-xs text-slate-500">→</kbd>
           </span>
           <Button
             onClick={onContinue}

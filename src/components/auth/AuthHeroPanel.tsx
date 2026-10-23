@@ -29,7 +29,7 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
               <span className="font-display text-2xl font-black tracking-tight text-white">
                 prep<span className="text-primary">yo</span>
               </span>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-primary/25 text-blue-200 px-2 py-0.5 rounded-md border border-primary/40">
+              <span className="text-xs font-black uppercase tracking-wider bg-primary/25 text-blue-200 px-2 py-0.5 rounded-md border border-primary/40">
                 NP
               </span>
             </div>
@@ -57,7 +57,7 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
             icon={<Gift className="w-4 h-4" />}
             iconClass="bg-amber-500/20 text-amber-400"
             title={formatPlanName(freePlan?.name || freePlan?.id) || 'Instant Free Starter'}
-            badge={<Badge variant="secondary" className="text-[10px] py-0 font-bold shrink-0">NPR {freePlan?.priceNPR ?? 0}</Badge>}
+            badge={<Badge variant="secondary" className="text-xs py-0 font-bold shrink-0">NPR {freePlan?.priceNPR ?? 0}</Badge>}
             tickClass="text-primary"
             points={freePlan?.features?.length ? freePlan.features : ['Nepali Accent AI Engine']}
           />
@@ -65,7 +65,7 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
             icon={<ShieldCheck className="w-4 h-4 text-primary" />}
             iconClass="bg-primary/20 text-primary"
             title="Privacy & Security"
-            badge={<Badge variant="indigo" className="text-[10px] py-0 font-bold uppercase shrink-0">256-Bit</Badge>}
+            badge={<Badge variant="indigo" className="text-xs py-0 font-bold uppercase shrink-0">256-Bit</Badge>}
             tickClass="text-primary"
             points={['Google OAuth Sign-In', 'Revocable User Sessions', '100% Student Data Safety']}
           />
