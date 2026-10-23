@@ -81,7 +81,7 @@ export default function PteDashboardMatrix({ className = '' }: Props) {
                     {label}
                   </h3>
                   {showWeightBadge && (
-                    <span className="bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/70 dark:border-rose-900/50 text-[10px] font-extrabold px-2 py-0.5 rounded shadow-2xs">
+                    <span className="bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/70 dark:border-rose-900/50 text-xs font-extrabold px-2 py-0.5 rounded shadow-2xs">
                       Score Weight
                     </span>
                   )}
@@ -97,7 +97,7 @@ export default function PteDashboardMatrix({ className = '' }: Props) {
                     >
                       <div className="flex items-center min-w-0 pr-2">
                         {item.isNew && (
-                          <span className="bg-rose-500 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded-full mr-1.5 shrink-0 shadow-2xs uppercase tracking-wide">
+                          <span className="bg-rose-500 text-white text-xs font-extrabold px-1.5 py-0.2 rounded-full mr-1.5 shrink-0 shadow-2xs uppercase tracking-wide">
                             New
                           </span>
                         )}
@@ -105,7 +105,7 @@ export default function PteDashboardMatrix({ className = '' }: Props) {
                           {item.name}
                         </span>
                         {item.isAi && (
-                          <span className="text-[10px] font-bold text-rose-500 ml-1.5 shrink-0">
+                          <span className="text-xs font-bold text-rose-500 ml-1.5 shrink-0">
                             AI Score
                           </span>
                         )}
@@ -134,7 +134,7 @@ export default function PteDashboardMatrix({ className = '' }: Props) {
                                   {item.name}
                                 </span>
                               </div>
-                              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400/80 dark:text-slate-500/80 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded shrink-0">
+                              <span className="text-xs font-bold uppercase tracking-wider text-slate-400/80 dark:text-slate-500/80 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded shrink-0">
                                 Locked
                               </span>
                             </button>

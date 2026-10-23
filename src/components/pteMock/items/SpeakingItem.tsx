@@ -4,6 +4,7 @@ import { encodeForUpload } from '@/lib/audio';
 import { PteAnswer } from '@/lib/pteMock/types';
 import { AudioStatusPanel, RecorderPhase, RecorderStatusPanel } from './StatusPanels';
 import { usePromptPlayback } from './usePromptPlayback';
+import { isRepeatSentenceTask, passageText } from '@/lib/listening';
 import { ItemHandle, ItemProps } from './types';
 
 /**
@@ -153,9 +154,9 @@ const SpeakingItem = forwardRef<ItemHandle, ItemProps>(function SpeakingItem({ i
         </div>
       )}
 
-      {question.contextPassage && (
+      {question.contextPassage && !isRepeatSentenceTask(question) && (
         <div className="rounded-xl border border-border bg-background p-5 text-[15px] leading-8 text-foreground whitespace-pre-line select-none">
-          {question.contextPassage}
+          {passageText(question)}
         </div>
       )}
 

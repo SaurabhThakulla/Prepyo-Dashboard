@@ -254,7 +254,7 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
                 </DialogDescription>
               </div>
               <div className="shrink-0 text-right">
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   To pay
                 </span>
                 <span className="block whitespace-nowrap font-display text-xl font-black leading-tight text-primary sm:text-3xl">

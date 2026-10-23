@@ -5,8 +5,7 @@ import { ExamType, SkillType } from '@/lib/types';
  *
  * Two rules make the cache work:
  *
- * 1. Two places that want the same data must build the same key. The dashboard
- *    and the leaderboard page both call `leaderboard(exam)`, so they share one
+ * 1. Two places that want the same data must build the same key so they share one
  *    request instead of making two.
  * 2. A key must name everything the request varies by. `questions` includes the
  *    skill, so switching skill fetches, but switching back is instant.
@@ -18,9 +17,6 @@ import { ExamType, SkillType } from '@/lib/types';
 export const queryKeys = {
   dashboard: (exam: ExamType) => ['dashboard', exam] as const,
   progress: () => ['progress'] as const,
-
-  leaderboard: (exam: ExamType, region?: string, period?: string) =>
-    ['leaderboard', exam, region ?? 'all', period ?? 'all-time'] as const,
 
   mistakes: (exam: ExamType, skill?: string, unresolvedOnly?: boolean, period?: string) =>
     ['mistakes', exam, skill ?? 'all', unresolvedOnly ?? false, period ?? 'weekly'] as const,

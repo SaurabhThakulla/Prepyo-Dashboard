@@ -146,11 +146,11 @@ export default function IeltsMockCenter({ header }: IeltsMockCenterProps) {
                       <Icon className="h-5 w-5" />
                     </div>
                     {test.papersCount > 0 ? (
-                      <Badge variant="secondary" className="font-semibold text-[10px] font-mono">
+                      <Badge variant="secondary" className="font-semibold text-xs font-mono">
                         {test.papersCount} {test.papersCount === 1 ? 'test' : 'tests'}
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="text-[10px]">
+                      <Badge variant="outline" className="text-xs">
                         Available
                       </Badge>
                     )}

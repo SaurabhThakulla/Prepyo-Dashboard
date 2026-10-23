@@ -38,7 +38,7 @@ export default function StatCard({
           {valueSuffix}
         </div>
 
-        <div className="h-1.5 w-full bg-slate-100 dark:bg-zinc-800/90 rounded-full overflow-hidden mt-3">
+        <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800/90 rounded-full overflow-hidden mt-3">
           <div
             className="h-full bg-primary rounded-full transition-all duration-500"
             style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}

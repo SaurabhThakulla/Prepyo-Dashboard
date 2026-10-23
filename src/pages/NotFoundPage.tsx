@@ -41,7 +41,7 @@ export default function NotFound() {
               <span className="font-display text-lg font-black tracking-tight text-foreground">
                 Prepyo
               </span>
-              <span className="text-[10px] text-muted-foreground font-medium">
+              <span className="text-xs text-muted-foreground font-medium">
                 AI Exam Prep • PTE & IELTS
               </span>
             </div>
@@ -166,7 +166,7 @@ export default function NotFound() {
               </div>
               <div className="truncate">
                 <div className="font-bold">Practice Tests</div>
-                <div className="text-[10px] text-muted-foreground">PTE & IELTS</div>
+                <div className="text-xs text-muted-foreground">PTE & IELTS</div>
               </div>
             </Link>
 
@@ -179,7 +179,7 @@ export default function NotFound() {
               </div>
               <div className="truncate">
                 <div className="font-bold">Mock Exams</div>
-                <div className="text-[10px] text-muted-foreground">Full simulations</div>
+                <div className="text-xs text-muted-foreground">Full simulations</div>
               </div>
             </Link>
           </div>

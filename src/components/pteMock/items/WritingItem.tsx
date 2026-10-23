@@ -1,5 +1,6 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { writingWordCount } from '@/lib/writing';
+import { passageText } from '@/lib/listening';
 import { ItemHandle, ItemProps } from './types';
 
 /** How long typing must pause before the draft is saved. */
@@ -36,7 +37,7 @@ const WritingItem = forwardRef<ItemHandle, ItemProps>(function WritingItem({ ite
     <div className="space-y-4">
       {question.contextPassage ? (
         <div className="rounded-xl border border-border bg-background p-5 text-sm leading-7 text-foreground whitespace-pre-line max-h-[40vh] overflow-y-auto">
-          {question.contextPassage}
+          {passageText(question)}
         </div>
       ) : null}
       {question.prompt && (

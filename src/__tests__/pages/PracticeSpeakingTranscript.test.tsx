@@ -79,7 +79,7 @@ describe('speaking practice scored from the transcript', () => {
     });
 
     render(<MemoryRouter initialEntries={['/practice?skill=speaking']}><PracticePage /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: /Start Practice/ }));
+    fireEvent.click(await screen.findByTitle('Close drawer'));
 
     expect(await screen.findByText(/Pronunciation is not scored here/)).toBeTruthy();
 
@@ -119,7 +119,7 @@ describe('speaking practice scored from the transcript', () => {
     });
 
     render(<MemoryRouter initialEntries={['/practice?skill=speaking']}><PracticePage /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: /Start Practice/ }));
+    fireEvent.click(await screen.findByTitle('Close drawer'));
     fireEvent.click(await screen.findByRole('button', { name: 'Record test audio' }));
 
     expect(await screen.findByText(/could not make out any words/)).toBeTruthy();

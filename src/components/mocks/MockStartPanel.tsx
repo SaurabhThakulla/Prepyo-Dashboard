@@ -64,7 +64,7 @@ export default function MockStartPanel({ mock, exam, isStarting, onStart }: Mock
         </Button>
 
         <p className="text-[11px] text-muted-foreground">
-          The timer starts as soon as you begin, and the paper is graded on the server.
+          The timer starts as soon as you begin, and your answers are marked automatically.
         </p>
       </Card>
     </div>

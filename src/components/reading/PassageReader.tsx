@@ -17,9 +17,9 @@ type TextSize = 'sm' | 'base' | 'lg';
 type FontType = 'reading' | 'sans';
 
 const FONT_CLASSES: Record<TextSize, { body: string; label: string; line: string }> = {
-  sm: { body: 'text-[13px] sm:text-[14px] leading-6', label: 'text-[11px]', line: 'space-y-2.5' },
-  base: { body: 'text-[14.5px] sm:text-[15.5px] leading-7', label: 'text-xs', line: 'space-y-3' },
-  lg: { body: 'text-[16px] sm:text-[17px] leading-8', label: 'text-sm', line: 'space-y-3.5' },
+  sm: { body: 'text-[13.5px] sm:text-[14.5px] leading-relaxed', label: 'text-[11px]', line: 'space-y-3' },
+  base: { body: 'text-[15px] sm:text-[16px] leading-[1.8]', label: 'text-xs', line: 'space-y-3.5' },
+  lg: { body: 'text-[16.5px] sm:text-[17.5px] leading-[1.85]', label: 'text-sm', line: 'space-y-4' },
 };
 
 interface TextHighlight {
@@ -514,7 +514,7 @@ export default function PassageReader({
           >
             {textSnippet}
             {hl.note && (
-              <span className="inline-flex items-center justify-center w-3.5 h-3.5 ml-1 bg-amber-600 dark:bg-amber-500 text-white rounded-full text-[9px] font-mono font-bold align-super select-none">
+              <span className="inline-flex items-center justify-center w-3.5 h-3.5 ml-1 bg-amber-600 dark:bg-amber-500 text-white rounded-full text-xs font-mono font-bold align-super select-none">
                 *
               </span>
             )}
@@ -536,7 +536,11 @@ export default function PassageReader({
   const fontClass = fontType === 'reading' ? 'font-reading' : 'font-sans';
 
   return (
-    <Card className="p-3.5 sm:p-4 gap-2.5 bg-card dark:bg-[#0f141f] border-border/80 border-l-0 rounded-l-none rounded-r-lg shadow-2xs flex flex-col h-full overflow-hidden relative">
+    <Card
+      data-no-dictionary="true"
+      data-passage-container="true"
+      className="p-3.5 sm:p-4 gap-2.5 bg-card dark:bg-[#0f141f] border-border/80 border-l-0 rounded-l-none rounded-r-lg shadow-2xs flex flex-col h-full overflow-hidden relative"
+    >
       {/* Compact IELTS Top Header Bar */}
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/70 pb-2 shrink-0">
         <div className="space-y-0.5">
@@ -572,7 +576,7 @@ export default function PassageReader({
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
 
-          <span className="text-[10px] font-mono font-bold px-0.5 text-muted-foreground select-none">
+          <span className="text-xs font-mono font-bold px-0.5 text-muted-foreground select-none">
             {textSize.toUpperCase()}
           </span>
 
@@ -592,6 +596,8 @@ export default function PassageReader({
       {/* Paragraphs and Content Container with MouseUp Selection Detection */}
       <div
         ref={containerRef}
+        data-no-dictionary="true"
+        data-passage-container="true"
         onMouseUp={handleMouseUp}
         className={`flex-1 min-h-0 ${
           scroll
@@ -599,13 +605,13 @@ export default function PassageReader({
             : currentStyles.line
         }`}
       >
-        {/* Title & Subtitle - Refined, elegant, less bold */}
+        {/* Title & Subtitle - Clean, readable, weighted */}
         <div className="text-center space-y-1 pt-1.5 pb-2.5">
-          <h1 className={`${fontClass} font-semibold text-xl sm:text-2xl text-foreground/90 tracking-tight leading-snug`}>
+          <h1 className={`${fontClass} font-bold text-xl sm:text-2xl text-slate-900 dark:text-slate-100 tracking-tight leading-snug`}>
             {passage.title}
           </h1>
           {passage.subtitle && (
-            <p className={`${fontClass} italic text-xs sm:text-[13px] text-muted-foreground/85 max-w-xl mx-auto leading-relaxed font-normal`}>
+            <p className={`${fontClass} italic text-xs sm:text-[13.5px] text-slate-600 dark:text-slate-300 max-w-xl mx-auto leading-relaxed font-medium`}>
               {passage.subtitle}
             </p>
           )}
@@ -616,7 +622,7 @@ export default function PassageReader({
           {passage.paragraphs.map((paragraph, index) => (
             <p
               key={paragraph.label || index}
-              className={`${fontClass} font-normal font-[400] text-neutral-800 dark:text-neutral-200 selection:bg-blue-600 selection:text-white text-justify sm:text-left ${currentStyles.body} ${
+              className={`${fontClass} font-medium text-slate-900 dark:text-slate-100 selection:bg-blue-600 selection:text-white text-justify sm:text-left ${currentStyles.body} ${
                 showLabels && paragraph.label ? 'relative pl-6 sm:pl-7' : ''
               }`}
             >
@@ -628,7 +634,7 @@ export default function PassageReader({
                   {paragraph.label}
                 </span>
               )}
-              <span data-paragraph-body={index}>
+              <span data-paragraph-body={index} data-no-dictionary="true">
                 {renderParagraphContent(paragraph.text, index)}
               </span>
             </p>

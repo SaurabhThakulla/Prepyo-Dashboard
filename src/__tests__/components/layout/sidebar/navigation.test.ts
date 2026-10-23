@@ -39,32 +39,14 @@ describe('the reading section of the practice menu', () => {
     expect(readingItems('PTE', [])).toEqual([]);
   });
 
-  it('offers the generated paper once the bank can deal one', () => {
-    const items =
-      buildSections('IELTS', () => { }, null, [READING_TYPES.trueFalse], 3).find(
-        s => s.id === 'practice',
-      )?.items ?? [];
-    const mock = items.find(item => item.label === 'Reading Mock Test');
-
-    expect(mock).toBeDefined();
-    expect(mock?.group).toBe('Reading');
-    expect(mock?.badge).toBe('MOCK');
-    expect(mock?.href).toBe('/practice?skill=reading&mock=1');
-    expect(mock?.sublabel).toContain('3 full passages');
-  });
-
-  it('sends every PTE skill to its sectional test on the PTE test player', () => {
-    const items =
-      buildSections('PTE', () => { }, null, [READING_TYPES.fillBlanksR], 4).find(
-        s => s.id === 'practice',
-      )?.items ?? [];
-
-    for (const [skill, group] of [['reading', 'Reading'], ['speaking', 'Speaking'], ['writing', 'Writing'], ['listening', 'Listening']]) {
-      const mock = items.find(item => item.label === `${group} Sectional Test`);
-      expect(mock?.href).toBe(`/mocks/pte/${skill}`);
-      expect(mock?.group).toBe(group);
+  it('keeps sectional mock tests out of the practice menu', () => {
+    for (const exam of ['IELTS', 'PTE'] as const) {
+      const items =
+        buildSections(exam, () => { }, null, [READING_TYPES.trueFalse, READING_TYPES.fillBlanksR], 3).find(
+          s => s.id === 'practice',
+        )?.items ?? [];
+      expect(items.filter(item => item.badge === 'MOCK')).toEqual([]);
     }
-    expect(items.map(item => item.label)).not.toContain('Reading Mock Test');
   });
 
   it('groups the PTE mock menu into the full test and the sectional tests', () => {
@@ -82,7 +64,7 @@ describe('the reading section of the practice menu', () => {
   it('groups the IELTS mock menu into full test, sectional tests, and results', () => {
     const mock = buildSections('IELTS', () => { }).find(s => s.id === 'mock')?.items ?? [];
     expect(mock.some(item => item.href?.startsWith('/mocks/pte'))).toBe(false);
-    expect(mock[0].label).toBe('IELTS Mock Test Centre');
+    expect(mock[0].label).toBe('All mock tests');
     const full = mock.filter(item => item.group === 'Full Mock Test');
     const sectional = mock.filter(item => item.group === 'Sectional Tests');
     expect(full.map(item => item.href)).toEqual(['/mocks?view=full']);
@@ -191,19 +173,19 @@ describe('which menu item is lit', () => {
   };
 
   it('lights the reading mock while the paper is open', () => {
-    expect(lit('/practice?skill=reading&mock=1')).toEqual(['Reading Mock Test', 'Reading Test']);
+    expect(lit('/practice?skill=reading&mock=1')).toEqual(['Reading Test']);
   });
 
   it('lights the speaking mock while the speaking mock is open', () => {
-    expect(lit('/practice?skill=speaking&mock=1')).toEqual(['Speaking Mock Test', 'Speaking Test']);
+    expect(lit('/practice?skill=speaking&mock=1')).toEqual(['Speaking Test']);
   });
 
   it('lights the writing mock while the writing mock is open', () => {
-    expect(lit('/practice?skill=writing&mock=1')).toEqual(['Writing Mock Test', 'Writing Test']);
+    expect(lit('/practice?skill=writing&mock=1')).toEqual(['Writing Test']);
   });
 
   it('lights the listening mock while the listening mock is open', () => {
-    expect(lit('/practice?skill=listening&mock=1')).toEqual(['Listening Mock Test', 'Listening Test']);
+    expect(lit('/practice?skill=listening&mock=1')).toEqual(['Listening Test']);
   });
 
   it('does not light the reading mock on plain reading practice', () => {
@@ -211,34 +193,8 @@ describe('which menu item is lit', () => {
   });
 
   it('lights the mock test centre on the catalogue, and full mock on view=full', () => {
-    expect(lit('/mocks')).toEqual(['IELTS Mock Test Centre']);
+    expect(lit('/mocks')).toEqual(['All mock tests']);
     expect(lit('/mocks?view=full')).toEqual(['Full Mock Test']);
-  });
-});
-
-describe('mock tests for all practice skills', () => {
-  it('offers speaking, writing, and listening mock tests alongside syllabus task items', () => {
-    const items = buildSections('IELTS', () => { }, null, [READING_TYPES.trueFalse], 3).find(
-      s => s.id === 'practice',
-    )?.items ?? [];
-
-    const speakingMock = items.find(item => item.label === 'Speaking Mock Test');
-    expect(speakingMock).toBeDefined();
-    expect(speakingMock?.group).toBe('Speaking');
-    expect(speakingMock?.badge).toBe('MOCK');
-    expect(speakingMock?.href).toBe('/practice?skill=speaking&mock=1');
-
-    const writingMock = items.find(item => item.label === 'Writing Mock Test');
-    expect(writingMock).toBeDefined();
-    expect(writingMock?.group).toBe('Writing');
-    expect(writingMock?.badge).toBe('MOCK');
-    expect(writingMock?.href).toBe('/practice?skill=writing&mock=1');
-
-    const listeningMock = items.find(item => item.label === 'Listening Mock Test');
-    expect(listeningMock).toBeDefined();
-    expect(listeningMock?.group).toBe('Listening');
-    expect(listeningMock?.badge).toBe('MOCK');
-    expect(listeningMock?.href).toBe('/practice?skill=listening&mock=1');
   });
 });
 
@@ -315,7 +271,7 @@ describe('the Learn Korean menu', () => {
     buildSections('EPS_TOPIK', () => { }, null, undefined, 0, false, progress).find(s => s.id === 'learn');
 
   it('sits right after Practice for EPS-TOPIK, and nowhere for IELTS or PTE', () => {
-    expect(buildSections('EPS_TOPIK', () => { }).map(s => s.id)).toEqual(['home', 'practice', 'learn', 'aicoach', 'mock', 'tutorials']);
+    expect(buildSections('EPS_TOPIK', () => { }).map(s => s.id)).toEqual(['practice', 'learn', 'mock', 'tutorials']);
     expect(buildSections('IELTS', () => { }).some(s => s.id === 'learn')).toBe(false);
     expect(buildSections('PTE', () => { }).some(s => s.id === 'learn')).toBe(false);
   });
@@ -373,7 +329,7 @@ describe('the tutorials menu', () => {
 
   it('lists only the sections EPS-TOPIK tests', () => {
     const menu = tutorials('EPS_TOPIK');
-    expect(menu.items.map(item => item.label)).toEqual(['EPS-TOPIK Video Hub', 'Reading Lessons', 'Listening Lessons']);
+    expect(menu.items.map(item => item.label)).toEqual(['All videos', 'Reading Lessons', 'Listening Lessons']);
     expect(menu.title).toBe('EPS-TOPIK Video Tutorials');
   });
 

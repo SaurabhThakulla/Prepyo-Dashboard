@@ -571,7 +571,7 @@ export default function AdminQuestionForm({
                       </p>
                       <p className="text-[11px] text-muted-foreground">or drag and drop here</p>
                     </div>
-                    <Badge variant="outline" className="text-[10px] font-medium text-muted-foreground">
+                    <Badge variant="outline" className="text-xs font-medium text-muted-foreground">
                       PNG, JPG, WebP, SVG, or GIF (max 5 MB)
                     </Badge>
                   </div>

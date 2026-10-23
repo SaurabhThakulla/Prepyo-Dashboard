@@ -71,7 +71,7 @@ describe('speaking practice scored from the recording', () => {
     });
 
     render(<MemoryRouter initialEntries={['/practice?skill=speaking']}><PracticePage /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: /Start Practice/ }));
+    fireEvent.click(await screen.findByTitle('Close drawer'));
     fireEvent.click(await screen.findByRole('button', { name: 'Record test audio' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Submit recording' }));
 

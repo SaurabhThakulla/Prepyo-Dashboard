@@ -7,7 +7,7 @@ import MockAnswerInput from '@/components/mocks/MockAnswerInput';
 import PromptAudio from '@/components/practice/PromptAudio';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
 import { AnswerSubmission, Mock, Question } from '@/lib/types';
-import { isWordHighlightTask } from '@/lib/listening';
+import { isReadAloudTask, isRepeatSentenceTask, isWordHighlightTask, passageText } from '@/lib/listening';
 
 /** Seconds as mm:ss, zero-padded, for the exam countdown. */
 function formatCountdown(totalSeconds: number): string {
@@ -111,7 +111,7 @@ export default function MockExamRunner({
                 {currentQuestion.prompt}
               </div>
 
-              {currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && (
+              {currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && !isRepeatSentenceTask(currentQuestion) && (
                 passageHasGaps(currentQuestion.contextPassage) ? (
                   <InlineBlankPassage
                     passage={currentQuestion.contextPassage}
@@ -121,12 +121,12 @@ export default function MockExamRunner({
                   />
                 ) : (
                   <div className="p-4 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed max-h-56 overflow-y-auto">
-                    {currentQuestion.contextPassage}
+                    {passageText(currentQuestion)}
                   </div>
                 )
               )}
 
-              <PromptAudio
+              {!isReadAloudTask(currentQuestion) && <PromptAudio
                 key={currentQuestion.id}
                 questionId={currentQuestion.id}
                 audioUrl={currentQuestion.audioUrl}
@@ -135,7 +135,7 @@ export default function MockExamRunner({
                 singlePlay={currentQuestion.exam === 'IELTS'}
                 title={currentQuestion.title}
                 allowTranscript={false}
-              />
+              />}
 
               <MockAnswerInput
                 question={currentQuestion}

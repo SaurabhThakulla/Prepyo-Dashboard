@@ -115,7 +115,7 @@ export default function SetupPage({ account, onSaved, onCancel, onSignOut }: Pro
           <span className="font-display text-lg font-black">
             prep<span className="text-primary">yo</span>
           </span>
-          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">
+          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-primary">
             <Building2 className="h-3 w-3" />
             Institution
           </span>
@@ -518,7 +518,7 @@ function SignInPreview({ name, code, profile, logoUrl }: { name: string; code: s
           <BrandMark name={name} logoUrl={logoUrl} color={color} className="h-9 w-9 rounded-xl text-xs" />
           <div className="min-w-0">
             <p className="truncate text-sm font-bold">{name}</p>
-            <p className="truncate text-[10px] text-muted-foreground">
+            <p className="truncate text-xs text-muted-foreground">
               {[profile.city.trim(), profile.exams.map(examName).join(' · ')].filter(Boolean).join(' — ') || `/${code}`}
             </p>
           </div>

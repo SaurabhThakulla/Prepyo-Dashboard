@@ -196,21 +196,21 @@ function PassageCard({ passage, onOpen }: { passage: PassageSummary; onOpen: () 
         <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             {examsOf(passage).map(entry => (
-              <Badge key={entry} variant="outline" className="text-[9px]">
+              <Badge key={entry} variant="outline" className="text-xs">
                 {entry}
               </Badge>
             ))}
             {passage.passageSlot && passage.passageSlot !== 'custom' && (
-              <Badge variant="secondary" className="text-[9px] font-bold bg-primary/10 text-primary border-primary/25">
+              <Badge variant="secondary" className="text-xs font-bold bg-primary/10 text-primary border-primary/25">
                 Passage {passage.passageSlot}
               </Badge>
             )}
             {passage.isPublished ? (
-              <Badge className="text-[9px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
+              <Badge className="text-xs bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
                 Published
               </Badge>
             ) : (
-              <Badge variant="secondary" className="text-[9px]">
+              <Badge variant="secondary" className="text-xs">
                 Draft
               </Badge>
             )}
@@ -238,13 +238,13 @@ function PassageCard({ passage, onOpen }: { passage: PassageSummary; onOpen: () 
           {passage.taskTypes.slice(0, 3).map(type => (
             <span
               key={type}
-              className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground truncate max-w-[140px]"
+              className="text-xs font-semibold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground truncate max-w-[140px]"
             >
               {type}
             </span>
           ))}
           {passage.taskTypes.length > 3 && (
-            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground">
+            <span className="text-xs font-semibold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground">
               +{passage.taskTypes.length - 3}
             </span>
           )}

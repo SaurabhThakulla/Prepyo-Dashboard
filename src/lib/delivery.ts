@@ -50,6 +50,8 @@ export function createDeliveryMeter(now: () => number = () => performance.now())
   let voicedMs = 0;
   let silenceRunMs = 0;
   let started = false;
+  // Silence before the first word, left out of the answer's length.
+  let leadInMs = 0;
   let pauseCount = 0;
   let longestPauseMs = 0;
 
@@ -73,6 +75,7 @@ export function createDeliveryMeter(now: () => number = () => performance.now())
       measuredMs += elapsed;
 
       if (level >= VOICE_LEVEL) {
+        if (!started) leadInMs = silenceRunMs;
         closeSilenceRun();
         started = true;
         voicedMs += elapsed;
@@ -82,9 +85,9 @@ export function createDeliveryMeter(now: () => number = () => performance.now())
     },
 
     finish(): Delivery {
-      // A trailing silence is the learner finishing early, not a mid-answer
-      // hesitation, so it is left out of the pause count.
-      const durationMs = measuredMs;
+      // Silence before the first word and after the last is not part of the
+      // answer: counted in, it makes a finished reading look slow.
+      const durationMs = started ? measuredMs - leadInMs - silenceRunMs : measuredMs;
       const longest = Math.max(longestPauseMs, 0);
 
       return {

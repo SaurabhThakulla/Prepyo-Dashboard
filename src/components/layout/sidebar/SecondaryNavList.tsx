@@ -43,6 +43,15 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { SecondaryNavItem } from './navigation';
+import { SkillType } from '@/lib/types';
+
+/** Skill colours for PTE score contributions: text on the white pill, text and bar in the tooltip. */
+const SKILL_COLORS: Record<SkillType, { pill: string; pillDark: string; text: string; bar: string; label: string }> = {
+  speaking: { pill: 'text-orange-500', pillDark: 'dark:text-orange-400', text: 'text-orange-500 dark:text-orange-400', bar: 'bg-orange-400', label: 'Speaking' },
+  writing: { pill: 'text-sky-500', pillDark: 'dark:text-cyan-300', text: 'text-sky-500 dark:text-sky-400', bar: 'bg-sky-400', label: 'Writing' },
+  reading: { pill: 'text-emerald-600', pillDark: 'dark:text-emerald-400', text: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500', label: 'Reading' },
+  listening: { pill: 'text-blue-900', pillDark: 'dark:text-white', text: 'text-blue-900 dark:text-blue-300', bar: 'bg-blue-900 dark:bg-blue-400', label: 'Listening' },
+};
 
 interface SecondaryNavListProps {
   items: SecondaryNavItem[];
@@ -218,7 +227,7 @@ export default function SecondaryNavList({
             return (
               <div
                 key={`group-${group.name}-${groupIndex}`}
-                className={groupIndex > 0 ? 'mt-3 pt-3 border-t border-white/10' : ''}
+                className={groupIndex > 0 ? 'mt-2.5 pt-3 border-t border-white/10' : ''}
               >
                 <GroupHeading
                   groupName={group.name}
@@ -230,7 +239,7 @@ export default function SecondaryNavList({
                 />
 
                 {!isCollapsed && (
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     {group.items.map((item, idx) => (
                       <TooltipItem
                         key={`${item.href ?? item.label}-${idx}`}
@@ -270,9 +279,10 @@ function GroupHeading({
   const GroupIcon = getGroupIcon(groupName);
 
   return (
-    <div className="flex items-center justify-between w-full px-3 pb-1.5">
-      <div className={`flex items-center gap-2 min-w-0 flex-1 ${isGroupActive ? 'text-white' : 'text-white/50'}`}>
+    <div className="flex items-center justify-between w-full pl-2 pr-1 pb-1.5">
+      <div className={`flex items-center gap-2 min-w-0 flex-1 ${isGroupActive ? 'text-white' : 'text-white/55'}`}>
         <GroupIcon className="w-3.5 h-3.5 shrink-0" />
+        {isGroupActive && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#00c4a7]" aria-hidden />}
         {groupHref ? (
           <Link
             to={groupHref}
@@ -282,7 +292,13 @@ function GroupHeading({
             {groupName}
           </Link>
         ) : (
-          <span className="font-display text-[11px] font-semibold uppercase tracking-[0.12em] truncate">{groupName}</span>
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="font-display text-[11px] font-semibold uppercase tracking-[0.12em] truncate text-left hover:text-white transition-colors"
+          >
+            {groupName}
+          </button>
         )}
       </div>
 
@@ -321,17 +337,31 @@ function TooltipItem({
       >
         <div className="font-bold text-xs text-foreground flex items-center gap-1.5 flex-wrap">
           <span>{item.label}</span>
-          {item.weight && (
-            <span className="text-[10px] bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded font-mono font-bold">
+          {item.weight && !item.contributions && (
+            <span className="text-xs bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded font-mono font-bold">
               Weight: {renderWeightBadge(item.weight)}
             </span>
           )}
           {item.badge && (
-            <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0 rounded font-semibold uppercase">
+            <span className="text-xs bg-primary/20 text-primary px-1.5 py-0 rounded font-semibold uppercase">
               {item.badge}
             </span>
           )}
         </div>
+        {item.contributions && (
+          <div className="pt-1.5 pb-1 w-[200px] space-y-1.5">
+            <p className={`text-[11px] font-semibold ${SKILL_COLORS[item.contributions[0].skill].text}`}>Contribution</p>
+            {item.contributions.map(({ skill, percent }) => (
+              <div key={skill} className="flex items-center gap-2 text-[11px]">
+                <span className="w-14 shrink-0 text-muted-foreground">{SKILL_COLORS[skill].label}</span>
+                <span className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
+                  <span className={`block h-full rounded-full ${SKILL_COLORS[skill].bar}`} style={{ width: `${percent}%` }} />
+                </span>
+                <span className={`w-8 shrink-0 text-right font-mono font-bold ${SKILL_COLORS[skill].text}`}>{percent}%</span>
+              </div>
+            ))}
+          </div>
+        )}
         {item.isLocked && item.lockedReason && (
           <p className="text-[11px] font-semibold text-amber-500 dark:text-amber-400 flex items-center gap-1 pt-0.5">
             <Lock className="w-3 h-3 shrink-0" /> {item.lockedReason}
@@ -347,14 +377,15 @@ function TooltipItem({
   );
 }
 
-interface NavItemProps {
+// Extends the HTML props so the tooltip trigger's hover and focus handlers reach the link.
+interface NavItemProps extends React.HTMLAttributes<HTMLElement> {
   item: SecondaryNavItem;
   isActive: boolean;
   onNavigate: () => void;
 }
 
 const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
-  { item, isActive, onNavigate },
+  { item, isActive, onNavigate, onClick: triggerClick, className: _className, ...triggerProps },
   ref,
 ) {
   const toast = useToast();
@@ -365,24 +396,28 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
   if (item.isLocked) {
     return (
       <button
+        {...triggerProps}
         ref={ref as React.Ref<HTMLButtonElement>}
         type="button"
-        onClick={() => {
+        onClick={e => {
+          triggerClick?.(e);
           toast.warning('Task unavailable', item.lockedReason ?? 'This task is not included in your selected exam.');
         }}
-        className="group flex items-center justify-between w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all duration-150 outline-none text-white/40 hover:text-white/60 hover:bg-white/5 cursor-not-allowed font-medium select-none"
+        className="group flex items-center justify-between gap-2 w-full text-left pl-1.5 pr-2 py-1.5 rounded-xl text-[13.5px] transition-all duration-150 outline-none text-white/45 hover:text-white/65 hover:bg-white/5 cursor-not-allowed font-medium select-none"
       >
-        <div className="flex items-center gap-3 min-w-0 flex-1 pr-1">
-          <Icon className="w-[18px] h-[18px] shrink-0 text-white/30" />
-          <span title={item.label} className="line-clamp-2 leading-snug">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-dashed border-white/15 text-white/35">
+            <Icon className="w-4 h-4" />
+          </span>
+          <span title={item.label} className="line-clamp-2 leading-tight">
             {item.label}
           </span>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0 ml-1.5">
-          <Lock className="w-3.5 h-3.5 text-white/40" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Lock className="w-3 h-3 text-white/40" />
           <Badge
             variant="outline"
-            className="text-[9px] px-1.5 py-0 font-bold uppercase rounded-sm border-white/20 text-white/40 bg-white/5"
+            className="text-[10px] px-1.5 py-0 font-bold uppercase rounded-md border-white/20 text-white/45 bg-white/5"
           >
             {item.badge || 'Locked'}
           </Badge>
@@ -391,45 +426,72 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
     );
   }
 
-  const className = `group flex items-center justify-between w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-white ${
+  const className = `group flex items-center justify-between gap-2 w-full text-left pl-1.5 pr-2 py-1.5 rounded-xl text-[13.5px] transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-white ${
     isActive
       ? 'bg-white text-primary dark:text-blue-950 font-semibold shadow-lg shadow-black/15'
-      : 'text-white/80 hover:text-white hover:bg-white/10 hover:translate-x-0.5 font-medium'
+      : 'text-white/85 hover:text-white hover:bg-white/10 font-medium'
   }`;
 
   const content = (
     <>
-      <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-        <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? '' : 'text-white/60 group-hover:text-white'}`} />
-        <span title={item.label} className="leading-snug truncate">
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        {/* Icon sits in a small tile so every row lines up */}
+        <span
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+            isActive ? 'bg-primary/10 text-primary dark:text-blue-950' : 'bg-white/10 text-white/75 group-hover:bg-white/15 group-hover:text-white'
+          }`}
+        >
+          <Icon className="w-4 h-4" />
+        </span>
+        <span title={item.label} className="leading-tight line-clamp-2">
           {item.label}
         </span>
+      </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
         {item.badge === 'AI' && (
-          <span className={`text-[10px] font-bold tracking-tight shrink-0 ${
-            isActive ? 'text-primary dark:text-blue-950' : 'text-sky-200'
-          }`}>
-            AI Score
+          <span
+            title="Scored by AI"
+            className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+              isActive ? 'bg-primary/10 text-primary dark:text-blue-950' : 'bg-sky-300/15 text-sky-100'
+            }`}
+          >
+            <Sparkles className="w-2.5 h-2.5" />
+            AI
+          </span>
+        )}
+
+        {item.contributions ? (
+          <span
+            className={`text-[11px] font-extrabold px-2 py-0.5 rounded-full font-mono inline-flex items-center gap-1 ${
+              isActive ? 'bg-slate-100' : 'bg-white dark:bg-white/10'
+            }`}
+          >
+            {item.contributions.map(({ skill, percent }, i) => (
+              <React.Fragment key={skill}>
+                {i > 0 && <span className="text-slate-300 dark:text-white/30">·</span>}
+                <span className={`${SKILL_COLORS[skill].pill} ${isActive ? '' : SKILL_COLORS[skill].pillDark}`}>{percent}%</span>
+              </React.Fragment>
+            ))}
+          </span>
+        ) : item.weight && (
+          <span
+            className={`text-[11px] font-extrabold px-2 py-0.5 rounded-full font-mono min-w-[36px] text-center inline-flex items-center justify-center ${
+              isActive
+                ? 'bg-primary text-primary-foreground dark:bg-black dark:text-white'
+                : 'bg-white text-blue-950 dark:bg-white/10 dark:text-white'
+            }`}
+            title={`Score Weight: ${item.weight}`}
+          >
+            {renderWeightBadge(item.weight)}
           </span>
         )}
       </div>
 
-      {item.weight && (
-        <span
-          className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ml-auto font-mono shadow-xs transition-transform group-hover:scale-105 min-w-[36px] text-center inline-flex items-center justify-center ${
-            isActive
-              ? 'bg-primary text-white font-extrabold shadow-sm'
-              : 'bg-white text-blue-950 font-extrabold shadow-xs'
-          }`}
-          title={`Score Weight: ${item.weight}`}
-        >
-          {renderWeightBadge(item.weight)}
-        </span>
-      )}
-
       {item.badge && item.badge !== 'AI' && (
         <Badge
           variant={isActive ? 'default' : 'outline'}
-          className={`text-[9px] px-1.5 py-0 shrink-0 ml-auto font-bold uppercase rounded-sm ${
+          className={`text-xs px-1.5 py-0 shrink-0 ml-auto font-bold uppercase rounded-sm ${
             isActive
               ? 'bg-primary text-white dark:bg-blue-950 border-transparent'
               : 'border-white/40 text-white/80'
@@ -440,7 +502,7 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
       )}
       {item.count !== undefined && (
         <span
-          className={`text-[10px] font-bold px-1.5 py-0.2 rounded-sm shrink-0 ml-1.5 font-mono ${
+          className={`text-xs font-bold px-1.5 py-0.2 rounded-sm shrink-0 ml-1.5 font-mono ${
             isActive
               ? 'bg-primary/15 text-primary dark:text-blue-950 border border-primary/30'
               : 'bg-amber-300/20 text-amber-200 border border-amber-300/40'
@@ -460,9 +522,13 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
 
     return (
       <Link
+        {...triggerProps}
         ref={ref as React.Ref<HTMLAnchorElement>}
         to={toHref}
-        onClick={onNavigate}
+        onClick={e => {
+          triggerClick?.(e);
+          onNavigate();
+        }}
         className={className}
       >
         {content}
@@ -472,9 +538,11 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
 
   return (
     <button
+      {...triggerProps}
       ref={ref as React.Ref<HTMLButtonElement>}
       type="button"
-      onClick={() => {
+      onClick={e => {
+        triggerClick?.(e);
         item.onClick?.();
         onNavigate();
       }}

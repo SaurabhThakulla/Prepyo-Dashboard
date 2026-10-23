@@ -1,79 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import MistakePracticeLink from '@/components/mistakes/MistakePracticeLink';
-import { useNavigate } from 'react-router-dom';
+import { mistakePracticeHref } from '@/lib/mistakePractice';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   CheckCircle2,
-  XCircle,
+  History,
   Sparkles,
   Search,
-  Tag,
   AlertTriangle,
   RotateCcw,
   BarChart3,
   Lock,
   Crown,
   ArrowRight,
-  Clock,
   Flame,
   BookOpen,
   Headphones,
   SquarePen,
   Mic,
-  Lightbulb,
   Layers,
   X,
-  Target,
+  ChevronRight,
+  ChevronDown,
 } from 'lucide-react';
 import { MistakesPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
-import { useMistakes, useMistakeAnalytics } from '@/lib/hooks/useResources';
-import { SkillType, ExamType, Mistake, MistakeAnalytics, isAdmin } from '@/lib/types';
+import { useMistakes, useMistakeAnalytics, usePracticeAttempts, useEvaluationHistory } from '@/lib/hooks/useResources';
+import { SCALE } from '@/components/practice/PracticeResultCard';
+import { matchesTypeKey, SYLLABUS, typeKey } from '@/lib/syllabus';
+import { SkillType, ExamType, Evaluation, Mistake, MistakeAnalytics, PracticeAttempt, isAdmin } from '@/lib/types';
+import PracticeResultDialog from '@/components/practice/PracticeResultDialog';
 
-function renderResponseBadges(text: string, isWrong: boolean) {
-  if (!text) return <span className="text-muted-foreground italic text-xs">No response</span>;
-
-  if (/b\d+:/.test(text)) {
-    const parts = text.split(/,\s*/);
-    return (
-      <div className="flex flex-wrap gap-1.5">
-        {parts.map((part, i) => {
-          const colonIdx = part.indexOf(':');
-          const key = colonIdx > -1 ? part.slice(0, colonIdx) : `Gap ${i + 1}`;
-          const val = colonIdx > -1 ? part.slice(colonIdx + 1).trim() : part.trim();
-          return (
-            <span
-              key={i}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-medium border ${
-                isWrong
-                  ? 'bg-rose-50/80 dark:bg-rose-950/30 border-rose-200/80 dark:border-rose-900/50 text-rose-700 dark:text-rose-300'
-                  : 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-300'
-              }`}
-            >
-              <span className="font-bold opacity-70">{key}:</span>
-              <span>{val || '—'}</span>
-            </span>
-          );
-        })}
-      </div>
-    );
-  }
-
-  return (
-    <p
-      className={`text-xs sm:text-sm font-medium leading-relaxed break-words ${
-        isWrong ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300'
-      }`}
-    >
-      {text}
-    </p>
-  );
-}
+const PAGE = 10;
 
 const SKILL_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   all: Layers,
@@ -83,11 +44,11 @@ const SKILL_ICONS: Record<string, React.ComponentType<{ className?: string }>> =
   speaking: Mic,
 };
 
-const SKILL_STYLES: Record<string, string> = {
-  reading: 'bg-blue-50/90 text-blue-700 border-blue-200/80 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50',
-  listening: 'bg-purple-50/90 text-purple-700 border-purple-200/80 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900/50',
-  writing: 'bg-indigo-50/90 text-indigo-700 border-indigo-200/80 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-900/50',
-  speaking: 'bg-amber-50/90 text-amber-700 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50',
+const SKILL_TILES: Record<string, string> = {
+  reading: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  listening: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+  writing: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+  speaking: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
 };
 
 
@@ -270,16 +231,25 @@ const DUMMY_MISTAKES: Partial<Record<ExamType, Mistake[]>> = {
   ],
 };
 
-export default function MistakesPage() {
+/** `embedded` shows it as a section of another page (the profile) instead of a page of its own. */
+export default function MistakesPage({ embedded = false }: { embedded?: boolean }) {
   const { user, activeExam } = useApp();
   const navigate = useNavigate();
   const toast = useToast();
   const [selectedSkill, setSelectedSkill] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'unresolved' | 'resolved'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly');
+  const [opened, setOpened] = useState<HistoryItem | null>(null);
+  // Render the newest PAGE rows only; "Show more" adds another page.
+  const [visible, setVisible] = useState(PAGE);
+  useEffect(() => setVisible(PAGE), [selectedSkill, statusFilter, searchQuery, period, activeExam]);
 
-  // Both queries receive the active period so all components reflect it!
+  // Queries for mistakes, analytics, and all practice attempts
   const { data, isPending, error } = useMistakes(activeExam, selectedSkill, false, period);
+  const { data: attemptsData, isPending: attemptsPending } = usePracticeAttempts(activeExam, selectedSkill);
+  // Speaking and writing are AI-scored, so they live in evaluations, not practice attempts.
+  const { data: evaluationsData } = useEvaluationHistory(100);
   const { data: analyticsData, error: analyticsError } = useMistakeAnalytics(
     activeExam,
     period
@@ -298,21 +268,84 @@ export default function MistakesPage() {
   const rawMistakes = isSuru
     ? (DUMMY_MISTAKES[activeExam] ?? DUMMY_MISTAKES.PTE ?? [])
     : (data?.mistakes ?? []);
+  const rawAttempts = attemptsData?.attempts ?? [];
+
+  const mistakesByQuestion = React.useMemo(() => {
+    const map = new Map<string, Mistake>();
+    for (const m of rawMistakes) {
+      map.set(m.questionId, m);
+    }
+    return map;
+  }, [rawMistakes]);
+
+  // Combine practice attempts and mistakes into comprehensive history items
+  const practiceItems = React.useMemo((): HistoryItem[] => {
+    if (isSuru) return rawMistakes.map(m => ({ ...m, isCorrect: m.resolved }));
+    if (rawAttempts.length > 0) {
+      const seen = new Set<string>();
+      const items: HistoryItem[] = rawAttempts.map(att => {
+        seen.add(att.questionId);
+        const matchingMistake = mistakesByQuestion.get(att.questionId);
+        return {
+          id: matchingMistake?.id || att.id,
+          questionId: att.questionId,
+          questionTitle: att.questionTitle || matchingMistake?.questionTitle || `Question ${att.questionId}`,
+          exam: att.exam,
+          skill: att.skill || matchingMistake?.skill || 'reading',
+          typeName: att.typeName || matchingMistake?.typeName || 'Practice Task',
+          prompt: att.prompt || matchingMistake?.prompt || '',
+          userResponse: att.userResponse || matchingMistake?.userResponse || '',
+          correctResponse: att.isCorrect ? (att.userResponse || 'Correct') : (matchingMistake?.correctResponse || ''),
+          explanation: matchingMistake?.explanation || att.feedback || '',
+          errorTag: matchingMistake?.errorTag || '',
+          failedCount: matchingMistake?.failedCount || (att.isCorrect ? 0 : 1),
+          resolved: att.isCorrect || matchingMistake?.resolved || false,
+          isCorrect: att.isCorrect,
+          score: att.score,
+          maxScore: att.maxScore,
+          attempt: att,
+          lastAttemptedAt: att.createdAt,
+        };
+      });
+
+      for (const m of rawMistakes) {
+        if (!seen.has(m.questionId)) {
+          items.push({
+            ...m,
+            isCorrect: false,
+          });
+        }
+      }
+      return items;
+    }
+    return rawMistakes.map(m => ({ ...m, isCorrect: m.resolved }));
+  }, [isSuru, rawAttempts, rawMistakes, mistakesByQuestion]);
+
+  const historyItems = React.useMemo(() => {
+    if (isSuru) return practiceItems;
+    const scored = (evaluationsData?.evaluations ?? [])
+      .filter(e => e.exam === activeExam && (selectedSkill === 'all' || e.skill === selectedSkill))
+      .map(evaluationItem);
+    return [...scored, ...practiceItems].sort((a, b) => (b.lastAttemptedAt ?? '').localeCompare(a.lastAttemptedAt ?? ''));
+  }, [isSuru, practiceItems, evaluationsData, activeExam, selectedSkill]);
+
   const analytics = isSuru
     ? (DUMMY_ANALYTICS[activeExam] ?? DUMMY_ANALYTICS.PTE)
     : analyticsData?.analytics;
-  const loading = isSuru ? false : isPending;
+  const loading = isSuru ? false : (isPending && attemptsPending);
 
   useEffect(() => {
     if (error && !isForbidden && !isSuru) {
-      toast.error('Could not load your mistake bank', errorMessage(error));
+      toast.error('Could not load your history bank', errorMessage(error));
     }
   }, [error, isForbidden, isSuru]);
 
   const skillFilters = ['all', 'reading', 'listening', 'writing', 'speaking'];
 
-  const filteredMistakes = rawMistakes.filter(item => {
+  const filteredMistakes = historyItems.filter(item => {
     if (selectedSkill !== 'all' && item.skill !== selectedSkill) return false;
+    if (statusFilter === 'unresolved' && (item.resolved || item.isCorrect)) return false;
+    if (statusFilter === 'resolved' && !(item.resolved || item.isCorrect)) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -327,380 +360,186 @@ export default function MistakesPage() {
   const periodLabel =
     period === 'weekly' ? 'Past 7 Days' : 'Past 4 Weeks';
 
-  const recoveryRate = analytics?.total && analytics.total > 0
-    ? Math.round((analytics.resolved / analytics.total) * 100)
-    : 0;
+  const totalPracticed = historyItems.length || analytics?.total || 0;
+  const unresolvedCount = historyItems.filter(i => !i.resolved && !i.isCorrect).length || analytics?.unresolved || 0;
+  const resolvedCount = historyItems.filter(i => i.resolved || i.isCorrect).length || analytics?.resolved || 0;
+  const accuracyRate = totalPracticed > 0
+    ? Math.round((resolvedCount / totalPracticed) * 100)
+    : (analytics?.total && analytics.total > 0 ? Math.round((analytics.resolved / analytics.total) * 100) : 0);
+
+  const statusOptions = [
+    { value: 'all', label: 'All' },
+    { value: 'unresolved', label: 'To review' },
+    { value: 'resolved', label: 'Mastered' },
+  ] as const;
+
+  const groups = groupByDay(filteredMistakes.slice(0, visible));
+  const remaining = filteredMistakes.length - visible;
 
   return (
-    <div className="relative w-full pb-16 overflow-hidden">
-      {/* ======================================================================= */}
-      {/* Full Page Content: Regular for Paid Users, Blurred Out with Dummy Data for Suru */}
-      {/* ======================================================================= */}
+    <div className={`relative w-full overflow-hidden ${embedded ? 'min-h-[28rem]' : 'pb-16'}`}>
+      {/* Paid users see their own history; Suru sees blurred sample data under the upgrade card. */}
       <div
-        className={`w-full space-y-6 ${
+        className={`mx-auto w-full space-y-6 sm:space-y-8 ${embedded ? '' : 'max-w-5xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8'} ${
           isSuru ? 'filter blur-[5px] opacity-60 pointer-events-none select-none transition-all' : ''
         }`}
         aria-hidden={isSuru ? 'true' : undefined}
       >
-        {/* ======================================================================= */}
-        {/* Analytics Dashboard Header & KPI Summary Cards */}
-        {/* ======================================================================= */}
-        <div className="w-full">
-          <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
-            {/* Header row: Title & Timeframe Toggle */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2.5">
-                  <h2 className="text-lg sm:text-xl font-black text-foreground tracking-tight">
-                    Mistake Bank
-                  </h2>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-primary/10 text-primary border border-primary/20 tracking-wider">
-                    {activeExam}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Review questions missed during practice &amp; mocks in the{' '}
-                  <span className="font-semibold text-foreground font-mono">{periodLabel}</span> to target weak areas.
-                </p>
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <History className="w-5 h-5" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                {embedded
+                  ? <h2 className="font-display text-lg font-bold tracking-tight text-foreground">Practice history</h2>
+                  : <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Practice history</h1>}
+                <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">{activeExam}</span>
               </div>
-
-              {/* Period Switcher Button Group */}
-              <div className="inline-flex self-start sm:self-auto bg-muted/60 p-1 rounded-2xl border border-border/80 shadow-2xs">
-                {(['weekly', 'monthly'] as const).map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setPeriod(p)}
-                    className={`px-3.5 py-1.5 text-xs font-bold capitalize rounded-xl transition-all ${
-                      period === p
-                        ? 'bg-background text-foreground shadow-xs'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {p === 'weekly' ? 'Weekly' : 'Monthly'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* KPI Summary Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              {/* Total Logged */}
-              <div className="group relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-indigo-50/40 dark:to-indigo-950/20 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-indigo-400/40 transition-all duration-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                    Total Logged
-                  </span>
-                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                    <Layers className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="mt-2.5 flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-foreground font-mono tracking-tight">
-                    {analytics?.total ?? 0}
-                  </span>
-                  <span className="text-[11px] font-medium text-muted-foreground">questions</span>
-                </div>
-                <p className="mt-1 text-[11px] text-muted-foreground/80 truncate">
-                  Logged in {periodLabel.toLowerCase()}
-                </p>
-              </div>
-
-              {/* Unresolved / Needs Review */}
-              <div className="group relative overflow-hidden rounded-2xl border border-rose-200/80 dark:border-rose-900/40 bg-gradient-to-br from-card via-card to-rose-50/40 dark:to-rose-950/20 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-rose-400/40 transition-all duration-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">
-                    Unresolved
-                  </span>
-                  <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-                    <Flame className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="mt-2.5 flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight">
-                    {analytics?.unresolved ?? 0}
-                  </span>
-                  <span className="text-[11px] font-semibold text-rose-600/80">needs retry</span>
-                </div>
-                <p className="mt-1 text-[11px] text-muted-foreground/80 truncate">
-                  Awaiting practice retry
-                </p>
-              </div>
-
-              {/* Mastered / Resolved */}
-              <div className="group relative overflow-hidden rounded-2xl border border-emerald-200/80 dark:border-emerald-900/40 bg-gradient-to-br from-card via-card to-emerald-50/40 dark:to-emerald-950/20 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-emerald-400/40 transition-all duration-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
-                    Mastered
-                  </span>
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="mt-2.5 flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono tracking-tight">
-                    {analytics?.resolved ?? 0}
-                  </span>
-                  <span className="text-[11px] font-semibold text-emerald-600/80">
-                    {recoveryRate}% recovery
-                  </span>
-                </div>
-                <div className="mt-2 w-full bg-muted/60 h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${recoveryRate}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Repeat Traps */}
-              <div className="group relative overflow-hidden rounded-2xl border border-amber-200/80 dark:border-amber-900/40 bg-gradient-to-br from-card via-card to-amber-50/40 dark:to-amber-950/20 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-amber-400/40 transition-all duration-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
-                    Repeat Traps
-                  </span>
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                    <RotateCcw className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="mt-2.5 flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono tracking-tight">
-                    {analytics?.repeatCount ?? 0}
-                  </span>
-                  <span className="text-[11px] font-semibold text-amber-600/80">missed &gt;1x</span>
-                </div>
-                <p className="mt-1 text-[11px] text-muted-foreground/80 truncate">
-                  High priority revision
-                </p>
-              </div>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Your answers from the {periodLabel.toLowerCase()}, with the right answer and why.
+              </p>
             </div>
           </div>
-        </div>
+          <Segmented
+            label="Time period"
+            value={period}
+            onChange={setPeriod}
+            options={[{ value: 'weekly', label: '7 days' }, { value: 'monthly', label: '4 weeks' }]}
+          />
+        </header>
 
-        {/* Main Container for Filter & Mistake List */}
-        <div className="w-full px-4 sm:px-6 lg:px-8 space-y-4 sm:space-y-6">
-          {/* Filter Tag & Search Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-muted/30 p-2.5 sm:p-3 rounded-2xl border border-border/80 shadow-2xs">
-            {/* Skill Buttons */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+        <section aria-label="Summary" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Stat icon={Layers} tone="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" label="Practiced" value={totalPracticed} hint="questions answered" />
+          <Stat icon={Flame} tone="bg-rose-500/10 text-rose-600 dark:text-rose-400" label="To review" value={unresolvedCount} hint="still to get right" />
+          <Stat icon={CheckCircle2} tone="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" label="Mastered" value={resolvedCount} hint={`${accuracyRate}% of answers`}>
+            <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-emerald-500/15">
+              <div className="h-full rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${accuracyRate}%` }} />
+            </div>
+          </Stat>
+          <Stat icon={RotateCcw} tone="bg-amber-500/10 text-amber-600 dark:text-amber-400" label="Repeat traps" value={analytics?.repeatCount ?? 0} hint="missed more than once" />
+        </section>
+
+        <section aria-label="Filters" className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/30 p-2.5 xl:flex-row-reverse xl:items-center">
+          <div className="relative xl:w-72 xl:shrink-0">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search titles, topics, types"
+              aria-label="Search your history"
+              className="h-9 pl-10 pr-10 text-sm bg-card rounded-xl border-border/80 shadow-2xs focus-visible:ring-1 focus-visible:ring-primary"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-full"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 max-w-full items-center gap-1.5 overflow-x-auto no-scrollbar">
               {skillFilters.map(t => {
                 const Icon = SKILL_ICONS[t] || Layers;
                 const isSelected = selectedSkill === t;
                 return (
-                  <Button
+                  <button
                     key={t}
-                    size="sm"
-                    variant={isSelected ? 'default' : 'outline'}
+                    type="button"
+                    aria-pressed={isSelected}
                     onClick={() => setSelectedSkill(t)}
-                    className={`h-9 px-3 rounded-xl capitalize text-xs font-semibold whitespace-nowrap transition-all duration-150 flex items-center gap-1.5 ${
+                    className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium capitalize whitespace-nowrap transition-colors ${
                       isSelected
-                        ? 'shadow-xs font-bold'
-                        : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground border-border/60'
+                        ? 'border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/25'
+                        : 'border-border/80 bg-card text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
-                    <span>{t}</span>
-                  </Button>
+                    {t}
+                  </button>
                 );
               })}
             </div>
-
-            {/* Search Input */}
-            <div className="relative w-full sm:w-auto sm:min-w-[240px] sm:max-w-xs">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              <Input
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search mistakes or topics…"
-                className="h-10 sm:h-9 pl-9 pr-8 text-xs bg-background rounded-xl border-border/80 focus-visible:ring-1 focus-visible:ring-primary"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full"
-                  aria-label="Clear search"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+            <Segmented label="Status" value={statusFilter} onChange={setStatusFilter} options={statusOptions} />
           </div>
+        </section>
 
-          {/* Mistake Cards List */}
-          {loading ? (
-            <MistakesPageSkeleton bare />
-          ) : filteredMistakes.length === 0 ? (
-            <Card className="p-12 text-center space-y-4 rounded-3xl border border-dashed border-border/80 bg-muted/10">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-2xs">
-                <CheckCircle2 className="w-7 h-7" />
-              </div>
-              <div className="space-y-1.5 max-w-md mx-auto">
-                <CardTitle className="text-base sm:text-lg font-bold">
-                  {rawMistakes.length === 0
-                    ? `No mistakes recorded in the ${periodLabel.toLowerCase()}`
-                    : 'No matching mistakes found'}
-                </CardTitle>
-                <CardDescription className="text-xs sm:text-sm leading-relaxed">
-                  {rawMistakes.length === 0
-                    ? `Questions you miss during practice and full mock exams within the ${periodLabel.toLowerCase()} will appear here automatically.`
-                    : 'Try clearing your search query or switching to another skill filter.'}
-                </CardDescription>
-              </div>
-              {searchQuery && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSearchQuery('')}
-                  className="rounded-xl text-xs"
-                >
-                  Clear Search Filter
-                </Button>
-              )}
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground px-1">
-                <span>
-                  Showing <strong className="text-foreground">{filteredMistakes.length}</strong> mistakes from <strong className="text-foreground">{periodLabel}</strong>
-                </span>
-                {selectedSkill !== 'all' && (
-                  <span className="capitalize">
-                    Filtered by: <strong className="text-foreground">{selectedSkill}</strong>
-                  </span>
-                )}
-              </div>
-
-              {filteredMistakes.map(item => {
-                const SkillIcon = SKILL_ICONS[item.skill] || Layers;
-                const skillStyle = SKILL_STYLES[item.skill] || 'bg-muted text-muted-foreground border-border';
-
-                return (
-                  <div
-                    key={item.id}
-                    className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs hover:border-primary/40 hover:shadow-md transition-all duration-200 space-y-4"
-                  >
-                    {/* Header row: Skill, question type, repeat count & timestamp */}
-                    <div className="flex items-start justify-between gap-2.5">
-                      <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
-                        {/* Skill Pill */}
-                        {item.skill && (
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider border ${skillStyle}`}>
-                            <SkillIcon className="w-3 h-3" />
-                            <span>{item.skill}</span>
-                          </span>
-                        )}
-
-                        {/* Question Type */}
-                        <span className="px-3 py-1 rounded-lg text-[11px] font-bold tracking-tight bg-secondary/80 text-secondary-foreground border border-border/60">
-                          {item.typeName}
-                        </span>
-
-                        {/* Status Pill */}
-                        {item.resolved ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/25">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                            <span>Mastered</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 dark:text-rose-300 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/25">
-                            <Flame className="w-3 h-3 text-rose-500" />
-                            <span>Unresolved</span>
-                          </span>
-                        )}
-
-                        {/* Error Tag */}
-                        {item.errorTag && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
-                            <Tag className="w-3 h-3" />
-                            <span>{item.errorTag}</span>
-                          </span>
-                        )}
-
-                        {/* Repeat Count */}
-                        {item.failedCount > 1 && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 dark:text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/25">
-                            <RotateCcw className="w-3 h-3" />
-                            <span>Missed {item.failedCount}x</span>
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Timestamp */}
-                      {item.lastAttemptedAt && (
-                        <span className="shrink-0 inline-flex items-center gap-1 pt-1 text-[11px] font-mono text-muted-foreground">
-                          <Clock className="w-3 h-3" />
-                          {new Date(item.lastAttemptedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Title & Prompt Context */}
-                    <div className="space-y-2">
-                      <h3 className="font-display font-bold text-base sm:text-lg text-foreground tracking-tight break-words">
-                        {item.questionTitle}
-                      </h3>
-                      {item.prompt && (
-                        <div className="text-xs sm:text-[13px] text-muted-foreground/90 bg-muted/20 border-l-2 border-primary/40 pl-3 py-1.5 rounded-r-lg leading-relaxed break-words">
-                          {item.prompt}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Responses Comparison: Your Answer vs Correct Answer */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                      {/* Previous (Wrong) Response */}
-                      <div className="rounded-xl border border-rose-200/70 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/20 p-3 sm:p-3.5 space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-rose-700 dark:text-rose-400">
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>Previous response</span>
-                        </div>
-                        <div className="pt-0.5">
-                          {renderResponseBadges(item.userResponse, true)}
-                        </div>
-                      </div>
-
-                      {/* Correct Answer (if available) */}
-                      {item.correctResponse && (
-                        <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/20 p-3 sm:p-3.5 space-y-1.5">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Correct answer</span>
-                          </div>
-                          <div className="pt-0.5">
-                            {renderResponseBadges(item.correctResponse, false)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Examiner Explanation Box */}
-                    {item.explanation && (
-                      <div className="rounded-xl border border-amber-200/60 dark:border-amber-900/40 bg-amber-500/5 p-3.5 space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
-                          <Lightbulb className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                          <span>Examiner Explanation &amp; Key Learning</span>
-                        </div>
-                        <p className="text-xs sm:text-[13px] text-muted-foreground leading-relaxed pl-5">
-                          {item.explanation}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Action link */}
-                    {!isSuru && <MistakePracticeLink mistake={item} />}
-                  </div>
-                );
-              })}
+        {loading ? (
+          <MistakesPageSkeleton bare />
+        ) : filteredMistakes.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border/80 bg-card/60 px-6 py-14 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              {historyItems.length === 0 ? <History className="w-6 h-6" /> : <Search className="w-6 h-6" />}
             </div>
-          )}
-        </div>
+            <h2 className="font-display text-lg font-semibold text-foreground">
+              {historyItems.length === 0 ? `Nothing practiced in the ${periodLabel.toLowerCase()}` : 'No questions match'}
+            </h2>
+            <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
+              {historyItems.length === 0
+                ? 'Questions you answer in practice and mock exams show up here automatically.'
+                : 'Try another search, skill or status.'}
+            </p>
+            {searchQuery && (
+              <Button variant="outline" size="sm" onClick={() => setSearchQuery('')} className="mt-5 rounded-xl">
+                Clear search
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {groups.map(group => (
+              <section key={group.label} aria-label={group.label} className="space-y-3">
+                <h2 className="flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="shrink-0">{group.label}</span>
+                  <span className="h-px flex-1 bg-border/70" aria-hidden="true" />
+                </h2>
+                <div className="space-y-3">
+                  {group.items.map((item, i) => (
+                    // Several attempts can share one mistake id, so the index keeps keys unique.
+                    <HistoryCard key={`${item.id}-${i}`} item={item} onOpen={isSuru ? undefined : () => setOpened(item)} />
+                  ))}
+                </div>
+              </section>
+            ))}
+            {remaining > 0 && (
+              <div className="flex flex-col items-center gap-1.5 pt-1">
+                <Button variant="outline" onClick={() => setVisible(v => v + PAGE)} className="rounded-xl px-5 font-semibold hover:border-primary/40 hover:bg-primary/5">
+                  Show {Math.min(PAGE, remaining)} more
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+                <p className="text-xs text-muted-foreground tabular-nums">Showing {visible} of {filteredMistakes.length}</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {opened && (
+        <PracticeResultDialog
+          title={opened.questionTitle}
+          result={opened.evaluation
+            ? { evaluation: opened.evaluation, xpAwarded: 0 }
+            : { attempt: opened.attempt ?? attemptFromMistake(opened), xpAwarded: 0 }}
+          recording={null}
+          open
+          onOpenChange={o => !o && setOpened(null)}
+          onRedo={() => navigate(redoHref(opened))}
+        />
+      )}
 
       {/* ======================================================================= */}
       {/* Premium Upgrade Modal Overlay for Suru Users (Fixed & Non-movable) */}
       {/* ======================================================================= */}
       {isSuru && (
-        <div className="fixed inset-x-0 top-14 lg:top-16 bottom-[var(--mobile-nav-h,0px)] z-20 flex justify-center items-start py-4 sm:pt-10 px-4 pointer-events-none lg:left-[var(--sidebar-offset,416px)] transition-[left] duration-300">
+        <div className={embedded
+          ? 'absolute inset-0 z-20 flex justify-center items-start py-4 sm:pt-10 px-4 pointer-events-none'
+          : 'fixed inset-x-0 top-14 lg:top-16 bottom-[var(--mobile-nav-h,0px)] z-20 flex justify-center items-start py-4 sm:pt-10 px-4 pointer-events-none lg:left-[var(--sidebar-offset,416px)] transition-[left] duration-300'}>
           <div className="pointer-events-auto relative w-full max-w-lg max-h-full overflow-y-auto overscroll-contain bg-card/95 backdrop-blur-md border border-border/90 shadow-2xl rounded-3xl p-5 sm:p-7 text-center space-y-4">
             {/* Ambient radiant glow */}
             <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-72 bg-gradient-to-br from-amber-500/25 via-blue-500/15 to-transparent rounded-full blur-3xl pointer-events-none" />
@@ -720,7 +559,7 @@ export default function MistakesPage() {
               {/* Title & Description */}
               <div className="space-y-1">
                 <h2 className="font-display text-xl sm:text-2xl font-black text-foreground tracking-tight">
-                  Unlock Your Mistake Bank
+                  Unlock your practice history
                 </h2>
                 <p className="text-xs text-muted-foreground leading-relaxed max-w-sm mx-auto">
                   Every question you miss during practice and full mock exams is automatically cataloged with examiner explanations and recovery timelines.
@@ -734,7 +573,7 @@ export default function MistakesPage() {
                   className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
                 >
                   <span className="sm:hidden">Upgrade to unlock</span>
-                  <span className="hidden sm:inline">Upgrade to Unlock Full Mistake Bank</span>
+                  <span className="hidden sm:inline">Upgrade to see your full history</span>
                   <ArrowRight className="w-4 h-4" />
                 </Button>
                 <p className="text-[11px] text-muted-foreground font-medium">
@@ -749,7 +588,7 @@ export default function MistakesPage() {
                     <BarChart3 className="w-3.5 h-3.5 shrink-0" />
                     <p className="text-[11px] font-bold text-foreground">Recovery Graphs</p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground leading-tight">Mastery &amp; error timeline analytics</p>
+                  <p className="text-xs text-muted-foreground leading-tight">Mastery &amp; error timeline analytics</p>
                 </div>
 
                 <div className="p-2.5 rounded-xl border border-border/80 bg-background/80 space-y-1 shadow-2xs">
@@ -757,7 +596,7 @@ export default function MistakesPage() {
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                     <p className="text-[11px] font-bold text-foreground">Repeat Traps</p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground leading-tight">Catch questions missed &gt;1 time</p>
+                  <p className="text-xs text-muted-foreground leading-tight">Catch questions missed &gt;1 time</p>
                 </div>
 
                 <div className="p-2.5 rounded-xl border border-border/80 bg-background/80 space-y-1 shadow-2xs">
@@ -765,7 +604,7 @@ export default function MistakesPage() {
                     <Sparkles className="w-3.5 h-3.5 shrink-0" />
                     <p className="text-[11px] font-bold text-foreground">AI Explanations</p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground leading-tight">Deep examiner solution breakdowns</p>
+                  <p className="text-xs text-muted-foreground leading-tight">Deep examiner solution breakdowns</p>
                 </div>
               </div>
             </div>
@@ -773,5 +612,207 @@ export default function MistakesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+type HistoryItem = Omit<Mistake, 'exam'> & {
+  exam?: ExamType;
+  isCorrect: boolean;
+  score?: number;
+  maxScore?: number;
+  attempt?: PracticeAttempt;
+  evaluation?: Evaluation;
+};
+
+// An AI-scored answer counts as mastered from 70% of its scale, the same line the result ring turns green.
+function evaluationItem(e: Evaluation): HistoryItem {
+  const scale = SCALE[e.exam] ?? SCALE.PTE;
+  const score = e.estimatedScore;
+  return {
+    id: e.id,
+    questionId: e.questionId ?? '',
+    questionTitle: e.questionTitle || e.typeName || `${e.skill[0].toUpperCase()}${e.skill.slice(1)} answer`,
+    exam: e.exam,
+    skill: e.skill,
+    typeName: e.typeName ?? '',
+    prompt: '',
+    userResponse: e.transcript ?? '',
+    correctResponse: '',
+    explanation: e.summary,
+    errorTag: '',
+    failedCount: 0,
+    resolved: score !== null && (score - scale.min) / (scale.max - scale.min) >= 0.7,
+    isCorrect: false,
+    score: score ?? undefined,
+    maxScore: scale.max,
+    lastAttemptedAt: e.createdAt,
+    evaluation: e,
+  };
+}
+
+function startOfDay(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+// Buckets items by the day they were answered, newest day first.
+function groupByDay(items: HistoryItem[]) {
+  const today = startOfDay(new Date());
+  const groups = new Map<string, { label: string; time: number; items: HistoryItem[] }>();
+  for (const item of items) {
+    const date = item.lastAttemptedAt ? new Date(item.lastAttemptedAt) : null;
+    const time = date && !Number.isNaN(date.getTime()) ? startOfDay(date) : -Infinity;
+    const days = Math.round((today - time) / 86_400_000);
+    const label = !date || time === -Infinity
+      ? 'Earlier'
+      : days === 0
+        ? 'Today'
+        : days === 1
+          ? 'Yesterday'
+          : date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+    const group = groups.get(label) ?? { label, time, items: [] };
+    group.items.push(item);
+    groups.set(label, group);
+  }
+  return [...groups.values()].sort((a, b) => b.time - a.time);
+}
+
+function Segmented<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: readonly { value: T; label: string }[];
+}) {
+  return (
+    <div role="group" aria-label={label} className="inline-flex shrink-0 rounded-xl border border-border/80 bg-muted/60 p-1">
+      {options.map(o => (
+        <button
+          key={o.value}
+          type="button"
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={`rounded-lg px-3 py-1.5 text-[13px] font-medium whitespace-nowrap transition-colors ${
+            value === o.value ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Stat({
+  icon: Icon,
+  tone,
+  label,
+  value,
+  hint,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  tone: string;
+  label: string;
+  value: number;
+  hint: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-border/70 bg-card p-3.5 sm:p-4 shadow-card">
+      <div className="flex items-center gap-3">
+        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${tone}`}>
+          <Icon className="w-5 h-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-xs font-semibold text-muted-foreground">{label}</p>
+          <p className="font-display text-2xl font-black leading-tight tabular-nums text-foreground">{value}</p>
+        </div>
+      </div>
+      <p className="mt-2 truncate text-xs text-muted-foreground">{hint}</p>
+      {children}
+    </div>
+  );
+}
+
+function redoHref(item: HistoryItem): string {
+  if (item.evaluation) {
+    const label = SYLLABUS[item.evaluation.exam]?.[item.skill]?.find(name =>
+      matchesTypeKey(name, typeKey(item.typeName))) ?? item.typeName;
+    const params = new URLSearchParams({ skill: item.skill, type: typeKey(label), questionId: item.questionId, exam: item.evaluation.exam });
+    return `/practice?${params}`;
+  }
+  return item.isCorrect ? `/practice?skill=${item.skill}` : mistakePracticeHref(item as Mistake);
+}
+
+// A mistake with no stored attempt still opens the same score card.
+function attemptFromMistake(item: HistoryItem): PracticeAttempt {
+  const correct = item.isCorrect || item.resolved;
+  return {
+    id: item.id,
+    questionId: item.questionId,
+    questionTitle: item.questionTitle,
+    skill: item.skill,
+    typeName: item.typeName,
+    prompt: item.prompt,
+    exam: item.exam,
+    examVersionId: '',
+    isCorrect: correct,
+    score: item.score ?? (correct ? 1 : 0),
+    maxScore: item.maxScore ?? 1,
+    accuracyPercentage: correct ? 100 : 0,
+    feedback: [!correct && item.correctResponse ? `Correct answer: ${item.correctResponse}.` : '', item.explanation].filter(Boolean).join(' '),
+    userResponse: item.userResponse,
+    timeSpentSeconds: 0,
+    createdAt: item.lastAttemptedAt,
+  };
+}
+
+function HistoryCard({ item, onOpen }: { item: HistoryItem; onOpen?: () => void }) {
+  const SkillIcon = SKILL_ICONS[item.skill] || Layers;
+  const hasScore = typeof item.score === 'number' && typeof item.maxScore === 'number' && item.maxScore > 0;
+  const ratio = hasScore ? item.score! / item.maxScore! : item.isCorrect || item.resolved ? 1 : 0;
+  // Outcome colour: green from 70%, amber for partial credit, rose for wrong.
+  const TONE = {
+    good: { bar: 'bg-emerald-500', pill: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-500/20' },
+    mid: { bar: 'bg-amber-500', pill: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-amber-500/20' },
+    bad: { bar: 'bg-rose-500', pill: 'bg-rose-500/10 text-rose-700 dark:text-rose-400 ring-rose-500/20' },
+  }[item.evaluation && !hasScore ? 'mid' : ratio >= 0.7 ? 'good' : ratio > 0 ? 'mid' : 'bad'];
+  const when = item.lastAttemptedAt ? new Date(item.lastAttemptedAt) : null;
+  const time = when && !Number.isNaN(when.getTime()) ? when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : null;
+
+  const body = (
+    <>
+      <span aria-hidden className={`absolute inset-y-0 left-0 w-1 ${TONE.bar}`} />
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${SKILL_TILES[item.skill] ?? 'bg-muted text-muted-foreground'}`}>
+        <SkillIcon className="w-5 h-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[15px] font-semibold leading-snug text-foreground line-clamp-2 break-words">
+          {item.questionTitle}
+        </span>
+        <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <span className="font-medium capitalize">{item.skill}</span>
+          {item.typeName && <span className="max-w-[14rem] truncate rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium">{item.typeName}</span>}
+          {time && <span className="tabular-nums">· {time}</span>}
+          {item.failedCount > 1 && <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400"><RotateCcw className="w-3 h-3" />Missed {item.failedCount}×</span>}
+        </span>
+      </span>
+      <span className={`shrink-0 rounded-xl px-2.5 py-1 font-display text-base font-bold tabular-nums ring-1 ring-inset ${TONE.pill}`}>
+        {hasScore ? <>{item.score}<span className="text-xs font-semibold opacity-70">/{item.maxScore}</span></> : item.evaluation ? '—' : ratio >= 1 ? 'Correct' : 'Wrong'}
+      </span>
+    </>
+  );
+
+  const className = 'relative flex w-full items-center gap-3.5 overflow-hidden rounded-2xl border border-border/70 bg-card py-3.5 pl-5 pr-3.5 text-left shadow-card transition-all';
+  if (!onOpen) return <div className={className}>{body}</div>;
+  return (
+    <button type="button" data-tour="history-item" onClick={onOpen} className={`${className} group/card hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30`}>
+      {body}
+      <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground transition-transform group-hover/card:translate-x-0.5" />
+    </button>
   );
 }

@@ -446,6 +446,11 @@ export interface AnswerSubmission {
 export interface PracticeAttempt {
   id: string;
   questionId: string;
+  questionTitle?: string;
+  skill?: SkillType;
+  typeName?: string;
+  prompt?: string;
+  exam?: ExamType;
   examVersionId: string;
   isCorrect: boolean;
   score: number;
@@ -566,6 +571,11 @@ export interface Evaluation {
   /** Read Aloud / Repeat Sentence: the given text marked word by word. */
   words?: WordMark[];
   createdAt: string;
+  /** True while the spoken answer's recording can be replayed (30 days). */
+  hasRecording?: boolean;
+  /** On the history list only. */
+  questionTitle?: string;
+  typeName?: string;
 }
 
 export interface WordMark {
@@ -598,30 +608,6 @@ export interface ProgressSummary {
   skills: SkillProgress[];
 }
 
-/**
- * One practised day, bucketed in the learner's own timezone by the server.
- *
- * Only days with attempts are sent, so the heatmap fills its own blanks. An
- * absent date means no practice, never "not loaded yet".
- */
-export interface ActivityDay {
-  /** YYYY-MM-DD in the learner's timezone. */
-  date: string;
-  count: number;
-  minutes: number;
-  skills: Partial<Record<SkillType, number>>;
-}
-
-export interface ActivitySummary {
-  from: string;
-  to: string;
-  days: ActivityDay[];
-  totalSessions: number;
-  totalMinutes: number;
-  currentStreak: number;
-  longestStreak: number;
-}
-
 export interface DailyMission {
   id: string;
   title: string;
@@ -647,18 +633,6 @@ export interface XPTransaction {
   amount: number;
   reason: string;
   createdAt: string;
-}
-
-export interface LeaderboardEntry {
-  rank: number;
-  userId: string;
-  name: string;
-  nepalRegion: string;
-  exam: ExamType;
-  xp: number;
-  level: number;
-  streakDays: number;
-  isYou: boolean;
 }
 
 export interface NotificationItem {

@@ -161,7 +161,7 @@ export function ExamSwitcher({
           }`}
         >
           <span className="whitespace-nowrap">{EXAM_LABELS[exam]}</span>
-          <span className="text-[9px] opacity-75 font-mono">{target}</span>
+          <span className="text-xs opacity-75 font-mono">{target}</span>
         </button>
       ))}
     </div>

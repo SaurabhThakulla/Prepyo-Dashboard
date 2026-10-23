@@ -15,7 +15,7 @@ import { encodeForUpload, beep } from '@/lib/audio';
 import { AnswerRecorder } from '@/lib/answerRecorder';
 import { Playback, playClips, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
-import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
+import SectionMockIntro from '@/components/mocks/SectionMockIntro';
 import PracticeResultCard from '@/components/practice/PracticeResultCard';
 
 /** Mirrors billing.SectionMockSubTests on the server, which is what enforces it. */
@@ -90,10 +90,10 @@ export default function SpeakingMockPanel() {
   const [outcome, setOutcome] = useState<SpeakingOutcome | null>(null);
   const [starting, setStarting] = useState(false);
 
-  const start = async () => {
+  const start = async (chosen?: string) => {
     setStarting(true);
     try {
-      const paperId = searchParams.get('paper');
+      const paperId = chosen ?? searchParams.get('paper');
       const body = paperId ? { paperId } : {};
       const data = await api.post<{ session: SpeakingSession }>('/speaking/mocks', body);
       setSession(data.session);
@@ -131,17 +131,29 @@ export default function SpeakingMockPanel() {
     );
   }
   return (
-    <div className="relative w-full min-h-[calc(100dvh-4rem)] bg-background">
-      <PreTestBlurOverlay
-        title="IELTS Speaking mock test"
-        instructions={`All three parts in one sitting, about 15 minutes. The examiner's questions are read aloud and each answer is recorded; Part 2 gives you a minute to prepare. You will need a microphone and a quiet room. It uses ${SECTION_MOCK_SUB_TESTS} of your daily practice sub-tests; a test you already started carries on at no extra cost.`}
-        subTestsRemaining={subTestsLeft(user?.subscription)}
-        credits={SECTION_MOCK_SUB_TESTS}
-        startLabel="Start mock test"
-        isStarting={starting}
-        onStart={() => void start()}
-      />
-    </div>
+    <SectionMockIntro
+      exam="IELTS"
+      skill="speaking"
+      title="Speaking Sectional Test"
+      description="All three parts in one sitting. The examiner's questions are read aloud and each answer is recorded."
+      duration="About 15 min"
+      items="3 parts"
+      parts={[
+        { name: 'Part 1: Introduction and interview', detail: '4–5 min' },
+        { name: 'Part 2: Long turn', detail: '1 min prep, 2 min talk' },
+        { name: 'Part 3: Discussion', detail: '4–5 min' },
+      ]}
+      rules={[
+        'The parts run in order, one question at a time, as in the test.',
+        'Each answer records until you finish or its time runs out, then the next question is asked.',
+        'Part 2 gives you one minute to prepare before you speak.',
+      ]}
+      equipment="You need a microphone and a quiet room. Your browser asks for the microphone when the test starts."
+      credits={SECTION_MOCK_SUB_TESTS}
+      subTestsRemaining={subTestsLeft(user?.subscription)}
+      isStarting={starting}
+      onStart={paperId => void start(paperId)}
+    />
   );
 }
 

@@ -73,7 +73,7 @@ export default function PrivacyPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 mb-4">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Effective Date: September 2026</span>
+            <span>Effective Date: October 2026</span>
           </div>
           <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-foreground mb-4">
             Privacy Policy
@@ -185,6 +185,7 @@ export default function PrivacyPage() {
             </p>
             <ul className="list-disc pl-5 space-y-1">
               <li>Recordings are used strictly for your own evaluation and diagnostic scorecards.</li>
+              <li>A copy of each practice recording is kept for 30 days so you can replay it from your score card. It is stored privately and encrypted with Backblaze B2, only you can play it, and it is deleted automatically after 30 days.</li>
               <li>We never sell or publicly broadcast your voice files.</li>
               <li>Audio data is encrypted during transit and at rest using standard 256-bit encryption.</li>
             </ul>

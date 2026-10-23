@@ -69,23 +69,6 @@ export const DashboardPageSkeleton = () => (
   </Shell>
 );
 
-export const EvaluationsPageSkeleton = () => (
-  <Shell label="writing evaluator">
-    <Header titleW="w-48" actionW="w-44 rounded-full" />
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <Card className="lg:col-span-7 p-6 space-y-4">
-        <Skeleton className="h-10 w-full rounded-xl" /><Skeleton className="h-24 w-full rounded-xl" /><Skeleton className="h-64 w-full rounded-xl" />
-        <div className="flex justify-between pt-2"><Skeleton className="h-9 w-24 rounded-xl" /><Skeleton className="h-9 w-36 rounded-xl" /></div>
-      </Card>
-      <Card className="lg:col-span-5 p-8 flex flex-col items-center justify-center text-center space-y-3 min-h-[360px]">
-        <Skeleton className="h-10 w-10 rounded-full" />
-        <Skeleton className="h-4 w-44 rounded-md" />
-        <Skeleton className="h-3.5 w-60 rounded-md" />
-      </Card>
-    </div>
-  </Shell>
-);
-
 export const ProfilePageSkeleton = () => (
   <Shell label="profile" className="p-0 pb-12 space-y-6">
     <div className="bg-card border-b border-border/80">
@@ -158,20 +141,6 @@ export const MistakesPageSkeleton = ({ bare = false }: { bare?: boolean } = {}) 
         <Card key={i} className="p-4 sm:p-5 space-y-3"><div className="flex justify-between"><Skeleton className="h-5 w-16 rounded-full" /><Skeleton className="h-4 w-28" /></div><Skeleton className="h-4 w-5/6" /><Skeleton className="h-12 w-full rounded-xl" /></Card>
       ))}
     </div>
-  </Shell>
-);
-
-export const LeaderboardPageSkeleton = ({ bare = false }: { bare?: boolean } = {}) => (
-  <Shell label="leaderboard" bare={bare}>
-    {!bare && <Header titleW="w-48" actionW="w-40" />}
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-      {[0, 1, 2].map(i => <Card key={i} className="p-5 flex flex-col items-center space-y-3"><Skeleton className="h-16 w-16 rounded-full" /><Skeleton className="h-4 w-28" /><Skeleton className="h-6 w-20 rounded-full" /></Card>)}
-    </div>
-    <Card className="p-0 divide-y divide-border/60">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="p-4 flex justify-between items-center"><div className="flex items-center gap-3"><Skeleton className="h-8 w-8 rounded-full" /><Skeleton className="h-4 w-32" /></div><Skeleton className="h-5 w-16 rounded-full" /></div>
-      ))}
-    </Card>
   </Shell>
 );
 

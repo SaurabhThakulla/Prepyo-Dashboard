@@ -402,15 +402,6 @@ const FEATURES: Feature[] = [
     highlights: ['Practise a little every day to keep your streak alive', 'Earn XP and climb the levels'],
     accent: { tile: 'bg-amber-500 text-white', soft: 'bg-amber-50 text-amber-600', glow: 'from-amber-100' },
   },
-  {
-    icon: Trophy,
-    title: 'Nepal Study Challenge',
-    tag: 'Nationwide ranking',
-    text: 'See where you stand among learners across Nepal.',
-    highlights: ['Compare your practice with learners nationwide', 'A friendly push to keep going'],
-    where: 'Home → Nepal Study Challenge',
-    accent: { tile: 'bg-emerald-600 text-white', soft: 'bg-emerald-50 text-emerald-600', glow: 'from-emerald-100' },
-  },
 ];
 
 /** The toolkit for EPS-TOPIK: no speaking, writing or mock tests yet, and a Korean course. */
@@ -711,7 +702,7 @@ export default function OnboardingFlow({
                             )}
                             <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.12] text-white ring-1 ring-white/15">
                               <item.icon className="h-[18px] w-[18px]" />
-                              <span className="absolute -right-1 -top-1 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-sky-300 text-[10px] font-bold text-[#0d1f5c] ring-2 ring-blue-700">
+                              <span className="absolute -right-1 -top-1 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-sky-300 text-xs font-bold text-[#0d1f5c] ring-2 ring-blue-700">
                                 {index + 1}
                               </span>
                             </span>
@@ -763,7 +754,7 @@ export default function OnboardingFlow({
                                   />
                                 ))}
                               </span>
-                              <span className="mt-1.5 flex justify-between text-[10px] font-bold text-slate-400">
+                              <span className="mt-1.5 flex justify-between text-xs font-bold text-slate-400">
                                 <span>{SCALE_ENDS[option.id][0]}</span>
                                 <span className={selected ? 'text-slate-700' : ''}>{option.scale}</span>
                                 <span>{SCALE_ENDS[option.id][1]}</span>
@@ -819,7 +810,7 @@ export default function OnboardingFlow({
                               <FlagComponent className="h-full w-full object-cover" />
                             </span>
                             {option.name}
-                            <span className="text-[10px] font-medium text-slate-400">{option.scale}</span>
+                            <span className="text-xs font-medium text-slate-400">{option.scale}</span>
                           </span>
                         );
                       })}
@@ -1019,7 +1010,7 @@ export default function OnboardingFlow({
                           aria-label={`Your last ${unit}`}
                           className="mt-5 w-full cursor-pointer accent-blue-600"
                         />
-                        <div className="mt-1 flex justify-between text-[10px] font-bold text-slate-400">
+                        <div className="mt-1 flex justify-between text-xs font-bold text-slate-400">
                           <span>{formatScore(chosen, scale.min)}</span>
                           <span>{formatScore(chosen, scale.max)}</span>
                         </div>
@@ -1085,7 +1076,7 @@ export default function OnboardingFlow({
                           className="w-full cursor-pointer accent-blue-600"
                         />
 
-                        <div className="mt-1 flex justify-between text-[10px] font-bold text-slate-400">
+                        <div className="mt-1 flex justify-between text-xs font-bold text-slate-400">
                           <span>{formatScore(chosen, scale.min)}</span>
                           <span>{formatScore(chosen, scale.max)}</span>
                         </div>
@@ -1725,7 +1716,7 @@ function PlanCard({
       className="relative flex flex-col justify-between p-5 sm:p-6 min-h-[340px]"
     >
       {(plan.isPopular || current) && (
-        <span className="absolute -top-3 left-5 rounded-full bg-blue-600 px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+        <span className="absolute -top-3 left-5 rounded-full bg-blue-600 px-3 py-0.5 text-xs font-bold uppercase tracking-wider text-white shadow-sm">
           {current ? 'Current plan' : 'Most popular'}
         </span>
       )}
@@ -1780,7 +1771,7 @@ function MiniCalendar({ month, day, active }: { month: string; day: number; acti
       }`}
     >
       <span
-        className={`py-0.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${
+        className={`py-0.5 text-xs font-bold uppercase tracking-wider transition-colors ${
           active ? 'bg-blue-600 text-white' : 'bg-rose-500 text-white'
         }`}
       >
@@ -1834,7 +1825,7 @@ function ScoreRing({ fraction, value, caption }: { fraction: number; value: stri
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="font-display text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">{value}</span>
-        <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">{caption}</span>
+        <span className="mt-0.5 text-xs font-bold uppercase tracking-wider text-slate-400">{caption}</span>
       </div>
     </div>
   );

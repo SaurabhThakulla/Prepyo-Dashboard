@@ -78,7 +78,7 @@ export default function OptionList({
         return (
           <label
             key={option.id}
-            className={`flex items-start gap-2.5 px-3 py-2 rounded-lg border text-xs sm:text-[13px] transition-all select-none ${
+            className={`flex items-start gap-2.5 px-3 py-2 rounded-lg border text-xs sm:text-[13.5px] font-medium leading-relaxed transition-all select-none ${
               locked ? 'cursor-default' : 'cursor-pointer active:scale-[0.99]'
             } ${classes}`}
           >

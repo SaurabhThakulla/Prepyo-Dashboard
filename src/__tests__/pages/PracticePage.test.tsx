@@ -43,6 +43,9 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+// Closing the question list (shut for practice, so a no-op there) starts the task.
+const closeList = async () => fireEvent.click(await screen.findByTitle('Close drawer'));
+
 async function openPractice(skill: string) {
   vi.mocked(api.get).mockResolvedValue({ questions: [{
     id: 'question-1', exam: 'IELTS', skill, title: 'Test task', typeName: 'Test task',
@@ -50,7 +53,7 @@ async function openPractice(skill: string) {
     options: skill === 'listening' ? [{ id: 'a', text: 'Answer A' }] : [],
   }] });
   render(<MemoryRouter initialEntries={[`/practice?skill=${skill}`]}><PracticePage /></MemoryRouter>);
-  return screen.findByRole('button', { name: 'Start Practice (1 Credit)' });
+  return screen.findByTitle('Close drawer');
 }
 
 describe('PTE listening answer controls', () => {
@@ -65,7 +68,7 @@ describe('PTE listening answer controls', () => {
       throw new Error('Retry later');
     });
     render(<MemoryRouter initialEntries={['/practice?skill=listening']}><PracticePage /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Start Practice (1 Credit)' }));
+    await closeList();
     return screen.findByRole('button', { name: 'Submit Answer' });
   }
 
@@ -154,7 +157,7 @@ describe('writing minimum on the routed page', () => {
       throw new Error('Retry later');
     });
     render(<MemoryRouter initialEntries={['/practice?skill=writing']}><PracticePage /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Start Practice (1 Credit)' }));
+    await closeList();
     const input = await screen.findByPlaceholderText('Write your response here…');
     const submit = screen.getByRole('button', { name: 'Submit Answer' }) as HTMLButtonElement;
     for (const count of [0, minimum - 1]) {
@@ -196,7 +199,7 @@ describe('IELTS writing length on the routed page', () => {
       throw new Error('Retry later');
     });
     render(<MemoryRouter initialEntries={['/practice?skill=writing']}><PracticePage /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Start Practice (1 Credit)' }));
+    await closeList();
     const input = await screen.findByPlaceholderText('Write your response here…');
     const submit = screen.getByRole('button', { name: 'Submit Answer' }) as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
@@ -226,7 +229,7 @@ describe('summary task links', () => {
         throw new Error('Retry later');
       });
       render(<MemoryRouter initialEntries={[`/practice?skill=writing&type=${key}`]}><PracticePage /></MemoryRouter>);
-      fireEvent.click(await screen.findByRole('button', { name: 'Start Practice (1 Credit)' }));
+      await closeList();
       const submit = await screen.findByRole('button', { name: 'Submit Answer' });
       expect(screen.getByText('Summary task')).toBeDefined();
       expect(screen.queryByText('Unrelated essay')).toBeNull();
@@ -260,7 +263,7 @@ describe('practice bank indicators', () => {
       return { evaluation: { summary: 'Feedback ready', criteria: [] }, xpAwarded: 10 };
     });
     render(<MemoryRouter initialEntries={[`/practice?skill=${skill}`]}><PracticePage /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: 'Start Practice (1 Credit)' }));
+    await closeList();
     const submit = await screen.findByRole('button', { name: skill === 'speaking' ? 'Submit recording' : 'Submit Answer' });
     expect(screen.queryByText(/Questions unlock one at a time/)).toBeNull();
     expect(screen.queryByRole('button', { name: /^\d+$/ })).toBeNull();
@@ -300,10 +303,8 @@ describe('practice credit lifecycle', () => {
       // Keep the answer visible after a grading failure so the learner can retry.
       throw new Error('Scoring temporarily unavailable');
     });
-    const start = await openPractice(skill);
-    expect(api.post).not.toHaveBeenCalled();
-    expect(screen.queryByRole('button', { name: 'Submit Answer' })).toBeNull();
-    fireEvent.click(start);
+    // Practice opens on its first question: it starts without waiting for the list.
+    await openPractice(skill);
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/practice/start', {
       exam: 'IELTS', skill, questionId: 'question-1',
     }));
@@ -354,7 +355,7 @@ describe('practice credit lifecycle', () => {
     fireEvent.click(await openPractice('writing'));
     await waitFor(() => expect(mocks.toast.error).toHaveBeenCalled());
     expect(screen.queryByPlaceholderText('Write your response here…')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Start Practice (1 Credit)' })).toBeDefined();
+    expect(screen.getAllByRole('button', { name: /start/i }).length).toBeGreaterThan(0);
     expect(api.post).toHaveBeenCalledTimes(1);
   });
 
@@ -391,10 +392,8 @@ describe('practice credit lifecycle', () => {
       </MemoryRouter>,
     );
 
-    // Start Task 1 - no DB fetch prior to click
-    const start1 = await screen.findByRole('button', { name: 'Start Practice (1 Credit)' });
-    expect(api.get).not.toHaveBeenCalled();
-    fireEvent.click(start1);
+    // Task 1 starts once the question list is closed
+    await closeList();
     expect((await screen.findAllByText('Task 1 Title')).length).toBeGreaterThan(0);
 
     // Submit Task 1
@@ -413,10 +412,9 @@ describe('practice credit lifecycle', () => {
       navigateFn('/practice?skill=writing&type=tasktwo');
     });
 
-    // Verify Task 2 is presented and ready with its own Start overlay without loading from DB yet
-    const start2 = await screen.findByRole('button', { name: 'Start Practice (1 Credit)' });
+    // Task 2 starts fresh once its question list is closed
+    await closeList();
     expect(screen.queryByText('Good job')).toBeNull();
-    fireEvent.click(start2);
     expect((await screen.findAllByText('Task 2 Title')).length).toBeGreaterThan(0);
   });
 });

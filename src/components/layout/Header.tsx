@@ -1,29 +1,22 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
-import { Bell, ChevronRight, PanelLeft, Zap } from 'lucide-react';
+import { Bell, ChevronRight, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import NotificationDrawer from './NotificationDrawer';
 
-interface HeaderProps {
-  onToggleSidebar: () => void;
-  isSecondaryOpen?: boolean;
-}
-
-export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps) {
+export default function Header() {
   const { user, unreadCount, activeTestSession } = useApp();
   const { pathname } = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
 
   const getPageTitle = (path: string) => {
     if (path === '/' || path === '/home' || path === '/dashboard') return 'Home';
-    if (path === '/diagnostic') return '15-Min Diagnostic';
-    if (path?.startsWith('/practice')) return 'Practice Studio';
-    if (path?.startsWith('/mocks')) return 'Mock Exams';
-    if (path?.startsWith('/evaluations')) return 'AI Evaluator';
-    if (path === '/mistakes') return 'Mistake Bank';
-    if (path === '/leaderboard') return 'Nepal Leaderboard';
-    if (path === '/subscription' || path === '/account') return 'Subscriptions (NPR)';
+    if (path === '/diagnostic') return 'Level check';
+    if (path?.startsWith('/practice')) return 'Practice';
+    if (path?.startsWith('/mocks')) return 'Mock tests';
+    if (path === '/mistakes' || path === '/history') return 'Practice history';
+    if (path === '/subscription' || path === '/account') return 'Your plan';
     if (path === '/referrals') return 'Earn Rewards';
     if (path === '/profile') return 'Profile & Goals';
     if (path === '/admin') return 'Admin Observability';
@@ -36,24 +29,8 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
     <>
       <header className="sticky top-0 z-30 hidden lg:flex h-16 w-full min-w-0 items-center justify-between gap-2 border-b border-border bg-card/80 px-2 sm:px-6 backdrop-blur-xl transition-colors">
 
-        {/* Left: Sidebar Toggle & Breadcrumb */}
+        {/* Left: breadcrumb (the menu toggle sits on the sidebar's edge) */}
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggleSidebar}
-            data-stay
-            className={`h-8 w-8 shrink-0 rounded-lg border transition-all duration-150 active:scale-95 flex items-center justify-center ${
-              isSecondaryOpen
-                ? 'border-border/80 bg-muted/70 text-foreground shadow-2xs'
-                : 'border-border/50 bg-background/50 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-            }`}
-            title={isSecondaryOpen ? "Collapse sidebar" : "Expand sidebar"}
-            aria-label={isSecondaryOpen ? "Collapse sidebar" : "Expand sidebar"}
-          >
-            <PanelLeft className="w-4 h-4" strokeWidth={1.8} />
-          </Button>
-
           <div className="flex min-w-0 items-center gap-2 text-xs">
             <span className="text-muted-foreground hidden sm:inline font-medium">Prepyo</span>
             <ChevronRight className="w-3.5 h-3.5 text-muted-foreground hidden sm:inline" />
@@ -85,8 +62,9 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
             <span className="text-xs font-bold text-foreground tabular-nums">{user?.xp ?? 0} XP</span>
           </div>
 
-          {/* Notifications */}
+          {/* Notifications: data-stay so opening them does not end a running practice. */}
           <Button
+            data-stay
             variant="ghost"
             size="icon"
             onClick={() => setShowNotifications(!showNotifications)}
@@ -97,7 +75,7 @@ export default function Header({ onToggleSidebar, isSecondaryOpen }: HeaderProps
             {unreadCount > 0 && (
               <span
                 aria-hidden
-                className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-nepal-crimson px-1 text-[10px] font-medium leading-none text-white ring-2 ring-background"
+                className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-nepal-crimson px-1 text-xs font-medium leading-none text-white ring-2 ring-background"
               >
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>

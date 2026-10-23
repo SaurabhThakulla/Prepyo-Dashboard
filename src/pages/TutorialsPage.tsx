@@ -181,7 +181,7 @@ export default function TutorialsPage() {
               >
                 {tab.icon}
                 <span>{tab.label}</span>
-                <span className="text-[10px] opacity-75 font-mono ml-0.5">({count})</span>
+                <span className="text-xs opacity-75 font-mono ml-0.5">({count})</span>
               </button>
             );
           })}
@@ -200,7 +200,7 @@ export default function TutorialsPage() {
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground hover:text-foreground bg-muted px-1.5 py-0.5 rounded"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground hover:text-foreground bg-muted px-1.5 py-0.5 rounded"
             >
               Clear
             </button>
@@ -338,15 +338,15 @@ export default function TutorialsPage() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <Badge
                           variant="secondary"
-                          className="font-bold text-[10px] uppercase bg-primary/10 text-primary border-primary/20"
+                          className="font-bold text-xs uppercase bg-primary/10 text-primary border-primary/20"
                         >
                           {activeVideo.skill}
                         </Badge>
-                        <Badge variant="outline" className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Badge variant="outline" className="text-xs text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {activeVideo.duration}
                         </Badge>
-                        <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                        <Badge variant="outline" className="text-xs text-muted-foreground">
                           {activeVideo.level}
                         </Badge>
                       </div>
@@ -397,15 +397,15 @@ export default function TutorialsPage() {
                       <div className="flex flex-wrap items-center gap-1.5">
                         <Badge
                           variant="secondary"
-                          className="font-bold text-[10px] uppercase bg-primary/10 text-primary border-primary/20"
+                          className="font-bold text-xs uppercase bg-primary/10 text-primary border-primary/20"
                         >
                           {activeVideo.skill}
                         </Badge>
-                        <Badge variant="outline" className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Badge variant="outline" className="text-xs text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {activeVideo.duration}
                         </Badge>
-                        <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                        <Badge variant="outline" className="text-xs text-muted-foreground">
                           {activeVideo.level}
                         </Badge>
                       </div>
@@ -462,7 +462,7 @@ export default function TutorialsPage() {
                   ? 'All Available Lessons'
                   : `${selectedSkill.charAt(0).toUpperCase() + selectedSkill.slice(1)} Video Masterclasses`}
               </h3>
-              <Badge variant="outline" className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5">
+              <Badge variant="outline" className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5">
                 Full-Length Only (12–25 mins)
               </Badge>
             </div>
@@ -523,13 +523,13 @@ export default function TutorialsPage() {
                       </div>
 
                       {/* Duration pill */}
-                      <span className="absolute bottom-2 right-2 rounded-md bg-black/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] font-mono font-semibold text-white">
+                      <span className="absolute bottom-2 right-2 rounded-md bg-black/80 backdrop-blur-sm px-1.5 py-0.5 text-xs font-mono font-semibold text-white">
                         {video.duration}
                       </span>
 
                       {/* Now Playing badge */}
                       {isActive && (
-                        <span className="absolute top-2 left-2 rounded-md bg-primary px-2 py-0.5 text-[10px] font-bold text-white shadow-sm flex items-center gap-1">
+                        <span className="absolute top-2 left-2 rounded-md bg-primary px-2 py-0.5 text-xs font-bold text-white shadow-sm flex items-center gap-1">
                           <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                           Playing
                         </span>
@@ -539,13 +539,13 @@ export default function TutorialsPage() {
                     {/* Content */}
                     <div className="p-4 space-y-2">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <Badge variant="secondary" className="text-[10px] uppercase font-bold px-1.5 py-0">
+                        <Badge variant="secondary" className="text-xs uppercase font-bold px-1.5 py-0">
                           {video.skill}
                         </Badge>
-                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
                           Full Masterclass
                         </span>
-                        <span className="text-[10px] text-muted-foreground font-medium">
+                        <span className="text-xs text-muted-foreground font-medium">
                           {video.level}
                         </span>
                       </div>
@@ -562,7 +562,7 @@ export default function TutorialsPage() {
 
                   <div className="px-4 pb-3 pt-1 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground">
                     <span className="font-medium text-foreground">{video.instructor}</span>
-                    <span className="text-[10px] text-muted-foreground">{video.duration}</span>
+                    <span className="text-xs text-muted-foreground">{video.duration}</span>
                   </div>
                 </Card>
               );

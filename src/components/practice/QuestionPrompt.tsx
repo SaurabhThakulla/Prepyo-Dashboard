@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import PromptAudio from '@/components/practice/PromptAudio';
 import QuestionFigure from '@/components/practice/QuestionFigure';
 import { Question, Blank, listeningPlays } from '@/lib/types';
-import { isWordHighlightTask } from '@/lib/listening';
+import { isReadAloudTask, isRepeatSentenceTask, isWordHighlightTask, passageText } from '@/lib/listening';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
 
 interface QuestionPromptProps {
@@ -59,7 +59,7 @@ export default function QuestionPrompt({
 
       {/* Real audio when the question has a file, otherwise the script read
           aloud by the browser and labelled as synthesised. */}
-      <PromptAudio
+      {!isReadAloudTask(question) && <PromptAudio
         key={question.id}
         questionId={question.id}
         audioUrl={question.audioUrl}
@@ -69,11 +69,11 @@ export default function QuestionPrompt({
         repeat={listeningPlays(question)}
         title={question.title}
         allowTranscript={allowTranscript}
-      />
+      />}
 
       {/* Read Aloud puts the words to say in here, so the passage stays on
           screen while the recorder runs below it. */}
-      {question.contextPassage && !isWordHighlightTask(question) && (
+      {question.contextPassage && !isWordHighlightTask(question) && !isRepeatSentenceTask(question) && (
         passageHasGaps(question.contextPassage) ? (
           <InlineBlankPassage
             passage={question.contextPassage}
@@ -85,7 +85,7 @@ export default function QuestionPrompt({
           />
         ) : (
           <div className="p-4 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed max-h-56 overflow-y-auto">
-            {question.contextPassage}
+            {passageText(question)}
           </div>
         )
       )}

@@ -12,7 +12,7 @@ import { AnswerSubmission, MockAttempt, Question, isPremiumUser } from '@/lib/ty
 import { subTestsLeft } from '@/lib/subscriptions';
 import { Playback, playClips, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
-import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
+import SectionMockIntro from '@/components/mocks/SectionMockIntro';
 
 /** Mirrors billing.SectionMockSubTests on the server, which is what enforces it. */
 const SECTION_MOCK_SUB_TESTS = 5;
@@ -74,10 +74,10 @@ export default function ListeningMockPanel() {
   const [outcome, setOutcome] = useState<ListeningOutcome | null>(null);
   const [starting, setStarting] = useState(false);
 
-  const start = async () => {
+  const start = async (chosen?: string) => {
     setStarting(true);
     try {
-      const paperId = searchParams.get('paper');
+      const paperId = chosen ?? searchParams.get('paper');
       const body = paperId ? { paperId } : {};
       const data = await api.post<{ session: ListeningSession }>('/listening/mocks', body);
       setSession(data.session);
@@ -115,17 +115,30 @@ export default function ListeningMockPanel() {
     );
   }
   return (
-    <div className="relative w-full min-h-[calc(100dvh-4rem)] bg-background">
-      <PreTestBlurOverlay
-        title="IELTS Listening mock test"
-        instructions={`Four recordings and forty questions. Each recording plays once, as in the test, with time to read the questions first and two minutes to check your answers at the end. Use headphones. It uses ${SECTION_MOCK_SUB_TESTS} of your daily practice sub-tests; a paper you already started carries on at no extra cost.`}
-        subTestsRemaining={subTestsLeft(user?.subscription)}
-        credits={SECTION_MOCK_SUB_TESTS}
-        startLabel="Start mock test"
-        isStarting={starting}
-        onStart={() => void start()}
-      />
-    </div>
+    <SectionMockIntro
+      exam="IELTS"
+      skill="listening"
+      title="Listening Sectional Test"
+      description="Four recordings and forty questions, each recording played once, as in the test."
+      duration="About 30 min"
+      items="40 questions"
+      parts={[
+        { name: 'Part 1: Everyday conversation', detail: '10 questions' },
+        { name: 'Part 2: Everyday monologue', detail: '10 questions' },
+        { name: 'Part 3: Study discussion', detail: '10 questions' },
+        { name: 'Part 4: Academic lecture', detail: '10 questions' },
+      ]}
+      rules={[
+        'Each recording plays once.',
+        'You get time to read the questions before each recording.',
+        'You have two minutes to check your answers at the end.',
+      ]}
+      equipment="Use headphones, as in the test centre."
+      credits={SECTION_MOCK_SUB_TESTS}
+      subTestsRemaining={subTestsLeft(user?.subscription)}
+      isStarting={starting}
+      onStart={paperId => void start(paperId)}
+    />
   );
 }
 

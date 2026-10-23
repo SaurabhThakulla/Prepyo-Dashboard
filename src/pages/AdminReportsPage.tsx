@@ -143,7 +143,7 @@ export default function AdminReportsPage() {
               <Badge
                 variant="outline"
                 className={cn(
-                  'text-[10px]',
+                  'text-xs',
                   listed.status === 'open'
                     ? 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400'
                     : 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
@@ -152,7 +152,7 @@ export default function AdminReportsPage() {
                 {listed.status}
               </Badge>
               {waiting && (
-                <Badge variant="outline" className="border-sky-500/25 bg-sky-500/10 text-[10px] text-sky-700 dark:text-sky-400">
+                <Badge variant="outline" className="border-sky-500/25 bg-sky-500/10 text-xs text-sky-700 dark:text-sky-400">
                   Waiting on you
                 </Badge>
               )}
@@ -178,7 +178,7 @@ export default function AdminReportsPage() {
         {!isOpen && <p className="line-clamp-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground">{listed.message}</p>}
 
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap gap-x-3 font-mono text-[10px] text-muted-foreground">
+          <div className="flex flex-wrap gap-x-3 font-mono text-xs text-muted-foreground">
             <span>{listed.path}</span>
             <span>{new Date(listed.createdAt).toLocaleString()}</span>
           </div>

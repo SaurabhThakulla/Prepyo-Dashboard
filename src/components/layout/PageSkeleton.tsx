@@ -1,13 +1,11 @@
 import React from 'react';
 import {
   DashboardPageSkeleton,
-  EvaluationsPageSkeleton,
   ProfilePageSkeleton,
   PracticePageSkeleton,
   ReadingPracticeSkeleton,
   MocksPageSkeleton,
   MistakesPageSkeleton,
-  LeaderboardPageSkeleton,
   SubscriptionPageSkeleton,
   ReferralsPageSkeleton,
   DiagnosticPageSkeleton,
@@ -16,14 +14,12 @@ import {
 
 export type PageSkeletonVariant =
   | 'dashboard'
-  | 'evaluations'
   | 'profile'
   | 'practice'
   | 'reading'
   | 'reading-mcq'
   | 'mocks'
   | 'mistakes'
-  | 'leaderboard'
   | 'subscription'
   | 'referrals'
   | 'diagnostic'
@@ -36,8 +32,6 @@ export interface PageSkeletonProps {
 
 export default function PageSkeleton({ variant = 'dashboard', bare = false }: PageSkeletonProps) {
   switch (variant) {
-    case 'evaluations':
-      return <EvaluationsPageSkeleton />;
     case 'profile':
       return <ProfilePageSkeleton />;
     case 'practice':
@@ -52,8 +46,6 @@ export default function PageSkeleton({ variant = 'dashboard', bare = false }: Pa
       return <MocksPageSkeleton bare={bare} />;
     case 'mistakes':
       return <MistakesPageSkeleton bare={bare} />;
-    case 'leaderboard':
-      return <LeaderboardPageSkeleton bare={bare} />;
     case 'subscription':
       return <SubscriptionPageSkeleton />;
     case 'referrals':
@@ -71,13 +63,11 @@ export default function PageSkeleton({ variant = 'dashboard', bare = false }: Pa
 export {
   PageSkeleton,
   DashboardPageSkeleton,
-  EvaluationsPageSkeleton,
   ProfilePageSkeleton,
   PracticePageSkeleton,
   ReadingPracticeSkeleton,
   MocksPageSkeleton,
   MistakesPageSkeleton,
-  LeaderboardPageSkeleton,
   SubscriptionPageSkeleton,
   ReferralsPageSkeleton,
   DiagnosticPageSkeleton,

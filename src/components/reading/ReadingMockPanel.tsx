@@ -12,7 +12,7 @@ import ReadingMockRunner from '@/components/reading/ReadingMockRunner';
 import { isPremiumUser, ReadingMockSession } from '@/lib/types';
 import { FullMockSection } from '@/lib/fullMock';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
-import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
+import SectionMockIntro from '@/components/mocks/SectionMockIntro';
 
 /** Mirrors billing.SectionMockSubTests on the server, which is what enforces it. */
 const SECTION_MOCK_SUB_TESTS = 5;
@@ -51,9 +51,9 @@ export default function ReadingMockPanel({ section }: { section?: FullMockSectio
 
   // Starting costs sub-tests, so it waits for the learner to press Start rather
   // than firing the moment the page opens.
-  const begin = async () => {
+  const begin = async (chosen?: string) => {
     setStarting(true);
-    const paperParam = searchParams.get('paper') || undefined;
+    const paperParam = chosen ?? (searchParams.get('paper') || undefined);
     const started = await mock.start(paperParam);
     setStarting(false);
     if (started) void refreshUser();
@@ -87,16 +87,28 @@ export default function ReadingMockPanel({ section }: { section?: FullMockSectio
   if (mock.starting || starting) return <ReadingPracticeSkeleton />;
 
   return (
-    <div className="relative w-full min-h-[calc(100dvh-4rem)] bg-background">
-      <PreTestBlurOverlay
-        title={`${activeExam} Reading mock test`}
-        instructions={`A full, timed reading section. It uses ${SECTION_MOCK_SUB_TESTS} of your daily practice sub-tests. A paper you already started carries on at no extra cost.`}
-        subTestsRemaining={subTestsRemaining}
-        credits={SECTION_MOCK_SUB_TESTS}
-        startLabel="Start mock test"
-        isStarting={starting}
-        onStart={() => void begin()}
-      />
-    </div>
+    <SectionMockIntro
+      exam={activeExam}
+      skill="reading"
+      title="Reading Sectional Test"
+      description="A full, timed reading section: three passages and forty questions, marked on the server."
+      duration="60 min"
+      items="40 questions"
+      parts={[
+        { name: 'Passage 1', detail: '13–14 questions' },
+        { name: 'Passage 2', detail: '13–14 questions' },
+        { name: 'Passage 3', detail: '13–14 questions' },
+      ]}
+      rules={[
+        'One clock of 60 minutes covers all three passages.',
+        'Your answers are saved as you go.',
+        'When the time runs out, what you have answered is marked.',
+      ]}
+      equipment="This test has no audio. You only need a keyboard."
+      credits={SECTION_MOCK_SUB_TESTS}
+      subTestsRemaining={subTestsRemaining}
+      isStarting={starting}
+      onStart={paperId => void begin(paperId)}
+    />
   );
 }

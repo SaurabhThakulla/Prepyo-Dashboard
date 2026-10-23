@@ -16,8 +16,6 @@ import { isAdmin } from '@/lib/types';
 const VARIANT_BY_PATH: Record<string, PageSkeletonVariant> = {
   '/mocks': 'mocks',
   '/mistakes': 'mistakes',
-  '/evaluations': 'evaluations',
-  '/leaderboard': 'leaderboard',
   '/profile': 'profile',
   '/referrals': 'referrals',
   '/subscription': 'subscription',

@@ -15,8 +15,6 @@ const MePage = lazy(() => import('@/pages/MePage'));
 const MocksPage = lazy(() => import('@/pages/MocksPage'));
 const PteMockPage = lazy(() => import('@/pages/PteMockPage'));
 const MistakesPage = lazy(() => import('@/pages/MistakesPage'));
-const EvaluationsPage = lazy(() => import('@/pages/EvaluationsPage'));
-const LeaderboardPage = lazy(() => import('@/pages/LeaderboardPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const ReferralsPage = lazy(() => import('@/pages/ReferralsPage'));
 const SubscriptionPage = lazy(() => import('@/pages/SubscriptionPage'));
@@ -80,9 +78,9 @@ export default function App() {
         <Route path="/mocks" element={<Suspense fallback={<AppPageSkeleton />}><MocksPage /></Suspense>} />
         <Route path="/mocks/pte/report/:sessionId" element={<Suspense fallback={<AppPageSkeleton />}><PteMockPage /></Suspense>} />
         <Route path="/mocks/pte/:kind" element={<Suspense fallback={<AppPageSkeleton />}><PteMockPage /></Suspense>} />
+        <Route path="/history" element={<Suspense fallback={<AppPageSkeleton />}><MistakesPage /></Suspense>} />
         <Route path="/mistakes" element={<Suspense fallback={<AppPageSkeleton />}><MistakesPage /></Suspense>} />
-        <Route path="/evaluations" element={<Suspense fallback={<AppPageSkeleton />}><EvaluationsPage /></Suspense>} />
-        <Route path="/leaderboard" element={<Suspense fallback={<AppPageSkeleton />}><LeaderboardPage /></Suspense>} />
+        <Route path="/evaluations" element={<Navigate to="/practice?skill=writing" replace />} />
         <Route path="/profile" element={<Suspense fallback={<AppPageSkeleton />}><ProfilePage /></Suspense>} />
         <Route path="/referrals" element={<Suspense fallback={<AppPageSkeleton />}><ReferralsPage /></Suspense>} />
         <Route path="/subscription" element={<Suspense fallback={<AppPageSkeleton />}><SubscriptionPage /></Suspense>} />

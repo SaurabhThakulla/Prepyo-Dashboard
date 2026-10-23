@@ -23,7 +23,7 @@ export default function MobileTopBar() {
   // The phone's status bar takes this colour, so it runs on from the top bar
   // in the app's theme rather than the system's.
   useEffect(() => {
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#04091a' : '#ffffff');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0a0a0a' : '#ffffff');
   }, [theme]);
 
   const root = isTabRoot(pathname, searchParams);
@@ -70,6 +70,7 @@ export default function MobileTopBar() {
 
         <button
           type="button"
+          data-stay
           onClick={() => setShowNotifications(open => !open)}
           aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
           className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground active:bg-muted [-webkit-tap-highlight-color:transparent]"
@@ -78,7 +79,7 @@ export default function MobileTopBar() {
           {unreadCount > 0 && (
             <span
               aria-hidden
-              className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-nepal-crimson px-1 text-[10px] font-medium leading-none text-white ring-2 ring-card"
+              className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-nepal-crimson px-1 text-xs font-medium leading-none text-white ring-2 ring-card"
             >
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>

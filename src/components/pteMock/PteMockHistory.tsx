@@ -53,7 +53,7 @@ export default function PteMockHistory() {
             {s.result && (
               <div className="hidden md:flex gap-1">
                 {Object.entries(s.result.skills).map(([skill, score]) => (
-                  <Badge key={skill} variant="outline" className="text-[10px] tabular-nums">{SHORT[skill]} {score}</Badge>
+                  <Badge key={skill} variant="outline" className="text-xs tabular-nums">{SHORT[skill]} {score}</Badge>
                 ))}
               </div>
             )}

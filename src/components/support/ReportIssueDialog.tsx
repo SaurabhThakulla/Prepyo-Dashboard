@@ -106,7 +106,7 @@ export default function ReportIssueDialog({ open, onOpenChange }: ReportIssueDia
           )}
           <div className="flex items-center justify-between gap-3 min-h-[16px]">
             <p className="text-[11px] text-destructive leading-tight">{error}</p>
-            <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
+            <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
               {message.length}/4000
             </span>
           </div>

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Mic, MicOff, Square, RotateCcw, Loader2, AlertCircle, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Mic, MicOff, Square, Loader2, AlertCircle, Check, Info } from 'lucide-react';
 import { canRecord, formatDuration, pickRecorderMimeType, beep } from '@/lib/audio';
 import { startTranscribing, type TranscriptSession } from '@/lib/speech';
 import { createDeliveryMeter, type Delivery, type DeliveryMeter } from '@/lib/delivery';
@@ -11,6 +10,12 @@ import { createDeliveryMeter, type Delivery, type DeliveryMeter } from '@/lib/de
  * practice easier than the real thing in the one way that matters most.
  */
 type Phase = 'idle' | 'prep' | 'recording' | 'review';
+
+/** Where the recorder is, for controls drawn outside it. */
+export interface RecorderStatus {
+  phase: Phase;
+  remaining: number;
+}
 
 interface AudioRecorderProps {
   /** Think time before recording begins. 0 means recording starts immediately. */
@@ -32,6 +37,10 @@ interface AudioRecorderProps {
    * offer then, because a missing transcript is not a failed recording.
    */
   onRecorded: (recording: Blob | null, transcript?: string, delivery?: Delivery) => void;
+  /** Set to what the mic button does now (start, start now, stop), so another control can do it too. */
+  controlRef?: React.MutableRefObject<(() => void) | null>;
+  /** Called with the phase and seconds left whenever either changes. */
+  onStatus?: (status: RecorderStatus) => void;
 }
 
 export default function AudioRecorder({
@@ -40,6 +49,8 @@ export default function AudioRecorder({
   disabled = false,
   autoStart = false,
   onRecorded,
+  controlRef,
+  onStatus,
 }: AudioRecorderProps) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [remaining, setRemaining] = useState(0);
@@ -49,7 +60,9 @@ export default function AudioRecorder({
   const waveRef = useRef<number[]>(Array(WAVE_BARS).fill(0));
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
-  const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
+  // Set after 2 s with no sound, so short pauses do not flip the note back and forth.
+  const [quiet, setQuiet] = useState(false);
+  const lastSoundRef = useRef(0);
 
   const streamRef = useRef<MediaStream | null>(null);
   const transcriberRef = useRef<TranscriptSession | null>(null);
@@ -142,11 +155,6 @@ export default function AudioRecorder({
     [releaseMic],
   );
 
-  useEffect(() => {
-    if (!playbackUrl) return;
-    return () => URL.revokeObjectURL(playbackUrl);
-  }, [playbackUrl]);
-
   /** Drives the input meter, so a muted or unplugged mic is visible immediately. */
   const watchLevel = useCallback((stream: MediaStream) => {
     const Ctor = window.AudioContext ?? (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -176,12 +184,14 @@ export default function AudioRecorder({
     waveRef.current = Array(WAVE_BARS).fill(0);
     setWave(waveRef.current);
     waveTimerRef.current = setInterval(() => {
+      setQuiet(Date.now() - lastSoundRef.current > 2000);
       waveRef.current = [...waveRef.current.slice(1), measure()];
       setWave(waveRef.current);
     }, 60);
 
     const read = () => {
       const level = measure();
+      if (level >= 0.02) lastSoundRef.current = Date.now();
       setLevel(level);
       // The meter is already reading the microphone frame by frame, so timing
       // the silences costs nothing beyond this one call.
@@ -228,7 +238,6 @@ export default function AudioRecorder({
     recorder.onstop = () => {
       const recording = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
       releaseMic();
-      setPlaybackUrl(URL.createObjectURL(recording));
       setPhase('review');
 
       // The recogniser needs a moment to flush its last phrase, so the answer
@@ -253,6 +262,8 @@ export default function AudioRecorder({
     // Prep time is not part of the answer, so measurement starts here rather
     // than when the microphone opened.
     deliveryRef.current = createDeliveryMeter();
+    lastSoundRef.current = Date.now();
+    setQuiet(false);
     setPhase('recording');
 
     // The exam cuts the answer off at the limit, so this does too.
@@ -324,17 +335,18 @@ export default function AudioRecorder({
     void beginRecording();
   }, [beginRecording, clearTimer]);
 
-  const handleRetake = useCallback(() => {
-    isStartingRecordingRef.current = false;
-    void transcriberRef.current?.stop();
-    transcriberRef.current = null;
-    deliveryRef.current = null;
-    setPlaybackUrl(null);
-    setPhase('idle');
-    setRemaining(0);
-    setError(null);
-    onRecorded(null);
-  }, [onRecorded]);
+  useEffect(() => {
+    if (!controlRef) return;
+    controlRef.current =
+      phase === 'idle' ? () => void handleStart() : phase === 'prep' ? handleSkipPrep : phase === 'recording' ? handleStopEarly : null;
+    return () => {
+      controlRef.current = null;
+    };
+  }, [controlRef, phase, handleStart, handleSkipPrep, handleStopEarly]);
+
+  useEffect(() => {
+    if (supported) onStatus?.({ phase, remaining });
+  }, [onStatus, phase, remaining, supported]);
 
   if (!supported) {
     return (
@@ -354,7 +366,7 @@ export default function AudioRecorder({
   const phaseTotal = phase === 'prep' ? prepSeconds : phase === 'recording' ? maxSeconds : 0;
   const elapsed = phaseTotal > 0 ? Math.min(1, Math.max(0, 1 - remaining / phaseTotal)) : phase === 'review' ? 1 : 0;
   const live = phase === 'prep' || phase === 'recording';
-  const silent = phase === 'recording' && level < 0.02;
+  const silent = phase === 'recording' && quiet;
 
   const status =
     phase === 'idle'
@@ -366,17 +378,17 @@ export default function AudioRecorder({
         : phase === 'recording'
           ? silent
             ? 'No sound is reaching your microphone yet.'
-            : 'Speaking. Keep going until the timer ends.'
-          : 'Listen back before you submit. Re-recording replaces this answer and costs nothing.';
+            : 'Speaking. Stops on its own when the timer ends, or click anywhere here to stop now.'
+          : '';
 
   const tone =
     phase === 'recording'
-      ? { orb: 'bg-rose-500 shadow-rose-500/30', bar: 'from-rose-500 to-rose-400', wave: 'bg-rose-400', panel: 'bg-rose-500/[0.07]' }
+      ? { ring: 'ring-rose-500/15', orb: 'bg-rose-500 shadow-rose-500/30', bar: 'from-rose-500 to-rose-400', wave: 'bg-rose-400', panel: 'bg-rose-500/[0.07]' }
       : phase === 'prep'
-        ? { orb: 'bg-amber-500 shadow-amber-500/30', bar: 'from-amber-500 to-amber-300', wave: 'bg-amber-400/70', panel: 'bg-amber-500/[0.07]' }
+        ? { ring: 'ring-amber-500/15', orb: 'bg-amber-500 shadow-amber-500/30', bar: 'from-amber-500 to-amber-300', wave: 'bg-amber-400/70', panel: 'bg-amber-500/[0.07]' }
         : phase === 'review'
-          ? { orb: 'bg-emerald-500 shadow-emerald-500/30', bar: 'from-emerald-500 to-emerald-400', wave: 'bg-emerald-500/40', panel: 'bg-emerald-500/[0.06]' }
-          : { orb: 'bg-primary shadow-primary/30', bar: 'from-primary to-primary', wave: 'bg-muted-foreground/20', panel: 'bg-primary/[0.06]' };
+          ? { ring: 'ring-emerald-500/15', orb: 'bg-emerald-500 shadow-emerald-500/30', bar: 'from-emerald-500 to-emerald-400', wave: 'bg-emerald-500/40', panel: 'bg-emerald-500/[0.06]' }
+          : { ring: 'ring-primary/10', orb: 'bg-primary shadow-primary/30', bar: 'from-primary to-primary', wave: 'bg-muted-foreground/20', panel: 'bg-primary/[0.06]' };
 
   // Left clock counts up through the current phase; right is that phase's length.
   const phaseLength = phase === 'prep' ? prepSeconds : maxSeconds;
@@ -387,23 +399,45 @@ export default function AudioRecorder({
       : phase === 'prep'
         ? `Recording begins in ${remaining}s`
         : phase === 'recording'
-          ? 'Recording…'
+          ? 'Click here to stop'
           : 'Completed';
   const micAction = phase === 'idle' ? handleStart : phase === 'prep' ? handleSkipPrep : phase === 'recording' ? handleStopEarly : undefined;
   const micLabel = phase === 'idle' ? 'Start recording' : phase === 'prep' ? 'Start now' : phase === 'recording' ? 'Stop recording' : 'Recorded';
+  // The whole panel is the button: it starts recording, and while recording it stops it.
+  const panelStarts = phase === 'idle' && !disabled && !starting;
+  const panelStops = phase === 'recording';
+  const panelAction = panelStarts ? handleStart : panelStops ? handleStopEarly : undefined;
 
   return (
-    <div className={`relative overflow-hidden rounded-xl p-4 transition-colors duration-500 sm:px-5 ${tone.panel}`}>
-      <p className="text-center text-sm font-semibold text-foreground" aria-live="polite">{headline}</p>
+    <div
+      onClick={panelAction}
+      role={panelAction ? 'button' : undefined}
+      aria-label={panelStops ? 'Stop recording' : undefined}
+      className={`relative overflow-hidden rounded-2xl border border-border p-4 transition-colors duration-500 sm:p-6 ${tone.panel} dark:bg-white/[0.03] ${
+        panelStarts ? 'cursor-pointer hover:bg-primary/[0.1]' : panelStops ? 'cursor-pointer hover:bg-rose-500/[0.12]' : ''
+      }`}
+    >
+      <div className="text-center" aria-live="polite">
+        <p className="inline-flex items-center gap-2 text-base font-bold text-foreground sm:text-lg">
+          {phase === 'idle' && <Mic className="h-5 w-5 text-primary" aria-hidden />}
+          {headline}
+        </p>
+        {phase === 'idle' && !starting && <p className="mt-0.5 text-sm text-muted-foreground">Start recording when you&rsquo;re ready</p>}
+      </div>
 
-      <div className="mt-2 flex items-center gap-3 sm:gap-4">
+      {/* Mic in the middle, with the live (or resting) wave on each side. */}
+      <div className="mt-4 flex items-center justify-center gap-3 sm:gap-6">
+        <SideWave levels={wave.slice(-SIDE_BARS)} live={live} color={tone.wave} />
         <button
           type="button"
-          onClick={micAction}
+          onClick={e => {
+            e.stopPropagation();
+            micAction?.();
+          }}
           disabled={phase === 'review' || (phase === 'idle' && (disabled || starting))}
           aria-label={micLabel}
           title={micLabel}
-          className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white shadow-md transition-transform duration-200 active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 disabled:cursor-default ${tone.orb} ${
+          className={`relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-white shadow-lg ring-[10px] transition-transform duration-200 active:scale-95 focus:outline-none focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-default sm:h-20 sm:w-20 sm:ring-[14px] ${tone.orb} ${tone.ring} ${
             phase === 'idle' && !disabled ? 'hover:scale-105' : ''
           } ${phase === 'idle' && disabled ? 'opacity-50' : ''}`}
         >
@@ -415,61 +449,54 @@ export default function AudioRecorder({
             />
           )}
           <span className="relative">
-            {phase === 'idle' && (starting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-5 w-5" />)}
-            {phase === 'prep' && <span className="text-base font-extrabold tabular-nums">{remaining}</span>}
-            {phase === 'recording' && <Square className="h-4 w-4 fill-current" />}
-            {phase === 'review' && <Check className="h-5 w-5" strokeWidth={3} />}
+            {phase === 'idle' && (starting ? <Loader2 className="h-7 w-7 animate-spin" /> : <Mic className="h-7 w-7" />)}
+            {phase === 'prep' && <span className="text-xl font-extrabold tabular-nums">{remaining}</span>}
+            {phase === 'recording' && <Square className="h-6 w-6 fill-current" />}
+            {phase === 'review' && <Check className="h-7 w-7" strokeWidth={3} />}
           </span>
         </button>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between text-sm font-semibold tabular-nums text-foreground">
-            <span>{clock(shownElapsed)}</span>
-            <span>{clock(phaseLength)}</span>
-          </div>
-          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted-foreground/15">
-            <div
-              className={`h-full rounded-full bg-gradient-to-r transition-[width] duration-1000 ease-linear ${tone.bar}`}
-              style={{ width: `${elapsed * 100}%` }}
-            />
-          </div>
-          {/* Live level from the microphone, so a muted or wrong mic shows up during prep. */}
-          {live && (
-            <div aria-hidden className="mt-1.5 flex h-4 items-center gap-[2px]">
-              {WAVE_SHAPE.map((shape, i) => (
-                <span
-                  key={i}
-                  style={{ height: `${Math.round((0.15 + Math.min(1, wave[i] * 1.6) * (0.8 + 0.2 * shape)) * 100)}%` }}
-                  className={`flex-1 rounded-full transition-[height] duration-100 ease-out ${tone.wave}`}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        <SideWave levels={wave.slice(-SIDE_BARS).reverse()} live={live} color={tone.wave} nearMicFirst />
       </div>
 
-      {phase === 'review' && playbackUrl && (
-        <audio controls src={playbackUrl} className="mt-3 h-10 w-full">
-          Audio can't play on this device.
-        </audio>
+      {phase === 'prep' && (
+        <div className="mt-3 text-center">
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation();
+              handleSkipPrep();
+            }}
+            className="text-sm font-semibold text-amber-700 underline-offset-4 hover:underline dark:text-amber-400"
+          >
+            Click here to start recording
+          </button>
+        </div>
       )}
 
-      <p className={`mt-3 text-xs leading-relaxed ${silent ? 'font-semibold text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>
-        {status}
-      </p>
+      <div className="mt-5 flex items-center gap-3">
+        <span className="shrink-0 rounded-full bg-background/80 px-3 py-1 text-sm font-semibold tabular-nums text-foreground">{clock(shownElapsed)}</span>
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted-foreground/15">
+          <div
+            className={`h-full rounded-full bg-gradient-to-r transition-[width] duration-1000 ease-linear ${tone.bar}`}
+            style={{ width: `${elapsed * 100}%` }}
+          />
+        </div>
+        <span className="shrink-0 rounded-full bg-background/80 px-3 py-1 text-sm font-semibold tabular-nums text-foreground">{clock(phaseLength)}</span>
+      </div>
+
+      {/* Playback and redo live in the practice action bar, not here. */}
+      {status && (
+        <p className={`mt-3 flex items-start gap-2 text-xs leading-relaxed ${silent ? 'font-semibold text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>
+          <Info className="mt-px h-4 w-4 shrink-0 text-primary" aria-hidden />
+          {status}
+        </p>
+      )}
 
       {error && (
         <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
           <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">{error}</p>
         </div>
-      )}
-
-      {phase === 'review' && (
-        <Button onClick={handleRetake} disabled={disabled} size="sm" variant="outline" className={`mt-3 ${ACTION}`}>
-          <RotateCcw className="h-3.5 w-3.5" />
-          <span>Record again</span>
-        </Button>
       )}
     </div>
   );
@@ -480,9 +507,28 @@ const clock = (seconds: number) => {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 };
 
-// The one action of each phase: the full width and a thumb-sized target on a phone.
-const ACTION = 'h-11 w-full gap-1.5 rounded-full px-4 text-sm font-bold sm:h-8 sm:w-auto sm:text-[11px]';
-
 // Resting shape, and a little per-bar texture on the live wave.
 const WAVE_BARS = 40;
 const WAVE_SHAPE = Array.from({ length: WAVE_BARS }, (_, i) => 0.35 + 0.65 * Math.abs(Math.sin(i * 0.8) * Math.cos(i * 0.33)));
+const SIDE_BARS = 14;
+
+/** One side of the wave beside the mic: live levels while the mic is open, a resting shape otherwise. */
+function SideWave({ levels, live, color, nearMicFirst = false }: { levels: number[]; live: boolean; color: string; nearMicFirst?: boolean }) {
+  return (
+    <div aria-hidden className="flex h-12 items-center gap-1 sm:h-16 sm:gap-1.5">
+      {levels.map((value, i) => {
+        // Distance from the mic, so both sides mirror and a phone drops the outer bars.
+        const fromMic = nearMicFirst ? i : levels.length - 1 - i;
+        const shape = WAVE_SHAPE[fromMic];
+        const height = live ? 0.15 + Math.min(1, value * 1.6) * (0.8 + 0.2 * shape) : 0.2 + 0.6 * shape;
+        return (
+          <span
+            key={i}
+            style={{ height: `${Math.round(height * 100)}%` }}
+            className={`w-[3px] rounded-full transition-[height] duration-100 ease-out sm:w-1 ${live ? color : 'bg-primary/20'} ${fromMic >= 9 ? 'max-sm:hidden' : ''}`}
+          />
+        );
+      })}
+    </div>
+  );
+}

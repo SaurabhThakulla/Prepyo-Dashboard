@@ -60,16 +60,16 @@ describe('Mistake Bank navigates to the real Practice screen', () => {
     expect(link.getAttribute('href')).toContain(`skill=${skill}&type=multiplechoice`);
     expect(mocks.get).not.toHaveBeenCalled();
     fireEvent.click(link);
-    fireEvent.click(await screen.findByRole('button', { name: /Start Practice/ }, { timeout: 5000 }));
-    const wrong = await screen.findByRole('radio', { name: /Wrong choice/ });
+    // Every task, reading included, opens straight into the question: no start screen.
+    expect(screen.queryByRole('button', { name: /Start Practice/ })).toBeNull();
+    const wrong = await screen.findByRole('radio', { name: /Wrong choice/ }, { timeout: 5000 });
     if (skill === 'reading') expect(screen.getByText('The original passage text.')).toBeDefined();
     fireEvent.click(wrong);
     fireEvent.click(screen.getByRole('button', { name: skill === 'reading' ? 'Check answers' : 'Submit Answer' }));
     const retry = await screen.findByRole('button', { name: 'Try again' });
     expect(mocks.post.mock.calls.some(([path]) => path.includes('/resolve'))).toBe(false);
     fireEvent.click(retry);
-    if (skill === 'listening') fireEvent.click(await screen.findByRole('button', { name: /Start Practice/ }, { timeout: 5000 }));
-    fireEvent.click(await screen.findByRole('radio', { name: /Right choice/ }));
+    fireEvent.click(await screen.findByRole('radio', { name: /Right choice/ }, { timeout: 5000 }));
     fireEvent.click(screen.getByRole('button', { name: skill === 'reading' ? 'Check answers' : 'Submit Answer' }));
     await waitFor(() => expect(mocks.post).toHaveBeenCalledWith('/mistakes/m-1/resolve', {}));
     expect(mocks.post).toHaveBeenCalledWith('/practice/attempts', expect.objectContaining({ questionId: 'q-1', exam: 'IELTS' }));

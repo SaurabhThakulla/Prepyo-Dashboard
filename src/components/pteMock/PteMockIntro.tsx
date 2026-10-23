@@ -4,7 +4,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { speechRecognitionSupported } from '@/lib/speech';
 import { speakScript, unlockAudio } from '@/lib/scriptPlayer';
 import { TestMicrophone } from '@/lib/pteMock/audio';
@@ -44,6 +43,8 @@ const RULES: { text: string; when?: (n: Needs) => boolean }[] = [
   { text: 'When a clock runs out, what you have written or chosen so far is kept as your answer and the test moves on.' },
   { text: 'Save and Exit keeps your place for 24 hours. Timed parts keep counting down while you are away.' },
 ];
+
+const SECTION_TITLE = 'text-xs font-bold uppercase tracking-wide text-muted-foreground';
 
 /**
  * Before the test: what it is made of, the rules, and a check that the
@@ -144,89 +145,81 @@ export default function PteMockIntro({ entry, serverTranscription, starting, onS
   const ready = !needsMic || (mic !== null && micHeard);
   const resuming = Boolean(entry.live);
 
+  // An open page, no card: a full-width header, the numbered tests across the
+  // page, and the checks and Start button in a column that stays in view.
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
-      <Card className="overflow-hidden">
-        <div className={`bg-gradient-to-r ${meta.accent} px-6 py-6 text-white`}>
-          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-white/80">
-            <meta.icon className="h-4 w-4" /> PTE Academic · {entry.fullAllowance ? 'Full test' : 'Sectional test'}
-          </div>
-          <h1 className="mt-1 font-display text-2xl sm:text-3xl font-extrabold">{entry.title}</h1>
-          <p className="mt-1 text-sm text-white/85 max-w-2xl">{entry.description}</p>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
-            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1">
-              <Clock className="h-3.5 w-3.5" /> About {formatMinutes(entry.estimatedMinutes)}
-            </span>
-            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1">
-              <ListChecks className="h-3.5 w-3.5" /> {entry.availableItems} items
-            </span>
-            {entry.parts.map((p, i) => (
-              <span key={p.part} className="rounded-full bg-white/15 px-3 py-1">
-                Part {i + 1}: {p.label}
-              </span>
-            ))}
-          </div>
+    <div className="w-full">
+      <header className={`bg-gradient-to-r ${meta.accent} px-4 sm:px-8 lg:px-10 py-8 text-white`}>
+        <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-white/80">
+          <meta.icon className="h-4 w-4" /> PTE Academic · {entry.fullAllowance ? 'Full test' : 'Sectional test'}
         </div>
+        <h1 className="mt-1 font-display text-3xl sm:text-4xl font-extrabold">{entry.title}</h1>
+        <p className="mt-2 text-sm sm:text-base text-white/85 max-w-3xl">{entry.description}</p>
+        <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold">
+          <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1">
+            <Clock className="h-3.5 w-3.5" /> About {formatMinutes(entry.estimatedMinutes)}
+          </span>
+          <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1">
+            <ListChecks className="h-3.5 w-3.5" /> {entry.availableItems} items
+          </span>
+          {entry.parts.map((p, i) => (
+            <span key={p.part} className="rounded-full bg-white/15 px-3 py-1">
+              Part {i + 1}: {p.label}
+            </span>
+          ))}
+        </div>
+      </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-border">
-          <div className="lg:col-span-3 p-5 space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">What is in this test</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+      <div className="px-4 sm:px-8 lg:px-10 py-8 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-10">
+        <section className="space-y-4 min-w-0">
+          <h2 className={SECTION_TITLE}>Numbered tests</h2>
+          <MockPaperList
+            variant="page"
+            papers={papers}
+            isLoading={papersLoading}
+            selectedPaperId={selectedPaperId}
+            exam="PTE"
+            section={entry.kind}
+            onStart={paper => void handleStartPaper(paper)}
+            onResume={paper => void handleStartPaper(paper)}
+            onReview={paper => {
+              const id = paper.lastAttemptSessionId || paper.sessionId;
+              if (id) navigate(pteReportHref(id));
+            }}
+            onRetake={paper => void handleStartPaper(paper)}
+          />
+        </section>
+
+        <aside className="order-first xl:order-none space-y-8 xl:sticky xl:top-6 xl:self-start">
+          <section className="space-y-2">
+            <h2 className={SECTION_TITLE}>What is in this test</h2>
+            <ul className="divide-y divide-border">
               {entry.tasks.map(t => (
-                <div key={t.code} className="flex items-center justify-between rounded-lg border border-border px-3 py-1.5 text-xs">
+                <li key={t.code} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <span className="flex items-center gap-2 min-w-0">
-                    <Badge variant="outline" className="shrink-0 font-mono text-[10px]">{t.code}</Badge>
+                    <Badge variant="outline" className="shrink-0 font-mono text-xs">{t.code}</Badge>
                     <span className="truncate text-foreground">{t.name}</span>
                   </span>
                   <span className={`shrink-0 font-semibold tabular-nums ${t.available < t.count ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
                     ×{t.available}
                   </span>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
             {entry.missing.length > 0 && (
-              <p className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+              <p className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 Not in this test yet, because the question bank has none: {entry.missing.join(', ')}. Your scores are
                 weighted over the tasks you sit.
               </p>
             )}
-            <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Test rules</h2>
-            <ul className="space-y-1.5">
-              {rules.map(rule => (
-                <li key={rule.text} className="flex gap-2 text-xs text-foreground leading-relaxed">
-                  <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" /> {rule.text}
-                </li>
-              ))}
-            </ul>
-          </div>
+          </section>
 
-          <div className="lg:col-span-2 p-5 space-y-4">
-            {/* Numbered Papers for this PTE mock */}
-            <div className="space-y-2">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Numbered Tests</h2>
-              <div className="max-h-[360px] overflow-hidden rounded-xl border border-border">
-                <MockPaperList
-                  papers={papers}
-                  isLoading={papersLoading}
-                  selectedPaperId={selectedPaperId}
-                  exam="PTE"
-                  section={entry.kind}
-                  onStart={paper => void handleStartPaper(paper)}
-                  onResume={paper => void handleStartPaper(paper)}
-                  onReview={paper => {
-                    const id = paper.lastAttemptSessionId || paper.sessionId;
-                    if (id) navigate(pteReportHref(id));
-                  }}
-                  onRetake={paper => void handleStartPaper(paper)}
-                />
-              </div>
-            </div>
-
-            <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Equipment check</h2>
+          <section className="space-y-3">
+            <h2 className={SECTION_TITLE}>Equipment check</h2>
 
             {needsMic && (
-              <div className="rounded-xl border border-border p-3 space-y-2">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="flex items-center gap-2 text-sm font-semibold"><Mic className="h-4 w-4 text-primary" /> Microphone</span>
                   {mic ? (
@@ -257,7 +250,7 @@ export default function PteMockIntro({ entry, serverTranscription, starting, onS
             )}
 
             {needsAudio && (
-              <div className="rounded-xl border border-border p-3 space-y-2">
+              <div className="space-y-2 border-t border-border pt-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="flex items-center gap-2 text-sm font-semibold"><Volume2 className="h-4 w-4 text-primary" /> Speakers</span>
                   <Button size="sm" variant="outline" onClick={() => void testSpeakers()} disabled={speakerState === 'playing'}>
@@ -276,54 +269,65 @@ export default function PteMockIntro({ entry, serverTranscription, starting, onS
             )}
 
             {!needsAudio && (
-              <p className="text-xs text-muted-foreground">This test has no audio. You only need a keyboard.</p>
+              <p className="text-sm text-muted-foreground">This test has no audio. You only need a keyboard.</p>
             )}
+          </section>
 
-            <div className="space-y-2 pt-1">
-              <Button
-                className="w-full h-11 font-bold gap-2"
-                disabled={!ready || starting || !entry.available}
-                onClick={() => {
-                  handedOver.current = true;
-                  // An open attempt is resumed whichever test is picked; the
-                  // server refuses a second test while one is open.
-                  onStart(mic, resuming ? undefined : selectedPaper?.id);
-                }}
-              >
-                {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : resuming ? <RotateCcw className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
-                {resuming
-                  ? `Resume at item ${entry.live!.current}`
-                  : selectedPaper
-                    ? `${selectedPaper.status === 'completed' ? 'Retake' : 'Start'} Test ${selectedPaper.number}`
-                    : 'Start the test'}
+          <section className="space-y-2">
+            <Button
+              className="w-full h-12 font-bold gap-2"
+              disabled={!ready || starting || !entry.available}
+              onClick={() => {
+                handedOver.current = true;
+                // An open attempt is resumed whichever test is picked; the
+                // server refuses a second test while one is open.
+                onStart(mic, resuming ? undefined : selectedPaper?.id);
+              }}
+            >
+              {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : resuming ? <RotateCcw className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
+              {resuming
+                ? `Resume at item ${entry.live!.current}`
+                : selectedPaper
+                  ? `${selectedPaper.status === 'completed' ? 'Retake' : 'Start'} Test ${selectedPaper.number}`
+                  : 'Start the test'}
+            </Button>
+            {!ready && needsMic && (
+              <p className="text-[11px] text-center text-muted-foreground">Check your microphone to continue.</p>
+            )}
+            {!entry.available && (
+              <p className="text-[11px] text-center text-amber-600 dark:text-amber-400">
+                This test cannot be built yet: a part has no questions in the bank.
+              </p>
+            )}
+            {!resuming && (
+              <p className="text-[11px] text-center text-muted-foreground">
+                {entry.cost.kind === 'full_mock'
+                  ? 'Uses one full mock test from your plan.'
+                  : `Uses ${entry.cost.credits} of your daily practice sub-tests${
+                      entry.cost.gradings ? ` and ${entry.cost.gradings} AI gradings` : ''
+                    }.`}{' '}
+                A test you have started carries on at no extra cost.
+              </p>
+            )}
+            {resuming && onAbandon && (
+              <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={onAbandon}>
+                Discard this attempt
               </Button>
-              {!ready && needsMic && (
-                <p className="text-[11px] text-center text-muted-foreground">Check your microphone to continue.</p>
-              )}
-              {!entry.available && (
-                <p className="text-[11px] text-center text-amber-600 dark:text-amber-400">
-                  This test cannot be built yet: a part has no questions in the bank.
-                </p>
-              )}
-              {!resuming && (
-                <p className="text-[11px] text-center text-muted-foreground">
-                  {entry.cost.kind === 'full_mock'
-                    ? 'Uses one full mock test from your plan.'
-                    : `Uses ${entry.cost.credits} of your daily practice sub-tests${
-                        entry.cost.gradings ? ` and ${entry.cost.gradings} AI gradings` : ''
-                      }.`}{' '}
-                  A test you have started carries on at no extra cost.
-                </p>
-              )}
-              {resuming && onAbandon && (
-                <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={onAbandon}>
-                  Discard this attempt
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </Card>
+            )}
+          </section>
+
+          <section className="space-y-2">
+            <h2 className={SECTION_TITLE}>Test rules</h2>
+            <ul className="space-y-2">
+              {rules.map(rule => (
+                <li key={rule.text} className="flex gap-2 text-xs text-foreground leading-relaxed">
+                  <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" /> {rule.text}
+                </li>
+              ))}
+            </ul>
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }

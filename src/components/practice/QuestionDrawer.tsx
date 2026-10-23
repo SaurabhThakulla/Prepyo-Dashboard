@@ -12,6 +12,9 @@ import {
   Award,
   Filter,
   Play,
+  RefreshCw,
+  WifiOff,
+  ListOrdered,
 } from 'lucide-react';
 import { EXAM_LABELS, EXAM_MAX_SCORE, ExamType, SkillType } from '@/lib/types';
 import { taskInstruction } from '@/lib/syllabus';
@@ -44,6 +47,8 @@ interface QuestionDrawerProps<T extends DrawerItem> {
   currentQuestionId?: string | null;
   completedIds: string[];
   isLoading?: boolean;
+  /** Set when the list could not be fetched: shows a retry instead of "No questions found". */
+  onRetry?: () => void;
   onSelectQuestion: (question: T) => void;
   onResetCompleted?: () => void;
 }
@@ -64,6 +69,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
   currentQuestionId,
   completedIds,
   isLoading = false,
+  onRetry,
   onSelectQuestion,
   onResetCompleted,
 }: QuestionDrawerProps<T>) {
@@ -174,41 +180,40 @@ export default function QuestionDrawer<T extends DrawerItem>({
       <button
         type="button"
         id="question-drawer-toggle"
-        data-nav
+        data-stay
         onClick={onToggle}
         title={isOpen ? 'Collapse Questions List' : 'Browse Questions List'}
         aria-label={isOpen ? 'Collapse Questions List' : 'Browse Questions List'}
-        className={`fixed top-1/2 -translate-y-1/2 z-50 transition-all duration-300 flex items-center justify-center shadow-xl active:scale-95 group ${
-          isOpen
-            ? 'hidden'
-            : 'right-0 sm:right-3 bg-primary hover:bg-primary/90 text-white w-7 h-12 sm:w-11 sm:h-11 rounded-l-2xl sm:rounded-full hover:scale-105 shadow-primary/30'
-        }`}
+        className={`fixed top-1/2 -translate-y-1/2 z-50 transition-all duration-300 flex items-center justify-center shadow-xl active:scale-95 group ${isOpen
+          ? 'hidden'
+          : 'max-sm:top-auto max-sm:translate-y-0 max-sm:bottom-[calc(var(--mobile-nav-h,0px)+1rem)] max-sm:left-3 sm:right-3 bg-primary hover:bg-primary/90 text-white w-12 h-12 sm:w-11 sm:h-11 rounded-full hover:scale-105 shadow-primary/30'
+          }`}
       >
-        <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" />
+        <ChevronLeft className="hidden sm:block w-5 h-5 transition-transform group-hover:-translate-x-0.5" />
+        <ListOrdered className="sm:hidden w-5 h-5" aria-hidden />
         {questions.length > 0 && (
-          <span className="absolute -top-3 right-1 sm:-top-1.5 sm:right-auto sm:-left-1.5 whitespace-nowrap leading-4 bg-blue-600 text-white font-mono text-[10px] font-bold px-1.5 py-0.2 rounded-full border-2 border-white dark:border-slate-900 shadow-xs">
+          <span className="absolute -top-1.5 -right-1.5 sm:right-auto sm:-left-1.5 whitespace-nowrap leading-4 bg-blue-600 text-white font-mono text-xs font-bold px-1.5 py-0.2 rounded-full border-2 border-white dark:border-slate-900 shadow-xs">
             {questions.length}
           </span>
         )}
       </button>
 
-      {/* Clicking anywhere outside the drawer closes it. Dimmed on small
-          screens; invisible on large ones, where the page stays in view. */}
+      {/* Clicking anywhere outside the drawer closes it; the page dims so the list stands out. */}
       {isOpen && (
         <div
           role="presentation"
           onClick={onClose}
-          className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40 lg:bg-transparent lg:backdrop-blur-none transition-opacity duration-300"
+          className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40 transition-opacity duration-300"
         />
       )}
 
       {/* Sliding Sideways Drawer Panel (inset-y-0 full height, no top gap) */}
       <aside
         id="question-drawer-panel"
+        data-stay
         aria-label="Practice Questions Drawer"
-        className={`fixed inset-y-0 right-0 w-full sm:w-[560px] md:w-[620px] lg:w-[680px] xl:w-[720px] max-w-full bg-slate-50 dark:bg-[#0c111b] border-l border-slate-200 dark:border-white/10 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-out ${
-          isOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
-        }`}
+        className={`fixed inset-y-0 right-0 w-full sm:w-[837px] md:w-[927px] lg:w-[1017px] xl:w-[1076px] max-w-full bg-slate-50 dark:bg-[#0c111b] border-l border-slate-200 dark:border-white/10 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
+          }`}
       >
         {/* 1. Header: the sidebar's blue, with the search box on it */}
         <div className="relative overflow-hidden p-4 sm:p-5 space-y-4 bg-gradient-to-br from-[#2a56cf] via-primary to-[#132e7d] dark:from-blue-900 dark:via-blue-950 dark:to-slate-950 text-white shrink-0">
@@ -221,7 +226,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <h2 className="font-display text-base sm:text-lg font-bold truncate">{taskMeta.name}</h2>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/15 border border-white/20 shrink-0">
+                  <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/15 border border-white/20 shrink-0">
                     {EXAM_LABELS[exam]}
                   </span>
                 </div>
@@ -283,16 +288,16 @@ export default function QuestionDrawer<T extends DrawerItem>({
                   Showing <span className="font-bold text-slate-900 dark:text-white">{filteredQuestions.length}</span>
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
+              <div className="h-2 rounded-none bg-slate-100 dark:bg-white/10 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-500"
+                  className="h-full rounded-none bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-500"
                   style={{ width: `${questions.length ? Math.round((doneCount / questions.length) * 100) : 0}%` }}
                 />
               </div>
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-white/5">
+          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-none bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10">
             {[
               { id: 'all' as const, label: 'All', fullLabel: 'All Questions' },
               { id: 'done' as const, label: 'Done', fullLabel: 'Done' },
@@ -304,11 +309,10 @@ export default function QuestionDrawer<T extends DrawerItem>({
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveFilter(tab.id)}
-                  className={`py-1.5 sm:py-2 px-1.5 sm:px-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    active
-                      ? 'bg-primary text-white shadow-md shadow-primary/30'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
+                  className={`h-10 sm:h-11 px-2 rounded-none text-xs sm:text-sm font-semibold tracking-wide transition-all flex items-center justify-center gap-1.5 cursor-pointer ${active
+                    ? 'bg-primary text-white shadow-xs font-bold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/10'
+                    }`}
                 >
                   <span className="sm:hidden">{tab.label}</span>
                   <span className="hidden sm:inline truncate">{tab.fullLabel}</span>
@@ -325,24 +329,39 @@ export default function QuestionDrawer<T extends DrawerItem>({
               {Array.from({ length: 8 }).map((_, i) => (
                 <div
                   key={`drawer-skeleton-${i}`}
-                  className="p-3 sm:p-3.5 rounded-2xl border border-slate-200/70 dark:border-white/5 bg-white dark:bg-white/[0.03] flex items-center gap-3 animate-pulse"
+                  className="p-3 sm:p-3.5 rounded-none border border-slate-200/70 dark:border-white/5 bg-white dark:bg-white/[0.03] flex items-center gap-3 animate-pulse"
                 >
-                  <Skeleton className="h-10 w-10 rounded-xl bg-slate-200/80 dark:bg-slate-800 shrink-0" />
+                  <Skeleton className="h-10 w-10 rounded-full bg-slate-200/80 dark:bg-slate-800 shrink-0" />
                   <div className="min-w-0 flex-1 space-y-2">
                     <Skeleton
-                      className="h-4 bg-slate-200/80 dark:bg-slate-800 rounded"
+                      className="h-4 bg-slate-200/80 dark:bg-slate-800 rounded-none"
                       style={{ width: `${Math.max(40, 75 - ((i * 11) % 35))}%` }}
                     />
                     <div className="flex items-center gap-1.5">
-                      <Skeleton className="h-3.5 w-12 rounded bg-slate-100 dark:bg-slate-800/60" />
+                      <Skeleton className="h-3.5 w-12 rounded-none bg-slate-100 dark:bg-slate-800/60" />
                       {skill === 'speaking' && (
-                        <Skeleton className="h-3.5 w-12 rounded bg-slate-100 dark:bg-slate-800/60" />
+                        <Skeleton className="h-3.5 w-12 rounded-none bg-slate-100 dark:bg-slate-800/60" />
                       )}
                     </div>
                   </div>
-                  <Skeleton className="h-8 w-20 rounded-full bg-slate-200/70 dark:bg-slate-800/70 shrink-0" />
+                  <Skeleton className="h-8 w-20 rounded-none bg-slate-200/70 dark:bg-slate-800/70 shrink-0" />
                 </div>
               ))}
+            </div>
+          ) : onRetry ? (
+            <div className="p-10 text-center space-y-3">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                <WifiOff className="w-7 h-7" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">Couldn't load the questions</h3>
+              <p className="text-xs text-slate-500 max-w-xs mx-auto">Check your internet connection and try again.</p>
+              <button
+                type="button"
+                onClick={onRetry}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Try again
+              </button>
             </div>
           ) : displayedQuestions.length === 0 ? (
             <div className="p-10 text-center space-y-3">
@@ -383,23 +402,21 @@ export default function QuestionDrawer<T extends DrawerItem>({
                 <div
                   key={question.id}
                   onClick={() => onSelectQuestion(question)}
-                  className={`group p-3 sm:p-3.5 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-white dark:bg-primary/10 border-primary ring-4 ring-primary/10 shadow-md'
-                      : 'bg-white dark:bg-white/[0.03] border-slate-200/70 dark:border-white/5 hover:border-primary/40 hover:shadow-md hover:-translate-y-px'
-                  }`}
+                  className={`group p-3 sm:p-3.5 rounded-none border flex items-center gap-3 transition-all cursor-pointer ${isSelected
+                    ? 'bg-white dark:bg-primary/10 border-primary ring-2 ring-primary/20 shadow-md'
+                    : 'bg-white dark:bg-white/[0.03] border-slate-200/70 dark:border-white/5 hover:border-primary/40 hover:shadow-md hover:-translate-y-px'
+                    }`}
                 >
                   {/* Status badge: play, or a green tick once done */}
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                      isDone
-                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
-                        : isSelected
-                          ? 'bg-primary text-white'
-                          : 'bg-primary/10 text-primary dark:text-blue-300 group-hover:bg-primary group-hover:text-white'
-                    }`}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${isDone
+                      ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
+                      : isSelected
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'bg-primary/10 text-primary dark:text-blue-300 group-hover:bg-primary group-hover:text-white'
+                      }`}
                   >
-                    {isDone ? <CheckCircle2 className="w-5 h-5" /> : <Play className="w-4 h-4 fill-current" />}
+                    {isDone ? <CheckCircle2 className="w-5 h-5" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
                   </div>
 
                   {/* Title and badges */}
@@ -411,25 +428,24 @@ export default function QuestionDrawer<T extends DrawerItem>({
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {question.difficulty && (
                         <span
-                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${
-                            question.difficulty === 'hard'
-                              ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400'
-                              : question.difficulty === 'medium'
+                          className={`text-xs font-semibold px-2 py-0.5 rounded-none capitalize ${question.difficulty === 'hard'
+                            ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400'
+                            : question.difficulty === 'medium'
                               ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400'
                               : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400'
-                          }`}
+                            }`}
                         >
                           {question.difficulty}
                         </span>
                       )}
                       {/* Shadow tag for speaking tasks */}
                       {skill === 'speaking' && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400">
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-none bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400">
                           Shadow
                         </span>
                       )}
                       {isSelected && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary text-white">
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-none bg-primary text-white">
                           Current
                         </span>
                       )}
@@ -442,7 +458,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
                       <div className="text-right">
                         <span className="text-sm font-bold font-mono text-slate-800 dark:text-slate-200">
                           {record.score}
-                          <span className="text-[10px] font-normal text-slate-400">/{record.maxScore ?? EXAM_MAX_SCORE[exam]}</span>
+                          <span className="text-xs font-normal text-slate-400">/{record.maxScore ?? EXAM_MAX_SCORE[exam]}</span>
                         </span>
                       </div>
                     ) : isDone ? (
@@ -455,11 +471,10 @@ export default function QuestionDrawer<T extends DrawerItem>({
                         e.stopPropagation();
                         onSelectQuestion(question);
                       }}
-                      className={`text-xs font-bold px-3.5 py-1.5 rounded-full transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-primary text-white shadow-md shadow-primary/30'
-                          : 'bg-primary/10 text-primary dark:text-blue-300 hover:bg-primary hover:text-white'
-                      }`}
+                      className={`text-xs font-bold px-3.5 py-1.5 rounded-none transition-all cursor-pointer ${isSelected
+                        ? 'bg-primary text-white shadow-md shadow-primary/30'
+                        : 'bg-primary/10 text-primary dark:text-blue-300 hover:bg-primary hover:text-white'
+                        }`}
                     >
                       {record?.attemptsCount ? `Practice * ${record.attemptsCount}` : 'Practice'}
                     </button>

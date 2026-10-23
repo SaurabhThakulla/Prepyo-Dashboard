@@ -95,7 +95,7 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
             {session.mockTitle ?? 'Reading Mock'}
           </h1>
           <p className="text-xs text-muted-foreground">
-            {sets.length} passages • {session.totalQuestions} questions • graded on the server
+            {sets.length} passages • {session.totalQuestions} questions • marked automatically
           </p>
         </div>
 
@@ -137,7 +137,7 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
             }`}
           >
             Passage {index + 1}
-            <span className="block font-medium text-[10px] opacity-70 truncate">
+            <span className="block font-medium text-xs opacity-70 truncate">
               {set.passage?.title}
             </span>
           </button>

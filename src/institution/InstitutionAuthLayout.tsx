@@ -64,7 +64,7 @@ export default function InstitutionAuthLayout({ title, subtitle, mode, children 
                 <span className="font-display text-2xl font-black tracking-tight text-white">
                   prep<span className="text-primary">yo</span>
                 </span>
-                <span className="text-[10px] font-black uppercase tracking-wider bg-primary/25 text-blue-200 px-2 py-0.5 rounded-md border border-primary/40">
+                <span className="text-xs font-black uppercase tracking-wider bg-primary/25 text-blue-200 px-2 py-0.5 rounded-md border border-primary/40">
                   INSTITUTION
                 </span>
               </div>
@@ -96,7 +96,7 @@ export default function InstitutionAuthLayout({ title, subtitle, mode, children 
               icon={<Building2 className="w-4 h-4 text-blue-400" />}
               iconClass="bg-blue-500/20 text-blue-400"
               title="Partner Portal"
-              badge={<Badge variant="secondary" className="text-[10px] py-0 font-bold shrink-0">INSTITUTE</Badge>}
+              badge={<Badge variant="secondary" className="text-xs py-0 font-bold shrink-0">INSTITUTE</Badge>}
               tickClass="text-primary"
               points={['Live Batch Analytics', 'PTE, IELTS & EPS-TOPIK', 'Centralized Mock Tracking']}
             />
@@ -104,7 +104,7 @@ export default function InstitutionAuthLayout({ title, subtitle, mode, children 
               icon={<ShieldCheck className="w-4 h-4 text-primary" />}
               iconClass="bg-primary/20 text-primary"
               title="Privacy & Security"
-              badge={<Badge variant="indigo" className="text-[10px] py-0 font-bold uppercase shrink-0">256-Bit</Badge>}
+              badge={<Badge variant="indigo" className="text-xs py-0 font-bold uppercase shrink-0">256-Bit</Badge>}
               tickClass="text-primary"
               points={['Dedicated Admin Access', 'Instant Seat Provisioning', '100% Student Data Safety']}
             />
@@ -130,7 +130,7 @@ export default function InstitutionAuthLayout({ title, subtitle, mode, children 
             <span className="font-display text-lg font-black text-foreground">
               prep<span className="text-primary">yo</span>
             </span>
-            <span className="text-[10px] font-black uppercase tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded-md">
+            <span className="text-xs font-black uppercase tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded-md">
               INSTITUTION
             </span>
           </div>

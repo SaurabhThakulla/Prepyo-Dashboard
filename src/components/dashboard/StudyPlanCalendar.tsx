@@ -216,7 +216,7 @@ export default function StudyPlanCalendar({
                 />
                 <span className="font-medium text-foreground">{event.title}</span>
               </div>
-              <span className="text-[10px] text-muted-foreground capitalize">
+              <span className="text-xs text-muted-foreground capitalize">
                 {event.completed ? 'Done' : event.type}
               </span>
             </div>

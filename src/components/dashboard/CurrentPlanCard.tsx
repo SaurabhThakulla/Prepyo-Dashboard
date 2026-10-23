@@ -77,11 +77,11 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
             </div>
             <div className="min-w-0 space-y-1">
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
                   Your plan
                 </span>
                 {isActive ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/60 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:border-emerald-700/50 dark:bg-emerald-950/50 dark:text-emerald-300">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/60 bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:border-emerald-700/50 dark:bg-emerald-950/50 dark:text-emerald-300">
                     <span className="relative flex h-1.5 w-1.5">
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                       <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -89,12 +89,12 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
                     Active
                   </span>
                 ) : (
-                  <Badge variant="destructive" className="px-2 py-0.5 text-[10px]">
+                  <Badge variant="destructive" className="px-2 py-0.5 text-xs">
                     Expired
                   </Badge>
                 )}
                 {sub.bonusDays > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-md border border-amber-200/60 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-400">
+                  <span className="inline-flex items-center gap-1 rounded-md border border-amber-200/60 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-600 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-400">
                     <Gift className="h-3 w-3" />+{sub.bonusDays} bonus days
                   </span>
                 )}
@@ -215,7 +215,7 @@ function CompactPlanCard({ planName, isActive, isFree, bonusDays, validity, quot
           <div className="flex items-center gap-2">
             <span className="truncate font-display text-base font-extrabold text-foreground">{planName}</span>
             <span
-              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-bold ${
                 isActive
                   ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
                   : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
@@ -236,7 +236,7 @@ function CompactPlanCard({ planName, isActive, isFree, bonusDays, validity, quot
         )}
       </div>
 
-      <div className="mt-3 grid grid-cols-3 divide-x divide-border/70 rounded-xl bg-muted/50 py-2 dark:bg-zinc-900/60">
+      <div className="mt-3 grid grid-cols-3 divide-x divide-border/70 rounded-xl bg-muted/50 py-2 dark:bg-slate-900/60">
         {quotas.map(quota => {
           const tone = quota.unlimited ? 'ok' : toneFor(quota.percentUsed);
           return (
@@ -252,7 +252,7 @@ function CompactPlanCard({ planName, isActive, isFree, bonusDays, validity, quot
               >
                 {quota.unlimited ? '∞' : `${quota.percentUsed}%`}
               </div>
-              <div className="truncate text-[10px] font-medium text-muted-foreground">{quota.label}</div>
+              <div className="truncate text-xs font-medium text-muted-foreground">{quota.label}</div>
             </div>
           );
         })}
@@ -289,7 +289,7 @@ function QuotaGauge({ title, percentUsed, period, hint, accent, unlimited = fals
   const ring = tone === 'out' ? 'text-rose-500' : tone === 'low' ? 'text-amber-500' : accent;
 
   return (
-    <div className="flex items-center gap-3.5 rounded-xl border border-border/70 bg-muted/40 p-3 dark:bg-zinc-900/50">
+    <div className="flex items-center gap-3.5 rounded-xl border border-border/70 bg-muted/40 p-3 dark:bg-slate-900/50">
       <div className="relative h-12 w-12 sm:h-14 sm:w-14 shrink-0">
         <svg viewBox="0 0 48 48" className="h-full w-full -rotate-90" aria-hidden>
           <circle cx="24" cy="24" r={radius} fill="none" strokeWidth="5" className="stroke-muted-foreground/15 dark:stroke-zinc-800" />
@@ -322,7 +322,7 @@ function QuotaGauge({ title, percentUsed, period, hint, accent, unlimited = fals
           )}
         </p>
         <p
-          className={`mt-0.5 text-[10px] sm:text-[11px] font-semibold truncate ${
+          className={`mt-0.5 text-xs sm:text-[11px] font-semibold truncate ${
             tone === 'out'
               ? 'text-rose-600 dark:text-rose-400'
               : tone === 'low'

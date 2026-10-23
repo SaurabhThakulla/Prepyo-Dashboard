@@ -18,7 +18,7 @@ export default function InstitutionPage({ title, subtitle, wide = false, childre
           <span className="font-display text-lg font-black text-foreground">
             prep<span className="text-primary">yo</span>
           </span>
-          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">
+          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-primary">
             <Building2 className="h-3 w-3" />
             Institution
           </span>

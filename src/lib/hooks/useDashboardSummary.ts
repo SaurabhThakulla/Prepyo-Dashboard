@@ -2,10 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { Mistake, Pagination, ProgressSummary, ExamType } from '@/lib/types';
-import { useMyRank } from '@/lib/hooks/useLeaderboard';
 
-
-export function useDashboardSummary(activeExam: ExamType) {
+export function useDashboardSummary(_activeExam: ExamType) {
   const progress = useQuery({
     queryKey: queryKeys.progress(),
     queryFn: () => api.get<ProgressSummary>('/progress'),
@@ -23,12 +21,9 @@ export function useDashboardSummary(activeExam: ExamType) {
       }),
   });
 
-  const { rank } = useMyRank(activeExam);
-
   return {
     progress: progress.data ?? null,
     unresolvedMistakes: unresolved.data?.pagination.total ?? null,
-    rank: rank ?? null,
     isLoading: progress.isPending,
     error: progress.error,
   };

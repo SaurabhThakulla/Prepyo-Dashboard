@@ -14,7 +14,7 @@ import { subTestsLeft } from '@/lib/subscriptions';
 import { writingWordCount, writingWordTarget } from '@/lib/writing';
 import { FullMockSection } from '@/lib/fullMock';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
-import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
+import SectionMockIntro from '@/components/mocks/SectionMockIntro';
 import PracticeResultCard from '@/components/practice/PracticeResultCard';
 
 /** Mirrors billing.SectionMockSubTests on the server, which is what enforces it. */
@@ -80,10 +80,10 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
   const [searchParams] = useSearchParams();
   const refreshPapers = useRefreshMockPapers();
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (chosen?: string) => {
     setStarting(true);
     try {
-      const paperId = searchParams.get('paper');
+      const paperId = chosen ?? searchParams.get('paper');
       const body = paperId ? { paperId } : {};
       const data = await api.post<{ session: WritingMockSession }>('/writing/mocks', body);
       open(data.session);
@@ -174,17 +174,28 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
   if (section) return null;
 
   return (
-    <div className="relative w-full min-h-[calc(100dvh-4rem)] bg-background">
-      <PreTestBlurOverlay
-        title="IELTS Writing mock test"
-        instructions={`Task 1 and Task 2 in 60 minutes, as in the test. Your writing is saved as you go, and Task 2 counts twice as much as Task 1 in your Writing band. It uses ${SECTION_MOCK_SUB_TESTS} of your daily practice sub-tests; a paper you already started carries on at no extra cost.`}
-        subTestsRemaining={subTestsLeft(user?.subscription)}
-        credits={SECTION_MOCK_SUB_TESTS}
-        startLabel="Start mock test"
-        isStarting={starting}
-        onStart={() => void start()}
-      />
-    </div>
+    <SectionMockIntro
+      exam="IELTS"
+      skill="writing"
+      title="Writing Sectional Test"
+      description="Task 1 and Task 2 in 60 minutes, as in the test."
+      duration="60 min"
+      items="2 tasks"
+      parts={[
+        { name: 'Task 1', detail: '150+ words, about 20 min' },
+        { name: 'Task 2: Essay', detail: '250+ words, about 40 min' },
+      ]}
+      rules={[
+        'One clock of 60 minutes covers both tasks.',
+        'Your writing is saved as you go.',
+        'Task 2 counts twice as much as Task 1 in your Writing band.',
+      ]}
+      equipment="This test has no audio. You only need a keyboard."
+      credits={SECTION_MOCK_SUB_TESTS}
+      subTestsRemaining={subTestsLeft(user?.subscription)}
+      isStarting={starting}
+      onStart={paperId => void start(paperId)}
+    />
   );
 }
 
@@ -269,7 +280,7 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
             }`}
           >
             {tab.label}
-            <span className="block font-medium text-[10px] opacity-70">
+            <span className="block font-medium text-xs opacity-70">
               {tab.hint} · {writingWordCount(drafts[tab.key])} written
             </span>
           </button>
@@ -291,7 +302,7 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
 
         <Card className="p-4 space-y-2.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-foreground">Your {active === 'task1' ? 'Task 1' : 'Task 2'} response</span>
+            <span className="text-sm font-bold text-foreground">Your {active === 'task1' ? 'Task 1' : 'Task 2'} response</span>
             <Badge variant={words >= target ? 'success' : 'warning'}>{`${words} / ${target} words`}</Badge>
           </div>
           <Textarea
@@ -300,10 +311,10 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
             disabled={submitting}
             onChange={event => onChange(active, event.target.value)}
             placeholder="Write your response here…"
-            className="text-sm leading-relaxed"
+            className="border-2 border-primary bg-background px-4 py-3 text-[15px] leading-7 text-foreground placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-primary/30"
             aria-label={`${active === 'task1' ? 'Task 1' : 'Task 2'} response`}
           />
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs leading-relaxed text-foreground/75">
             Your writing is saved as you go. When time runs out, the paper is submitted with what you have written.
           </p>
         </Card>
