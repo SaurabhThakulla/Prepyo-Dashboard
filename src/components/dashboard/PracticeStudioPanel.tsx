@@ -34,7 +34,7 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-muted-foreground pb-1">
+        <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground pb-1">
           <span>SKILLS</span>
           <span className="sm:pr-24">LATEST SCORE</span>
         </div>
@@ -51,7 +51,7 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
 
               <div className="flex flex-1 sm:flex-none min-w-0 sm:w-1/2 items-center gap-3 sm:gap-6">
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
-                  <div className="w-full h-1.5 bg-slate-100 group-hover:bg-white dark:bg-zinc-800/90 dark:group-hover:bg-zinc-800 rounded-full overflow-hidden transition-colors">
+                  <div className="w-full h-1.5 bg-slate-100 group-hover:bg-white dark:bg-slate-800/90 dark:group-hover:bg-zinc-800 rounded-full overflow-hidden transition-colors">
                     <div
                       className="h-full bg-primary rounded-full transition-all duration-300"
                       style={{ width: `${skill.percent}%` }}
@@ -77,7 +77,7 @@ export default function PracticeStudioPanel({ skills, mistakeCount }: PracticeSt
       </div>
 
       <div className="pt-4 sm:pt-5 border-t border-border dark:border-white/5 space-y-1 sm:space-y-1.5">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           TESTS &amp; REVIEW
         </div>
 

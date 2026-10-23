@@ -40,7 +40,7 @@ export default function SkillQuestionCard({
 
       {/* Label and Count */}
       <div className="mt-3 sm:mt-4 space-y-0.5">
-        <div className="truncate text-[10px] sm:text-[11px] font-bold text-indigo-500/90 dark:text-indigo-400/90 tracking-wider uppercase">
+        <div className="truncate md:whitespace-normal text-xs sm:text-[11px] font-bold text-indigo-500/90 dark:text-indigo-400/90 tracking-wider uppercase">
           {label}
         </div>
         <div className="text-xl sm:text-2xl font-black text-indigo-950 dark:text-white tracking-tight">

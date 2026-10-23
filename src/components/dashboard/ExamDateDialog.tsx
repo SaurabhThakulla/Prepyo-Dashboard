@@ -195,7 +195,7 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
               <span className={`text-2xl font-black leading-none tabular-nums ${isPast ? 'text-rose-600 dark:text-rose-400' : 'text-primary'}`}>
                 {daysLeft === null ? '–' : Math.max(0, daysLeft)}
               </span>
-              <span className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              <span className="mt-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
                 {daysLeft === 1 ? 'day' : 'days'}
               </span>
             </div>

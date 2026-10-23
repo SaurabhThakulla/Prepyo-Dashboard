@@ -102,7 +102,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 2xl:grid-cols-4 gap-3 sm:gap-4" data-tour="dash-skills">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-2 2xl:grid-cols-4 gap-3 sm:gap-4" data-tour="dash-skills">
         {skillsFor(activeExam).map(skill => {
           const row = skillProgress.get(skill);
           return (
