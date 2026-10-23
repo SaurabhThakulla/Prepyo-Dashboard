@@ -9,7 +9,7 @@ export const dashboardPath = (code: string) => `/${encodeURIComponent(code)}`;
 // and with reservedCodes in the backend's internal/institution/signup.go.
 const APP_PAGES = new Set([
   'login', 'signup', 'home', 'dashboard', 'practice', 'me', 'mocks', 'mistakes', 'history', 'evaluations',
-  'leaderboard', 'profile', 'referrals', 'subscription', 'diagnostic', 'tutorials', 'videos', 'learn',
+  'profile', 'referrals', 'subscription', 'diagnostic', 'tutorials', 'videos', 'learn',
   'reports', 'admin', 'terms', 'privacy', 'terms-and-conditions', 'privacy-policy', 'account', 'progress',
 ]);
 

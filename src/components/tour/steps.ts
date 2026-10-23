@@ -49,7 +49,7 @@ export const TOUR_STAGES: { id: Exclude<TourStage, 'done'>; label: string }[] = 
 export const TOUR_CHECKLIST: { label: string; steps: string[] }[] = [
   { label: 'Opened reading practice', steps: ['open-reading'] },
   { label: 'Answered and submitted a question', steps: ['answer'] },
-  { label: 'Found your score in History Bank', steps: ['open-attempt', 'attempt-result'] },
+  { label: 'Found your score in Practice history', steps: ['open-attempt', 'attempt-result'] },
 ];
 
 const READING = '/practice?skill=reading';
@@ -64,7 +64,7 @@ export const TOUR_STEPS: TourStep[] = [
     path: '/dashboard',
     home: '/dashboard',
     title: 'Welcome to Prepyo',
-    body: 'A one-minute tour. We will look around your Home screen, answer one real reading question together, then find its score in your History Bank.',
+    body: 'A one-minute tour. We will look around your Home screen, answer one real reading question together, then find its score in your Practice history.',
     next: { label: 'Start the tour' },
     dim: true,
   },
@@ -135,13 +135,10 @@ export const TOUR_STEPS: TourStep[] = [
     stage: 'practice',
     path: '/practice',
     home: READING,
-    // The button itself, so it is what lights up; on a used-up allowance the card shows Upgrade instead.
-    target: '#question-drawer-panel, [data-tour="practice-start"] button, [data-tour="practice-start"]',
+    target: '#question-drawer-panel',
     title: 'Start a question',
     body: ctx =>
-      !ctx.visible('#question-drawer-panel')
-        ? `${act(ctx)} Start Practice. The questions appear and your attempt begins.`
-        : ctx.exam === 'EPS_TOPIK'
+      ctx.exam === 'EPS_TOPIK'
           ? `${act(ctx)} any question in the list. It opens straight away.`
           : `${act(ctx)} any passage in the list. It opens straight away.`,
     done: ({ visible }) => visible(SUBMIT),
@@ -168,8 +165,8 @@ export const TOUR_STEPS: TourStep[] = [
     home: READING,
     target: RESULT,
     title: 'Your score',
-    body: 'This is how your answer was marked: what you got right, the correct answer and why. Every answer you give is saved to your History Bank.',
-    next: { label: 'Open History Bank', href: '/history' },
+    body: 'This is how your answer was marked: what you got right, the correct answer and why. Every answer you give is saved to your Practice history.',
+    next: { label: 'Open Practice history', href: '/history' },
   },
   {
     id: 'history',
@@ -177,7 +174,7 @@ export const TOUR_STEPS: TourStep[] = [
     path: '/history',
     home: '/history',
     target: 'section[aria-label="Summary"]',
-    title: 'Your History Bank',
+    title: 'Your practice history',
     body: ({ paid }) =>
       paid
         ? 'Every question you answered: how many you practised, how many still need review and how many you have mastered.'

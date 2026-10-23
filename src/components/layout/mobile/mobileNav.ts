@@ -50,7 +50,7 @@ const startsWithAny = (path: string, prefixes: string[]) =>
 export function getMobileTab(pathname: string, searchParams: URLSearchParams): MobileTabId {
   if (searchParams.get('mock') || searchParams.get('view') === 'full') return 'mocks';
   if (startsWithAny(pathname, ['/mocks', '/diagnostic'])) return 'mocks';
-  if (startsWithAny(pathname, ['/practice', '/mistakes', '/evaluations'])) return 'practice';
+  if (startsWithAny(pathname, ['/practice', '/mistakes'])) return 'practice';
   if (startsWithAny(pathname, ['/learn', '/tutorials', '/videos'])) return 'learn';
   if (startsWithAny(pathname, [ME_HREF, '/profile', '/subscription', '/account', '/referrals', '/reports'])) {
     return 'me';
@@ -96,7 +96,7 @@ export function mobileTitle(pathname: string, searchParams: URLSearchParams, act
     if (searchParams.get('tab') === 'reports') return 'Score Reports';
     return searchParams.get('view') === 'full' ? 'Full Mock Test' : 'Mock Tests';
   }
-  if (pathname === '/diagnostic') return 'Diagnostic';
+  if (pathname === '/diagnostic') return 'Level check';
   if (pathname === '/learn/review') return 'Review words';
   if (pathname.startsWith('/learn')) return 'Learn Korean';
   if (pathname.startsWith('/tutorials')) return 'Video Lessons';
@@ -105,9 +105,7 @@ export function mobileTitle(pathname: string, searchParams: URLSearchParams, act
   if (pathname === '/subscription' || pathname === '/account') return 'Your Plan';
   if (pathname === '/referrals') return 'Earn Rewards';
   if (pathname === '/reports') return 'My Reports';
-  if (pathname === '/mistakes' || pathname === '/history') return 'History Bank';
-  if (pathname === '/evaluations') return 'AI Evaluator';
-  if (pathname === '/leaderboard') return 'Leaderboard';
+  if (pathname === '/mistakes' || pathname === '/history') return 'Practice history';
   if (pathname === '/admin') return 'Admin';
   if (pathname === '/admin/payments') return 'Plan Management';
   if (pathname === '/admin/reports') return 'Issue Reports';

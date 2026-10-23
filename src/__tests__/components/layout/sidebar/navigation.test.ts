@@ -64,7 +64,7 @@ describe('the reading section of the practice menu', () => {
   it('groups the IELTS mock menu into full test, sectional tests, and results', () => {
     const mock = buildSections('IELTS', () => { }).find(s => s.id === 'mock')?.items ?? [];
     expect(mock.some(item => item.href?.startsWith('/mocks/pte'))).toBe(false);
-    expect(mock[0].label).toBe('IELTS Mock Test Centre');
+    expect(mock[0].label).toBe('All mock tests');
     const full = mock.filter(item => item.group === 'Full Mock Test');
     const sectional = mock.filter(item => item.group === 'Sectional Tests');
     expect(full.map(item => item.href)).toEqual(['/mocks?view=full']);
@@ -193,7 +193,7 @@ describe('which menu item is lit', () => {
   });
 
   it('lights the mock test centre on the catalogue, and full mock on view=full', () => {
-    expect(lit('/mocks')).toEqual(['IELTS Mock Test Centre']);
+    expect(lit('/mocks')).toEqual(['All mock tests']);
     expect(lit('/mocks?view=full')).toEqual(['Full Mock Test']);
   });
 });
@@ -271,7 +271,7 @@ describe('the Learn Korean menu', () => {
     buildSections('EPS_TOPIK', () => { }, null, undefined, 0, false, progress).find(s => s.id === 'learn');
 
   it('sits right after Practice for EPS-TOPIK, and nowhere for IELTS or PTE', () => {
-    expect(buildSections('EPS_TOPIK', () => { }).map(s => s.id)).toEqual(['home', 'practice', 'learn', 'aicoach', 'mock', 'tutorials']);
+    expect(buildSections('EPS_TOPIK', () => { }).map(s => s.id)).toEqual(['practice', 'learn', 'mock', 'tutorials']);
     expect(buildSections('IELTS', () => { }).some(s => s.id === 'learn')).toBe(false);
     expect(buildSections('PTE', () => { }).some(s => s.id === 'learn')).toBe(false);
   });
@@ -329,7 +329,7 @@ describe('the tutorials menu', () => {
 
   it('lists only the sections EPS-TOPIK tests', () => {
     const menu = tutorials('EPS_TOPIK');
-    expect(menu.items.map(item => item.label)).toEqual(['EPS-TOPIK Video Hub', 'Reading Lessons', 'Listening Lessons']);
+    expect(menu.items.map(item => item.label)).toEqual(['All videos', 'Reading Lessons', 'Listening Lessons']);
     expect(menu.title).toBe('EPS-TOPIK Video Tutorials');
   });
 

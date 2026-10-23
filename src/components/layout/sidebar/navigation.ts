@@ -11,12 +11,9 @@ import {
   ClipboardCheck,
   Gauge,
   ChartColumn,
-  Sparkles,
   RotateCcw,
   History,
   Trophy,
-  Bot,
-  HelpCircle,
   CreditCard,
   MessageSquareWarning,
   ShieldCheck,
@@ -44,7 +41,7 @@ import { getPteTaskWeight, getPteTaskContributions, isPteTaskAvailable, getPteTa
  * link or change a label without touching any rendering code.
  */
 
-export type PrimarySectionId = 'home' | 'practice' | 'learn' | 'aicoach' | 'mock' | 'tutorials';
+export type PrimarySectionId = 'practice' | 'learn' | 'mock' | 'tutorials';
 
 export interface SecondaryNavItem {
   href?: string;
@@ -89,10 +86,10 @@ export const LISTENING_MOCK_HREF = '/practice?skill=listening&mock=1';
 
 /** The practice skills, in the order they head the secondary panel. */
 const PRACTICE_SKILLS: { skill: SkillType; label: string; icon: LucideIcon; sublabel: string }[] = [
-  { skill: 'speaking', label: 'Speaking', icon: Mic, sublabel: 'Recorded answer, scored from the transcript' },
-  { skill: 'writing', label: 'Writing', icon: PenTool, sublabel: 'Written answer with rubric feedback' },
-  { skill: 'reading', label: 'Reading', icon: BookOpen, sublabel: 'Passage questions, graded on the server' },
-  { skill: 'listening', label: 'Listening', icon: Headphones, sublabel: 'Audio questions, graded on the server' },
+  { skill: 'speaking', label: 'Speaking', icon: Mic, sublabel: 'Record your answer, get a score' },
+  { skill: 'writing', label: 'Writing', icon: PenTool, sublabel: 'Type your answer, get feedback' },
+  { skill: 'reading', label: 'Reading', icon: BookOpen, sublabel: 'Read and answer, marked instantly' },
+  { skill: 'listening', label: 'Listening', icon: Headphones, sublabel: 'Listen and answer, marked instantly' },
 ];
 
 /** Which primary section a URL belongs to. */
@@ -102,17 +99,15 @@ export function getSectionFromPathname(path: string, searchParams?: URLSearchPar
   if (path.startsWith('/practice')) return 'practice';
   if (path.startsWith('/learn')) return 'learn';
   if (path.startsWith('/mocks') || path.startsWith('/diagnostic')) return 'mock';
-  if (path.startsWith('/evaluations')) return 'aicoach';
   if (path.startsWith('/tutorials') || path.startsWith('/videos')) return 'tutorials';
-  return 'home';
+  return 'practice';
 }
 
 /**
  * The whole menu. Depends on the active exam because the practice section is
  * generated from that exam's syllabus.
  *
- * `onOpenTutor` is passed in rather than imported so this stays free of React
- * context and can be unit tested.
+ * `onOpenTutor` is no longer used: the AI tutor opens from the question screens.
  */
 export function buildSections(
   activeExam: ExamType,
@@ -130,90 +125,13 @@ export function buildSections(
 
   return [
     {
-      id: 'home',
-      label: 'Home',
-      icon: Home,
-      title: 'Learner Hub',
-      description: 'Progress, study resources & recent activity',
-      items: [
-        // An admin has no practice history of their own, so the learner's
-        // score breakdown would be an empty page. They get the dashboard they
-        // actually work from instead.
-        isAdmin(user ?? null)
-          ? {
-              href: '/admin',
-              label: 'Admin Dashboard',
-              icon: ShieldCheck,
-              sublabel: 'Users, plans & platform metrics',
-              badge: 'Admin',
-            }
-          : {
-              href: '/dashboard',
-              label: 'Home Overview',
-              icon: Home,
-              sublabel: 'Target gaps & score breakdown',
-            },
-        // An admin has no plan of their own to look at. The equivalent page for
-        // them is everyone else's purchases waiting to be approved.
-        isAdmin(user ?? null)
-          ? {
-              href: '/admin/payments',
-              label: 'Plan Management',
-              icon: CreditCard,
-              sublabel: 'Approve payments and grant plans',
-              badge: 'Admin',
-            }
-          : {
-              href: '/subscription',
-              label: 'Your Current Plan',
-              icon: CreditCard,
-              sublabel: user?.subscription?.planName
-                ? `${user.subscription.planName} · ${user.subscription.isActive ? 'Active' : 'Expired'}`
-                : 'Plan tier, quotas & billing',
-              badge: user?.subscription?.isActive ? 'Active' : 'Free',
-            },
-        ...(isAdmin(user ?? null)
-          ? [
-              {
-                href: '/admin/reports',
-                label: 'Issue reports',
-                icon: MessageSquareWarning,
-                sublabel: 'What learners have reported',
-                badge: 'Admin',
-              },
-              {
-                href: '/admin/consultancies',
-                label: 'Consultancies',
-                icon: Building2,
-                sublabel: 'Institutions, students & usage',
-                badge: 'Admin',
-              },
-            ]
-          : []),
-        {
-          href: '/history',
-          label: 'History Bank',
-          icon: History,
-          sublabel: 'All questions you have practiced',
-          group: 'Study Resources',
-        },
-        {
-          href: '/leaderboard',
-          label: 'Nepal Study Challenge',
-          icon: Trophy,
-          sublabel: 'Compete with peers in Nepal',
-          group: 'Study Resources',
-        },
-      ],
-    },
-    {
       id: 'practice',
       label: 'Practice',
       icon: FilePenLine,
       title: isPTE
         ? (pteVariant === 'core' ? 'PTE Core Practice Studio' : 'PTE Academic Practice Studio')
         : `${EXAM_LABELS[activeExam]} Practice Studio`,
-      description: 'Exam-format tasks & AI rubric feedback',
+      description: 'Practise one task type at a time',
       // One heading per skill, one item per task type underneath — the exam's
       // own shape, straight from the syllabus, so PTE and IELTS each list their
       // own tasks and a change there needs no edit here.
@@ -294,34 +212,6 @@ export function buildSections(
     // The beginner course is Korean from the alphabet up, so only EPS-TOPIK has it.
     ...(isEPS ? [learnSection(learnProgress)] : []),
     {
-      id: 'aicoach',
-      label: 'AI Coach',
-      icon: Bot,
-      title: 'Prepyo AI Tutor',
-      description: '24/7 intelligent tutoring & coaching',
-      items: [
-        {
-          onClick: onOpenTutor,
-          label: 'AI Chat Coach',
-          icon: Bot,
-          sublabel: 'Open live tutoring assistant',
-          badge: 'Live',
-        },
-        {
-          href: '/evaluations',
-          label: 'AI Evaluator Lab',
-          icon: Sparkles,
-          sublabel: 'Detailed rubric feedback',
-        },
-        {
-          onClick: onOpenTutor,
-          label: 'Practice Help',
-          icon: HelpCircle,
-          sublabel: 'In-context question guidance',
-        },
-      ],
-    },
-    {
       id: 'mock',
       label: 'Mock',
       icon: Timer,
@@ -331,18 +221,18 @@ export function buildSections(
         ...(isEPS ? [] : isPTE ? pteMockItems(pteVariant) : ieltsMockItems()),
         {
           href: '/diagnostic',
-          label: 'Diagnostic Test',
+          label: 'Level check',
           icon: Gauge,
-          sublabel: 'Short initial baseline test',
+          sublabel: 'Find your starting level',
           badge: '15 Min',
-          group: 'Results & Baseline',
+          group: 'Results',
         },
         {
           href: '/mocks?tab=reports',
-          label: 'Mock Score Reports',
+          label: 'My mock results',
           icon: ChartColumn,
-          sublabel: 'Review previous exam scores',
-          group: 'Results & Baseline',
+          sublabel: 'Scores from tests you took',
+          group: 'Results',
         },
       ],
     },
@@ -355,7 +245,7 @@ export function buildSections(
       items: [
         {
           href: '/tutorials',
-          label: `${EXAM_LABELS[activeExam]} Video Hub`,
+          label: 'All videos',
           icon: Tv,
           sublabel: 'All sections & video masterclasses',
         },
@@ -402,7 +292,7 @@ function ieltsMockItems(): SecondaryNavItem[] {
   return [
     {
       href: '/mocks',
-      label: 'IELTS Mock Test Centre',
+      label: 'All mock tests',
       icon: Timer,
       sublabel: 'Every test, your progress and results',
     },
@@ -454,7 +344,7 @@ function pteMockItems(variant: PteExamVariant = 'academic'): SecondaryNavItem[] 
   return [
     {
       href: '/mocks',
-      label: isCore ? 'PTE Core Mock Centre' : 'PTE Mock Test Centre',
+      label: 'All mock tests',
       icon: Timer,
       sublabel: `Every ${isCore ? 'PTE Core' : 'PTE Academic'} test, your progress and results`,
     },
