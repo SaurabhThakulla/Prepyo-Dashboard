@@ -116,7 +116,7 @@ export default function ReferralsPage() {
             <div className="flex items-center gap-2">
               <div className="flex-1 flex items-center justify-between rounded-xl border border-input bg-background/80 px-3.5 py-2.5 text-xs text-foreground font-mono font-bold">
                 <span className="truncate">{shareLink}</span>
-                <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded font-bold uppercase ml-2 shrink-0">
+                <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded font-bold uppercase ml-2 shrink-0">
                   {referralCode}
                 </span>
               </div>

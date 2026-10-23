@@ -18,14 +18,14 @@ export function isReadAloudTask(question: Question): boolean {
 
 /**
  * The passage as it should flow on screen. Speaking and writing passages
- * imported with hard line wraps get those mid-sentence breaks joined; a break
- * after . ? ! or : (a new speaker, a new paragraph) is kept. Listening notes
- * keep every line.
+ * imported with hard line wraps or one sentence per line flow as a paragraph;
+ * a blank line, a line ending in ":", and a line starting a speaker ("Man:")
+ * or a list item keep their break. Listening notes keep every line.
  */
 export function passageText(question: Question): string {
   const text = question.contextPassage ?? '';
   if (question.skill !== 'speaking' && question.skill !== 'writing') return text;
-  return text.replace(/([^\s.?!:])[ \t\r]*\n(?![ \t\r]*\n)[ \t]*/g, '$1 ');
+  return text.replace(/([^\s:])[ \t\r]*\n(?![ \t\r]*\n)(?![ \t]*(?:[-•*]\s|\d+[.)]\s|[A-Z][\w .'’-]{0,30}:))[ \t]*/g, '$1 ');
 }
 
 /** Repeat Sentence plays only the audio; its passage is the sentence itself. */

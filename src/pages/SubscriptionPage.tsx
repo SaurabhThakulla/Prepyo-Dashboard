@@ -145,10 +145,10 @@ export default function SubscriptionPage() {
         <div className="px-4 sm:px-6 lg:px-8 py-3.5 sm:py-5 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           <div className="space-y-1 sm:space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-md">
+              <span className="bg-primary/10 text-primary border border-primary/20 text-xs font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-md">
                 Nepal Pricing · NPR
               </span>
-              <span className="text-[10px] font-bold text-muted-foreground uppercase">
+              <span className="text-xs font-bold text-muted-foreground uppercase">
                 Flexible Plans
               </span>
             </div>
@@ -166,10 +166,10 @@ export default function SubscriptionPage() {
             // one letter wide.
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 bg-muted/40 border border-border/80 rounded-xl sm:rounded-2xl p-3.5 sm:px-4 sm:shrink-0 shadow-xs">
               <div className="min-w-0 space-y-0.5">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Your plan</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Your plan</span>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-extrabold text-base sm:text-sm text-foreground whitespace-nowrap">{formatPlanName(user.subscription.planName)}</span>
-                  <Badge variant={user.subscription.isActive ? 'success' : 'destructive'} className="text-[10px] font-bold">
+                  <Badge variant={user.subscription.isActive ? 'success' : 'destructive'} className="text-xs font-bold">
                     {user.subscription.isActive ? 'Active' : 'Expired'}
                   </Badge>
                 </div>
@@ -190,7 +190,7 @@ export default function SubscriptionPage() {
                 } gap-3 border-t border-border/80 pt-3 text-xs font-semibold sm:flex sm:shrink-0 sm:gap-5 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0`}
               >
                 <div className="min-w-0">
-                  <span className="text-[9px] sm:text-[10px] text-muted-foreground block uppercase font-bold">Sub-tests today</span>
+                  <span className="text-xs sm:text-xs text-muted-foreground block uppercase font-bold">Sub-tests today</span>
                   <span className="font-extrabold text-foreground text-sm">
                     {user.subscription.unlimited
                       ? 'Unlimited'
@@ -198,18 +198,18 @@ export default function SubscriptionPage() {
                   </span>
                 </div>
                 <div className="min-w-0">
-                  <span className="text-[9px] sm:text-[10px] text-muted-foreground block uppercase font-bold">Full mocks</span>
+                  <span className="text-xs sm:text-xs text-muted-foreground block uppercase font-bold">Full mocks</span>
                   <span className="font-extrabold text-foreground text-sm">
                     {`${usagePercent(user.subscription.mockTestsUsed, user.subscription.totalMockTestsAllowed)}% used`}
                   </span>
                 </div>
                 {user.subscription.aiGradingsLimit != null && (
                   <div className="min-w-0">
-                    <span className="text-[9px] sm:text-[10px] text-muted-foreground block uppercase font-bold">AI gradings</span>
+                    <span className="text-xs sm:text-xs text-muted-foreground block uppercase font-bold">AI gradings</span>
                     <span className="font-extrabold text-foreground text-sm">
                       {usagePercent(user.subscription.aiGradingsUsed ?? 0, user.subscription.aiGradingsLimit)}% used
                     </span>
-                    <span className="block text-[9px] sm:text-[10px] text-muted-foreground">
+                    <span className="block text-xs sm:text-xs text-muted-foreground">
                       {user.subscription.aiGradingsPeriod === 'day'
                         ? 'Resets at midnight'
                         : user.subscription.aiGradingsRenewOn && `Renews ${formatExamDate(user.subscription.aiGradingsRenewOn)}`}
@@ -226,7 +226,7 @@ export default function SubscriptionPage() {
 
       {/* Accepted payment methods */}
       <div className="px-4 sm:px-6 lg:px-8 flex flex-col items-center gap-2 sm:gap-3">
-        <span className="text-[10px] sm:text-[15px] font-bold uppercase tracking-wider text-muted-foreground">Supported Payment Methods</span>
+        <span className="text-xs sm:text-[15px] font-bold uppercase tracking-wider text-muted-foreground">Supported Payment Methods</span>
         <div className="flex flex-nowrap sm:flex-wrap items-center justify-center gap-x-5 sm:gap-x-10 gap-y-4">
           <img src="/images/esewa-logo.png" alt="eSewa" className="h-5 sm:h-8 w-auto dark:hidden" />
           <img src="/images/esewa-logo-dark.png" alt="eSewa" className="h-5 sm:h-8 w-auto hidden dark:block" />
@@ -235,7 +235,7 @@ export default function SubscriptionPage() {
             <svg viewBox="0 0 32 32" className="h-5 w-5 sm:h-8 sm:w-8" fill="currentColor" aria-hidden="true"><path d="M16 3 3 10v2.4h26V10L16 3Z" /><rect x="6" y="14.5" width="3" height="9" rx=".6" /><rect x="11.6" y="14.5" width="3" height="9" rx=".6" /><rect x="17.2" y="14.5" width="3" height="9" rx=".6" /><rect x="22.8" y="14.5" width="3" height="9" rx=".6" /><rect x="3" y="25.4" width="26" height="3.2" rx=".8" /></svg>
             <span className="leading-none">
               <span className="block font-extrabold text-sm sm:text-lg tracking-tight">All Banks</span>
-              <span className="hidden sm:block text-[9px] font-semibold text-muted-foreground -mt-0.5">Supported</span>
+              <span className="hidden sm:block text-xs font-semibold text-muted-foreground -mt-0.5">Supported</span>
             </span>
           </span>
         </div>
@@ -308,7 +308,7 @@ export default function SubscriptionPage() {
               <div className="flex flex-col text-center">
                 <div className="h-44 flex flex-col justify-end pb-5 px-2 border-b border-border/70 space-y-1">
                   <div className="font-bold text-blue-600 dark:text-blue-400 text-base">Suru</div>
-                  <div className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">START</div>
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">START</div>
                   <div className="font-display text-3xl sm:text-4xl font-black text-foreground pt-1">
                     NPR 0
                   </div>
@@ -339,7 +339,7 @@ export default function SubscriptionPage() {
               <div className="flex flex-col text-center">
                 <div className="h-44 flex flex-col justify-end pb-5 px-2 border-b border-border/70 space-y-1">
                   <div className="font-bold text-blue-600 dark:text-blue-400 text-base">Abhyas</div>
-                  <div className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">PRACTICE</div>
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">PRACTICE</div>
                   <div className="font-display text-3xl sm:text-4xl font-black text-foreground pt-1">
                     NPR 99
                   </div>
@@ -370,12 +370,12 @@ export default function SubscriptionPage() {
               <div className="flex flex-col text-center">
                 <div className="h-44 flex flex-col justify-end pb-5 px-2 border-b border-border/70 space-y-1">
                   <div>
-                    <span className="bg-primary text-primary-foreground text-[10px] font-extrabold uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs inline-block">
+                    <span className="bg-primary text-primary-foreground text-xs font-extrabold uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs inline-block">
                       Most popular
                     </span>
                   </div>
                   <div className="font-bold text-foreground text-base pt-0.5">Taiyari</div>
-                  <div className="text-[10px] font-extrabold uppercase tracking-widest text-primary">PREPARATION</div>
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-primary">PREPARATION</div>
                   <div className="font-display text-3xl sm:text-4xl font-black text-foreground pt-1">
                     NPR 299
                   </div>
@@ -406,7 +406,7 @@ export default function SubscriptionPage() {
               <div className="flex flex-col text-center">
                 <div className="h-44 flex flex-col justify-end pb-5 px-2 border-b border-border/70 space-y-1">
                   <div className="font-bold text-blue-600 dark:text-blue-400 text-base">Udaan</div>
-                  <div className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">TAKE-OFF</div>
+                  <div className="text-xs font-extrabold uppercase tracking-widest text-muted-foreground">TAKE-OFF</div>
                   <div className="font-display text-3xl sm:text-4xl font-black text-foreground pt-1">
                     NPR 999
                   </div>

@@ -35,35 +35,36 @@
     --sidebar-ring: 224 72% 38%;
   }
 
+  /* Dark: deep navy base with the brand blue, not plain grey. */
   .dark {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
-    --card: 224 71% 6%;
-    --card-foreground: 213 31% 91%;
-    --popover: 224 71% 5%;
-    --popover-foreground: 213 31% 91%;
-    --primary: 224 68% 46%; /* Deep Dark Blue for Dark Mode: #2650c5 */
+    --background: 228 45% 3%;
+    --foreground: 220 30% 96%;
+    --card: 226 38% 6.5%;
+    --card-foreground: 220 30% 96%;
+    --popover: 226 38% 7%;
+    --popover-foreground: 220 30% 96%;
+    --primary: 221 90% 62%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 222 47% 11%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 223 47% 11%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 224 45% 18%;
-    --accent-foreground: 210 40% 98%;
+    --secondary: 226 30% 11%;
+    --secondary-foreground: 220 30% 96%;
+    --muted: 226 30% 11%;
+    --muted-foreground: 222 15% 66%;
+    --accent: 224 40% 14%;
+    --accent-foreground: 220 30% 98%;
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
-    --ring: 224 68% 46%;
+    --border: 225 25% 15%;
+    --input: 225 25% 17%;
+    --ring: 221 90% 62%;
 
-    --sidebar-background: 224 71% 5%;
-    --sidebar-foreground: 213 31% 91%;
-    --sidebar-primary: 224 68% 46%;
+    --sidebar-background: 228 42% 4.5%;
+    --sidebar-foreground: 220 30% 96%;
+    --sidebar-primary: 221 90% 62%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 224 45% 16%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 216 34% 14%;
-    --sidebar-ring: 224 68% 46%;
+    --sidebar-accent: 224 40% 12%;
+    --sidebar-accent-foreground: 220 30% 98%;
+    --sidebar-border: 225 25% 12%;
+    --sidebar-ring: 221 90% 62%;
   }
 }
 
@@ -175,13 +176,8 @@ select option {
 }
 
 .dark .app-backdrop {
-  background-color: hsl(224 71% 4%);
-  background-image:
-    radial-gradient(64rem 36rem at 88% -6%, hsl(224 88% 55% / 0.26), transparent 62%),
-    radial-gradient(46rem 28rem at 12% -4%, hsl(195 92% 50% / 0.12), transparent 62%),
-    radial-gradient(52rem 30rem at 55% 112%, hsl(258 85% 60% / 0.12), transparent 62%),
-    radial-gradient(hsl(213 40% 80% / 0.05) 1px, transparent 1px),
-    linear-gradient(180deg, hsl(224 60% 8%) 0%, hsl(224 71% 4%) 50%);
+  background-color: hsl(var(--background));
+  background-image: none;
 }
 
 /* Lift the page's cards off the backdrop */
@@ -290,4 +286,74 @@ html.theme-switching *::after {
   .logo-mark.logo-loop {
     animation: none;
   }
+}
+
+/* Dark mode is black and white only: no gradients, no blue or indigo surfaces.
+   Green, red and amber stay, since they mark right and wrong answers. */
+.dark [class*="bg-gradient-"]:not(.bg-clip-text),
+.dark [class*="bg-linear-"]:not(.bg-clip-text),
+.dark [class*="bg-radial"]:not(.bg-clip-text) {
+  background-image: none !important;
+}
+/* An element painted only by a gradient gets a plain surface instead; any bg colour class still wins. */
+:where(.dark) :where([class*="bg-gradient-"], [class*="bg-linear-"]) {
+  background-color: hsl(var(--card));
+}
+.dark .bg-clip-text {
+  background-image: none !important;
+  color: hsl(var(--foreground)) !important;
+  -webkit-text-fill-color: currentColor;
+}
+/* Primary is white in dark mode, so text on it turns black. */
+.dark .bg-primary.text-white,
+.dark .bg-primary .text-white {
+  color: hsl(var(--primary-foreground)) !important;
+}
+.dark [class*="dark:bg-[#"]:not([class*="dark:bg-[#78541e]"]),
+.dark [class*="dark:bg-blue-"],
+.dark [class*="dark:bg-indigo-"],
+.dark [class*="dark:bg-slate-"],
+.dark [class*="dark:bg-sky-"] {
+  background-color: hsl(var(--card)) !important;
+}
+/* Light blue text only; dark shades sit on white chips and must stay dark. */
+.dark [class*="dark:text-blue-1"],
+.dark [class*="dark:text-blue-2"],
+.dark [class*="dark:text-blue-3"],
+.dark [class*="dark:text-blue-4"],
+.dark [class*="dark:text-blue-5"],
+.dark [class*="dark:text-indigo-1"],
+.dark [class*="dark:text-indigo-2"],
+.dark [class*="dark:text-indigo-3"],
+.dark [class*="dark:text-indigo-4"],
+.dark [class*="dark:text-indigo-5"],
+.dark [class*="dark:text-sky-1"],
+.dark [class*="dark:text-sky-2"],
+.dark [class*="dark:text-sky-3"],
+.dark [class*="dark:text-sky-4"],
+.dark [class*="dark:text-sky-5"] {
+  color: hsl(var(--foreground)) !important;
+}
+.dark [class*="dark:border-blue-"],
+.dark [class*="dark:border-indigo-"] {
+  border-color: hsl(var(--border)) !important;
+}
+/* Brand-colour text on a white chip turns black, since the brand colour is white here. */
+.dark .bg-white.text-primary,
+.dark .bg-white .text-primary {
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Brand-gradient chips and buttons become solid white with black text and icons. */
+.dark [class~="from-primary"]:not(.bg-clip-text) {
+  background-color: hsl(var(--primary));
+}
+.dark [class~="from-primary"].text-white:not([class*="dark:!text-"]),
+.dark [class~="from-primary"].text-primary-foreground:not([class*="dark:!text-"]) {
+  color: hsl(var(--primary-foreground)) !important;
+}
+/* Selected text: black on a white highlight, so it stays readable. */
+.dark ::selection {
+  background-color: hsl(0 0% 96%) !important;
+  color: hsl(0 0% 4%) !important;
 }

@@ -9,8 +9,11 @@ import { cleanWord, lookUp, type DictionaryEntry } from './lookup';
 const SKIP = 'input, textarea, select, button, a, [contenteditable="true"], [data-no-dictionary]';
 
 function isExamScreen(pathname: string, search: string): boolean {
-  return pathname.startsWith('/mocks') || pathname.startsWith('/diagnostic') ||
-    (pathname === '/practice' && new URLSearchParams(search).has('mock'));
+  return (
+    pathname.startsWith('/mocks') ||
+    pathname.startsWith('/diagnostic') ||
+    (pathname === '/practice' && new URLSearchParams(search).has('mock'))
+  );
 }
 
 /** The single word selected outside skipped areas, or null. */
@@ -53,7 +56,12 @@ export default function DictionaryPopup() {
     };
     let timer: number | undefined;
     const onPointer = (e: PointerEvent) => { touch.current = e.pointerType === 'touch'; };
-    const onDouble = () => { if (!touch.current) open(selectedWord()); };
+    const onDouble = (e: MouseEvent) => {
+      if (touch.current) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.(SKIP)) return;
+      open(selectedWord());
+    };
     // A long press selects a word on a phone; wait until the selection settles.
     const onSelection = () => {
       if (!touch.current) return;
