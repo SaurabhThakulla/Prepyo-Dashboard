@@ -1,7 +1,7 @@
 import { subTestsLeft } from '@/lib/subscriptions';
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { AlertCircle, Bot, CheckCircle2, RefreshCw, RotateCcw, Send, Shuffle, Square, Play } from 'lucide-react';
-import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
+import PracticeUnavailable from '@/components/practice/PracticeUnavailable';
 import { api, ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
@@ -87,30 +87,6 @@ function EmptyState({
       )}
     </div>
   );
-}
-
-function labelForTypeKey(key?: string) {
-  if (!key) return 'Reading Practice';
-  const labels: Record<string, string> = {
-    matchinginformation: 'Matching Information',
-    findparagraph: 'Matching Information',
-    whichparagraphcontainsfollowinginformation: 'Matching Information',
-    truefalse: 'True / False / Not Given',
-    truefalsenotgiven: 'True / False / Not Given',
-    yesnonotgiven: 'Yes / No / Not Given',
-    fillinblanks: 'Sentence Completion',
-    completesentences: 'Sentence Completion',
-    sentencecompletions: 'Sentence Completion',
-    arrangepassage: 'Sequence the Summary (legacy practice)',
-    matchheading: 'Match the Heading',
-    matchtheheading: 'Match the Heading',
-    matchheadings: 'Match the Heading',
-    matchingheadings: 'Match the Heading',
-    matchingheading: 'Match the Heading',
-  };
-  if (labels[key.toLowerCase()]) return labels[key.toLowerCase()];
-  const words = key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[-_]+/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
-  return words;
 }
 
 /**
@@ -303,33 +279,16 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
     void handleStart();
   }, [waitingToStart, listOpen, isStarting, pendingPassage, startKey, handleStart]);
 
-  // Confirmation / Protection screen: Shown prior to starting.
-  // Absolutely no database load or passage dealt until Start is clicked.
-  if (!isSessionActive && !practice.checked && !(loadingNext && set)) {
-    if (loadingNext) {
-      return <ReadingPracticeSkeleton />;
-    }
-    if (waitingToStart) {
-      // Blank behind the open practice list; the passage shows once it starts.
-      return <div className="w-full min-h-[calc(100dvh-4rem)] bg-background" />;
-    }
-
-    return (
-      <div className="relative w-full min-h-[calc(100dvh-4rem)] bg-background">
-        <PreTestBlurOverlay
-          title={labelForTypeKey(initialTypeKey)}
-          instructions="The passage and questions will appear after you start."
-          subTestsRemaining={subTestsRemaining}
-          isStarting={isStarting}
-          onStart={() => void handleStart()}
-        />
-      </div>
-    );
-  }
-
-  // Once started, while backend is dealing the first set or starting session:
-  if (loadingNext && !set) {
+  // No start screen: the passage opens straight away and stays up after Stop.
+  if (!set && loadingNext) {
     return <ReadingPracticeSkeleton />;
+  }
+  if (!set && waitingToStart) {
+    // Blank behind the open practice list; the passage shows once it starts.
+    return <div className="w-full min-h-[calc(100dvh-4rem)] bg-background" />;
+  }
+  if (!set && subTestsRemaining <= 0 && !mistakeId) {
+    return <PracticeUnavailable />;
   }
 
   if (!set) {
@@ -389,28 +348,15 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
               ))}
 
               {practice.checked && (
-                <Card data-tour="practice-result" className="border-primary/40 border-r-0 rounded-r-none rounded-l-lg p-3 space-y-1.5 bg-card/60">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <CardTitle className="text-sm">
-                      {practice.partsCorrect} of {practice.partsTotal} correct
-                    </CardTitle>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    {resolution.resolved ? 'Mistake resolved' : 'Anything you got wrong stays in your Mistake Bank.'}
-                  </p>
-                </Card>
+                <ResultCard
+                  correct={practice.partsCorrect}
+                  total={practice.partsTotal}
+                  note={resolution.resolved ? 'Mistake resolved' : 'Anything you got wrong stays in your Mistake Bank.'}
+                />
               )}
-
-              <div className="space-y-3 px-1 py-3">
-                <PracticeNotes notes={notesFor('reading')} />
-                <MyScore questionIds={shownQuestionIds} bySitting />
-              </div>
               </>}
-            </div>
 
-            {/* Bottom Sticky Action Bar - Compact */}
-            <div className="pt-2 mt-1 border-t border-border/70 shrink-0 bg-background/90 backdrop-blur-xs py-1.5 px-3">
+              {/* Actions sit under the questions, above the score, as on the other skills. */}
               <PracticeActionBar
                 index={passageIndex}
                 total={mistakeId ? 0 : passageIds.length}
@@ -479,11 +425,50 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
                   </>
                 }
               />
+
+              {!loadingNext && (
+                <div className="space-y-3 px-1 py-3">
+                  <PracticeNotes notes={notesFor('reading')} />
+                  <MyScore questionIds={shownQuestionIds} bySitting />
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+/** The score after Submit, coloured by how well it went. */
+function ResultCard({ correct, total, note }: { correct: number; total: number; note: string }) {
+  const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+  const tone = pct === 100
+    ? { ring: 'border-emerald-200 dark:border-emerald-900/60', soft: 'bg-emerald-50 dark:bg-emerald-950/40', text: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500', Icon: CheckCircle2, word: 'All correct' }
+    : pct >= 50
+      ? { ring: 'border-amber-200 dark:border-amber-900/60', soft: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-500', Icon: CheckCircle2, word: 'Nearly there' }
+      : { ring: 'border-rose-200 dark:border-rose-900/60', soft: 'bg-rose-50 dark:bg-rose-950/40', text: 'text-rose-600 dark:text-rose-400', bar: 'bg-rose-500', Icon: AlertCircle, word: 'Keep practising' };
+  const Icon = tone.Icon;
+
+  return (
+    <Card data-tour="practice-result" role="status" className={`rounded-2xl border ${tone.ring} bg-card p-4 shadow-xs`}>
+      <div className="flex items-center gap-3">
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${tone.soft} ${tone.text}`}>
+          <Icon className="h-5 w-5" aria-hidden />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={`text-xs font-semibold uppercase tracking-wide ${tone.text}`}>{tone.word}</p>
+          <CardTitle className="text-lg font-bold tabular-nums">
+            {correct} of {total} correct
+          </CardTitle>
+        </div>
+        <span className={`text-2xl font-black tabular-nums ${tone.text}`}>{pct}%</span>
+      </div>
+      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
+        <div className={`h-full rounded-full ${tone.bar} transition-[width] duration-500`} style={{ width: `${pct}%` }} />
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">{note}</p>
+    </Card>
   );
 }
 

@@ -44,7 +44,7 @@ export default function ReadingQuestionRow({
         {/* Sentence completion prints the prompt inside its own control, with the
             gap in place, so printing it here as well would say it twice. */}
         {question.typeId !== READING_TYPES.sentenceCompletion && (
-          <p className="text-xs sm:text-sm font-medium text-foreground leading-snug pt-0.5">
+          <p className="text-xs sm:text-[14px] font-semibold text-slate-900 dark:text-slate-100 leading-snug pt-0.5">
             {question.prompt}
           </p>
         )}

@@ -108,7 +108,7 @@ export default function BlankedText({
   const used = new Set(Object.values(value));
 
   const body = (
-    <p className="text-[15px] leading-[2.4] text-foreground">
+    <p className="font-reading text-[17px] sm:text-[18px] leading-[2.3] text-foreground/90">
       {parts.map((part, index) => {
         if (index % 2 === 0) return <React.Fragment key={index}>{part}</React.Fragment>;
 
@@ -131,9 +131,9 @@ export default function BlankedText({
                 value={answered}
                 disabled={disabled}
                 onChange={event => place(blank.id, event.target.value)}
-                className={`h-7 pl-2.5 pr-6 rounded-lg border text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary disabled:opacity-70 cursor-pointer appearance-none shadow-2xs transition-all ${toneOf(verdict)}`}
+                className={`font-sans h-8 min-w-[7.5rem] pl-3 pr-7 rounded-lg border text-sm font-semibold tracking-tight focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary disabled:opacity-70 cursor-pointer appearance-none shadow-2xs transition-all ${!answered && verdict === undefined ? EMPTY : toneOf(verdict)}`}
               >
-                <option value="">— select —</option>
+                <option value="">Select</option>
                 {blank.options.map(option => (
                   <option key={option} value={option}>
                     {option}
@@ -156,7 +156,7 @@ export default function BlankedText({
                 onChange={event => place(blank.id, event.target.value)}
                 placeholder="— type —"
                 aria-label={`Blank ${Math.floor(index / 2) + 1}`}
-                className={`h-7 w-28 sm:w-36 px-2.5 rounded-lg border text-xs sm:text-sm font-semibold align-baseline transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs disabled:opacity-70 ${toneOf(verdict)}`}
+                className={`font-sans h-8 w-28 sm:w-36 px-2.5 rounded-lg border text-sm font-semibold align-baseline transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs disabled:opacity-70 ${toneOf(verdict)}`}
               />
               {verdict === false && correct && correct[blank.id] && (
                 <span className="ml-1 text-xs text-emerald-600 font-bold">
@@ -252,7 +252,7 @@ function GapSlot({ id, word, armed, disabled, tone, onPlace, onClear }: GapSlotP
       type="button"
       disabled={disabled}
       onClick={() => (armed ? onPlace(armed) : word ? onClear() : undefined)}
-      className={`mx-1 inline-flex min-w-[7rem] items-center justify-center rounded-lg border px-2 py-1 text-sm font-semibold align-baseline transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-70 ${tone} ${
+      className={`font-sans mx-1 inline-flex min-w-[7rem] items-center justify-center rounded-lg border px-2 py-1 text-sm font-semibold align-baseline transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-70 ${tone} ${
         isOver ? 'ring-2 ring-primary' : ''
       } ${!word && !armed ? 'border-dashed' : ''}`}
     >
@@ -317,6 +317,9 @@ function sameWord(given: string, want?: string): boolean | undefined {
   const tidy = (value: string) => value.trim().toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '');
   return tidy(given) === tidy(want);
 }
+
+// An unanswered dropdown, tinted so the gaps are easy to spot in the text.
+const EMPTY = 'bg-primary/5 border-primary/30 text-primary hover:border-primary/60';
 
 function toneOf(verdict: boolean | undefined): string {
   if (verdict === undefined) return 'bg-background border-border text-foreground';
