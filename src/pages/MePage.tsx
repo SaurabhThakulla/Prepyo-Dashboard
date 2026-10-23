@@ -19,7 +19,6 @@ import {
   RotateCcw,
   ShieldCheck,
   Sparkles,
-  Trophy,
   UserRound,
   Video,
 } from 'lucide-react';
@@ -91,10 +90,8 @@ export default function MePage() {
   ];
 
   const study: Row[] = [
-    { label: 'History Bank', sublabel: 'All questions you have practiced', icon: History, tint: 'text-orange-600 bg-orange-500/10', href: '/history' },
-    { label: 'Nepal Study Challenge', sublabel: 'Leaderboard by XP', icon: Trophy, tint: 'text-yellow-600 bg-yellow-500/10', href: '/leaderboard' },
-    { label: 'AI Evaluator Lab', sublabel: 'Detailed rubric feedback', icon: Sparkles, tint: 'text-indigo-600 bg-indigo-500/10', href: '/evaluations' },
-    { label: 'AI Chat Coach', sublabel: 'Ask anything about the exam', icon: Bot, tint: 'text-emerald-600 bg-emerald-500/10', onClick: () => setIsTutorOpen(true) },
+    { label: 'Practice history', sublabel: 'All questions you have practiced', icon: History, tint: 'text-orange-600 bg-orange-500/10', href: '/history' },
+    { label: 'Ask the AI tutor', sublabel: 'Ask anything about the exam', icon: Bot, tint: 'text-emerald-600 bg-emerald-500/10', onClick: () => setIsTutorOpen(true) },
     // The Learn tab holds the videos for every exam but EPS-TOPIK, where it
     // holds the Korean course instead.
     ...(activeExam === 'EPS_TOPIK'
