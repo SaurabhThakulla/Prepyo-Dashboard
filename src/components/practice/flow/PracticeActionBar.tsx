@@ -35,7 +35,7 @@ const ARROW = 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-
 export default function PracticeActionBar({ actions, middle, hideMiddleOnPhone, cost, index = -1, total = 0, onJump, onShuffle, disabled }: Props) {
   const nav = onJump && total > 0;
   return (
-    <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-[#0f2a6b] bg-[#13307f] p-2.5 shadow-md sm:gap-3 sm:p-3">
+    <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-[#0f2a6b] bg-[#13307f] dark:border-border dark:bg-card p-2.5 shadow-md sm:gap-3 sm:p-3">
       {/* On a phone: buttons on one row, credits and paging on the next. */}
       <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:gap-2">{actions}</div>
       {/* The recorder gets its own row above the buttons until there is room for one line. */}

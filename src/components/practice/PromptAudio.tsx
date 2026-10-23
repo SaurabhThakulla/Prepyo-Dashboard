@@ -727,7 +727,7 @@ function RecordedAudio({
   );
 }
 
-const BAR_COUNT = 44;
+const BAR_COUNT = 96;
 // Fixed, speech-like heights so the resting wave has a shape, not a flat line.
 const BAR_SHAPE = Array.from({ length: BAR_COUNT }, (_, i) => 0.3 + 0.7 * Math.abs(Math.sin(i * 0.9) * Math.cos(i * 0.37)));
 
@@ -800,7 +800,7 @@ function VoicePanel({ disabled = false, playing, progress, status, onToggle, tog
             </span>
           </div>
 
-          <div aria-hidden className="mt-2.5 flex h-10 items-center gap-[3px]">
+          <div aria-hidden className="mt-2.5 flex h-10 items-center justify-between gap-px">
             {BAR_SHAPE.map((height, i) => (
               <span
                 key={i}
@@ -809,9 +809,10 @@ function VoicePanel({ disabled = false, playing, progress, status, onToggle, tog
                   animationDelay: `${(i * 73) % 900}ms`,
                   animationDuration: `${700 + ((i * 131) % 500)}ms`,
                 }}
-                className={`flex-1 origin-center rounded-full transition-colors duration-300 ${
-                  i < played ? 'bg-gradient-to-t from-primary to-indigo-400' : playing ? 'bg-primary/25' : 'bg-muted-foreground/20'
-                } ${playing ? 'animate-voice-bar' : 'scale-y-[0.55]'}`}
+                // Thin bars like the recorder's; a phone shows every other one.
+                className={`w-[3px] shrink-0 origin-center rounded-full transition-colors duration-300 sm:w-1 ${
+                  i < played ? 'bg-primary' : playing ? 'bg-primary/25' : 'bg-muted-foreground/30'
+                } ${playing ? 'animate-voice-bar' : 'scale-y-[0.55]'} ${i % 2 ? 'max-sm:hidden' : ''}`}
               />
             ))}
           </div>

@@ -280,7 +280,7 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
             }`}
           >
             {tab.label}
-            <span className="block font-medium text-[10px] opacity-70">
+            <span className="block font-medium text-xs opacity-70">
               {tab.hint} · {writingWordCount(drafts[tab.key])} written
             </span>
           </button>

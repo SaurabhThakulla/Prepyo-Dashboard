@@ -49,7 +49,7 @@ export default function QuestionNavigator({
           >
             <summary className="flex cursor-pointer items-center justify-between gap-2 p-2.5 text-xs font-bold text-foreground list-none [&::-webkit-details-marker]:hidden">
               <span className="truncate">{group.name}</span>
-              <span className="flex items-center gap-1.5 shrink-0 text-[10px] font-bold text-muted-foreground">
+              <span className="flex items-center gap-1.5 shrink-0 text-xs font-bold text-muted-foreground">
                 <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
               </span>
             </summary>
@@ -65,7 +65,7 @@ export default function QuestionNavigator({
                     }`}
                 >
                   <div className="font-bold truncate">{question.title}</div>
-                  <div className="text-[10px] opacity-75 truncate">{question.difficulty}</div>
+                  <div className="text-xs opacity-75 truncate">{question.difficulty}</div>
                 </button>
               ))}
             </div>

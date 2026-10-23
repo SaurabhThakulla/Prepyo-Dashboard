@@ -52,7 +52,7 @@ export default function MockPaperDrawer({
       >
         <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" />
         {papers.length > 0 && (
-          <span className="absolute -top-1.5 -left-1.5 bg-blue-600 text-white font-mono text-[10px] font-bold px-1.5 py-0.2 rounded-full border-2 border-white dark:border-slate-900 shadow-xs">
+          <span className="absolute -top-1.5 -left-1.5 bg-blue-600 text-white font-mono text-xs font-bold px-1.5 py-0.2 rounded-full border-2 border-white dark:border-slate-900 shadow-xs">
             {papers.length}
           </span>
         )}
@@ -88,7 +88,7 @@ export default function MockPaperDrawer({
                   <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
                     {exam} {skillCapitalized} Mock Tests
                   </h2>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary shrink-0">
+                  <span className="text-xs font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary shrink-0">
                     Numbered Papers
                   </span>
                 </div>

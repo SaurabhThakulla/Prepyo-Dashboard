@@ -1,6 +1,6 @@
 import { subTestsLeft } from '@/lib/subscriptions';
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
-import PreTestBlurOverlay from '@/components/practice/PreTestBlurOverlay';
+import PracticeUnavailable from '@/components/practice/PracticeUnavailable';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import {
@@ -60,7 +60,6 @@ import { familyOf, typeIdsFor } from '@/lib/readingTypes';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { encodeForUpload } from '@/lib/audio';
 import { matchesTypeKey, typeLabel } from '@/lib/syllabus';
-import { taskLessonHref } from '@/data/learnKorean';
 import { pteMockHref } from '@/lib/pteMock/catalog';
 import { loadMistakeTask } from '@/lib/mistakePractice';
 import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
@@ -820,26 +819,10 @@ function PracticePageContent() {
       ) : !hasStarted && subTestsRemaining > 0 && startFailedFor.current !== (currentQuestion?.id ?? listKey) ? (
         <AutoStart ready={!isDrawerOpen || Boolean(currentQuestion)} onStart={() => void handleStart()} />
       ) : !hasStarted ? (
-        <div className="relative w-full min-h-[calc(100vh-4rem)]">
-          <PreTestBlurOverlay
-            title={
-              currentQuestion
-                ? (isPteListening || /^question\s*\d+/i.test(currentQuestion.title)
-                  ? currentQuestion.typeName || currentQuestion.title
-                  : currentQuestion.title)
-                : getSubtaskTitle(activeExam, selectedSkill, typeParam, mistakeId)
-            }
-            instructions="The questions will appear after you start."
-            subTestsRemaining={subTestsRemaining}
-            isStarting={isStarting}
-            onStart={handleStart}
-            beginner={
-              activeExam === 'EPS_TOPIK'
-                ? { taskHref: taskLessonHref(selectedSkill, typeParam), courseHref: '/learn' }
-                : undefined
-            }
-          />
-        </div>
+        <PracticeUnavailable
+          onRetry={subTestsRemaining > 0 ? () => void handleStart() : undefined}
+          isStarting={isStarting}
+        />
       ) : !currentQuestion ? (
         loading ? (
           <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-8 text-center space-y-4">
@@ -962,7 +945,7 @@ function PracticePageContent() {
               {/* The question: blue bar with its number and title, then its content */}
               <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
               {(questionHeading || (!isPteListening && currentIndex >= 0)) && (
-                <div className="flex items-center gap-3 bg-gradient-to-r from-primary to-primary/75 px-4 py-3 text-primary-foreground sm:px-5">
+                <div className="flex items-center gap-3 bg-gradient-to-r from-primary to-primary/75 px-4 py-3 text-primary-foreground dark:!bg-muted dark:!text-foreground sm:px-5">
                   {!isPteListening && currentIndex >= 0 && <span className="rounded-lg bg-white/15 px-2.5 py-0.5 font-bold tabular-nums">#{currentIndex + 1}</span>}
                   {!isPteListening && currentIndex >= 0 && questionHeading && <span className="h-5 w-px bg-white/40" aria-hidden />}
                   {questionHeading && <h3 className="text-sm sm:text-base font-semibold leading-snug">{questionHeading}</h3>}
@@ -1018,7 +1001,7 @@ function PracticePageContent() {
                       onChange={setBlankResponses}
                     />
                   ) : (
-                    <div className="p-4 sm:p-5 rounded-xl bg-primary/[0.04] text-[15px] sm:text-[16px] text-foreground leading-[1.9] whitespace-pre-line sm:max-h-72 sm:overflow-y-auto">
+                    <div className="px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl bg-primary/[0.04] text-[15px] sm:text-[16px] text-foreground leading-relaxed whitespace-pre-line sm:max-h-72 sm:overflow-y-auto">
                       {passageText(currentQuestion)}
                     </div>
                   )

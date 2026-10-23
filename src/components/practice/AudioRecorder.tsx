@@ -413,7 +413,7 @@ export default function AudioRecorder({
       onClick={panelAction}
       role={panelAction ? 'button' : undefined}
       aria-label={panelStops ? 'Stop recording' : undefined}
-      className={`relative overflow-hidden rounded-2xl border border-border p-4 transition-colors duration-500 sm:p-6 ${tone.panel} ${
+      className={`relative overflow-hidden rounded-2xl border border-border p-4 transition-colors duration-500 sm:p-6 ${tone.panel} dark:bg-white/[0.03] ${
         panelStarts ? 'cursor-pointer hover:bg-primary/[0.1]' : panelStops ? 'cursor-pointer hover:bg-rose-500/[0.12]' : ''
       }`}
     >

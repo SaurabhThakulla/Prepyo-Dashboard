@@ -1,6 +1,6 @@
 import React, { useMemo, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, BookOpenCheck, ChevronRight, History, Lock, LucideIcon, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowRight, BookOpenCheck, ChevronRight, History, Lock, LucideIcon, RotateCcw } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useNavSections } from '@/components/layout/sidebar/useNavSections';
 import { SecondaryNavItem } from '@/components/layout/sidebar/navigation';
@@ -87,9 +87,8 @@ export default function PracticeHubPage() {
       <h2 className="hidden font-display text-2xl font-bold text-foreground lg:block">{practice?.title}</h2>
 
       {!isAdmin(user) && (
-        <div className="mt-1 grid grid-cols-2 gap-3 sm:mt-4">
-          <QuickLink to="/history" icon={History} label="History Bank" sublabel="All questions you practiced" tint="bg-orange-500/10 text-orange-600 dark:text-orange-400" />
-          <QuickLink to="/evaluations" icon={Sparkles} label="AI Evaluator" sublabel="Your graded answers" tint="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" />
+        <div className="mt-1 grid grid-cols-1 gap-3 sm:mt-4">
+          <QuickLink to="/history" icon={History} label="Practice history" sublabel="All questions you practiced" tint="bg-orange-500/10 text-orange-600 dark:text-orange-400" />
         </div>
       )}
 
@@ -151,7 +150,7 @@ export default function PracticeHubPage() {
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2 text-[15px] font-bold leading-snug text-muted-foreground">
                           {task.label}
-                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 text-xs font-bold uppercase">
                             <Lock className="w-3 h-3" /> {task.badge || 'Locked'}
                           </span>
                         </span>
@@ -179,13 +178,13 @@ export default function PracticeHubPage() {
                       <span className="flex items-center gap-1.5 text-[15px] font-bold leading-snug text-foreground flex-wrap">
                         <span>{task.label}</span>
                         {task.weight && (
-                          <span className="rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/70 dark:border-rose-900/50 px-1.5 py-0.5 text-[10px] font-extrabold font-mono inline-flex items-center">
+                          <span className="rounded-md bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/70 dark:border-rose-900/50 px-1.5 py-0.5 text-xs font-extrabold font-mono inline-flex items-center">
                             <span>{task.weight.endsWith('%') ? task.weight.slice(0, -1) : task.weight}</span>
                             {task.weight.endsWith('%') && <span className="ml-0.5">%</span>}
                           </span>
                         )}
                         {task.badge && (
-                          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                          <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
                             {task.badge}
                           </span>
                         )}
@@ -217,7 +216,7 @@ export default function PracticeHubPage() {
                 <BookOpenCheck className="h-6 w-6" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-white/60">Timed test</span>
+                <span className="block text-xs font-bold uppercase tracking-wider text-white/60">Timed test</span>
                 <span className="block font-display text-base font-bold leading-snug">{mock.label}</span>
                 {mock.sublabel && <span className="mt-0.5 block text-xs leading-snug opacity-80">{mock.sublabel}</span>}
               </span>

@@ -3,7 +3,7 @@ import { ChevronRight, History, Loader2, TrendingDown, TrendingUp } from 'lucide
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import type { EvaluationCriterion, PracticeAttempt } from '@/lib/types';
+import type { PracticeAttempt } from '@/lib/types';
 import PracticeResultCard, { SCALE } from '../PracticeResultCard';
 import PracticeResultDialog from '../PracticeResultDialog';
 import { TONE, toneFor, type Tone } from '../ResultParts';
@@ -32,7 +32,7 @@ export default function MyScore({ questionIds, bySitting = false }: { questionId
         )}
       </div>
 
-      <div className="rounded-xl bg-primary/[0.05] p-3 sm:p-4 dark:bg-primary/10">
+      <div className="rounded-xl bg-primary/[0.05] p-3 sm:p-4 dark:bg-primary/[0.06] dark:ring-1 dark:ring-white/5">
         {history.isLoading ? (
           <p className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading your attempts…
@@ -84,7 +84,7 @@ function Stat({ label, value, className }: { label: string; value: string; class
   );
 }
 
-/** One try: a score ring, when, the change since the try before, its traits as bars, and the way into the full result. */
+/** One try: a score ring, when, the change since the try before, and the way into the full result. */
 function ReportRow({ entry, summary: s, previous, latest, onOpen }: {
   entry: PastTry;
   summary: Summary;
@@ -98,36 +98,30 @@ function ReportRow({ entry, summary: s, previous, latest, onOpen }: {
       <button
         type="button"
         onClick={onOpen}
-        className="group flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:gap-4 sm:px-4"
+        className="group flex w-full items-center gap-4 rounded-2xl border border-border bg-card p-3.5 text-left shadow-sm transition-all dark:border-white/10 dark:bg-card hover:border-primary/40 dark:hover:border-white/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:gap-5 sm:p-4"
       >
         <MiniRing fraction={s.fraction ?? 0} tone={s.tone}>
-          <span className={cn('text-sm font-bold leading-none tabular-nums', TONE[s.tone].text)}>{s.score}</span>
-          <span className="text-[9px] font-medium leading-none text-muted-foreground">/{s.outOf}</span>
+          <span className={cn('font-display text-xl font-black leading-none tabular-nums', TONE[s.tone].text)}>{s.score}</span>
+          <span className="text-[10px] font-semibold leading-none text-muted-foreground">of {s.outOf}</span>
         </MiniRing>
 
-        <div className="min-w-0 flex-1 space-y-2">
+        <div className="min-w-0 flex-1 space-y-2.5">
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="font-semibold text-foreground">{when(entry.at)}</span>
+            <span className="text-sm font-semibold text-foreground">{when(entry.at)}</span>
             {latest && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">Latest</span>}
             {delta !== null && delta !== 0 && (
-              <span className={cn('inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums', delta > 0 ? TONE.good.badge : TONE.poor.badge)}>
+              <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums', delta > 0 ? TONE.good.badge : TONE.poor.badge)}>
                 {delta > 0 ? <TrendingUp className="h-3 w-3" aria-hidden /> : <TrendingDown className="h-3 w-3" aria-hidden />}
                 {delta > 0 ? '+' : ''}{delta} since last try
               </span>
             )}
           </div>
-          {s.traits.length > 0 ? (
-            <div className="grid max-w-xl gap-y-1.5">
-              {s.traits.map(t => <TraitBar key={t.name} name={t.name} score={t.score} maxScore={t.maxScore} />)}
-            </div>
-          ) : (
-            <p className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              {s.breakdown.map(b => <span key={b}>{b}</span>)}
-            </p>
-          )}
+          <p className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            {s.breakdown.map(b => <span key={b}>{b}</span>)}
+          </p>
         </div>
 
-        <span className="ml-auto hidden shrink-0 items-center gap-1 text-xs font-bold text-primary sm:inline-flex">
+        <span className="hidden shrink-0 items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-bold text-foreground dark:border-white/20 dark:bg-white/5 transition-colors group-hover:border-primary/40 group-hover:bg-primary/10 group-hover:text-primary sm:inline-flex">
           View result <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
         </span>
         <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground sm:hidden" aria-hidden />
@@ -136,31 +130,16 @@ function ReportRow({ entry, summary: s, previous, latest, onOpen }: {
   );
 }
 
-function TraitBar({ name, score, maxScore }: { name: string; score: number; maxScore: number }) {
-  const fraction = maxScore > 0 ? score / maxScore : 0;
-  return (
-    <div className="min-w-0 space-y-1">
-      <div className="flex items-baseline justify-between gap-2 text-[11px]">
-        <span className="truncate text-muted-foreground">{name}</span>
-        <span className="shrink-0 font-semibold tabular-nums text-foreground">{round(score)}/{round(maxScore)}</span>
-      </div>
-      <span className="block h-1.5 overflow-hidden rounded-full bg-muted">
-        <span className={cn('block h-full rounded-full', TONE[toneFor(fraction)].bar)} style={{ width: `${Math.min(1, Math.max(0, fraction)) * 100}%` }} />
-      </span>
-    </div>
-  );
-}
-
 function MiniRing({ fraction, tone, children }: { fraction: number; tone: Tone; children: ReactNode }) {
-  const radius = 21;
+  const radius = 28;
   const length = 2 * Math.PI * radius;
   const clamped = Math.min(1, Math.max(0, fraction));
   return (
-    <div className="relative h-12 w-12 shrink-0">
-      <svg viewBox="0 0 48 48" className="h-full w-full -rotate-90" aria-hidden>
-        <circle cx="24" cy="24" r={radius} fill="none" strokeWidth="4" className="stroke-muted" />
+    <div className="relative h-16 w-16 shrink-0">
+      <svg viewBox="0 0 64 64" className="h-full w-full -rotate-90" aria-hidden>
+        <circle cx="32" cy="32" r={radius} fill="none" strokeWidth="5" className="stroke-muted dark:stroke-white/10" />
         {clamped > 0 && (
-          <circle cx="24" cy="24" r={radius} fill="none" strokeWidth="4" strokeLinecap="round" stroke="currentColor" className={TONE[tone].ring} strokeDasharray={`${clamped * length} ${length}`} />
+          <circle cx="32" cy="32" r={radius} fill="none" strokeWidth="5" strokeLinecap="round" stroke="currentColor" className={TONE[tone].ring} strokeDasharray={`${clamped * length} ${length}`} />
         )}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">{children}</div>
@@ -175,7 +154,6 @@ interface Summary {
   outOf: number;
   fraction: number | null;
   tone: Tone;
-  traits: EvaluationCriterion[];
   breakdown: string[];
 }
 
@@ -191,7 +169,6 @@ function summarise(entry: PastTry): Summary {
       outOf: scale.max,
       fraction,
       tone: toneFor(fraction),
-      traits: (e.criteria ?? []).slice(0, 6),
       breakdown: [score === null ? 'Not rated' : scale.label],
     };
   }
@@ -203,7 +180,7 @@ function summarise(entry: PastTry): Summary {
   const breakdown = entry.kind === 'attempt'
     ? [verdict(entry.attempt), `${entry.attempt.accuracyPercentage}% accuracy`]
     : [`${right} of ${list.length} questions right`, `${Math.round((fraction ?? 0) * 100)}% accuracy`];
-  return { score: String(round(score)), value: round(score), outOf: round(outOf), fraction, tone: toneFor(fraction), traits: [], breakdown };
+  return { score: String(round(score)), value: round(score), outOf: round(outOf), fraction, tone: toneFor(fraction), breakdown };
 }
 
 /** A passage sitting: each question's own result, as it was marked then. */
