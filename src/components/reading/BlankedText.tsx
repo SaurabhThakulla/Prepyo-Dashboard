@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { Check, X } from 'lucide-react';
+import AnswerSelect from '@/components/ui/answer-select';
 import {
   CollisionDetection,
   DndContext,
@@ -126,21 +127,16 @@ export default function BlankedText({
         // Otherwise its own options means the choice is per gap: a dropdown.
         if (!hasBank && blank.options && blank.options.length > 0) {
           return (
-            <span key={index} className="relative inline-flex items-center align-middle mx-1 my-0.5 group">
-              <select
+            <span key={index} className="inline-flex items-center align-middle mx-1 my-0.5">
+              <AnswerSelect
                 value={answered}
+                options={blank.options}
                 disabled={disabled}
-                onChange={event => place(blank.id, event.target.value)}
-                className={`font-sans h-8 min-w-[7.5rem] pl-3 pr-7 rounded-lg border text-sm font-semibold tracking-tight focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary disabled:opacity-70 cursor-pointer appearance-none shadow-2xs transition-all ${!answered && verdict === undefined ? EMPTY : toneOf(verdict)}`}
-              >
-                <option value="">Select</option>
-                {blank.options.map(option => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground/80 group-hover:text-primary transition-colors" />
+                onChange={value => place(blank.id, value)}
+                aria-label={`Blank ${Math.floor(index / 2) + 1}`}
+                className={`font-sans min-w-[7.5rem] tracking-tight ${!answered && verdict === undefined ? EMPTY : toneOf(verdict)} ${verdict === false ? 'line-through decoration-rose-500/70' : ''}`}
+              />
+              <GapVerdict verdict={verdict} answer={correct?.[blank.id]} />
             </span>
           );
         }
@@ -151,6 +147,10 @@ export default function BlankedText({
               <input
                 type="text"
                 id={`blank-${blank.id}`}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
                 value={answered}
                 disabled={disabled}
                 onChange={event => place(blank.id, event.target.value)}
@@ -158,11 +158,7 @@ export default function BlankedText({
                 aria-label={`Blank ${Math.floor(index / 2) + 1}`}
                 className={`font-sans h-8 w-28 sm:w-36 px-2.5 rounded-lg border text-sm font-semibold align-baseline transition-colors focus:outline-none focus:ring-2 focus:ring-primary shadow-2xs disabled:opacity-70 ${toneOf(verdict)}`}
               />
-              {verdict === false && correct && correct[blank.id] && (
-                <span className="ml-1 text-xs text-emerald-600 font-bold">
-                  {correct[blank.id]}
-                </span>
-              )}
+              <GapVerdict verdict={verdict} answer={correct?.[blank.id]} />
             </span>
           );
         }
@@ -174,7 +170,7 @@ export default function BlankedText({
             word={answered}
             armed={armed}
             disabled={disabled}
-            tone={toneOf(verdict)}
+            tone={verdict === undefined ? undefined : toneOf(verdict)}
             onPlace={word => place(blank.id, word)}
             onClear={() => clear(blank.id)}
           />
@@ -238,13 +234,20 @@ interface GapSlotProps {
   word: string;
   armed: string | null;
   disabled?: boolean;
-  tone: string;
+  /** Right/wrong colours after marking; empty before. */
+  tone?: string;
   onPlace: (word: string) => void;
   onClear: () => void;
 }
 
 function GapSlot({ id, word, armed, disabled, tone, onPlace, onClear }: GapSlotProps) {
   const { setNodeRef, isOver } = useDroppable({ id, disabled });
+  // Before marking, gaps are tinted and dashed so they stand out in the text.
+  const slotTone = tone
+    ? tone
+    : word
+      ? 'border-primary/60 bg-primary/10 text-primary'
+      : `border-dashed ${isOver || armed ? 'border-primary bg-primary/15' : 'border-primary/50 bg-primary/[0.06] hover:bg-primary/10'}`;
 
   return (
     <button
@@ -252,11 +255,11 @@ function GapSlot({ id, word, armed, disabled, tone, onPlace, onClear }: GapSlotP
       type="button"
       disabled={disabled}
       onClick={() => (armed ? onPlace(armed) : word ? onClear() : undefined)}
-      className={`font-sans mx-1 inline-flex min-w-[7rem] items-center justify-center rounded-lg border px-2 py-1 text-sm font-semibold align-baseline transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-70 ${tone} ${
-        isOver ? 'ring-2 ring-primary' : ''
-      } ${!word && !armed ? 'border-dashed' : ''}`}
+      className={`font-sans mx-1 inline-flex min-w-[7rem] items-center justify-center rounded-lg border-2 px-2 py-0.5 text-sm font-semibold align-middle transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-90 ${slotTone} ${
+        isOver || armed ? 'ring-2 ring-primary/40' : ''
+      }`}
     >
-      {word || <span className="text-muted-foreground font-normal">drop a word</span>}
+      {word || <span className="font-medium text-primary/70">drop a word</span>}
     </button>
   );
 }
@@ -324,6 +327,22 @@ const EMPTY = 'bg-primary/5 border-primary/30 text-primary hover:border-primary/
 function toneOf(verdict: boolean | undefined): string {
   if (verdict === undefined) return 'bg-background border-border text-foreground';
   return verdict
-    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-800 dark:text-emerald-200'
-    : 'bg-rose-500/10 border-rose-500/30 text-rose-800 dark:text-rose-200';
+    ? 'bg-emerald-500/15 border-emerald-500 text-emerald-800 dark:text-emerald-200'
+    : 'bg-rose-500/15 border-rose-500 text-rose-800 dark:text-rose-200';
+}
+
+/** After marking: a tick for a right gap; a cross and the right word for a wrong one. */
+function GapVerdict({ verdict, answer }: { verdict: boolean | undefined; answer?: string }) {
+  if (verdict === undefined) return null;
+  if (verdict) return <Check className="ml-1 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-label="Correct" />;
+  return (
+    <span className="ml-1 inline-flex items-center gap-1 whitespace-nowrap">
+      <X className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" aria-label="Wrong" />
+      {answer && (
+        <span className="rounded-md border border-emerald-500/50 bg-emerald-500/15 px-1.5 py-0.5 font-sans text-xs font-bold leading-none text-emerald-700 dark:text-emerald-300">
+          {answer}
+        </span>
+      )}
+    </span>
+  );
 }

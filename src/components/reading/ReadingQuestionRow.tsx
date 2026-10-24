@@ -13,6 +13,10 @@ interface ReadingQuestionRowProps {
   disabled?: boolean;
   /** The task set's own material: a word bank, the boxes of an ordering task. */
   resources?: ReadingParagraph[];
+  /** Skip the prompt when it only repeats the set's instructions or title. */
+  hidePrompt?: boolean;
+  /** Skip the number badge when the set has only this question. */
+  hideNumber?: boolean;
   onChange: (patch: Partial<AnswerSubmission>) => void;
 }
 
@@ -30,64 +34,90 @@ export default function ReadingQuestionRow({
   result,
   disabled,
   resources,
+  hidePrompt,
+  hideNumber,
   onChange,
 }: ReadingQuestionRowProps) {
   const locked = disabled || Boolean(result);
   const Renderer = rendererFor(question.typeId);
+  const inline = INLINE_TYPES.has(question.typeId);
+  const ownsPrompt = question.typeId === READING_TYPES.sentenceCompletion || Boolean(hidePrompt);
+  const isCorrect = result?.attempt.isCorrect;
+  const partial = Boolean(result) && !isCorrect && (result?.attempt.accuracyPercentage ?? 0) > 0;
+
+  // The number badge fills in once answered, then turns green or red when marked.
+  const badge = result
+    ? isCorrect
+      ? 'bg-emerald-500 text-white border-emerald-500'
+      : partial
+        ? 'bg-amber-500 text-white border-amber-500'
+        : 'bg-rose-500 text-white border-rose-500'
+    : isAnswered(answer)
+      ? 'bg-primary text-primary-foreground border-primary'
+      : 'bg-background text-muted-foreground border-border';
+
+  const control = (
+    <Renderer
+      question={question}
+      answer={answer}
+      result={result}
+      locked={locked}
+      resources={resources}
+      onChange={onChange}
+    />
+  );
 
   return (
-    <div className="rounded-lg p-3 bg-card/60 dark:bg-white/[0.015] border border-border/70 space-y-2 shadow-2xs hover:border-border transition-colors">
-      <div className="flex items-start gap-2.5">
-        <span className="shrink-0 w-5 h-5 rounded-md bg-primary/10 text-primary font-mono font-bold text-xs flex items-center justify-center border border-primary/20">
-          {number}
-        </span>
-        {/* Sentence completion prints the prompt inside its own control, with the
-            gap in place, so printing it here as well would say it twice. */}
-        {question.typeId !== READING_TYPES.sentenceCompletion && (
-          <p className="text-xs sm:text-[14px] font-semibold text-slate-900 dark:text-slate-100 leading-snug pt-0.5">
-            {question.prompt}
-          </p>
-        )}
-      </div>
+    <div data-dictionary className="px-3 py-3 sm:px-4 sm:py-3.5 transition-colors hover:bg-muted/25">
+      <div className={inline ? 'flex flex-wrap items-center gap-x-4 gap-y-2.5' : 'space-y-2.5'}>
+        <div className="flex flex-1 items-start gap-3 min-w-[13rem]">
+          {!hideNumber && <span
+            className={`shrink-0 w-6 h-6 rounded-full border text-[11px] font-bold tabular-nums flex items-center justify-center transition-colors ${badge}`}
+          >
+            {number}
+          </span>}
+          {/* Sentence completion prints the prompt inside its own control, and a
+              hidden prompt only repeated the instructions: the control goes here. */}
+          {ownsPrompt ? (
+            <div className="flex-1 min-w-0 pt-0.5">{control}</div>
+          ) : (
+            <p className="pt-0.5 text-[13px] sm:text-sm font-medium leading-relaxed text-foreground">
+              {question.prompt}
+            </p>
+          )}
+        </div>
 
-      <div className="pl-0 sm:pl-7">
-        <Renderer
-          question={question}
-          answer={answer}
-          result={result}
-          locked={locked}
-          resources={resources}
-          onChange={onChange}
-        />
+        {!ownsPrompt && (
+          <div className={inline ? 'shrink-0 pl-9 sm:pl-0' : hideNumber ? '' : 'pl-9'}>{control}</div>
+        )}
       </div>
 
       {result && (
         <div
-          className={`p-2.5 rounded-lg border flex items-start gap-2 text-xs ${
-            result.attempt.isCorrect
-              ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-800 dark:text-emerald-200'
-              : result.attempt.accuracyPercentage > 0
-                ? 'bg-amber-500/10 border-amber-500/25 text-amber-800 dark:text-amber-200'
-                : 'bg-rose-500/10 border-rose-500/25 text-rose-800 dark:text-rose-200'
+          className={`mt-2.5 ml-9 px-3 py-2 rounded-lg flex items-start gap-2 text-xs ${
+            isCorrect
+              ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-200'
+              : partial
+                ? 'bg-amber-500/10 text-amber-800 dark:text-amber-200'
+                : 'bg-rose-500/10 text-rose-800 dark:text-rose-200'
           }`}
         >
-          {result.attempt.isCorrect ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-          ) : result.attempt.accuracyPercentage > 0 ? (
-            <CircleDot className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          {isCorrect ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-px" />
+          ) : partial ? (
+            <CircleDot className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-px" />
           ) : (
-            <XCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+            <XCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-px" />
           )}
 
           <div className="space-y-0.5">
+            {isCorrect && !result.review.explanation && <p className="font-semibold">Correct</p>}
             {/* A task with several parts is rarely all right or all wrong, and
                 the server has already counted them. */}
-            {!result.attempt.isCorrect && result.attempt.accuracyPercentage > 0 && result.attempt.feedback && (
-              <p className="font-bold">{result.attempt.feedback}</p>
-            )}
-            {!result.attempt.isCorrect && showsAnswerInline(question.typeId) && (
-              <p className="font-bold">
-                Correct answer: <span className="underline">{displayAnswer(result.review)}</span>
+            {partial && result.attempt.feedback && <p className="font-semibold">{result.attempt.feedback}</p>}
+            {!isCorrect && showsAnswerInline(question.typeId) && (
+              <p className="font-semibold">
+                Correct answer: <span className="underline underline-offset-2">{displayAnswer(result.review)}</span>
               </p>
             )}
             {result.review.explanation && (
@@ -97,6 +127,22 @@ export default function ReadingQuestionRow({
         </div>
       )}
     </div>
+  );
+}
+
+/** A single dropdown fits beside the statement; wider controls go under it. */
+const INLINE_TYPES = new Set<string>([
+  READING_TYPES.matchingInformation,
+  READING_TYPES.findTheParagraph,
+]);
+
+/** Whether the learner has put anything down for this question yet. */
+export function isAnswered(answer?: AnswerSubmission): boolean {
+  if (!answer) return false;
+  return (
+    (answer.selectedOptions?.length ?? 0) > 0 ||
+    Boolean(answer.textResponse?.trim()) ||
+    Object.values(answer.blankResponses ?? {}).some(value => String(value).trim())
   );
 }
 
