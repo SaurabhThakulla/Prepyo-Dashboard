@@ -80,7 +80,7 @@ export default function SetupPage({ account, onSaved, onCancel, onSignOut }: Pro
       return;
     }
     if (file.size > MAX_LOGO_BYTES) {
-      setLogoError('That logo is larger than 512 KB. Please choose a smaller one.');
+      setLogoError('That logo is larger than 2 MB. Please choose a smaller one.');
       return;
     }
     setUploading(true);
@@ -338,7 +338,7 @@ export default function SetupPage({ account, onSaved, onCancel, onSignOut }: Pro
                         <ImageUp className="h-8 w-8 text-muted-foreground" />
                       )}
                       <span className="text-sm font-semibold text-primary">{logoUrl ? 'Change logo' : 'Upload logo'}</span>
-                      <span className="text-[11px] text-muted-foreground">PNG, JPEG or WebP, up to 512 KB</span>
+                      <span className="text-[11px] text-muted-foreground">PNG, JPEG or WebP, up to 2 MB</span>
                       <input
                         type="file"
                         accept="image/png,image/jpeg,image/webp"

@@ -3,17 +3,15 @@ import { Link } from 'react-router-dom';
 import { Building2, ShieldCheck, CheckCircle2, Sun, Moon, ArrowUpRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { LOGIN_PATH, SIGNUP_PATH } from './paths';
+import { REGISTER_MAILTO } from './paths';
 
 interface Props {
   title: string;
   subtitle?: string;
-  mode: 'login' | 'signup';
   children: React.ReactNode;
 }
 
-export default function InstitutionAuthLayout({ title, subtitle, mode, children }: Props) {
-  const isLogin = mode === 'login';
+export default function InstitutionAuthLayout({ title, subtitle, children }: Props) {
 
   // Safe theme detection that does not depend on AppContext (so unit tests can render without AppProvider)
   const [isDark, setIsDark] = useState(() => {
@@ -136,29 +134,13 @@ export default function InstitutionAuthLayout({ title, subtitle, mode, children 
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
-            {/* Quick tab switcher between Sign In & Register */}
-            <div className="flex items-center gap-1 rounded-full bg-muted/80 p-1 text-xs font-semibold">
-              <Link
-                to={LOGIN_PATH}
-                className={`rounded-full px-3 py-1 transition-all ${
-                  isLogin
-                    ? 'bg-background text-foreground shadow-sm font-bold'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Sign in
-              </Link>
-              <Link
-                to={SIGNUP_PATH}
-                className={`rounded-full px-3 py-1 transition-all ${
-                  !isLogin
-                    ? 'bg-background text-foreground shadow-sm font-bold'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Register
-              </Link>
-            </div>
+            {/* Registration is by email to contact@prepyo.online */}
+            <a
+              href={REGISTER_MAILTO}
+              className="rounded-full bg-muted/80 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground"
+            >
+              Register
+            </a>
 
             <Button
               variant="ghost"

@@ -1,11 +1,11 @@
 import React, { FormEvent, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { ArrowRight, Loader2, Lock, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { errorMessage } from '@/lib/api';
 import { logIn } from './api';
 import { useInstitutionAccount } from './account';
-import { dashboardPath, SIGNUP_PATH } from './paths';
+import { dashboardPath, REGISTER_MAILTO } from './paths';
 import { InstitutionLoading } from './InstitutionPage';
 import InstitutionAuthLayout from './InstitutionAuthLayout';
 import FormField, { FormError } from './FormField';
@@ -44,7 +44,7 @@ export default function LoginPage() {
   };
 
   return (
-    <InstitutionAuthLayout title="Institution sign-in" subtitle="For the admin of a consultancy or institute." mode="login">
+    <InstitutionAuthLayout title="Institution sign-in" subtitle="For the admin of a consultancy or institute.">
       <form onSubmit={submit} className="space-y-4" noValidate>
         <FormField
           label="Email"
@@ -80,10 +80,11 @@ export default function LoginPage() {
       <div className="mt-6 space-y-2 text-center text-sm text-muted-foreground">
         <p>
           New institution?{' '}
-          <Link to={SIGNUP_PATH} className="font-semibold text-primary hover:underline">
+          <a href={REGISTER_MAILTO} className="font-semibold text-primary hover:underline">
             Register here
-          </Link>
+          </a>
         </p>
+        <p className="text-xs">Opens an email to contact@prepyo.online. We set up your account and send you the login.</p>
       </div>
     </InstitutionAuthLayout>
   );
