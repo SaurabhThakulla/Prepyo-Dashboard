@@ -22,7 +22,7 @@ export const STUDENT_RANGES: { id: string; label: string; detail: string }[] = [
 export const BRAND_COLORS = ['#1d4ed8', '#0f766e', '#7c3aed', '#be123c', '#c2410c', '#0369a1', '#15803d', '#1e293b'];
 
 export const MAX_BRANCHES = 50;
-export const MAX_LOGO_BYTES = 512 * 1024;
+export const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
 export const EMPTY_PROFILE: InstitutionProfile = {
   exams: [],
