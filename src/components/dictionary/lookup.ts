@@ -66,11 +66,21 @@ async function fetchEntry(word: string): Promise<DictionaryEntry | null> {
   return (await fetchPage(lower)) ?? (lower !== word ? fetchPage(word) : null);
 }
 
-async function fetchWithBase(word: string): Promise<DictionaryEntry | null> {
-  const entry = await fetchEntry(word);
-  if (!entry?.baseWord) return entry;
-  // Add the base word's meanings, since "plural of X" alone does not help a learner.
-  const base = await fetchEntry(entry.baseWord).catch(() => null);
+/** Looks a word up once per page load (its own meanings only, so it shows fast). */
+export function lookUp(word: string): Promise<DictionaryEntry | null> {
+  let hit = cache.get(word);
+  if (!hit) {
+    hit = fetchEntry(word);
+    hit.catch(() => cache.delete(word));
+    cache.set(word, hit);
+  }
+  return hit;
+}
+
+/** Adds the base word's meanings, since "plural of X" alone does not help a learner. */
+export async function withBase(entry: DictionaryEntry): Promise<DictionaryEntry> {
+  if (!entry.baseWord) return entry;
+  const base = await lookUp(entry.baseWord).catch(() => null);
   if (!base) return entry;
   return {
     ...entry,
@@ -79,13 +89,7 @@ async function fetchWithBase(word: string): Promise<DictionaryEntry | null> {
   };
 }
 
-/** Looks a word up once per page load. */
-export function lookUp(word: string): Promise<DictionaryEntry | null> {
-  let hit = cache.get(word);
-  if (!hit) {
-    hit = fetchWithBase(word);
-    hit.catch(() => cache.delete(word));
-    cache.set(word, hit);
-  }
-  return hit;
+/** Starts a lookup (and its base word) in the background, ignoring failures. */
+export function prefetch(word: string): void {
+  lookUp(word).then(entry => entry && withBase(entry), () => null).catch(() => null);
 }
