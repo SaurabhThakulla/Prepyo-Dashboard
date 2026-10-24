@@ -41,7 +41,7 @@ import { getPteTaskWeight, getPteTaskContributions, isPteTaskAvailable, getPteTa
  * link or change a label without touching any rendering code.
  */
 
-export type PrimarySectionId = 'practice' | 'learn' | 'mock' | 'tutorials';
+export type PrimarySectionId = 'home' | 'practice' | 'learn' | 'mock' | 'tutorials';
 
 export interface SecondaryNavItem {
   href?: string;
@@ -92,10 +92,28 @@ const PRACTICE_SKILLS: { skill: SkillType; label: string; icon: LucideIcon; subl
   { skill: 'listening', label: 'Listening', icon: Headphones, sublabel: 'Listen and answer, marked instantly' },
 ];
 
+/** The admin's Home section: their dashboards. */
+function adminHomeSection(): PrimarySectionConfig {
+  return {
+    id: 'home',
+    label: 'Home',
+    icon: Home,
+    title: 'Admin Hub',
+    description: 'Users, plans, reports & consultancies',
+    items: [
+      { href: '/admin', label: 'Admin Dashboard', icon: ShieldCheck, sublabel: 'Users, plans & platform metrics', badge: 'Admin' },
+      { href: '/admin/payments', label: 'Plan Management', icon: CreditCard, sublabel: 'Approve payments and grant plans', badge: 'Admin' },
+      { href: '/admin/reports', label: 'Issue reports', icon: MessageSquareWarning, sublabel: 'What learners have reported', badge: 'Admin' },
+      { href: '/admin/consultancies', label: 'Consultancies', icon: Building2, sublabel: 'Institutions, students & usage', badge: 'Admin' },
+    ],
+  };
+}
+
 /** Which primary section a URL belongs to. */
 export function getSectionFromPathname(path: string, searchParams?: URLSearchParams | string): PrimarySectionId {
   const params = typeof searchParams === 'string' ? new URLSearchParams(searchParams) : searchParams;
   if (params?.get('mock') || params?.get('view') === 'full') return 'mock';
+  if (path.startsWith('/admin')) return 'home';
   if (path.startsWith('/practice')) return 'practice';
   if (path.startsWith('/learn')) return 'learn';
   if (path.startsWith('/mocks') || path.startsWith('/diagnostic')) return 'mock';
@@ -124,6 +142,8 @@ export function buildSections(
   const isEPS = activeExam === 'EPS_TOPIK';
 
   return [
+    // Admins keep their Home section; learners reach their dashboard from the logo.
+    ...(isAdmin(user ?? null) ? [adminHomeSection()] : []),
     {
       id: 'practice',
       label: 'Practice',

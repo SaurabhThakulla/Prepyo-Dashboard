@@ -18,6 +18,9 @@ import { isInstitutionPath } from '@/institution/paths';
 import { useExclusivePanel } from './sidePanels';
 import DictionaryPopup from '@/components/dictionary/DictionaryPopup';
 
+// Paste blocking, turned off temporarily for staging testers.
+const PASTE_GUARD = false;
+
 const AITutorDrawer = lazy(() => import('@/components/ai/AITutorDrawer'));
 const GlobalMiniPlayer = lazy(() => import('@/components/tutorials/GlobalMiniPlayer'));
 
@@ -51,7 +54,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [pathname, navigationType]);
 
   // Signed-out pages (login, sign-up) and institution pages keep paste for emails and passwords.
-  useClipboardGuard(!!user && !isAdmin(user) && !isInstitutionPath(pathname), () =>
+  // Paste blocking is off for now so staging testers can paste; set PASTE_GUARD to true to bring it back.
+  useClipboardGuard(PASTE_GUARD && !!user && !isAdmin(user) && !isInstitutionPath(pathname), () =>
     toast.info('Pasting is turned off', 'Type your answer yourself, the way you will in the exam.'),
   );
 
