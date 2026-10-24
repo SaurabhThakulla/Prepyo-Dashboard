@@ -133,7 +133,8 @@ describe('the answer each renderer sends', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Paragraph B' }));
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Choose the paragraph' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: 'Paragraph B' }));
     expect(patch()).toEqual({ selectedOptions: ['B'] });
   });
 
@@ -219,9 +220,8 @@ describe('the answer each renderer sends', () => {
     // The sentence is on screen either side of the gap, not replaced by it.
     expect(screen.getByText(/The Maya described cacao as a gift from the/)).toBeDefined();
 
-    fireEvent.change(screen.getByLabelText('Choose the word that fits'), {
-      target: { value: 'gods' },
-    });
+    fireEvent.keyDown(screen.getByLabelText('Choose the word that fits'), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: 'gods' }));
     expect(patch()).toEqual({ selectedOptions: ['gods'] });
   });
 

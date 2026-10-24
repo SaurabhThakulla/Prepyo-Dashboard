@@ -32,11 +32,14 @@ import { isInstitutionPath } from '@/institution/paths';
 const ACCOUNT = {
   admin: { name: 'Sita Sharma', email: 'sita@brightfuture.example' },
   institution: {
-    name: 'Bright Future', code: 'bright-future', status: 'free', seatLimit: 2, onboarded: true,
+    name: 'Bright Future', code: 'bright-future', status: 'active', plan: 'basic', seatLimit: 10, onboarded: true,
     profile: { exams: ['PTE'], city: 'Kathmandu', branches: 1, monthlyStudents: 'under-25', brandColor: '#1d4ed8' },
   },
 };
-const RAM = { id: 'u1', name: 'Ram Thapa', username: 'ram', createdAt: '2026-10-14T00:00:00Z' };
+const RAM = {
+  id: 'u1', name: 'Ram Thapa', username: 'ram', createdAt: '2026-10-14T00:00:00Z', disabled: false,
+  usage: { practiceAttempts: 4, mocksCompleted: 0, aiEvaluations: 1, tutorMessages: 0, lastActiveAt: null, aiGradingsThisMonth: 1 },
+};
 const UNAUTHORIZED = new ApiError(401, { code: 'unauthorized', message: 'Please sign in to continue.' });
 
 // server answers each GET by path; anything not listed is a 404.
@@ -48,7 +51,7 @@ function server(answers: Record<string, unknown>) {
   );
 }
 const signedOut = () => server({ '/institution/me': UNAUTHORIZED, '/institution/lookup/bright-future': { name: 'Bright Future', code: 'bright-future' } });
-const signedIn = (students: unknown[] = []) => server({ '/institution/me': ACCOUNT, '/institution/students': { students } });
+const signedIn = (students: unknown[] = []) => server({ '/institution/me': ACCOUNT, '/institution/students?days=30': { students } });
 
 function Where() {
   return <div data-testid="where">{useLocation().pathname}</div>;
@@ -91,7 +94,7 @@ describe('institution admin login', () => {
 
     await waitFor(() => expect(where()).toBe('/bright-future'));
     expect(post).toHaveBeenCalledWith('/institution/login', { email: 'sita@brightfuture.example', password: 'a-long-enough-password' });
-    expect(await screen.findByText('Free plan')).toBeTruthy();
+    expect(await screen.findByText('Your plan is active')).toBeTruthy();
   });
 
   it('shows what the server said when the details are wrong', async () => {
@@ -108,40 +111,21 @@ describe('institution admin login', () => {
   });
 });
 
-describe('institution sign-up', () => {
-  const fillForm = (confirm = 'a-long-enough-password') => {
-    fill('Institution name', ' Bright Future ');
-    fill('Your name', 'Sita Sharma');
-    fill('Email', 'sita@brightfuture.example');
-    fill('Phone', '9800000000');
-    fill('Password', 'a-long-enough-password');
-    fill('Confirm password', confirm);
-  };
-
-  it('checks the form before sending it', async () => {
+describe('institution registration', () => {
+  it('sends the old sign-up address to the sign-in page', async () => {
     signedOut();
     open('/institution/signup');
-    await screen.findByLabelText('Institution name');
-
-    fillForm('a-different-password');
-    fireEvent.click(screen.getByRole('button', { name: 'Register institution' }));
-
-    expect(screen.getByText('The two passwords do not match.')).toBeTruthy();
-    expect(post).not.toHaveBeenCalled();
+    await waitFor(() => expect(where()).toBe('/institution/login'));
   });
 
-  it('registers and opens the dashboard', async () => {
+  it('registers by email to contact@prepyo.online', async () => {
     signedOut();
-    post.mockResolvedValue(ACCOUNT);
-    open('/institution/signup');
-    await screen.findByLabelText('Institution name');
+    open('/institution/login');
+    await screen.findByLabelText('Email');
 
-    fillForm();
-    fireEvent.click(screen.getByRole('checkbox'));
-    signedIn();
-    fireEvent.click(screen.getByRole('button', { name: 'Register institution' }));
-
-    await waitFor(() => expect(where()).toBe('/bright-future'));
+    const href = screen.getByRole('link', { name: 'Register here' }).getAttribute('href') ?? '';
+    expect(href.startsWith('mailto:contact@prepyo.online?subject=')).toBe(true);
+    expect(decodeURIComponent(href)).toContain('Institution name:');
   });
 });
 
@@ -161,23 +145,23 @@ describe("an institution's own address, for its admin", () => {
   it('adds a student and shows the password once', async () => {
     signedIn();
     post.mockResolvedValue({ student: RAM, password: 'abcd2345ef' });
-    open('/bright-future');
+    open('/bright-future/students');
 
-    expect(await screen.findByText(/0 of 2 seats used/)).toBeTruthy();
+    expect(await screen.findByText(/0 of 10 seats used/)).toBeTruthy();
     fill('Student name', ' Ram Thapa ');
     signedIn([RAM]);
     fireEvent.click(screen.getByRole('button', { name: 'Add student' }));
 
     expect(await screen.findByText('abcd2345ef')).toBeTruthy();
     expect(post).toHaveBeenCalledWith('/institution/students', { name: 'Ram Thapa' });
-    expect(await screen.findByText(/1 of 2 seats used/)).toBeTruthy();
+    expect(await screen.findByText(/1 of 10 seats used/)).toBeTruthy();
   });
 
   it('offers no more students once the seats are full', async () => {
-    signedIn([RAM, { ...RAM, id: 'u2', username: 'ram2' }]);
-    open('/bright-future');
+    signedIn(Array.from({ length: 10 }, (_, i) => ({ ...RAM, id: `u${i}`, username: `ram${i}` })));
+    open('/bright-future/students');
 
-    expect(await screen.findByText(/2 of 2 seats used/)).toBeTruthy();
+    expect(await screen.findByText(/10 of 10 seats used/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Add student' })).toBeNull();
   });
 

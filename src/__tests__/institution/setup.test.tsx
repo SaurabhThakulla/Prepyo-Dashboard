@@ -47,7 +47,7 @@ describe('institution setup', () => {
     open();
 
     await screen.findByRole('heading', { name: /which exams do you prepare/i }, { timeout: 5000 });
-    expect(screen.queryByText(/institution dashboard/i)).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Overview' })).toBeNull();
     expect(screen.getByRole('button', { name: /continue/i }).hasAttribute('disabled')).toBe(true);
 
     press(/^IELTS/);
@@ -63,7 +63,7 @@ describe('institution setup', () => {
     press(/finish setup/i);
 
     await waitFor(() => expect(put).toHaveBeenCalledWith('/institution/profile', PROFILE));
-    await screen.findByText(/institution dashboard/i);
+    await screen.findByRole('heading', { name: 'Overview' });
     expect(screen.getByText(/Pokhara · 2 branches · 25 to 50 students a month/)).toBeTruthy();
     expect(screen.getByText('EPS-TOPIK')).toBeTruthy();
   }, 20_000);
@@ -72,10 +72,11 @@ describe('institution setup', () => {
     get.mockImplementation((path: string) => Promise.resolve(path === '/institution/me' ? DONE : { students: [] }));
     open();
 
-    fireEvent.click(await screen.findByRole('button', { name: /edit details/i }, { timeout: 5000 }));
+    fireEvent.click(await screen.findByRole('link', { name: 'Settings' }, { timeout: 5000 }));
+    fireEvent.click(await screen.findByRole('button', { name: /edit details/i }));
     expect((await screen.findByRole('button', { name: /^IELTS/ })).getAttribute('aria-pressed')).toBe('true');
     press(/cancel/i);
-    await screen.findByText(/institution dashboard/i);
+    await screen.findByRole('heading', { name: 'Settings' });
     expect(put).not.toHaveBeenCalled();
   });
 });

@@ -341,3 +341,19 @@ describe('the tutorials menu', () => {
     }
   });
 });
+
+describe('the Home section', () => {
+  it('is the first section for an admin, linking to the admin pages', () => {
+    const admin = { role: 'admin' } as unknown as UserProfile;
+    const [home] = buildSections('PTE', () => { }, admin);
+    expect(home.id).toBe('home');
+    expect(home.items.map(item => item.href)).toEqual(['/admin', '/admin/payments', '/admin/reports', '/admin/consultancies']);
+    expect(getSectionFromPathname('/admin/payments')).toBe('home');
+  });
+
+  it('is not shown to a learner', () => {
+    const learner = { role: 'user' } as unknown as UserProfile;
+    expect(buildSections('PTE', () => { }, learner).map(s => s.id)).not.toContain('home');
+    expect(buildSections('PTE', () => { }, null).map(s => s.id)).not.toContain('home');
+  });
+});
