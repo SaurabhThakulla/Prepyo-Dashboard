@@ -11,7 +11,6 @@ import {
   AlertCircle,
   Send,
   CheckCircle2,
-  ChevronDown,
   Volume2,
   LayoutList,
   PanelRight,
@@ -87,6 +86,7 @@ function getSubtaskTitle(exam: ExamType, skill: SkillType, typeKey?: string | nu
 }
 
 import { useToast } from '@/components/ui/toast';
+import AnswerSelect from '@/components/ui/answer-select';
 
 const PILL = 'h-9 gap-1.5 rounded-full px-3 text-xs font-bold sm:px-4';
 
@@ -914,7 +914,7 @@ function PracticePageContent() {
                   <span className="inline-flex h-12 min-w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 px-2 text-sm font-bold text-primary-foreground shadow-md sm:h-14 sm:min-w-14">
                     {taskCode}
                   </span>
-                  <div className="min-w-0 space-y-1 pt-0.5">
+                  <div data-dictionary className="min-w-0 space-y-1 pt-0.5">
                     <h2 className="text-xl sm:text-2xl font-bold text-primary leading-tight">{currentQuestion.typeName}</h2>
                     {currentQuestion.timeLimitSeconds > 0 && (
                       <p className="flex items-center gap-1.5 text-xs font-semibold text-primary sm:hidden">
@@ -943,7 +943,7 @@ function PracticePageContent() {
               </div>
 
               {/* The question: blue bar with its number and title, then its content */}
-              <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+              <div data-dictionary className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
               {(questionHeading || (!isPteListening && currentIndex >= 0)) && (
                 <div className="flex items-center gap-3 bg-gradient-to-r from-primary to-primary/75 px-4 py-3 text-primary-foreground dark:!bg-muted dark:!text-foreground sm:px-5">
                   {!isPteListening && currentIndex >= 0 && <span className="rounded-lg bg-white/15 px-2.5 py-0.5 font-bold tabular-nums">#{currentIndex + 1}</span>}
@@ -976,6 +976,16 @@ function PracticePageContent() {
                   highlights={result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
                   onFinished={() => setHeardPromptFor(currentQuestion.id)}
                 />}
+
+                {/* Read Aloud: hear the passage. Stored audio when there is some, the browser's voice for now otherwise. */}
+                {isReadAloudTask(currentQuestion) && currentQuestion.contextPassage && (
+                  <PromptAudio
+                    key={`read-aloud-${currentQuestion.id}`}
+                    audioUrl={currentQuestion.audioUrl}
+                    audioTranscript={passageText(currentQuestion)}
+                    title={currentQuestion.title}
+                  />
+                )}
 
                 {currentQuestion.exam === 'EPS_TOPIK' && (currentQuestion.hasTranslation || result?.review?.audioTranslation) && (
                   <KoreanHelp
@@ -1135,19 +1145,13 @@ function PracticePageContent() {
                       <div key={b.id} className={`flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border text-xs sm:text-sm ${!reviewed ? 'bg-card border-border' : right ? 'border-emerald-500 bg-emerald-500/10' : 'border-rose-500 bg-rose-500/10'}`}>
                         <span className="font-bold text-primary shrink-0">Blank {idx + 1}:</span>
                         {b.options && b.options.length > 0 ? (
-                          <div className="relative inline-flex items-center group">
-                            <select
-                              value={blankResponses[b.id] || ''}
-                              onChange={e => setBlankResponses({ ...blankResponses, [b.id]: e.target.value })}
-                              className="appearance-none pr-8 pl-3 py-1.5 rounded-lg border border-input bg-background hover:border-primary/50 text-xs sm:text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary shadow-2xs cursor-pointer transition-all"
-                            >
-                              <option value="">— Select —</option>
-                              {b.options.map(opt => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                            <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 pointer-events-none text-muted-foreground group-hover:text-primary transition-colors" />
-                          </div>
+                          <AnswerSelect
+                            value={blankResponses[b.id] || ''}
+                            options={b.options}
+                            onChange={value => setBlankResponses({ ...blankResponses, [b.id]: value })}
+                            aria-label={`Blank ${idx + 1}`}
+                            className="bg-background text-xs sm:text-sm"
+                          />
                         ) : (
                           <input
                             value={blankResponses[b.id] || ''}

@@ -31,7 +31,7 @@ export default function QuestionPrompt({
   reviewTranscript,
 }: QuestionPromptProps) {
   return (
-    <Card className="p-6 space-y-4">
+    <Card data-dictionary className="p-6 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
         <div className="flex items-center gap-2">
           <Badge variant="default">{question.typeName}</Badge>
