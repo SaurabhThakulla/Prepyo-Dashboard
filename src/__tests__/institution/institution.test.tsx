@@ -153,7 +153,7 @@ describe("an institution's own address, for its admin", () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add student' }));
 
     expect(await screen.findByText('abcd2345ef')).toBeTruthy();
-    expect(post).toHaveBeenCalledWith('/institution/students', { name: 'Ram Thapa' });
+    expect(post).toHaveBeenCalledWith('/institution/students', { name: 'Ram Thapa', exam: 'PTE' });
     expect(await screen.findByText(/1 of 10 seats used/)).toBeTruthy();
   });
 

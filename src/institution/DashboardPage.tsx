@@ -66,7 +66,7 @@ export default function DashboardPage() {
   return (
     <InstitutionLayout account={account} title={TITLES[page]} signingOut={signingOut} onSignOut={signOut}>
       {page === 'overview' && <OverviewSection account={account} />}
-      {page === 'students' && <StudentsCard code={institution.code} seatLimit={institution.seatLimit} />}
+      {page === 'students' && <StudentsCard code={institution.code} seatLimit={institution.seatLimit} exams={institution.profile.exams} />}
       {page === 'settings' && <SettingsSection account={account} onEdit={() => setEditing(true)} />}
     </InstitutionLayout>
   );

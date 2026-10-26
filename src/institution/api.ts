@@ -60,6 +60,7 @@ export interface Student {
   username: string;
   createdAt: string;
   disabled: boolean;
+  exam: ExamCode;
   usage: StudentUsage;
 }
 
@@ -102,8 +103,11 @@ export const fetchStudentActivity = (id: string, days: number) =>
 export const setStudentDisabled = (id: string, disabled: boolean) =>
   api.put(`/institution/students/${id}/disabled`, { disabled });
 
-export const addStudent = (name: string) =>
-  api.post<{ student: Student; password: string }>('/institution/students', { name });
+export const addStudent = (name: string, exam: ExamCode) =>
+  api.post<{ student: Student; password: string }>('/institution/students', { name, exam });
+
+// Switches the exam the student practises; their target score is cleared.
+export const setStudentExam = (id: string, exam: ExamCode) => api.put(`/institution/students/${id}/exam`, { exam });
 
 export const resetStudentPassword = (id: string) =>
   api.post<{ password: string }>(`/institution/students/${id}/reset-password`);

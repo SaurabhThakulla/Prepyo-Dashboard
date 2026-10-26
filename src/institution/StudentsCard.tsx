@@ -9,12 +9,15 @@ import { errorMessage } from '@/lib/api';
 import {
   addStudent,
   AI_GRADINGS_PER_MONTH,
+  ExamCode,
   fetchStudents,
   removeStudent,
   resetStudentPassword,
   setStudentDisabled,
+  setStudentExam,
   Student,
 } from './api';
+import { EXAM_CHOICES } from './profile';
 import { dashboardPath } from './paths';
 import { FormError } from './FormField';
 import StudentActivityPanel from './StudentActivity';
@@ -22,6 +25,8 @@ import StudentActivityPanel from './StudentActivity';
 interface Props {
   code: string;
   seatLimit: number;
+  // The exams the institution teaches; new students start on the first.
+  exams: ExamCode[];
 }
 
 // A password is shown once, right after it is made.
@@ -42,10 +47,11 @@ const shortDate = (value: string | null) =>
   value ? new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
 /** The dashboard's student board: usage over a period, each student's activity, and managing logins. */
-export default function StudentsCard({ code, seatLimit }: Props) {
+export default function StudentsCard({ code, seatLimit, exams }: Props) {
   const [days, setDays] = useState(30);
   const [students, setStudents] = useState<Student[] | null>(null);
   const [name, setName] = useState('');
+  const [exam, setExam] = useState<ExamCode>(exams[0] ?? 'IELTS');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<Credentials | null>(null);
@@ -87,7 +93,7 @@ export default function StudentsCard({ code, seatLimit }: Props) {
       return;
     }
     void run(async () => {
-      const created = await addStudent(name.trim());
+      const created = await addStudent(name.trim(), exam);
       setCredentials({ name: created.student.name, username: created.student.username, password: created.password });
       setName('');
     });
@@ -98,6 +104,13 @@ export default function StudentsCard({ code, seatLimit }: Props) {
       const { password } = await resetStudentPassword(student.id);
       setCredentials({ name: student.name, username: student.username, password });
     });
+
+  const changeExam = (student: Student, next: ExamCode) => {
+    if (next === student.exam) return;
+    void run(async () => {
+      await setStudentExam(student.id, next);
+    });
+  };
 
   const toggleDisabled = (student: Student) => {
     if (!student.disabled && !window.confirm(`Turn off ${student.name}'s account? They are signed out and cannot sign in until you turn it back on.`)) return;
@@ -187,11 +200,12 @@ export default function StudentsCard({ code, seatLimit }: Props) {
 
       {list.length > 0 && (
         <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[760px] text-xs">
+          <table className="w-full min-w-[860px] text-xs">
             <caption className="sr-only">Students and their usage over {period}</caption>
             <thead>
               <tr className="border-b border-border text-left font-bold uppercase text-muted-foreground">
                 <th className="px-3 py-2">Student</th>
+                <th className="px-3 py-2">Exam</th>
                 <th className="px-3 py-2 text-right">Practice</th>
                 <th className="px-3 py-2 text-right">Mocks</th>
                 <th className="px-3 py-2 text-right">AI evals</th>
@@ -224,6 +238,14 @@ export default function StudentsCard({ code, seatLimit }: Props) {
                             Turned off
                           </Badge>
                         )}
+                      </td>
+                      <td className="px-3 py-2.5" onClick={event => event.stopPropagation()}>
+                        <ExamSelect
+                          label={`Exam for ${student.name}`}
+                          value={student.exam}
+                          disabled={busy}
+                          onChange={next => changeExam(student, next)}
+                        />
                       </td>
                       <td className="px-3 py-2.5 text-right tabular-nums">{student.usage.practiceAttempts}</td>
                       <td className="px-3 py-2.5 text-right tabular-nums">{student.usage.mocksCompleted}</td>
@@ -307,6 +329,7 @@ export default function StudentsCard({ code, seatLimit }: Props) {
             disabled={busy}
             className="h-10 flex-1 rounded-xl text-sm"
           />
+          <ExamSelect label="Exam" value={exam} disabled={busy} onChange={setExam} className="h-10 text-sm" />
           <Button type="submit" disabled={busy} className="h-10 rounded-xl text-xs font-bold">
             {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <UserPlus className="mr-1.5 h-3.5 w-3.5" />}
             Add student
@@ -314,6 +337,36 @@ export default function StudentsCard({ code, seatLimit }: Props) {
         </form>
       )}
     </Card>
+  );
+}
+
+function ExamSelect({
+  label,
+  value,
+  onChange,
+  disabled,
+  className = 'h-8 text-xs',
+}: {
+  label: string;
+  value: ExamCode;
+  onChange: (exam: ExamCode) => void;
+  disabled: boolean;
+  className?: string;
+}) {
+  return (
+    <select
+      aria-label={label}
+      value={value}
+      disabled={disabled}
+      onChange={event => onChange(event.target.value as ExamCode)}
+      className={`rounded-xl border border-input bg-background px-2.5 font-semibold text-foreground ${className}`}
+    >
+      {EXAM_CHOICES.map(choice => (
+        <option key={choice.id} value={choice.id}>
+          {choice.id === 'PTE' ? 'PTE' : choice.name}
+        </option>
+      ))}
+    </select>
   );
 }
 
