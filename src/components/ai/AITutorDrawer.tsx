@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Send, X, Sparkles, RefreshCw, Zap, MessageSquare } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Send, X, Sparkles, RefreshCw, Zap, MessageSquare, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import TutorText from './TutorText';
+import { canUseTutor } from '@/lib/types';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -11,7 +13,10 @@ interface ChatMessage {
 }
 
 export default function AITutorDrawer() {
-  const { isTutorOpen, setIsTutorOpen, activeExam, tutorContextPrompt, tutorQuestion, clearTutorQuestion } = useApp();
+  const { user, isTutorOpen, setIsTutorOpen, activeExam, tutorContextPrompt, tutorQuestion, clearTutorQuestion } = useApp();
+  // Every reply is a paid call, so free learners get an upgrade card instead
+  // of the chat. The server refuses them too.
+  const allowed = canUseTutor(user);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // The greeting follows the exam currently selected, and is shown only: it is
   // not part of the conversation sent to the coach.
@@ -91,6 +96,7 @@ export default function AITutorDrawer() {
     if (!isTutorOpen || !tutorQuestion || loading) return;
     const question = tutorQuestion;
     clearTutorQuestion();
+    if (!allowed) return;
     void handleSend(question, []);
     // handleSend is recreated each render; only a new question should trigger this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -170,6 +176,7 @@ export default function AITutorDrawer() {
           </Button>
         </div>
 
+        {allowed ? (<>
         {contextLabel && (
           <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border/80 bg-primary/5 text-[11px] text-muted-foreground">
             <MessageSquare className="w-3 h-3 shrink-0 text-primary" />
@@ -266,6 +273,20 @@ export default function AITutorDrawer() {
             </Button>
           </form>
         </div>
+        </>) : (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Lock className="h-5 w-5" />
+            </span>
+            <h4 className="font-display text-base font-bold text-foreground">The AI Coach is for paid plans</h4>
+            <p className="max-w-xs text-xs text-muted-foreground">
+              Upgrade to ask the coach about any question, get your mistakes explained and get tips for {activeExam}.
+            </p>
+            <Button asChild size="sm" className="mt-1">
+              <Link to="/subscription" onClick={() => setIsTutorOpen(false)}>See plans</Link>
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

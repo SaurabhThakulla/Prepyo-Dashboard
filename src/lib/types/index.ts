@@ -116,6 +116,8 @@ export interface SubscriptionState {
   aiGradingsPeriod?: AIGradingsPeriod;
   /** True for a student of an institution on the free plan: reading and listening only. */
   aiBlocked?: boolean;
+  /** Whether the AI coach is open to this user. Free learners do not get it. */
+  tutorAllowed?: boolean;
 }
 
 export type AIGradingsPeriod = 'day' | 'plan' | 'month';
@@ -196,6 +198,15 @@ export function isPremiumUser(user: UserProfile | null | undefined): boolean {
   if (user.role === 'admin') return true;
   const sub = user.subscription;
   return Boolean(sub?.isActive && sub.planId && sub.planId !== 'free');
+}
+
+/**
+ * Whether the user may use the AI coach: a paid plan, or an institution's
+ * plan. Falls back to the premium check for a server that does not say.
+ */
+export function canUseTutor(user: UserProfile | null | undefined): boolean {
+  if (!user) return false;
+  return user.subscription?.tutorAllowed ?? isPremiumUser(user);
 }
 
 export function roleLabel(user: UserProfile | null): string {
