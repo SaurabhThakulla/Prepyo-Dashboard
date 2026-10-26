@@ -52,3 +52,10 @@ next-env.d.ts
 # the repository are still tracked; add a new one on purpose with git add -f.
 *.test.ts
 *.test.tsx
+
+# Tests stay local and are not committed.
+src/__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
