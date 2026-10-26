@@ -3,46 +3,17 @@ import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/context/AppContext';
 import { isPremiumUser, type PracticeAttempt, type Question } from '@/lib/types';
-
-/** The server accepts up to 4,000 characters of task context; stay under it. */
-const MAX_CONTEXT = 3900;
+import { answeredContext } from '@/lib/tutorContext';
 
 const QUESTION = 'Why was my answer wrong, and how can I get questions like this right next time?';
 
-function clip(text: string, max: number): string {
-  const trimmed = text.trim();
-  return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed;
-}
-
-/**
- * What the coach is told about a marked question. It is sent only after the
- * answer has been graded, so it may include the key and the explanation: the
- * learner is already looking at both on the result card.
- */
+/** What the coach is told about a question the learner got wrong. */
 export function mistakeContext(attempt: PracticeAttempt, review: Question): string {
-  const optionText = new Map((review.options ?? []).map(o => [o.id, o.text]));
-  const correct = (review.correctAnswers ?? []).map(id => optionText.get(id) ?? id);
-  const gaps = (review.blanks ?? []).filter(b => b.correctAnswer).map(b => `${b.id} = ${b.correctAnswer}`);
-  const options = review.options && review.options.length <= 8
-    ? review.options.map(o => `${o.id}) ${o.text}`).join('; ')
-    : '';
-
-  const lines = [
+  return answeredContext(
+    attempt,
+    review,
     'I have just answered this practice question and did not get it fully right. It has already been marked, so we can discuss the correct answer.',
-    `Task type: ${review.typeName}`,
-    review.title ? `Question: ${review.title}` : '',
-    review.prompt ? `Instructions: ${clip(review.prompt, 600)}` : '',
-    review.contextPassage ? `Text: ${clip(review.contextPassage, 1200)}` : '',
-    review.audioTranscript ? `Recording transcript: ${clip(review.audioTranscript, 1000)}` : '',
-    options ? `Options: ${options}` : '',
-    correct.length ? `Correct answer: ${correct.join(', ')}` : '',
-    gaps.length ? `Correct words for the gaps: ${gaps.join(', ')}` : '',
-    attempt.userResponse ? `My answer: ${clip(attempt.userResponse, 400)}` : '',
-    attempt.feedback ? `Marking: ${clip(attempt.feedback, 400)}` : '',
-    `My score: ${attempt.score} of ${attempt.maxScore}`,
-    review.explanation ? `Explanation shown to me: ${clip(review.explanation, 600)}` : '',
-  ];
-  return clip(lines.filter(Boolean).join('\n'), MAX_CONTEXT);
+  );
 }
 
 /**

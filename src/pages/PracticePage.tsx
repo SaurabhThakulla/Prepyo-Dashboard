@@ -58,6 +58,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { familyOf, typeIdsFor } from '@/lib/readingTypes';
 import { api, ApiError, errorMessage } from '@/lib/api';
+import { answeredContext, questionContext } from '@/lib/tutorContext';
 import { encodeForUpload } from '@/lib/audio';
 import { matchesTypeKey, typeLabel } from '@/lib/syllabus';
 import { pteMockHref } from '@/lib/pteMock/catalog';
@@ -627,10 +628,16 @@ function PracticePageContent() {
     }
   };
 
+  // The coach is told about a question only while it is on screen.
+  useEffect(() => () => setTutorContextPrompt(''), [currentQuestion?.id, setTutorContextPrompt]);
+
   const handleAskAITutor = () => {
     if (!currentQuestion) return;
+    // Once marked, the coach may see the key the result card already shows.
     setTutorContextPrompt(
-      `Question: ${currentQuestion.title}\nTask type: ${currentQuestion.typeName}\nPrompt: ${currentQuestion.prompt}`,
+      result?.attempt && result.review
+        ? answeredContext(result.attempt, result.review, 'I have just answered this practice question. It has been marked, so we can discuss the correct answer.')
+        : questionContext(currentQuestion, textAnswer),
     );
     setIsTutorOpen(true);
   };

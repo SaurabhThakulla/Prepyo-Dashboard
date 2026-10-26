@@ -76,6 +76,15 @@ export default function AITutorDrawer() {
     }
   };
 
+  // A new task starts a new conversation: replies about the last question
+  // would only confuse the coach and cost tokens on every later message. A
+  // changed draft of the same answer is still the same task.
+  const contextTopic = tutorContextPrompt.split('\nMy answer so far:')[0];
+  const contextLabel = /^Task type: (.+)$/m.exec(tutorContextPrompt)?.[1];
+  useEffect(() => {
+    setMessages([]);
+  }, [contextTopic]);
+
   // A question asked from elsewhere in the app (such as "Explain my mistake")
   // starts a new conversation about its own context, then sends itself.
   useEffect(() => {
@@ -160,6 +169,15 @@ export default function AITutorDrawer() {
             <X className="w-4 h-4" />
           </Button>
         </div>
+
+        {contextLabel && (
+          <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border/80 bg-primary/5 text-[11px] text-muted-foreground">
+            <MessageSquare className="w-3 h-3 shrink-0 text-primary" />
+            <span className="truncate">
+              The coach can see this question: <span className="font-semibold text-foreground">{contextLabel}</span>
+            </span>
+          </div>
+        )}
 
         {/* Quick Suggestion Chips */}
         <div className="px-4 py-2.5 bg-muted/40 border-b border-border/80 flex gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">

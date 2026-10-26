@@ -9,6 +9,7 @@ let user: Partial<UserProfile> | null = null;
 vi.mock('@/context/AppContext', () => ({ useApp: () => ({ user, askTutor }) }));
 
 import ExplainMistake, { mistakeContext } from '@/components/practice/ExplainMistake';
+import { MAX_TUTOR_CONTEXT } from '@/lib/tutorContext';
 
 afterEach(() => {
   cleanup();
@@ -40,12 +41,12 @@ describe('Explain my mistake', () => {
     expect(context).toContain('Correct answer: Water boils at a lower temperature');
     expect(context).toContain('My answer: B');
     expect(context).toContain('Explanation shown to me: Lower air pressure');
-    expect(context.length).toBeLessThanOrEqual(3900);
+    expect(context.length).toBeLessThanOrEqual(MAX_TUTOR_CONTEXT);
   });
 
   it('stays within the server limit for long passages', () => {
     const long = { ...review, contextPassage: 'word '.repeat(3000), audioTranscript: 'word '.repeat(3000) };
-    expect(mistakeContext(attempt, long).length).toBeLessThanOrEqual(3900);
+    expect(mistakeContext(attempt, long).length).toBeLessThanOrEqual(MAX_TUTOR_CONTEXT);
   });
 
   it('opens the coach with the question for premium learners', () => {
