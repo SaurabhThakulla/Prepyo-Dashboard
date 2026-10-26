@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Mic, Play, Square } from 'lucide-react';
+import { Mic, Pause, Play, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { RecorderStatus } from '../AudioRecorder';
 
@@ -20,6 +20,11 @@ export default function RecordingPlayback({ recording, status, maxSeconds, onCon
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [speed, setSpeed] = useState(1);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = speed;
+  }, [speed]);
 
   useEffect(() => {
     setPlaying(false);
@@ -45,7 +50,10 @@ export default function RecordingPlayback({ recording, status, maxSeconds, onCon
       setTime(0);
       setPlaying(false);
     } else {
-      void audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+      void audio.play().then(() => {
+        if (audioRef.current) audioRef.current.playbackRate = speed;
+        setPlaying(true);
+      }).catch(() => setPlaying(false));
     }
   };
 
@@ -53,28 +61,41 @@ export default function RecordingPlayback({ recording, status, maxSeconds, onCon
   const total = Number.isFinite(duration) && duration > 0 ? duration : 0;
 
   return (
-    <button type="button" onClick={toggle} aria-label={playing ? 'Stop your recording' : 'Play your recording'} className={PILL}>
-      <span className={cn(DOT, playing ? 'bg-rose-500 group-hover:bg-rose-600' : 'bg-primary group-hover:bg-primary/90')}>
-        {playing ? <Square className="h-3.5 w-3.5 fill-current" aria-hidden /> : <Play className="ml-0.5 h-4 w-4 fill-current" aria-hidden />}
-      </span>
-      <span className="text-sm font-medium text-foreground">{playing ? 'Click here to stop' : 'Click here to play'}</span>
-      <Bar fraction={total ? time / total : 0} />
-      <span className="text-sm font-semibold tabular-nums text-foreground">{clock(playing || time ? time : total)}</span>
-      <audio
-        ref={audioRef}
-        src={url}
-        preload="metadata"
-        onLoadedMetadata={e => setDuration(e.currentTarget.duration)}
-        onDurationChange={e => setDuration(e.currentTarget.duration)}
-        onTimeUpdate={e => setTime(e.currentTarget.currentTime)}
-        onEnded={e => {
-          setDuration(e.currentTarget.duration);
-          setPlaying(false);
-          setTime(0);
-        }}
-        className="hidden"
-      />
-    </button>
+    <div className="inline-flex items-center gap-1.5">
+      <button type="button" onClick={toggle} aria-label={playing ? 'Pause your recording' : 'Play your recording'} className={PILL}>
+        <span className={cn(DOT, 'bg-primary group-hover:bg-primary/90')}>
+          {playing ? <Pause className="h-3.5 w-3.5 fill-current" aria-hidden /> : <Play className="ml-0.5 h-4 w-4 fill-current" aria-hidden />}
+        </span>
+        <span className="text-sm font-medium text-foreground">{playing ? 'Click here to pause' : 'Click here to play'}</span>
+        <Bar fraction={total ? time / total : 0} />
+        <span className="text-sm font-semibold tabular-nums text-foreground">{clock(playing || time ? time : total)}</span>
+        <audio
+          ref={audioRef}
+          src={url}
+          preload="metadata"
+          onLoadedMetadata={e => setDuration(e.currentTarget.duration)}
+          onDurationChange={e => setDuration(e.currentTarget.duration)}
+          onTimeUpdate={e => setTime(e.currentTarget.currentTime)}
+          onPlay={e => {
+            e.currentTarget.playbackRate = speed;
+          }}
+          onEnded={e => {
+            setDuration(e.currentTarget.duration);
+            setPlaying(false);
+            setTime(0);
+          }}
+          className="hidden"
+        />
+      </button>
+      <button
+        type="button"
+        onClick={() => setSpeed(s => (s === 1 ? 1.25 : s === 1.25 ? 1.5 : s === 1.5 ? 2 : 1))}
+        title="Change audio speed (tap to cycle: 1.0x, 1.25x, 1.5x, 2.0x)"
+        className="h-9 px-2 rounded-xl border border-primary/20 bg-background text-primary font-mono text-xs font-bold shadow-2xs hover:bg-muted/80 active:scale-95 transition-all"
+      >
+        {speed === 1 ? '1.0x' : `${speed}x`}
+      </button>
+    </div>
   );
 }
 

@@ -155,7 +155,8 @@ export default function DictionaryPopup() {
     {hover && (
       <div
         aria-hidden
-        className="pointer-events-none fixed z-40 rounded-[3px] bg-blue-500/40 ring-1 ring-blue-500/60"
+        // Above dialogs (z-50), so words in a result pop-up show it too.
+        className="pointer-events-none fixed z-[60] rounded-[3px] bg-blue-500/40 ring-1 ring-blue-500/60"
         style={{ left: hover.left - 2, top: hover.top - 1, width: hover.width + 4, height: hover.height + 2 }}
       />
     )}

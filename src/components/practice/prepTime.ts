@@ -23,6 +23,20 @@ const PREP_SECONDS: Record<string, number> = {
   'ielts-speaking-part3': 5,
 };
 
+/**
+ * Seconds before an item's recording plays by itself, as the computer-based
+ * tests run it: PTE's published timings (the same as our PTE mock: 3 s for
+ * speaking, 7 s for listening, 10 s for Highlight Incorrect Words), and a 3 s
+ * lead-in for IELTS and EPS-TOPIK listening, whose audio also starts on its own.
+ * Undefined where the learner starts it (IELTS speaking is a live interview).
+ */
+export function audioDelayFor(question: { exam: string; skill: string; typeId?: string }): number | undefined {
+  if (question.exam === 'PTE' && question.skill === 'speaking') return 3;
+  if (question.exam === 'PTE' && question.skill === 'listening') return question.typeId?.includes('highlight-incorrect') ? 10 : 7;
+  if ((question.exam === 'IELTS' || question.exam === 'EPS_TOPIK') && question.skill === 'listening') return 3;
+  return undefined;
+}
+
 export function prepSecondsFor(typeId: string | undefined, stored?: number | null): number {
   return PREP_SECONDS[typeId ?? ''] ?? Math.max(5, stored ?? 0);
 }

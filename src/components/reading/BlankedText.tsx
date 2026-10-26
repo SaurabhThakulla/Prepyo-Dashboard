@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, X } from 'lucide-react';
 import AnswerSelect from '@/components/ui/answer-select';
 import {
@@ -208,13 +209,19 @@ export default function BlankedText({
           ))}
         </div>
 
-        <DragOverlay dropAnimation={null}>
-          {dragging && (
-            <span className="inline-block cursor-grabbing rounded-lg border border-primary bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-lg ring-2 ring-primary/30">
-              {dragging}
-            </span>
-          )}
-        </DragOverlay>
+        {/* On document.body: the overlay is position: fixed, and inside a transformed
+            parent (the card's slide-in animation) fixed is measured from that parent,
+            so the word was drawn away from the cursor. */}
+        {createPortal(
+          <DragOverlay dropAnimation={null} zIndex={70}>
+            {dragging && (
+              <span className="inline-block cursor-grabbing rounded-lg border border-primary bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-lg ring-2 ring-primary/30">
+                {dragging}
+              </span>
+            )}
+          </DragOverlay>,
+          document.body,
+        )}
 
         {correct && (
           <p className="text-[11px] text-muted-foreground">

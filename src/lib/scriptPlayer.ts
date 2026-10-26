@@ -16,6 +16,8 @@ export interface Playback {
   done: Promise<void>;
   /** Stops playback; `done` then rejects with a StoppedError. */
   stop: () => void;
+  /** Sets playback speed rate. */
+  setSpeed?: (speed: number) => void;
 }
 
 export class StoppedError extends Error {
@@ -73,7 +75,7 @@ export async function browserCanSpeak(timeoutMs = 1500): Promise<boolean> {
  * never handed over whole. If no sentence ever starts, `done` rejects with a
  * SpeechUnavailableError and the browser's voice is not tried again.
  */
-export function speakScript(script: string, onProgress?: (fraction: number) => void): Playback {
+export function speakScript(script: string, onProgress?: (fraction: number) => void, speed = 1): Playback {
   const synth = window.speechSynthesis;
   const turns = splitTurns(script);
   const language = scriptLanguage(script);
@@ -118,7 +120,7 @@ export function speakScript(script: string, onProgress?: (fraction: number) => v
       } else {
         utterance.lang = FALLBACK_LANG[language];
       }
-      utterance.rate = 0.95;
+      utterance.rate = 0.95 * speed;
       let finished = false;
       const finish = () => {
         if (finished || stopped) return;
@@ -251,10 +253,11 @@ export function unlockAudio(): void {
 }
 
 /** Plays server clips one after another, fetching the next while one plays. */
-export function playClips(segments: Segment[], onProgress?: (fraction: number) => void): Playback {
+export function playClips(segments: Segment[], onProgress?: (fraction: number) => void, speed = 1): Playback {
   // One recording at a time: a new one stops whatever was playing.
   activeClips?.stop();
   const audio = clipElement();
+  audio.playbackRate = speed;
   let stopped = false;
   let reject: (reason: unknown) => void = () => {};
   const detach = () => {
@@ -302,6 +305,9 @@ export function playClips(segments: Segment[], onProgress?: (fraction: number) =
         activeClips = null;
       }
       reject(new StoppedError());
+    },
+    setSpeed: (newSpeed: number) => {
+      audio.playbackRate = newSpeed;
     },
   };
   activeClips = playback;

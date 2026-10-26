@@ -133,6 +133,7 @@ describe('speaking practice scored from the transcript', () => {
         expect.objectContaining({ questionId: 'speaking-1', transcript: '' }),
       );
     });
-    expect(await screen.findByText(/No words could be made out/)).toBeTruthy();
+    // The result card shows only the scores now, not the summary.
+    expect(await screen.findByTestId('score-card')).toBeTruthy();
   });
 });
