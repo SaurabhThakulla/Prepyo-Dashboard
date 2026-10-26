@@ -5,6 +5,7 @@ import type { SkillType } from '@/lib/types';
 
 /** AI-grading units one answer spends (see billing/gradings.go); reading and listening cost none. */
 export function gradingUnits(skill: SkillType, typeId?: string): number | null {
+  if (typeId === 'summarize-spoken-text') return 5;
   if (skill === 'reading' || skill === 'listening') return null;
   return /(^|-)(read-aloud|repeat-sentence)$/.test(typeId ?? '') ? 2 : 5;
 }

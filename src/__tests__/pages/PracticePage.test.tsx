@@ -73,9 +73,10 @@ describe('PTE listening answer controls', () => {
   }
 
   it.each([
-    ['summarize-spoken-text', 'Summarize Spoken Text', 'Your summary'],
-    ['write-from-dictation', 'Write from Dictation', 'Your dictation'],
-  ])('accepts and submits text for %s', async (typeId, typeName, label) => {
+    // Summarize Spoken Text is rated by the AI writing evaluator.
+    ['summarize-spoken-text', 'Summarize Spoken Text', 'Your summary', '/evaluations/writing', 'text'],
+    ['write-from-dictation', 'Write from Dictation', 'Your dictation', '/practice/attempts', 'textResponse'],
+  ])('accepts and submits text for %s', async (typeId, typeName, label, path, field) => {
     const submit = await startListening(typeId, typeName);
     expect((submit as HTMLButtonElement).disabled).toBe(true);
     const input = screen.getByRole('textbox', { name: label });
@@ -83,11 +84,11 @@ describe('PTE listening answer controls', () => {
     expect((submit as HTMLButtonElement).disabled).toBe(true);
     const text = 'Students learn through regular practice.';
     fireEvent.change(input, { target: { value: text } });
-    expect(screen.getByText('5 words')).toBeDefined();
+    expect(screen.getByText(typeId === 'summarize-spoken-text' ? '5 / 50–70 words' : '5 words')).toBeDefined();
     expect((submit as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(submit);
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/practice/attempts', expect.objectContaining({
-      questionId: 'listening-1', textResponse: text,
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith(path, expect.objectContaining({
+      questionId: 'listening-1', [field]: text,
     })));
     await waitFor(() => expect(mocks.toast.error).toHaveBeenCalled());
     expect((input as HTMLTextAreaElement).value).toBe(text);
@@ -405,7 +406,7 @@ describe('practice credit lifecycle', () => {
     fireEvent.click(submit);
 
     // Verify finished state of Task 1
-    await screen.findByText('Good job');
+    await screen.findByTestId('score-card');
 
     // Navigate to subtask 2
     act(() => {
@@ -414,7 +415,7 @@ describe('practice credit lifecycle', () => {
 
     // Task 2 starts fresh once its question list is closed
     await closeList();
-    expect(screen.queryByText('Good job')).toBeNull();
+    expect(screen.queryByTestId('score-card')).toBeNull();
     expect((await screen.findAllByText('Task 2 Title')).length).toBeGreaterThan(0);
   });
 });

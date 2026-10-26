@@ -23,7 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import AudioRecorder, { type RecorderStatus } from '@/components/practice/AudioRecorder';
-import { prepSecondsFor } from '@/components/practice/prepTime';
+import { audioDelayFor, prepSecondsFor } from '@/components/practice/prepTime';
 import QuestionFigure from '@/components/practice/QuestionFigure';
 import PromptAudio from '@/components/practice/PromptAudio';
 import KoreanHelp from '@/components/practice/KoreanHelp';
@@ -32,7 +32,8 @@ import { answerMark, OPTION_MARK_CLASS, OPTION_MARK_LABEL } from '@/lib/answerMa
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import OptionContent, { hasPictureOptions } from '@/components/practice/OptionContent';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
-import { isReadAloudTask, isRepeatSentenceTask, isWordHighlightTask, passageText } from '@/lib/listening';
+import ConversationPassage, { conversationTurns } from '@/components/practice/ConversationPassage';
+import { isAiRatedListening, isReadAloudTask, isRepeatSentenceTask, isWordHighlightTask, passageText } from '@/lib/listening';
 import { allowsMultipleChoices } from '@/lib/choices';
 import { minimumWritingWords, writingLengthNote, writingWordCount, writingWordTarget } from '@/lib/writing';
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
@@ -560,7 +561,7 @@ function PracticePageContent() {
         showEvaluation(data);
         const scoreVal = data.evaluation.estimatedScore ?? (data.evaluation as any)?.overallScore ?? (data.evaluation as any)?.score ?? (activeExam === 'PTE' ? 79 : 7);
         recordQuestionAttempt(activeExam, currentQuestion.id, scoreVal, EXAM_MAX_SCORE[activeExam]);
-      } else if (grading === 'ai') {
+      } else if (grading === 'ai' || isAiRatedListening(currentQuestion)) {
         const data = await api.post<EvaluationResponse>('/evaluations/writing', {
           questionId: currentQuestion.id,
           text: textAnswer,
@@ -653,7 +654,7 @@ function PracticePageContent() {
     submitting,
     grading === 'speech'
       ? [{ afterSeconds: 0, label: 'Scoring…' }] // the steps show in ScoringProgress below
-      : grading === 'ai'
+      : grading === 'ai' || isAiRatedListening(currentQuestion)
         ? [
           { afterSeconds: 0, label: 'Sending your response…' },
           { afterSeconds: 3, label: 'Marking against the rubric…' },
@@ -663,6 +664,10 @@ function PracticePageContent() {
   );
 
   const isPteListening = activeExam === 'PTE' && selectedSkill === 'listening';
+  // Outside reading the prompt goes in the question card, under the blue bar, not in the header.
+  const promptInCard = !!currentQuestion && currentQuestion.skill !== 'reading';
+  // An IELTS speaking prompt is the question itself, so it reads larger.
+  const promptIsQuestion = currentQuestion?.exam === 'IELTS' && currentQuestion?.skill === 'speaking';
 
   const currentIndex = currentQuestion ? questions.findIndex(q => q.id === currentQuestion.id) : -1;
   const isLast = currentIndex === questions.length - 1;
@@ -922,7 +927,7 @@ function PracticePageContent() {
                       </p>
                     )}
                     {/* Plain sentences flow across the full width; prompts with lists keep their lines. */}
-                    {currentQuestion.prompt && (/\S\r?\n\S/.test(currentQuestion.prompt.trim())
+                    {!promptInCard && currentQuestion.prompt && (/\S\r?\n\S/.test(currentQuestion.prompt.trim())
                       ? currentQuestion.prompt.split(/\n\s*\n/).map((paragraph, i) => (
                         <p key={i} className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                           {paragraph.trim()}
@@ -954,6 +959,12 @@ function PracticePageContent() {
 
               <div className="p-3 sm:p-4 space-y-3 empty:hidden">
 
+                {promptInCard && currentQuestion.prompt && (
+                  <p className={`leading-relaxed whitespace-pre-line ${promptIsQuestion ? 'text-base text-foreground' : 'text-sm text-muted-foreground'}`}>
+                    {currentQuestion.prompt.trim()}
+                  </p>
+                )}
+
                 {currentQuestion.imageUrl && (
                   // On a phone the figure runs edge to edge across the card, for a larger table.
                   <QuestionFigure src={currentQuestion.imageUrl} alt={currentQuestion.title} className="-mx-4 w-auto rounded-none sm:mx-auto sm:w-full sm:rounded-xl" />
@@ -971,8 +982,10 @@ function PracticePageContent() {
                     (currentQuestion.exam === 'EPS_TOPIK' && currentQuestion.skill === 'listening')
                   }
                   repeat={listeningPlays(currentQuestion)}
+                  // The recording plays on its own after the test's lead-in; speaking recording follows it.
+                  autoPlayAfter={result === null ? audioDelayFor(currentQuestion) : undefined}
                   title={currentQuestion.title}
-                  allowTranscript={result !== null}
+                  allowTranscript={true}
                   highlights={result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
                   onFinished={() => setHeardPromptFor(currentQuestion.id)}
                 />}
@@ -1012,7 +1025,11 @@ function PracticePageContent() {
                     />
                   ) : (
                     <div className="px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl bg-primary/[0.04] text-[15px] sm:text-[16px] text-foreground leading-relaxed whitespace-pre-line sm:max-h-72 sm:overflow-y-auto">
-                      {passageText(currentQuestion)}
+                      {(() => {
+                        const text = passageText(currentQuestion);
+                        const turns = conversationTurns(text);
+                        return turns ? <ConversationPassage turns={turns} className="whitespace-normal" /> : text;
+                      })()}
                     </div>
                   )
                 )}
@@ -1049,6 +1066,8 @@ function PracticePageContent() {
                       // Prep counts down in the recorder as soon as the task (or its audio) is done, then recording starts.
                       autoStart
                       maxSeconds={currentQuestion.timeLimitSeconds}
+                      // PTE's microphone closes after 3 seconds of silence; an IELTS examiner waits.
+                      stopAfterSilence={currentQuestion.exam === 'PTE'}
                       disabled={submitting || result !== null || waitingForPrompt}
                       controlRef={recorderControl}
                       onStatus={setRecorderStatus}
@@ -1063,12 +1082,7 @@ function PracticePageContent() {
 
                 {grading === 'ai' && (
                   <div className="space-y-3 pt-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-sm font-bold text-foreground">Your response</span>
-                      <Badge variant={wordCount >= (wordTarget ?? minWords) ? 'success' : 'warning'}>
-                        {wordTarget ? `${wordCount} / ${wordTarget} words` : `${wordCount} words`}
-                      </Badge>
-                    </div>
+                    <span className="block text-sm font-bold text-foreground">Your response</span>
                     <Textarea
                       rows={8}
                       value={textAnswer}
@@ -1076,9 +1090,14 @@ function PracticePageContent() {
                       placeholder="Write your response here…"
                       className="border-2 border-primary bg-background px-4 py-3 text-[15px] leading-7 text-foreground placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-primary/30"
                     />
-                    <p className="text-xs leading-relaxed text-foreground/75">
-                      {currentQuestion ? writingLengthNote(currentQuestion) : ''}
-                    </p>
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <p className="leading-relaxed text-foreground/75">
+                        {currentQuestion ? writingLengthNote(currentQuestion) : ''}
+                      </p>
+                      <Badge variant={wordCount >= (wordTarget ?? minWords) ? 'success' : 'warning'} className="shrink-0">
+                        {wordTarget ? `${wordCount} / ${wordTarget} words` : `${wordCount} words`}
+                      </Badge>
+                    </div>
                   </div>
                 )}
 
@@ -1284,7 +1303,7 @@ function PracticePageContent() {
 
             <PracticeNotes notes={speakingUnscored ? [] : notesFor(selectedSkill)} />
 
-            <MyScore questionIds={[currentQuestion.id]} />
+            <MyScore questionIds={[currentQuestion.id]} taskType={activeExam === 'PTE' ? currentQuestion.typeId : undefined} />
           </div>
         </div>
       )}

@@ -1,66 +1,48 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { Evaluation, WordMark } from '@/lib/types';
-import CriteriaTable from './CriteriaTable';
-import { CONFIDENCE_LABEL, SCALE } from './PracticeResultCard';
-import { FeedbackLists, MarkedAnswer, MarkedAnswerLegend, ResultSection, ResultSummary, toneFor, xpMeta } from './ResultParts';
+import EvaluationCard from './EvaluationCard';
+import { MarkedAnswer, MarkedAnswerLegend } from './ResultParts';
 
 interface Props {
   evaluation: Evaluation;
   xpAwarded: number;
   recording: Blob | null;
+  /** A PTE question's type id, for the per-skill scores in the header. */
+  taskType?: string;
 }
 
-/** A spoken answer's result, laid out like every other result, plus the recording and the marked text. */
-export default function SpeakingResult({ evaluation, xpAwarded, recording }: Props) {
+/** A spoken answer's result on the same card as every rated answer, with the recording and the marked words. */
+export default function SpeakingResult({ evaluation, xpAwarded, recording, taskType }: Props) {
   // A past answer replays the copy kept for 30 days; a fresh one plays straight from the device.
   const recordingUrl = useObjectUrl(recording)
     ?? (evaluation.hasRecording ? `/api/v1/evaluations/${encodeURIComponent(evaluation.id)}/recording` : null);
-  const criteria = evaluation.criteria ?? [];
   const words = evaluation.words ?? [];
   // Free speech has no script: colour what the grader corrected and the fillers instead.
   const transcript = words.length === 0 ? evaluation.transcript?.trim() ?? '' : '';
-  const scale = SCALE[evaluation.exam] ?? SCALE.PTE;
   const score = evaluation.estimatedScore;
-  const fraction = score === null ? null : (score - scale.min) / (scale.max - scale.min);
 
   return (
-    <div className="space-y-6">
-      <ResultSummary
-        label={`${scale.label} estimate`}
-        score={score ?? '—'}
-        outOf={scale.max}
-        fraction={fraction ?? 0}
-        tone={toneFor(fraction)}
-        verdict={score === null ? 'Not rated' : undefined}
-        meta={[score !== null ? CONFIDENCE_LABEL[evaluation.scoreConfidence] : null, xpMeta(xpAwarded)]}
-        summary={evaluation.summary}
-        notes={['A practice estimate, not an official result.']}
-      />
-
-      {criteria.length > 0 && (
-        <ResultSection title="Score breakdown">
-          <CriteriaTable criteria={criteria} />
-        </ResultSection>
-      )}
-
-      <ResultSection
-        title="Your answer"
-        aside={
-          words.length > 0 ? (
-            <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-              <Legend dot="bg-emerald-500">Good</Legend>
-              {words.some(w => w.unclear) && <Legend dot="bg-amber-500">Unclear</Legend>}
-              <Legend dot="bg-rose-500">Missed or changed</Legend>
-              <span>/ Pause</span>
-            </span>
-          ) : transcript && score !== null ? (
-            <MarkedAnswerLegend />
-          ) : null
-        }
-      >
-        <div className="space-y-3 rounded-xl border border-border px-4 py-3">
-          {recordingUrl && <audio controls src={recordingUrl} className="h-10 w-full" />}
+    <EvaluationCard
+      evaluation={evaluation}
+      xpAwarded={xpAwarded}
+      taskType={taskType}
+      answerTitle="Your answer"
+      answerLegend={
+        words.length > 0 ? (
+          <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <Legend dot="bg-emerald-500">Good</Legend>
+            {words.some(w => w.unclear) && <Legend dot="bg-amber-500">Unclear</Legend>}
+            <Legend dot="bg-rose-500">Missed or changed</Legend>
+            <span>/ Pause</span>
+          </span>
+        ) : transcript && score !== null ? (
+          <MarkedAnswerLegend />
+        ) : undefined
+      }
+      answer={
+        <div className="space-y-3">
+          {recordingUrl && <audio controls src={recordingUrl} className="h-9 w-full" />}
           {words.length > 0 ? (
             <p className="text-[15px] leading-8" data-testid="marked-passage">
               {words.map((w, i) => (
@@ -76,10 +58,8 @@ export default function SpeakingResult({ evaluation, xpAwarded, recording }: Pro
             <p className="text-sm leading-relaxed text-foreground">No speech could be made out in that recording.</p>
           )}
         </div>
-      </ResultSection>
-
-      <FeedbackLists strengths={evaluation.strengths ?? []} weaknesses={evaluation.weaknesses ?? []} />
-    </div>
+      }
+    />
   );
 }
 

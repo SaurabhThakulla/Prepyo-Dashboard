@@ -1,11 +1,36 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import type { SentenceFeedback } from '@/lib/types';
+import type { Evaluation, ExamType, SentenceFeedback } from '@/lib/types';
 import { markTranscript, type SpokenMark } from '@/lib/transcriptMarks';
 
 /** The building blocks every practice result is laid out with, so all sections read the same. */
 
 export type Tone = 'good' | 'fair' | 'poor' | 'none';
+
+/** The exam's own reporting scale, so an estimate is drawn against the range it lives in. */
+export const SCALE: Record<ExamType, { min: number; max: number; label: string }> = {
+  PTE: { min: 10, max: 90, label: 'PTE score' },
+  IELTS: { min: 0, max: 9, label: 'IELTS band' },
+  EPS_TOPIK: { min: 0, max: 100, label: 'EPS-TOPIK score' },
+};
+
+/**
+ * A part score put on the exam's own scale: PTE out of 90 (10 at the floor),
+ * IELTS in half bands out of 9. Null for exams with no such scale, which keep
+ * their raw points.
+ */
+export function onExamScale(exam: ExamType | undefined, fraction: number): { score: number; max: number } | null {
+  const f = Math.min(1, Math.max(0, fraction));
+  if (exam === 'PTE') return { score: Math.round(10 + 80 * f), max: 90 };
+  if (exam === 'IELTS') return { score: Math.round(f * 18) / 2, max: 9 };
+  return null;
+}
+
+export const CONFIDENCE_LABEL: Record<Evaluation['scoreConfidence'], string> = {
+  high: 'High confidence',
+  medium: 'Medium confidence',
+  low: 'Low confidence',
+};
 
 export const TONE: Record<Tone, { ring: string; text: string; bar: string; badge: string }> = {
   good: { ring: 'text-emerald-500', text: 'text-emerald-700 dark:text-emerald-400', bar: 'bg-emerald-500', badge: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
@@ -22,12 +47,12 @@ export function toneFor(fraction: number | null): Tone {
 }
 
 /** A progress ring with the headline number in the middle; no arc at all for zero. */
-export function ScoreRing({ fraction, tone, children }: { fraction: number; tone: Tone; children: ReactNode }) {
+export function ScoreRing({ fraction, tone, children, className }: { fraction: number; tone: Tone; children: ReactNode; className?: string }) {
   const radius = 44;
   const circumference = 2 * Math.PI * radius;
   const clamped = Math.min(1, Math.max(0, fraction));
   return (
-    <div className="relative h-24 w-24 shrink-0">
+    <div className={cn('relative h-24 w-24 shrink-0', className)}>
       <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" aria-hidden>
         <circle cx="50" cy="50" r={radius} fill="none" strokeWidth="8" className="stroke-muted" />
         {clamped > 0 && (
@@ -95,35 +120,6 @@ export function ResultSection({ title, aside, children }: { title: string; aside
       </div>
       {children}
     </section>
-  );
-}
-
-/** What worked and what to work on next, side by side. */
-export function FeedbackLists({ strengths, weaknesses }: { strengths: string[]; weaknesses: string[] }) {
-  if (strengths.length === 0 && weaknesses.length === 0) return null;
-  return (
-    <ResultSection title="Feedback">
-      <div className="grid gap-3 sm:grid-cols-2">
-        {strengths.length > 0 && <FeedbackList title="What worked" dot="bg-emerald-500" items={strengths} />}
-        {weaknesses.length > 0 && <FeedbackList title="Work on next" dot="bg-amber-500" items={weaknesses} />}
-      </div>
-    </ResultSection>
-  );
-}
-
-function FeedbackList({ title, dot, items }: { title: string; dot: string; items: string[] }) {
-  return (
-    <div className="space-y-2 rounded-xl border border-border p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
-      <ul className="space-y-1.5">
-        {items.map(item => (
-          <li key={item} className="flex gap-2.5 text-sm leading-relaxed text-foreground">
-            <span className={cn('mt-[0.55rem] h-1.5 w-1.5 shrink-0 rounded-full', dot)} aria-hidden />
-            {item}
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 

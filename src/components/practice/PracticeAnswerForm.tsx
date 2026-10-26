@@ -53,12 +53,7 @@ export default function PracticeAnswerForm({
 
       {grading === 'ai' && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-sm font-bold text-foreground">Your response</span>
-            <Badge variant={wordCount >= (target ?? minWords) ? 'success' : 'warning'}>
-              {target ? `${wordCount} / ${target} words` : `${wordCount} words`}
-            </Badge>
-          </div>
+          <span className="block text-sm font-bold text-foreground">Your response</span>
           <Textarea
             rows={8}
             value={session.textAnswer}
@@ -66,7 +61,12 @@ export default function PracticeAnswerForm({
             placeholder="Write your response here…"
             className="border-2 border-primary bg-background px-4 py-3 text-[15px] leading-7 text-foreground placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-primary/30"
           />
-          <p className="text-xs leading-relaxed text-foreground/75">{writingLengthNote(question)}</p>
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <p className="leading-relaxed text-foreground/75">{writingLengthNote(question)}</p>
+            <Badge variant={wordCount >= (target ?? minWords) ? 'success' : 'warning'} className="shrink-0">
+              {target ? `${wordCount} / ${target} words` : `${wordCount} words`}
+            </Badge>
+          </div>
         </div>
       )}
 

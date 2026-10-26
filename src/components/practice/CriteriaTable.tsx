@@ -3,7 +3,7 @@ import type { EvaluationCriterion } from '@/lib/types';
 import { TONE, toneFor } from './ResultParts';
 
 /** Rubric traits as a Component / Score / Suggestion table. */
-export default function CriteriaTable({ criteria }: { criteria: EvaluationCriterion[] }) {
+export default function CriteriaTable({ criteria, showScore = true }: { criteria: EvaluationCriterion[]; showScore?: boolean }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-foreground/20">
       <table className="w-full border-collapse text-left text-sm">

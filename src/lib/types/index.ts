@@ -543,6 +543,9 @@ export interface EvaluationCriterion {
   score: number;
   maxScore: number;
   feedback: string;
+  /** The trait on Pearson's own points (PTE); score is it on 10-90. */
+  points?: number;
+  maxPoints?: number;
 }
 
 export interface SentenceFeedback {
@@ -568,6 +571,8 @@ export interface Evaluation {
   sentenceFeedback: SentenceFeedback[];
   modelRewrite?: string;
   transcript?: string;
+  /** What the learner wrote, on writing tasks rated since answers were kept. */
+  answer?: string;
   /** Read Aloud / Repeat Sentence: the given text marked word by word. */
   words?: WordMark[];
   createdAt: string;
