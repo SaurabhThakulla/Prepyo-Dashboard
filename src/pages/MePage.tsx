@@ -27,6 +27,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ReportIssueDialog from '@/components/support/ReportIssueDialog';
 import { ExamSwitcher } from '@/components/layout/sidebar/SecondaryPanel';
 import { profileImageUrl } from '@/lib/api';
+import { accountLines } from '@/lib/account';
 import { EXAM_LABELS, isAdmin, isPremiumUser } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -127,7 +128,11 @@ export default function MePage() {
         </Avatar>
         <div className="min-w-0 flex-1">
           <div className="truncate font-display text-lg font-bold text-foreground">{user.name || 'Learner'}</div>
-          <div className="truncate text-xs text-muted-foreground">{user.email}</div>
+          {accountLines(user).map(line => (
+            <div key={line} className="truncate text-xs text-muted-foreground">
+              {line}
+            </div>
+          ))}
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
             <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-primary">
               <Sparkles className="h-3 w-3" /> {user.xp ?? 0} XP
