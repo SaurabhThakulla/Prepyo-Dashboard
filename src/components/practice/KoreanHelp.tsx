@@ -14,15 +14,17 @@ interface KoreanHelpProps {
   premium: boolean;
   /** The English already in the review after answering; opens the panel. */
   initial?: Translation;
+  /** The language the question is in: Korean (EPS-TOPIK) or Japanese (JLPT). */
+  language?: 'Korean' | 'Japanese';
 }
 
 /**
- * The Help button on a Korean question, reading or listening. Premium learners get the
+ * The Help button on a Korean or Japanese question, reading or listening. Premium learners get the
  * English version, written and spoken; everyone else is shown what it is and
  * how to unlock it. The server decides too: the English is only served to
  * premium accounts.
  */
-export default function KoreanHelp({ questionId, premium, initial }: KoreanHelpProps) {
+export default function KoreanHelp({ questionId, premium, initial, language = 'Korean' }: KoreanHelpProps) {
   const [state, setState] = useState<'closed' | 'loading' | 'open' | 'upgrade' | 'error'>(initial ? 'open' : 'closed');
   const [translation, setTranslation] = useState<Translation | undefined>(initial);
 
@@ -73,7 +75,7 @@ export default function KoreanHelp({ questionId, premium, initial }: KoreanHelpP
             <Crown className="h-4 w-4" /> Help in English is a Premium feature
           </p>
           <p className="text-xs text-foreground/80 leading-relaxed">
-            Stuck on a question? Premium shows every Korean question in English, with its choices, and reads it
+            Stuck on a question? Premium shows every {language} question in English, with its choices, and reads it
             aloud, so you can check your understanding as you practise.
           </p>
           <Link

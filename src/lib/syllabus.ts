@@ -20,11 +20,17 @@ export const SYLLABUS: Record<ExamType, Partial<Record<SkillType, string[]>>> = 
     reading: syllabusData.exams.EPS_TOPIK.skills.reading.topics.map(t => t.name),
     listening: syllabusData.exams.EPS_TOPIK.skills.listening.topics.map(t => t.name),
   },
+  // JLPT's vocabulary and grammar share the reading score, so they sit under Reading.
+  JLPT: {
+    reading: syllabusData.exams.JLPT.skills.reading.topics.map(t => t.name),
+    listening: syllabusData.exams.JLPT.skills.listening.topics.map(t => t.name),
+  },
 };
 
 /**
  * The official instruction line for a task, where the exam prints one in its
- * own language (EPS-TOPIK's Korean 지시문). Undefined for tasks without one.
+ * own language (EPS-TOPIK's Korean 지시문, JLPT's Japanese one). Undefined for
+ * tasks without one.
  */
 export function taskInstruction(exam: ExamType, skill: SkillType, key: string): string | undefined {
   const topics = (syllabusData.exams[exam]?.skills as Record<string, { topics: (Topic & { instruction?: string })[] }> | undefined)?.[skill]?.topics ?? [];

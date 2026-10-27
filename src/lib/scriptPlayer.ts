@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import { assignVoices, FALLBACK_LANG, scriptLanguage, splitSentences, splitTurns } from '@/lib/listeningScript';
+import { assignVoices, FALLBACK_LANG, ScriptLanguage, scriptLanguage, splitSentences, splitTurns } from '@/lib/listeningScript';
 
 /**
  * Plays a recording script once, start to finish, without controls: the way an
@@ -74,11 +74,18 @@ export async function browserCanSpeak(timeoutMs = 1500): Promise<boolean> {
  * sentence by sentence. Chrome cuts long utterances off part-way, so a turn is
  * never handed over whole. If no sentence ever starts, `done` rejects with a
  * SpeechUnavailableError and the browser's voice is not tried again.
+ * `lang` overrides the language guessed from the text, which kanji alone
+ * cannot tell apart from no script at all.
  */
-export function speakScript(script: string, onProgress?: (fraction: number) => void, speed = 1): Playback {
+export function speakScript(
+  script: string,
+  onProgress?: (fraction: number) => void,
+  speed = 1,
+  lang?: ScriptLanguage,
+): Playback {
   const synth = window.speechSynthesis;
   const turns = splitTurns(script);
-  const language = scriptLanguage(script);
+  const language = lang ?? scriptLanguage(script);
   const voices = assignVoices(turns.map(turn => turn.speaker), synth.getVoices(), language);
   const pieces = turns.flatMap(turn => splitSentences(turn.text).map(text => ({ speaker: turn.speaker, text })));
   const total = pieces.reduce((sum, piece) => sum + piece.text.length, 0) || 1;

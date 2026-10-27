@@ -65,7 +65,7 @@ export default function QuestionPrompt({
         audioUrl={question.audioUrl}
         audioTranscript={reviewTranscript ?? question.audioTranscript}
         scriptOnRequest={question.scriptOnRequest}
-        singlePlay={(question.exam === 'IELTS' || question.exam === 'EPS_TOPIK') && question.skill === 'listening'}
+        singlePlay={(question.exam === 'IELTS' || question.exam === 'EPS_TOPIK' || question.exam === 'JLPT') && question.skill === 'listening'}
         repeat={listeningPlays(question)}
         title={question.title}
         allowTranscript={allowTranscript}

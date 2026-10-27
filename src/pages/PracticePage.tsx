@@ -30,7 +30,7 @@ import KoreanHelp from '@/components/practice/KoreanHelp';
 import PracticeResultDialog from '@/components/practice/PracticeResultDialog';
 import { answerMark, OPTION_MARK_CLASS, OPTION_MARK_LABEL } from '@/lib/answerMarks';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
-import OptionContent, { hasPictureOptions } from '@/components/practice/OptionContent';
+import OptionContent, { hasPictureOptions, MarkedText } from '@/components/practice/OptionContent';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
 import ConversationPassage, { conversationTurns } from '@/components/practice/ConversationPassage';
 import { isAiRatedListening, isReadAloudTask, isRepeatSentenceTask, isWordHighlightTask, passageText } from '@/lib/listening';
@@ -168,7 +168,7 @@ function PracticePageContent() {
   // EPS-TOPIK reading items stand alone rather than sitting on a passage, so
   // they are dealt one at a time like listening, not from the passage list.
   const readingList =
-    selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK' && !isMockMode && !mistakeId && !isAdmin(user);
+    selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK' && activeExam !== 'JLPT' && !isMockMode && !mistakeId && !isAdmin(user);
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -473,7 +473,7 @@ function PracticePageContent() {
 
   // Passage-based reading (IELTS, PTE). EPS-TOPIK reading items stand alone,
   // so they are practised and authored like any other single question.
-  const isReading = selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK';
+  const isReading = selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK' && activeExam !== 'JLPT';
   const isAdminUser = isAdmin(user);
   // The list (rendered at the bottom) only shows for these; while it shows, the left menu stays shut.
   const drawerShown = readingList || (!isAdminUser && !mistakeId && !isMockMode);
@@ -986,7 +986,7 @@ function PracticePageContent() {
                   singlePlay={
                     (currentQuestion.exam === 'IELTS' && currentQuestion.skill === 'listening') ||
                     (currentQuestion.exam === 'PTE' && (currentQuestion.skill === 'listening' || currentQuestion.skill === 'speaking')) ||
-                    (currentQuestion.exam === 'EPS_TOPIK' && currentQuestion.skill === 'listening')
+                    ((currentQuestion.exam === 'EPS_TOPIK' || currentQuestion.exam === 'JLPT') && currentQuestion.skill === 'listening')
                   }
                   repeat={listeningPlays(currentQuestion)}
                   // The recording plays on its own after the test's lead-in; speaking recording follows it.
@@ -1007,10 +1007,11 @@ function PracticePageContent() {
                   />
                 )}
 
-                {currentQuestion.exam === 'EPS_TOPIK' && (currentQuestion.hasTranslation || result?.review?.audioTranslation) && (
+                {(currentQuestion.exam === 'EPS_TOPIK' || currentQuestion.exam === 'JLPT') && (currentQuestion.hasTranslation || result?.review?.audioTranslation) && (
                   <KoreanHelp
                     key={`help-${currentQuestion.id}-${result?.review?.audioTranslation ? 'review' : 'question'}`}
                     questionId={currentQuestion.id}
+                    language={currentQuestion.exam === 'JLPT' ? 'Japanese' : 'Korean'}
                     premium={isPremiumUser(user)}
                     initial={
                       result?.review?.audioTranslation
@@ -1031,11 +1032,16 @@ function PracticePageContent() {
                       onChange={setBlankResponses}
                     />
                   ) : (
-                    <div className="px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl bg-primary/[0.04] text-[15px] sm:text-[16px] text-foreground leading-relaxed whitespace-pre-line sm:max-h-72 sm:overflow-y-auto">
+                    <div
+                      lang={currentQuestion.exam === 'JLPT' ? 'ja' : undefined}
+                      className="px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl bg-primary/[0.04] text-[15px] sm:text-[16px] text-foreground leading-relaxed whitespace-pre-line sm:max-h-72 sm:overflow-y-auto"
+                    >
                       {(() => {
                         const text = passageText(currentQuestion);
                         const turns = conversationTurns(text);
-                        return turns ? <ConversationPassage turns={turns} className="whitespace-normal" /> : text;
+                        if (turns) return <ConversationPassage turns={turns} className="whitespace-normal" />;
+                        // JLPT underlines the word a vocabulary question asks about, as the test paper does.
+                        return currentQuestion.exam === 'JLPT' ? <MarkedText text={text} /> : text;
                       })()}
                     </div>
                   )
@@ -1216,6 +1222,7 @@ function PracticePageContent() {
 
             <PracticeActionBar
               cost={speakingUnscored ? null : gradingUnits(selectedSkill, currentQuestion.typeId)}
+              costDoublesWhenLong={selectedSkill === 'speaking' && gradingUnits(selectedSkill, currentQuestion.typeId) === 5}
               index={mistakeId ? -1 : currentIndex}
               total={mistakeId ? 0 : questions.length}
               onJump={mistakeId ? undefined : i => openQuestion(questions[i])}

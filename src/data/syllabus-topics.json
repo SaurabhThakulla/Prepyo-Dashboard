@@ -346,6 +346,94 @@
           ]
         }
       }
+    },
+    "JLPT": {
+      "name": "Japanese-Language Proficiency Test N5 (also NAT-TEST 5Q)",
+      "scoringScale": "Score 0 to 180, pass 80",
+      "skills": {
+        "reading": {
+          "title": "Vocabulary, Grammar & Reading",
+          "description": "Read kanji and kana, pick the right word and grammar, and answer questions on short texts and notices",
+          "topics": [
+            {
+              "name": "Kanji Reading",
+              "simpleDescription": "Choose how the underlined kanji word is written in hiragana",
+              "instruction": "＿＿＿の ことばは ひらがなで どう かきますか。１・２・３・４から いちばん いい ものを ひとつ えらんで ください。"
+            },
+            {
+              "name": "Word Writing",
+              "simpleDescription": "Choose how the underlined word is written in kanji or katakana",
+              "instruction": "＿＿＿の ことばは どう かきますか。１・２・３・４から いちばん いい ものを ひとつ えらんで ください。"
+            },
+            {
+              "name": "Word in Context",
+              "simpleDescription": "Choose the word that fits the gap in the sentence",
+              "instruction": "（　　）に なにが はいりますか。１・２・３・４から いちばん いい ものを ひとつ えらんで ください。"
+            },
+            {
+              "name": "Same Meaning",
+              "simpleDescription": "Choose the sentence that means about the same as the underlined one",
+              "instruction": "＿＿＿の ぶんと だいたい おなじ いみの ぶんが あります。１・２・３・４から いちばん いい ものを ひとつ えらんで ください。"
+            },
+            {
+              "name": "Grammar Form",
+              "simpleDescription": "Choose the particle or grammar form that fits the gap",
+              "instruction": "（　　）に 何を 入れますか。１・２・３・４から いちばん いい ものを 一つ えらんで ください。"
+            },
+            {
+              "name": "Sentence Order",
+              "simpleDescription": "Put four pieces in order and choose the one that goes at ★",
+              "instruction": "★に 入る ものは どれですか。１・２・３・４から いちばん いい ものを 一つ えらんで ください。"
+            },
+            {
+              "name": "Text Grammar",
+              "simpleDescription": "Read a short text and choose what fits each gap",
+              "instruction": "（　）に 何を 入れますか。ぶんしょうの いみを かんがえて、１・２・３・４から いちばん いい ものを 一つ えらんで ください。"
+            },
+            {
+              "name": "Short Passage",
+              "simpleDescription": "Read a short note or message and answer the question",
+              "instruction": "つぎの ぶんしょうを 読んで、しつもんに こたえて ください。こたえは、１・２・３・４から いちばん いい ものを 一つ えらんで ください。"
+            },
+            {
+              "name": "Longer Passage",
+              "simpleDescription": "Read a longer text about daily life and answer the question",
+              "instruction": "つぎの ぶんしょうを 読んで、しつもんに こたえて ください。こたえは、１・２・３・４から いちばん いい ものを 一つ えらんで ください。"
+            },
+            {
+              "name": "Information Search",
+              "simpleDescription": "Find the facts you need in a notice, timetable or menu",
+              "instruction": "つぎの おしらせを 見て、しつもんに こたえて ください。こたえは、１・２・３・４から いちばん いい ものを 一つ えらんで ください。"
+            }
+          ]
+        },
+        "listening": {
+          "title": "Listening",
+          "description": "Listen to short conversations and sentences from school, shops and daily life. Each recording plays once",
+          "topics": [
+            {
+              "name": "Task Listening",
+              "simpleDescription": "Hear the question first, then the talk, and choose what the person will do",
+              "instruction": "はじめに しつもんを きいて ください。それから はなしを きいて、１から４の なかから、いちばん いい ものを ひとつ えらんで ください。"
+            },
+            {
+              "name": "Key Point Listening",
+              "simpleDescription": "Hear the question first, then the talk, and pick out the key fact",
+              "instruction": "はじめに しつもんを きいて ください。それから はなしを きいて、１から４の なかから、いちばん いい ものを ひとつ えらんで ください。"
+            },
+            {
+              "name": "What Do You Say",
+              "simpleDescription": "Hear a situation and choose what the person should say",
+              "instruction": "えを みながら しつもんを きいて ください。この ひとは なんと いいますか。１から３の なかから、いちばん いい ものを ひとつ えらんで ください。"
+            },
+            {
+              "name": "Quick Response",
+              "simpleDescription": "Hear one line and choose the best reply",
+              "instruction": "ぶんを きいて、１から３の なかから、いちばん いい ものを ひとつ えらんで ください。"
+            }
+          ]
+        }
+      }
     }
   }
 }

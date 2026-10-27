@@ -331,10 +331,51 @@ const EPS_TASK_META: Record<string, TaskMeta> = Object.fromEntries(
   ]),
 );
 
+const JLPT_VOCABULARY = {
+  color: 'bg-violet-600 text-white',
+  bgLight: 'bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300',
+};
+
+/**
+ * JLPT N5's fourteen problem sets, coded by section: V vocabulary, G grammar,
+ * R reading, L listening. The counts are the approximate ones in the Japan
+ * Foundation and JEES test guidelines (jlpt.jp/e/guideline/testsections.html).
+ */
+const JLPT_TASK_META: Record<string, TaskMeta> = Object.fromEntries(
+  (
+    [
+      ['V1', 'Kanji Reading', 'reading', 'Vocabulary · about 7 of 21'],
+      ['V2', 'Word Writing', 'reading', 'Vocabulary · about 5 of 21'],
+      ['V3', 'Word in Context', 'reading', 'Vocabulary · about 6 of 21'],
+      ['V4', 'Same Meaning', 'reading', 'Vocabulary · about 3 of 21'],
+      ['G1', 'Grammar Form', 'reading', 'Grammar · about 9 of 17'],
+      ['G2', 'Sentence Order', 'reading', 'Grammar · about 4 of 17'],
+      ['G3', 'Text Grammar', 'reading', 'Grammar · about 4 of 17'],
+      ['R1', 'Short Passage', 'reading', 'Reading · about 2 of 5'],
+      ['R2', 'Longer Passage', 'reading', 'Reading · about 2 of 5'],
+      ['R3', 'Information Search', 'reading', 'Reading · about 1 of 5'],
+      ['L1', 'Task Listening', 'listening', 'Listening · about 7 of 24'],
+      ['L2', 'Key Point Listening', 'listening', 'Listening · about 6 of 24'],
+      ['L3', 'What Do You Say', 'listening', 'Listening · about 5 of 24'],
+      ['L4', 'Quick Response', 'listening', 'Listening · about 6 of 24'],
+    ] as const
+  ).map(([code, name, skill, scoreWeight]) => [
+    typeKey(name),
+    {
+      code,
+      name,
+      skill,
+      scoreWeight,
+      ...(skill === 'listening' ? EPS_LISTENING : code.startsWith('R') ? EPS_READING : JLPT_VOCABULARY),
+    },
+  ]),
+);
+
 const TASK_META: Record<ExamType, Record<string, TaskMeta>> = {
   PTE: PTE_TASK_META,
   IELTS: IELTS_TASK_META,
   EPS_TOPIK: EPS_TASK_META,
+  JLPT: JLPT_TASK_META,
 };
 
 export function getTaskMetadata(
