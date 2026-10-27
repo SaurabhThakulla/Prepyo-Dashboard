@@ -2,8 +2,10 @@ import React, { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Check, Flame, Lock, RotateCcw, Star, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { COURSE, lessonHref, type Unit } from '@/data/learnKorean';
+import { lessonHref, type Unit } from '@/data/learnKorean';
+import { lessonCount } from '@/data/learnCourses';
 import { useLearnProgress } from '@/lib/hooks/useLearnProgress';
+import { useLearnCourse } from '@/lib/learn/course';
 import { dueCount, learnedWords, lessonState, nextLesson, unitDoneCount } from '@/lib/learn/progress';
 
 /** Each unit's colours. Written out in full so Tailwind keeps every class. */
@@ -17,24 +19,32 @@ const UNIT_STYLE: Record<string, { banner: string; node: string; ring: string }>
   farming: { banner: 'from-lime-500 to-green-600', node: 'bg-lime-500 border-lime-700', ring: 'ring-lime-300' },
   fishery: { banner: 'from-cyan-500 to-blue-600', node: 'bg-cyan-500 border-cyan-700', ring: 'ring-cyan-300' },
   'eps-topik': { banner: 'from-rose-500 to-rose-600', node: 'bg-rose-500 border-rose-700', ring: 'ring-rose-300' },
+  hiragana: { banner: 'from-sky-500 to-sky-600', node: 'bg-sky-500 border-sky-700', ring: 'ring-sky-300' },
+  katakana: { banner: 'from-cyan-500 to-blue-600', node: 'bg-cyan-500 border-cyan-700', ring: 'ring-cyan-300' },
+  'jp-basic': { banner: 'from-violet-500 to-violet-600', node: 'bg-violet-500 border-violet-700', ring: 'ring-violet-300' },
+  'jp-grammar': { banner: 'from-indigo-500 to-indigo-600', node: 'bg-indigo-500 border-indigo-700', ring: 'ring-indigo-300' },
+  'jp-numbers': { banner: 'from-amber-500 to-orange-500', node: 'bg-amber-500 border-amber-700', ring: 'ring-amber-300' },
+  'jp-daily': { banner: 'from-emerald-500 to-emerald-600', node: 'bg-emerald-500 border-emerald-700', ring: 'ring-emerald-300' },
+  'jp-kanji': { banner: 'from-lime-500 to-green-600', node: 'bg-lime-500 border-lime-700', ring: 'ring-lime-300' },
+  'jlpt-n5': { banner: 'from-rose-500 to-rose-600', node: 'bg-rose-500 border-rose-700', ring: 'ring-rose-300' },
 };
 
 // The path winds left and right, as it does in Duolingo.
 const WIND = [0, 44, 66, 44, 0, -44, -66, -44];
 
-const TOTAL_LESSONS = COURSE.reduce((sum, unit) => sum + unit.lessons.length, 0);
-
 /**
- * The beginner Korean course: a path of short lessons from the alphabet to the
- * test's own task types, with XP and a daily streak.
+ * A beginner course (Korean for EPS-TOPIK, Japanese for JLPT): a path of
+ * short lessons from the alphabet to the test's own task types, with XP and a
+ * daily streak.
  */
-export default function LearnKoreanPage() {
+export default function LearnPage() {
   const [searchParams] = useSearchParams();
+  const course = useLearnCourse();
   const { progress, streak } = useLearnProgress();
-  const upNext = nextLesson(progress);
+  const upNext = nextLesson(progress, course.units);
   const doneCount = Object.keys(progress.completed).length;
-  const known = learnedWords(progress).length;
-  const due = dueCount(progress);
+  const known = learnedWords(progress, course.units).length;
+  const due = dueCount(progress, new Date(), course.units);
   const focusUnit = searchParams.get('unit');
 
   useEffect(() => {
@@ -53,17 +63,14 @@ export default function LearnKoreanPage() {
     <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-10 space-y-8">
       <section className="rounded-3xl border-2 border-border bg-card p-5 sm:p-6 space-y-5">
         <div className="space-y-1">
-          <p className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">New to Korean?</p>
-          <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">Learn Korean for EPS-TOPIK</h1>
-          <p className="text-sm text-muted-foreground max-w-xl">
-            Start from the alphabet. Short lessons, a few minutes each, take you through everyday and workplace Korean
-            to every task in the test.
-          </p>
+          <p className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">New to {course.language}?</p>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">{course.heading}</h1>
+          <p className="text-sm text-muted-foreground max-w-xl">{course.intro}</p>
         </div>
         <div className="grid grid-cols-3 gap-3">
           <HeaderStat icon={<Zap className="h-5 w-5 text-amber-500" />} value={progress.xp} label="XP" />
           <HeaderStat icon={<Flame className={`h-5 w-5 ${streak > 0 ? 'text-orange-500' : 'text-muted-foreground'}`} />} value={streak} label="day streak" />
-          <HeaderStat icon={<Star className="h-5 w-5 text-emerald-500" />} value={`${doneCount}/${TOTAL_LESSONS}`} label="lessons" />
+          <HeaderStat icon={<Star className="h-5 w-5 text-emerald-500" />} value={`${doneCount}/${lessonCount(course)}`} label="lessons" />
         </div>
         {upNext && (
           <Button asChild size="lg" className="h-12 w-full sm:w-auto rounded-2xl border-b-4 border-emerald-700 bg-emerald-500 px-8 font-bold text-white hover:bg-emerald-600">
@@ -92,10 +99,11 @@ export default function LearnKoreanPage() {
         )}
       </section>
 
-      {COURSE.map(unit => (
+      {course.units.map(unit => (
         <UnitPath
           key={unit.id}
           unit={unit}
+          lang={course.lang}
           upNextKey={upNext ? `${upNext.unit.id}/${upNext.index}` : undefined}
           states={unit.lessons.map((_, i) => lessonState(progress, unit, i))}
           done={unitDoneCount(progress, unit)}
@@ -119,11 +127,13 @@ function HeaderStat({ icon, value, label }: { icon: React.ReactNode; value: Reac
 
 function UnitPath({
   unit,
+  lang,
   states,
   done,
   upNextKey,
 }: {
   unit: Unit;
+  lang: string;
   states: ReturnType<typeof lessonState>[];
   done: number;
   upNextKey?: string;
@@ -133,7 +143,7 @@ function UnitPath({
   return (
     <section id={`unit-${unit.id}`} className="scroll-mt-20 space-y-6">
       <div className={`flex items-center gap-4 rounded-2xl bg-gradient-to-r ${style.banner} p-4 sm:p-5 text-white shadow-md`}>
-        <div lang="ko" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/20 font-display text-2xl font-bold">
+        <div lang={lang} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/20 font-display text-2xl font-bold">
           {unit.emoji}
         </div>
         <div className="min-w-0 flex-1">

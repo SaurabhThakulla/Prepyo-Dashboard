@@ -20,7 +20,7 @@ const ReferralsPage = lazy(() => import('@/pages/ReferralsPage'));
 const SubscriptionPage = lazy(() => import('@/pages/SubscriptionPage'));
 const DiagnosticPage = lazy(() => import('@/pages/DiagnosticPage'));
 const TutorialsPage = lazy(() => import('@/pages/TutorialsPage'));
-const LearnKoreanPage = lazy(() => import('@/pages/LearnKoreanPage'));
+const LearnPage = lazy(() => import('@/pages/LearnPage'));
 const ReviewPage = lazy(() => import('@/pages/ReviewPage'));
 const LessonPage = lazy(() => import('@/pages/LessonPage'));
 const AdminPage = lazy(() => import('@/pages/AdminPage'));
@@ -87,7 +87,7 @@ export default function App() {
         <Route path="/diagnostic" element={<Suspense fallback={<AppPageSkeleton />}><DiagnosticPage /></Suspense>} />
         <Route path="/tutorials" element={<Suspense fallback={<AppPageSkeleton />}><TutorialsPage /></Suspense>} />
         <Route path="/videos" element={<Navigate to="/tutorials" replace />} />
-        <Route path="/learn" element={<Suspense fallback={<AppPageSkeleton />}><LearnKoreanPage /></Suspense>} />
+        <Route path="/learn" element={<Suspense fallback={<AppPageSkeleton />}><LearnPage /></Suspense>} />
         <Route path="/learn/review" element={<Suspense fallback={<AppPageSkeleton />}><ReviewPage /></Suspense>} />
         <Route path="/learn/:unitId/:lessonId" element={<Suspense fallback={<AppPageSkeleton />}><LessonPage /></Suspense>} />
         <Route path="/reports" element={<Suspense fallback={<AppPageSkeleton />}><MyReportsPage /></Suspense>} />

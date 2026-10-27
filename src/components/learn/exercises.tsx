@@ -3,7 +3,8 @@ import { BookOpen, Headphones, Lightbulb, ListOrdered } from 'lucide-react';
 import type { ChoiceExercise, MatchExercise, TaskIntroExercise, TeachExercise } from '@/data/learnKorean/types';
 import { getTaskMetadata } from '@/lib/taskMetadata';
 import { taskInstruction } from '@/lib/syllabus';
-import { KoreanVoice } from '@/lib/learn/speakKorean';
+import { useLearnCourse } from '@/lib/learn/course';
+import { LearnVoice } from '@/lib/learn/speech';
 import SpeakButton from './SpeakButton';
 
 /** Draws `[part]` underlined, the way EPS-TOPIK marks the part a question asks about. */
@@ -24,17 +25,20 @@ export function Marked({ text }: { text: string }) {
   );
 }
 
-const hasHangul = (text: string) => /[가-힣ㄱ-ㅣ]/.test(text);
+/** The language of a piece of course text, for its `lang` attribute: Korean, Japanese or neither. */
+export const textLang = (text: string): 'ko' | 'ja' | undefined =>
+  /[가-힣ㄱ-ㅣ]/.test(text) ? 'ko' : /[ぁ-んァ-ン一-龯]/.test(text) ? 'ja' : undefined;
 
-/** Shows a new letter, word or phrase: big Korean, its sound, its meaning. */
-export function TeachCard({ ex, voice }: { ex: TeachExercise; voice: KoreanVoice }) {
+/** Shows a new letter, word or phrase: big in the course language, its sound, its meaning. */
+export function TeachCard({ ex, voice }: { ex: TeachExercise; voice: LearnVoice }) {
+  const course = useLearnCourse();
   return (
     <div className="space-y-6">
       <p className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">New word</p>
       <div className="rounded-3xl border-2 border-border bg-card p-6 sm:p-8 text-center space-y-4 shadow-sm">
         {ex.picture && <div className="text-6xl sm:text-7xl leading-none" aria-hidden>{ex.picture}</div>}
         <div className="flex items-center justify-center gap-4 flex-wrap">
-          <span lang="ko" className="font-display text-4xl sm:text-5xl font-bold text-foreground break-keep">
+          <span lang={course.lang} className="font-display text-4xl sm:text-5xl font-bold text-foreground break-keep">
             {ex.ko}
           </span>
           <SpeakButton text={ex.speak ?? ex.ko} voice={voice} autoPlay />
@@ -54,7 +58,7 @@ export function TeachCard({ ex, voice }: { ex: TeachExercise; voice: KoreanVoice
 
 interface ChoiceProps {
   ex: ChoiceExercise;
-  voice: KoreanVoice;
+  voice: LearnVoice;
   selected: number | null;
   checked: boolean;
   onSelect: (index: number) => void;
@@ -62,8 +66,9 @@ interface ChoiceProps {
 
 /** One question, a few options, one right answer. */
 export function ChoiceCard({ ex, voice, selected, checked, onSelect }: ChoiceProps) {
-  // Without a Korean voice a listening question could not be answered, so its
-  // Korean is shown instead.
+  const course = useLearnCourse();
+  // Without a voice for the language a listening question could not be
+  // answered, so its text is shown instead.
   const showKo = ex.ko ?? (ex.speak && (!ex.listenOnly || checked || voice === 'none') ? ex.speak : undefined);
   // The options are written with the answer anywhere, often first; shown in a
   // fresh order each time so the position gives nothing away. Selection is
@@ -90,17 +95,17 @@ export function ChoiceCard({ ex, voice, selected, checked, onSelect }: ChoicePro
         {ex.picture && <div className="text-7xl leading-none" aria-hidden>{ex.picture}</div>}
         {showKo &&
           (ex.sign ? (
-            <div lang="ko" className="rounded-xl border-4 border-rose-600 bg-white px-6 py-3 font-display text-3xl font-black text-rose-600 shadow-md">
+            <div lang={course.lang} className="rounded-xl border-4 border-rose-600 bg-white px-6 py-3 font-display text-3xl font-black text-rose-600 shadow-md">
               {showKo}
             </div>
           ) : (
-            <p lang="ko" className="font-display text-2xl sm:text-3xl font-bold text-foreground leading-snug break-keep">
+            <p lang={course.lang} className="font-display text-2xl sm:text-3xl font-bold text-foreground leading-snug break-keep">
               <Marked text={showKo} />
             </p>
           ))}
       </div>
       {ex.listenOnly && voice === 'none' && !checked && (
-        <p className="text-xs text-muted-foreground">No Korean voice on this device, so the words are shown instead.</p>
+        <p className="text-xs text-muted-foreground">No {course.language} voice on this device, so the words are shown instead.</p>
       )}
 
       <div className={ex.pictureOptions ? 'grid grid-cols-2 gap-3' : 'grid gap-3'}>
@@ -110,7 +115,7 @@ export function ChoiceCard({ ex, voice, selected, checked, onSelect }: ChoicePro
             type="button"
             disabled={checked}
             onClick={() => onSelect(i)}
-            lang={hasHangul(option) ? 'ko' : undefined}
+            lang={textLang(option)}
             aria-label={
               ex.pictureOptions
                 ? `Picture ${order.indexOf(i) + 1}: ${option}`
@@ -169,7 +174,7 @@ export function MatchCard({ ex, onDone }: { ex: MatchExercise; onDone: (mistakes
             <button
               key={left}
               type="button"
-              lang={hasHangul(left) ? 'ko' : undefined}
+              lang={textLang(left)}
               disabled={found.has(i)}
               onClick={() => setPicked(i)}
               className={`${base} ${
@@ -191,7 +196,7 @@ export function MatchCard({ ex, onDone }: { ex: MatchExercise; onDone: (mistakes
             <button
               key={value}
               type="button"
-              lang={hasHangul(value) ? 'ko' : undefined}
+              lang={textLang(value)}
               disabled={doneRight.has(value)}
               onClick={() => pickRight(value)}
               className={`${base} ${
@@ -223,8 +228,9 @@ function shuffle<T>(items: T[]): T[] {
 }
 
 /**
- * What an EPS-TOPIK task is. Its name, Korean instruction and place in the test
- * come from the same syllabus and task metadata the practice pages use.
+ * What an exam task is (EPS-TOPIK or JLPT). Its name, instruction in the
+ * exam's language and place in the test come from the same syllabus and task
+ * metadata the practice pages use.
  */
 export function TaskIntroCard({
   ex,
@@ -233,10 +239,11 @@ export function TaskIntroCard({
 }: {
   ex: TaskIntroExercise;
   practice: { code: string; skill: 'reading' | 'listening'; typeKey: string };
-  voice: KoreanVoice;
+  voice: LearnVoice;
 }) {
-  const meta = getTaskMetadata('EPS_TOPIK', practice.skill, practice.typeKey);
-  const instruction = taskInstruction('EPS_TOPIK', practice.skill, practice.typeKey);
+  const course = useLearnCourse();
+  const meta = getTaskMetadata(course.exam, practice.skill, practice.typeKey);
+  const instruction = taskInstruction(course.exam, practice.skill, practice.typeKey);
   const listening = practice.skill === 'listening';
   const SkillIcon = listening ? Headphones : BookOpen;
 
@@ -261,14 +268,14 @@ export function TaskIntroCard({
         <div className="rounded-2xl border-2 border-border bg-card p-4 space-y-2">
           <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">The instruction you will see</p>
           <div className="flex items-start gap-3">
-            <p lang="ko" className="flex-1 text-lg font-semibold text-foreground break-keep">{instruction}</p>
+            <p lang={course.lang} className="flex-1 text-lg font-semibold text-foreground break-keep">{instruction}</p>
             <SpeakButton text={instruction} voice={voice} />
           </div>
           <p className="text-sm text-sky-700 dark:text-sky-300">{ex.instructionEn}</p>
           <div className="flex flex-wrap gap-1.5 pt-1">
             {ex.keyWords.map(([ko, en]) => (
               <span key={ko} className="rounded-lg bg-muted px-2 py-1 text-xs">
-                <span lang="ko" className="font-semibold text-foreground">{ko}</span>
+                <span lang={course.lang} className="font-semibold text-foreground">{ko}</span>
                 <span className="text-muted-foreground"> = {en}</span>
               </span>
             ))}
@@ -294,7 +301,7 @@ export function TaskIntroCard({
         <Lightbulb className="h-5 w-5 shrink-0 text-amber-500" />
         <p className="leading-relaxed">
           {ex.tip}
-          {listening && ' In the test every recording plays twice.'}
+          {listening && (course.exam === 'EPS_TOPIK' ? ' In the test every recording plays twice.' : ' In the test every recording plays only once.')}
         </p>
       </div>
     </div>

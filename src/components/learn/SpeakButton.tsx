@@ -1,25 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Volume2 } from 'lucide-react';
-import { KoreanVoice, sayKorean } from '@/lib/learn/speakKorean';
+import { useLearnCourse } from '@/lib/learn/course';
+import { LearnVoice, sayText } from '@/lib/learn/speech';
 
 interface SpeakButtonProps {
   text: string;
-  voice: KoreanVoice;
+  voice: LearnVoice;
   size?: 'sm' | 'lg';
   /** Say it once as soon as it appears, as a new word or listening question does. */
   autoPlay?: boolean;
   label?: string;
 }
 
-/** A round play button that says Korean text aloud. */
+/** A round play button that says course text aloud, in the course language. */
 export default function SpeakButton({ text, voice, size = 'sm', autoPlay = false, label }: SpeakButtonProps) {
+  const course = useLearnCourse();
   const [playing, setPlaying] = useState(false);
   const mounted = useRef(true);
 
   const play = () => {
     if (voice !== 'ready') return;
     setPlaying(true);
-    sayKorean(text)
+    sayText(text, course)
       .catch(() => {})
       .finally(() => mounted.current && setPlaying(false));
   };
@@ -44,7 +46,7 @@ export default function SpeakButton({ text, voice, size = 'sm', autoPlay = false
       onClick={play}
       disabled={voice !== 'ready'}
       aria-label={label ?? `Play "${text}"`}
-      title={voice === 'none' ? 'This device has no Korean voice' : 'Play'}
+      title={voice === 'none' ? `This device has no ${course.language} voice` : 'Play'}
       className={`relative inline-flex shrink-0 items-center justify-center rounded-2xl border-b-4 text-white transition-all active:translate-y-0.5 active:border-b-2 disabled:cursor-not-allowed disabled:opacity-40 ${
         big ? 'h-20 w-20' : 'h-11 w-11'
       } ${playing ? 'bg-sky-400 border-sky-600' : 'bg-sky-500 border-sky-700 hover:bg-sky-400'}`}
