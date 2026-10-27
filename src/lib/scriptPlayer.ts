@@ -354,6 +354,13 @@ export async function playRecording(source: RecordingSource, onProgress?: (fract
     return playClips(segments ?? [], onProgress);
   };
   if (!(await browserCanSpeak())) return fromServer();
-  const script = 'script' in source ? source.script : (await api.get<{ script: string }>(source.scriptUrl)).script;
+  let script: string;
+  try {
+    script = 'script' in source ? source.script : (await api.get<{ script: string }>(source.scriptUrl)).script;
+  } catch {
+    // A part with a stored recording keeps its script until marking; the
+    // server's voice reads it without sending the text.
+    return fromServer();
+  }
   return orElse(speakScript(script, onProgress), fromServer);
 }
