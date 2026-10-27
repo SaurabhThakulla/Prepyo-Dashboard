@@ -2,9 +2,11 @@ import { COURSE, lessonKey, Unit } from '@/data/learnKorean';
 import type { ChoiceExercise } from '@/data/learnKorean/types';
 
 /**
- * Progress through the beginner Korean course: which lessons are done, XP and
- * the daily streak. Pure functions over a plain object, so the rules can be
- * tested and the storage (browser now, the server later) can change freely.
+ * Progress through a beginner course (Korean, or Japanese): which lessons are
+ * done, XP and the daily streak. Pure functions over a plain object, so the
+ * rules can be tested and the storage can change freely. Each course keeps
+ * its own record; functions that walk the course take its units, Korean's by
+ * default.
  */
 export interface LearnProgress {
   /** "unit/lesson" → when it was first finished (ISO time) and best XP. */
@@ -14,7 +16,7 @@ export interface LearnProgress {
   /** The local calendar day of the last finished lesson, as YYYY-MM-DD. */
   lastDay: string | null;
   /**
-   * The word review schedule: Korean text → how well it is known (box 0–5),
+   * The word review schedule: the word's text → how well it is known (box 0–5),
    * the day it is next due, and when it was last reviewed (ISO time).
    */
   review: Record<string, ReviewState>;
@@ -129,9 +131,9 @@ export interface ReviewWord {
  * charts and sound-building cards ("ㄱ + ㅏ = 가") are left out: they are not
  * words to recall.
  */
-export function learnedWords(progress: LearnProgress): ReviewWord[] {
+export function learnedWords(progress: LearnProgress, units: Unit[] = COURSE): ReviewWord[] {
   const words = new Map<string, ReviewWord>();
-  for (const unit of COURSE) {
+  for (const unit of units) {
     for (const lesson of unit.lessons) {
       if (!progress.completed[lessonKey(unit.id, lesson.id)]) continue;
       for (const ex of lesson.exercises) {
@@ -144,9 +146,9 @@ export function learnedWords(progress: LearnProgress): ReviewWord[] {
 }
 
 /** Words due for review today, so the path can say how many are waiting. */
-export function dueCount(progress: LearnProgress, now: Date = new Date()): number {
+export function dueCount(progress: LearnProgress, now: Date = new Date(), units: Unit[] = COURSE): number {
   const today = dayOf(now);
-  return learnedWords(progress).filter(w => !progress.review[w.ko] || progress.review[w.ko].due <= today).length;
+  return learnedWords(progress, units).filter(w => !progress.review[w.ko] || progress.review[w.ko].due <= today).length;
 }
 
 /** Four options, the right one at a slot that varies, the rest from `pool`. */
@@ -172,8 +174,9 @@ function fourOptions(pool: string[], right: string, slot: number): { options: st
 export function buildReview(
   progress: LearnProgress,
   now: Date = new Date(),
+  course: { units: Unit[]; language: string } = { units: COURSE, language: 'Korean' },
 ): { word: ReviewWord; exercise: ChoiceExercise }[] {
-  const words = learnedWords(progress);
+  const words = learnedWords(progress, course.units);
   if (words.length < 4) return [];
   const today = dayOf(now);
   const state = (w: ReviewWord) => progress.review[w.ko];
@@ -195,7 +198,7 @@ export function buildReview(
     }
     if (i % 3 === 2) {
       const { options, answer } = fourOptions(koreans, word.ko, i);
-      const exercise: ChoiceExercise = { kind: 'choice', prompt: `How do you say “${word.en}” in Korean?`, options, answer, explain };
+      const exercise: ChoiceExercise = { kind: 'choice', prompt: `How do you say “${word.en}” in ${course.language}?`, options, answer, explain };
       return { word, exercise };
     }
     const { options, answer } = fourOptions(meanings, word.en, i);
@@ -255,8 +258,8 @@ export function mergeProgress(a: LearnProgress, b: LearnProgress): LearnProgress
 }
 
 /** The first lesson not yet done that the learner can open, in course order. */
-export function nextLesson(progress: LearnProgress): { unit: Unit; index: number } | undefined {
-  for (const unit of COURSE) {
+export function nextLesson(progress: LearnProgress, units: Unit[] = COURSE): { unit: Unit; index: number } | undefined {
+  for (const unit of units) {
     for (let index = 0; index < unit.lessons.length; index++) {
       if (lessonState(progress, unit, index) === 'open') return { unit, index };
     }

@@ -5,24 +5,26 @@
 // empty list means the learner has not generated that data yet, and the UI says
 // so rather than substituting a number.
 
-export type ExamType = 'PTE' | 'IELTS' | 'EPS_TOPIK';
+export type ExamType = 'PTE' | 'IELTS' | 'EPS_TOPIK' | 'JLPT';
 export type SkillType = 'speaking' | 'writing' | 'reading' | 'listening';
 
 /** Every exam, in the order they are offered. */
-export const EXAM_TYPES: ExamType[] = ['IELTS', 'PTE', 'EPS_TOPIK'];
+export const EXAM_TYPES: ExamType[] = ['IELTS', 'PTE', 'EPS_TOPIK', 'JLPT'];
 
 /** How an exam is named on screen. `EPS_TOPIK` is an identifier, not a name. */
 export const EXAM_LABELS: Record<ExamType, string> = {
   IELTS: 'IELTS',
   PTE: 'PTE',
   EPS_TOPIK: 'EPS-TOPIK',
+  // N5, which NAT-TEST 5Q mirrors: one exam prepares for both.
+  JLPT: 'JLPT N5',
 };
 
 export const isExamType = (value: unknown): value is ExamType =>
   typeof value === 'string' && (EXAM_TYPES as string[]).includes(value);
 
 /** The top of each exam's reporting scale. */
-export const EXAM_MAX_SCORE: Record<ExamType, number> = { IELTS: 9, PTE: 90, EPS_TOPIK: 100 };
+export const EXAM_MAX_SCORE: Record<ExamType, number> = { IELTS: 9, PTE: 90, EPS_TOPIK: 100, JLPT: 180 };
 
 /** How many times a listening item's recording runs per play: EPS-TOPIK plays each one twice. */
 export const listeningPlays = (question: { exam: ExamType; skill: SkillType }): number =>
@@ -51,9 +53,12 @@ export type PaidTier = Exclude<SubscriptionTier, 'free'>;
 
 export const ALL_SKILLS: SkillType[] = ['speaking', 'writing', 'reading', 'listening'];
 
-/** The skills an exam tests. Matches models.SkillsFor: EPS-TOPIK has no speaking or writing. */
+/**
+ * The skills an exam tests. Matches models.SkillsFor: EPS-TOPIK and JLPT have
+ * no speaking or writing; JLPT's vocabulary and grammar count as reading.
+ */
 export const skillsFor = (exam: ExamType): SkillType[] =>
-  exam === 'EPS_TOPIK' ? ['reading', 'listening'] : ALL_SKILLS;
+  exam === 'EPS_TOPIK' || exam === 'JLPT' ? ['reading', 'listening'] : ALL_SKILLS;
 
 /** Width of one level in XP. Levels start at 1. Matches models.XPPerLevel. */
 export const XP_PER_LEVEL = 400;
@@ -118,6 +123,8 @@ export interface SubscriptionState {
   aiBlocked?: boolean;
   /** Whether the AI coach is open to this user. Free learners do not get it. */
   tutorAllowed?: boolean;
+  /** An institution's student: full mocks are paid in AI credits, not counted. */
+  fullMocksFromPool?: boolean;
 }
 
 export type AIGradingsPeriod = 'day' | 'plan' | 'month';
@@ -174,7 +181,7 @@ export interface UserProfile {
   /** Null until the learner finishes or skips onboarding; absent on servers that predate it. */
   onboardingCompletedAt?: string | null;
   studyGoal?: 'university' | 'migration' | 'work' | 'other';
-  destination?: 'australia' | 'uk' | 'canada' | 'usa' | 'new-zealand' | 'south-korea' | 'other';
+  destination?: 'australia' | 'uk' | 'canada' | 'usa' | 'new-zealand' | 'south-korea' | 'japan' | 'other';
   priorAttempt?: 'first' | 'retake';
   previousScore?: number | null;
   focusSkill?: SkillType;

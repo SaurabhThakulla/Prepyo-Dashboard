@@ -45,8 +45,13 @@ export function taskLessonHref(skill: string, key?: string | null): string | und
   return lesson ? lessonHref(EPS_TOPIK.id, lesson.id) : undefined;
 }
 
-export function findLesson(unitId?: string, lessonId?: string): { unit: Unit; lesson: Lesson; index: number } | undefined {
-  const unit = COURSE.find(u => u.id === unitId);
+/** A lesson by its unit and lesson ids, in `units` (this course's by default). */
+export function findLesson(
+  unitId?: string,
+  lessonId?: string,
+  units: Unit[] = COURSE,
+): { unit: Unit; lesson: Lesson; index: number } | undefined {
+  const unit = units.find(u => u.id === unitId);
   const index = unit?.lessons.findIndex(l => l.id === lessonId) ?? -1;
   if (!unit || index < 0) return undefined;
   return { unit, lesson: unit.lessons[index], index };

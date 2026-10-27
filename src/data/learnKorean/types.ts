@@ -1,8 +1,13 @@
 /**
- * The beginner Korean course: units of short lessons, each a run of small
- * exercises. Everything here is written by us. Vocabulary themes follow the
- * everyday and workplace areas of HRD Korea's EPS-TOPIK standard (출제기준);
- * no official sample question is copied.
+ * The beginner courses: units of short lessons, each a run of small
+ * exercises. Everything here is written by us; no official sample question is
+ * copied. The Korean course's vocabulary themes follow the everyday and
+ * workplace areas of HRD Korea's EPS-TOPIK standard (출제기준); the Japanese
+ * course (data/learnJapanese) follows the JLPT N5 level.
+ *
+ * The Japanese course uses the same shapes. Its fields named `ko` hold the
+ * course language's text, Japanese there, and `roman` its kana reading and
+ * romaji where the text has kanji ("がっこう · gakkō").
  */
 
 /** Shows a letter, word or phrase with its sound and meaning. Nothing to answer. */
@@ -51,9 +56,9 @@ export interface MatchExercise {
 }
 
 /**
- * What an EPS-TOPIK task is and how to answer it. The task's name, Korean
- * instruction and place in the test are looked up from the syllabus and task
- * metadata, so they cannot drift from the practice pages.
+ * What an exam task is and how to answer it. The task's name, instruction in
+ * the exam's language and place in the test are looked up from the syllabus
+ * and task metadata, so they cannot drift from the practice pages.
  */
 export interface TaskIntroExercise {
   kind: 'taskIntro';
@@ -74,7 +79,7 @@ export interface Lesson {
   /** One line under the title, in the path and the menu. */
   summary: string;
   exercises: Exercise[];
-  /** Unit 5 only: the practice page for the task this lesson introduces. */
+  /** Exam-task lessons only: the practice page for the task this lesson introduces. */
   practice?: { code: string; skill: 'reading' | 'listening'; typeKey: string };
 }
 

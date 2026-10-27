@@ -1,0 +1,125 @@
+import { Unit } from '../learnKorean/types';
+
+/**
+ * The N5 grammar every test question leans on: particles, the polite verb
+ * forms, adjectives, and asking for things. Written for beginners; the
+ * sentences are our own.
+ */
+export const JP_GRAMMAR: Unit = {
+  id: 'jp-grammar',
+  number: 4,
+  title: 'Grammar Essentials',
+  description: 'Particles, polite verbs, past and negative, adjectives and asking for things: the grammar of N5.',
+  emoji: '🧩',
+  lessons: [
+    {
+      id: 'wa-desu',
+      title: 'は and です',
+      summary: 'A is B, A is not B',
+      exercises: [
+        { kind: 'teach', ko: 'これは ほんです。', roman: 'ko-re wa hon de-su', en: 'This is a book.', note: 'X は Y です: "X is Y". は is read "wa" here.' },
+        { kind: 'teach', ko: 'これは ほんじゃ ありません。', roman: 'ko-re wa hon ja a-ri-ma-sen', en: 'This is not a book.', note: 'じゃ ありません (or では ありません) is the polite "is not".' },
+        { kind: 'teach', ko: 'きのうは やすみでした。', roman: 'ki-nō wa ya-su-mi de-shi-ta', en: 'Yesterday was a day off.', note: 'でした is the past of です.' },
+        { kind: 'choice', prompt: 'Which sentence means "This is not a bag"?', options: ['これは かばんじゃ ありません。', 'これは かばんです。', 'これは かばんでした。', 'これは かばんですか。'], answer: 0 },
+        { kind: 'choice', prompt: 'Choose the right word: きのうは あめ（ ）。', options: ['でした', 'です', 'ます', 'ません'], answer: 0, explain: 'きのう is yesterday, so the past でした: "Yesterday it rained."' },
+        { kind: 'choice', prompt: 'Listen. Is the sentence yes or no?', speak: 'わたしは せんせいじゃ ありません。', listenOnly: true, options: ['Not a teacher', 'A teacher', 'Was a teacher', 'Is it a teacher?'], answer: 0, explain: 'じゃ ありません: "I am not a teacher."' },
+        { kind: 'choice', prompt: 'Listen. When is it about?', speak: 'きのうは にちようびでした。', listenOnly: true, options: ['Yesterday', 'Today', 'Tomorrow', 'Every day'], answer: 0, explain: 'きのう (kinō) is yesterday: "Yesterday was Sunday."' },
+        { kind: 'match', prompt: 'Match the ending to its meaning', pairs: [['です', 'is'], ['じゃ ありません', 'is not'], ['でした', 'was'], ['ですか', 'is it?']] },
+      ],
+    },
+    {
+      id: 'o-masu',
+      title: 'を and verbs',
+      summary: 'たべます, のみます, みます',
+      exercises: [
+        { kind: 'teach', ko: 'たべます', roman: 'ta-be-ma-su', en: 'eat', picture: '🍽️', note: 'ます is the polite ending for verbs, used with anyone you do not know well.' },
+        { kind: 'teach', ko: 'のみます', roman: 'no-mi-ma-su', en: 'drink', picture: '🥤' },
+        { kind: 'teach', ko: 'みます', roman: 'mi-ma-su', en: 'see, watch', picture: '👀' },
+        { kind: 'teach', ko: 'かいます', roman: 'ka-i-ma-su', en: 'buy', picture: '🛒' },
+        { kind: 'teach', ko: 'パンを たべます。', roman: 'pan o ta-be-ma-su', en: 'I eat bread.', note: 'を (o) marks the thing the verb acts on. The verb always comes last.' },
+        { kind: 'choice', prompt: 'Choose the right particle: みず（ ）のみます。', options: ['を', 'は', 'に', 'で'], answer: 0, explain: 'Water is what you drink: みずを のみます.' },
+        { kind: 'choice', prompt: 'What does this mean?', ko: 'テレビを みます。', options: ['I watch TV.', 'I buy a TV.', 'I eat in front of the TV.', 'I drink tea.'], answer: 0 },
+        { kind: 'match', prompt: 'Match the verb to its meaning', pairs: [['たべます', 'eat'], ['のみます', 'drink'], ['みます', 'watch'], ['かいます', 'buy']] },
+      ],
+    },
+    {
+      id: 'past-negative',
+      title: 'Past and negative',
+      summary: 'ました, ません, ませんでした',
+      exercises: [
+        { kind: 'teach', ko: 'たべました', roman: 'ta-be-ma-shi-ta', en: 'ate', note: 'ます → ました for the past.' },
+        { kind: 'teach', ko: 'たべません', roman: 'ta-be-ma-sen', en: 'do not eat', note: 'ます → ません for "not".' },
+        { kind: 'teach', ko: 'たべませんでした', roman: 'ta-be-ma-sen de-shi-ta', en: 'did not eat', note: 'ません + でした for "did not".' },
+        { kind: 'choice', prompt: 'Which means "I did not drink"?', options: ['のみませんでした', 'のみました', 'のみません', 'のみます'], answer: 0 },
+        { kind: 'choice', prompt: 'Choose the right form: きのう えいがを（ ）。', options: ['みました', 'みます', 'みません', 'みましょう'], answer: 0, explain: 'きのう (yesterday) needs the past: みました, "I watched a film."' },
+        { kind: 'choice', prompt: 'Listen. Did the person eat breakfast?', speak: 'けさ、あさごはんを たべませんでした。', listenOnly: true, options: ['No', 'Yes', 'Not yet said', 'Tomorrow'], answer: 0, explain: 'たべませんでした: "I didn’t eat breakfast this morning."' },
+        { kind: 'choice', prompt: 'Listen. When did it happen?', speak: 'せんしゅう、デパートで くつを かいました。', listenOnly: true, options: ['Last week', 'Next week', 'Today', 'Every week'], answer: 0, explain: 'せんしゅう (senshū) is last week, and かいました is past: "I bought shoes."' },
+        { kind: 'match', prompt: 'Match the form to its meaning', pairs: [['のみます', 'drink'], ['のみました', 'drank'], ['のみません', 'do not drink'], ['のみませんでした', 'did not drink']] },
+      ],
+    },
+    {
+      id: 'places',
+      title: 'に, へ and で',
+      summary: 'Going places, doing things there',
+      exercises: [
+        { kind: 'teach', ko: 'がっこうに いきます。', roman: 'gak-kō ni i-ki-ma-su', en: 'I go to school.', note: 'に or へ (read "e") marks where you go.' },
+        { kind: 'teach', ko: 'としょかんで べんきょうします。', roman: 'to-sho-kan de ben-kyō-shi-ma-su', en: 'I study at the library.', note: 'で marks where an action happens.' },
+        { kind: 'teach', ko: 'しちじに おきます。', roman: 'shi-chi-ji ni o-ki-ma-su', en: 'I get up at seven.', note: 'に also marks a time: "at 7".' },
+        { kind: 'teach', ko: 'バスで いきます。', roman: 'ba-su de i-ki-ma-su', en: 'I go by bus.', note: 'で can also be "by" or "with": a means.' },
+        { kind: 'choice', prompt: 'Choose the right particle: うち（ ）かえります。', options: ['に', 'を', 'で', 'が'], answer: 0, explain: 'You go back to home: うちに かえります.' },
+        { kind: 'choice', prompt: 'Choose the right particle: レストラン（ ）ばんごはんを たべます。', options: ['で', 'に', 'を', 'へ'], answer: 0, explain: 'Eating happens at the restaurant: レストランで.' },
+        { kind: 'choice', prompt: 'Listen. How does the person go?', speak: 'まいにち じてんしゃで かいしゃに いきます。', listenOnly: true, options: ['By bicycle', 'By bus', 'On foot', 'By train'], answer: 0, explain: 'じてんしゃ (jitensha) is a bicycle.' },
+        { kind: 'choice', prompt: 'Listen. Where does the person study?', speak: 'としょかんで べんきょうします。', listenOnly: true, options: ['At the library', 'At home', 'At school', 'At a café'], answer: 0, explain: 'としょかん (toshokan) is a library.' },
+        { kind: 'match', prompt: 'Match the particle to its use', pairs: [['に', 'to (a place), at (a time)'], ['で', 'at (where you do it)'], ['を', 'the thing acted on'], ['は', 'the topic']] },
+      ],
+    },
+    {
+      id: 'adjectives',
+      title: 'Adjectives',
+      summary: 'たかい, やすい, しずかな, きれいな',
+      exercises: [
+        { kind: 'teach', ko: 'たかい', roman: 'ta-ka-i', en: 'expensive; tall', note: 'い-adjectives end in い. The negative drops い and adds くない: たかくないです.' },
+        { kind: 'teach', ko: 'やすい', roman: 'ya-su-i', en: 'cheap' },
+        { kind: 'teach', ko: 'おおきい', roman: 'ō-ki-i', en: 'big' },
+        { kind: 'teach', ko: 'ちいさい', roman: 'chī-sa-i', en: 'small' },
+        { kind: 'teach', ko: 'しずかな', roman: 'shi-zu-ka-na', en: 'quiet', note: 'な-adjectives take な before a noun: しずかな へや, a quiet room. The negative is しずかじゃ ありません.' },
+        { kind: 'teach', ko: 'きれいな', roman: 'ki-rei-na', en: 'pretty; clean', note: 'きれい ends in い but is a な-adjective.' },
+        { kind: 'choice', prompt: 'Which word is the opposite of たかい (expensive)?', options: ['やすい', 'おおきい', 'しずかな', 'きれいな'], answer: 0 },
+        { kind: 'choice', prompt: 'Choose the right form: これは（ ）へやです。', options: ['しずかな', 'しずか', 'しずかい', 'しずかの'], answer: 0, explain: 'A な-adjective takes な before a noun: しずかな へや.' },
+        { kind: 'choice', prompt: 'Which means "not expensive"?', options: ['たかくないです', 'たかいじゃ ありません', 'たかいないです', 'たかくです'], answer: 0, explain: 'い-adjectives drop い and add くない: たかくないです.' },
+        { kind: 'match', prompt: 'Match the opposites', pairs: [['おおきい', 'ちいさい'], ['たかい', 'やすい'], ['あつい', 'さむい'], ['あたらしい', 'ふるい']] },
+      ],
+    },
+    {
+      id: 'aru-iru',
+      title: 'あります and います',
+      summary: 'There is, and where things are',
+      exercises: [
+        { kind: 'teach', ko: 'つくえの うえに ほんが あります。', roman: 'tsu-ku-e no u-e ni hon ga a-ri-ma-su', en: 'There is a book on the desk.', note: 'あります is for things; います for people and animals.' },
+        { kind: 'teach', ko: 'こうえんに こどもが います。', roman: 'kō-en ni ko-do-mo ga i-ma-su', en: 'There are children in the park.' },
+        { kind: 'teach', ko: 'うえ · した · なか · まえ · うしろ', speak: 'うえ、した、なか、まえ、うしろ', roman: 'ue · shita · naka · mae · ushiro', en: 'on · under · in · in front · behind', note: 'Place + の + うえ: つくえの うえ, on the desk.' },
+        { kind: 'choice', prompt: 'Choose the right verb: へやに ねこが（ ）。', options: ['います', 'あります', 'です', 'します'], answer: 0, explain: 'A cat is alive, so います.' },
+        { kind: 'choice', prompt: 'Choose the right verb: かばんの なかに さいふが（ ）。', options: ['あります', 'います', 'いきます', 'みます'], answer: 0, explain: 'A wallet is a thing, so あります.' },
+        { kind: 'choice', prompt: 'Listen. Where is the dog?', speak: 'いぬは いすの したに います。', listenOnly: true, options: ['Under the chair', 'On the chair', 'Behind the door', 'In the box'], answer: 0, explain: 'いすの した: under the chair.' },
+        { kind: 'choice', prompt: 'Listen. What is on the table?', speak: 'テーブルの うえに りんごが あります。', listenOnly: true, options: ['An apple', 'A cat', 'A book', 'Nothing'], answer: 0, explain: 'りんご (ringo) is an apple.' },
+        { kind: 'match', prompt: 'Match the place word', pairs: [['うえ', 'on, above'], ['した', 'under'], ['なか', 'inside'], ['うしろ', 'behind']] },
+      ],
+    },
+    {
+      id: 'te-kudasai',
+      title: 'Asking for things',
+      summary: 'ください, てください, ましょう',
+      exercises: [
+        { kind: 'teach', ko: 'みずを ください。', roman: 'mi-zu o ku-da-sa-i', en: 'Water, please.', note: 'Thing + を ください asks for something.' },
+        { kind: 'teach', ko: 'ちょっと まって ください。', roman: 'chot-to mat-te ku-da-sa-i', en: 'Please wait a moment.', note: 'The て-form of a verb + ください asks someone to do it.' },
+        { kind: 'teach', ko: 'ここに なまえを かいて ください。', roman: 'ko-ko ni na-ma-e o ka-i-te ku-da-sa-i', en: 'Please write your name here.' },
+        { kind: 'teach', ko: 'いっしょに たべましょう。', roman: 'is-sho ni ta-be-ma-shō', en: 'Let’s eat together.', note: 'ます → ましょう: "let’s".' },
+        { kind: 'choice', prompt: 'You want the shop worker to show you that bag. What do you say?', options: ['その かばんを みせて ください。', 'その かばんを みましょう。', 'その かばんを みました。', 'その かばんが あります。'], answer: 0 },
+        { kind: 'choice', prompt: 'What does this mean?', ko: 'もう いちど いって ください。', options: ['Please say it once more.', 'Please go once more.', 'Let’s say it again.', 'I said it once.'], answer: 0 },
+        { kind: 'choice', prompt: 'Listen. What is the person asked to do?', speak: 'すみません、まどを あけて ください。', listenOnly: true, options: ['Open the window', 'Close the door', 'Wait outside', 'Write their name'], answer: 0, explain: 'まど (mado) is a window; あけて ください: please open it.' },
+        { kind: 'choice', prompt: 'Listen. What does the person suggest?', speak: 'あした いっしょに えいがを みましょう。', listenOnly: true, options: ['Watching a film together tomorrow', 'Eating together today', 'Studying tomorrow', 'Going home now'], answer: 0, explain: 'みましょう: "let’s watch". えいが is a film.' },
+        { kind: 'match', prompt: 'Match the request', pairs: [['ください', 'please give me'], ['まって ください', 'please wait'], ['みせて ください', 'please show me'], ['たべましょう', 'let’s eat']] },
+      ],
+    },
+  ],
+};
