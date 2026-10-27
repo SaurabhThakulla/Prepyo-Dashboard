@@ -26,7 +26,8 @@ import {
   PlayCircle,
   LucideIcon,
 } from 'lucide-react';
-import { COURSE, lessonHref } from '@/data/learnKorean';
+import { lessonHref } from '@/data/learnKorean';
+import { courseForExam, hasLearnCourse, LearnCourse, lessonCount } from '@/data/learnCourses';
 import { dueCount, EMPTY_PROGRESS, LearnProgress, learnedWords, lessonState } from '@/lib/learn/progress';
 import { SYLLABUS, syllabusFor, taskSummary, typeKey } from '@/lib/syllabus';
 import { typeIdsFor } from '@/lib/readingTypes';
@@ -138,8 +139,8 @@ export function buildSections(
   pteVariant: PteExamVariant = 'academic',
 ): PrimarySectionConfig[] {
   const isPTE = activeExam === 'PTE';
-  // EPS-TOPIK has no sectional mocks yet; its full 40-question mock is to come.
-  const isEPS = activeExam === 'EPS_TOPIK';
+  // EPS-TOPIK and JLPT have no sectional mocks yet; their full mocks are to come.
+  const isLanguageExam = activeExam === 'EPS_TOPIK' || activeExam === 'JLPT';
 
   return [
     // Admins keep their Home section; learners reach their dashboard from the logo.
@@ -199,7 +200,7 @@ export function buildSections(
         // EPS-TOPIK reading is not on passages, so the passage bank says
         // nothing about it.
         const offered =
-          skill === 'reading' && availableReadingTypes && !isEPS
+          skill === 'reading' && availableReadingTypes && !isLanguageExam
             ? names.filter(name =>
                 typeIdsFor(typeKey(name)).some(id => availableReadingTypes.includes(id)),
               )
@@ -229,8 +230,9 @@ export function buildSections(
         return links;
       }),
     },
-    // The beginner course is Korean from the alphabet up, so only EPS-TOPIK has it.
-    ...(isEPS ? [learnSection(learnProgress)] : []),
+    // The beginner courses start from the alphabet: Korean for EPS-TOPIK,
+    // Japanese for JLPT. The other exams have none.
+    ...(hasLearnCourse(activeExam) ? [learnSection(learnProgress, courseForExam(activeExam))] : []),
     {
       id: 'mock',
       label: 'Mock',
@@ -238,7 +240,7 @@ export function buildSections(
       title: 'Mock Exam Simulator',
       description: 'Timed full exams with scorecards',
       items: [
-        ...(isEPS ? [] : isPTE ? pteMockItems(pteVariant) : ieltsMockItems()),
+        ...(isLanguageExam ? [] : isPTE ? pteMockItems(pteVariant) : ieltsMockItems()),
         {
           href: '/diagnostic',
           label: 'Level check',
@@ -384,19 +386,19 @@ function pteMockItems(variant: PteExamVariant = 'academic'): SecondaryNavItem[] 
 }
 
 /**
- * The beginner Korean course: the path first, then one heading per unit with
- * its lessons under it, the way Practice lists skills and their task types.
- * Each lesson shows whether it is done, open or still locked.
+ * A beginner course: the path first, then one heading per unit with its
+ * lessons under it, the way Practice lists skills and their task types. Each
+ * lesson shows whether it is done, open or still locked.
  */
-function learnSection(progress: LearnProgress): PrimarySectionConfig {
-  const total = COURSE.reduce((sum, unit) => sum + unit.lessons.length, 0);
+function learnSection(progress: LearnProgress, course: LearnCourse): PrimarySectionConfig {
+  const total = lessonCount(course);
   const done = Object.keys(progress.completed).length;
   return {
     id: 'learn',
     label: 'Learn',
     icon: GraduationCap,
-    title: 'Learn Korean',
-    description: 'Hangul to exam-ready, one small lesson at a time',
+    title: course.title,
+    description: course.tagline,
     items: [
       {
         href: '/learn',
@@ -408,9 +410,9 @@ function learnSection(progress: LearnProgress): PrimarySectionConfig {
         href: '/learn/review',
         label: 'Review words',
         icon: RotateCcw,
-        sublabel: reviewSublabel(progress),
+        sublabel: reviewSublabel(progress, course),
       },
-      ...COURSE.flatMap(unit =>
+      ...course.units.flatMap(unit =>
         unit.lessons.map((lesson, i): SecondaryNavItem => {
           const state = lessonState(progress, unit, i);
           return {
@@ -428,10 +430,10 @@ function learnSection(progress: LearnProgress): PrimarySectionConfig {
   };
 }
 
-function reviewSublabel(progress: LearnProgress): string {
-  const known = learnedWords(progress).length;
+function reviewSublabel(progress: LearnProgress, course: LearnCourse): string {
+  const known = learnedWords(progress, course.units).length;
   if (known < 4) return 'Opens once you have learned a few words';
-  const due = dueCount(progress);
+  const due = dueCount(progress, new Date(), course.units);
   return due > 0 ? `${due} of ${known} words due` : `All ${known} words fresh`;
 }
 

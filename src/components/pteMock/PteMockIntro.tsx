@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { speechRecognitionSupported } from '@/lib/speech';
 import { speakScript, unlockAudio } from '@/lib/scriptPlayer';
 import { TestMicrophone } from '@/lib/pteMock/audio';
-import { formatMinutes, pteMockMeta } from '@/lib/pteMock/catalog';
+import { costLabel, formatMinutes, pteMockMeta } from '@/lib/pteMock/catalog';
 import { useNavigate } from 'react-router-dom';
 import { useMockPapers } from '@/lib/hooks/useMockPapers';
 import { pteReportHref } from '@/lib/pteMock/catalog';
@@ -301,11 +301,7 @@ export default function PteMockIntro({ entry, serverTranscription, starting, onS
             )}
             {!resuming && (
               <p className="text-[11px] text-center text-muted-foreground">
-                {entry.cost.kind === 'full_mock'
-                  ? 'Uses one full mock test from your plan.'
-                  : `Uses ${entry.cost.credits} of your daily practice sub-tests${
-                      entry.cost.gradings ? ` and ${entry.cost.gradings} AI gradings` : ''
-                    }.`}{' '}
+                {costLabel(entry.cost)}{' '}
                 A test you have started carries on at no extra cost.
               </p>
             )}

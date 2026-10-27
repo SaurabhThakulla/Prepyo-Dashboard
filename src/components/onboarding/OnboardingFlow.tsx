@@ -141,8 +141,15 @@ const STEP_ICONS: Record<StepId, LucideIcon> = {
 // always work and the destination always South Korea, so those two questions
 // are answered for the learner rather than asked.
 const EPS_ANSWERED: StepId[] = ['goal', 'destination'];
+// JLPT always leads to Japan, but for study or for work, so only the
+// destination is answered.
+const JLPT_ANSWERED: StepId[] = ['destination'];
 const stepsFor = (exam: ExamType | null) =>
-  exam === 'EPS_TOPIK' ? STEPS.filter(step => !EPS_ANSWERED.includes(step.id)) : STEPS;
+  exam === 'EPS_TOPIK'
+    ? STEPS.filter(step => !EPS_ANSWERED.includes(step.id))
+    : exam === 'JLPT'
+      ? STEPS.filter(step => !JLPT_ANSWERED.includes(step.id))
+      : STEPS;
 
 const EXAMS: { id: ExamType; name: string; scale: string; blurb: string }[] = [
   {
@@ -163,10 +170,21 @@ const EXAMS: { id: ExamType; name: string; scale: string; blurb: string }[] = [
     scale: 'Scores 0–100',
     blurb: 'The Korean test for work in South Korea under the Employment Permit System.',
   },
+  {
+    id: 'JLPT',
+    name: 'JLPT / NAT N5',
+    scale: 'Scores 0–180',
+    blurb: 'The Japanese test for study and work in Japan. NAT-TEST 5Q has the same sections.',
+  },
 ];
 
 /** The ends of each exam's scale, drawn under its card. */
-const SCALE_ENDS: Record<ExamType, [string, string]> = { IELTS: ['0', '9'], PTE: ['10', '90'], EPS_TOPIK: ['0', '100'] };
+const SCALE_ENDS: Record<ExamType, [string, string]> = {
+  IELTS: ['0', '9'],
+  PTE: ['10', '90'],
+  EPS_TOPIK: ['0', '100'],
+  JLPT: ['0', '180'],
+};
 
 /** Exam-step look, and what Prepyo gives you for each exam (not claims about the exam itself). */
 const EXAM_STYLE: Record<
@@ -197,6 +215,14 @@ const EXAM_STYLE: Record<
     wash: 'from-emerald-50',
     bar: 'bg-emerald-600',
   },
+  JLPT: {
+    facts: ['All 14 N5 task types', 'Learn Japanese from kana'],
+    tile: 'bg-red-600 text-white',
+    soft: 'bg-red-50 text-red-700',
+    ring: 'border-red-600 ring-red-600/20',
+    wash: 'from-red-50',
+    bar: 'bg-red-600',
+  },
 };
 
 const UPCOMING_PREPARATIONS: {
@@ -204,15 +230,8 @@ const UPCOMING_PREPARATIONS: {
   name: string;
   scale: string;
   blurb: string;
-  flagCode: 'JP' | 'DE';
+  flagCode: 'DE';
 }[] = [
-  {
-    id: 'japanese',
-    name: 'Japanese',
-    scale: 'JLPT · NAT-TEST',
-    blurb: 'Proficiency test prep for university study and SSW work visas.',
-    flagCode: 'JP',
-  },
   {
     id: 'germany',
     name: 'Germany',
@@ -335,12 +354,24 @@ const SKILL_TASKS: Record<ExamType, Record<SkillType, string[]>> = {
     reading: ['Signs & safety notices', 'Fill in the blank'],
     listening: ['Choose the picture', 'Workplace dialogues'],
   },
+  JLPT: {
+    speaking: [],
+    writing: [],
+    reading: ['Kanji reading', 'Grammar form'],
+    listening: ['Task listening', 'Quick response'],
+  },
 };
 
-/** What each skill means in EPS-TOPIK, in place of the IELTS/PTE wording. */
-const EPS_SKILL_DETAIL: Partial<Record<SkillType, string>> = {
-  reading: 'Hangul, signs, notices and short workplace texts',
-  listening: 'Everyday and workplace Korean, each recording heard twice',
+/** What each skill means in EPS-TOPIK and JLPT, in place of the IELTS/PTE wording. */
+const LANGUAGE_SKILL_DETAIL: Partial<Record<ExamType, Partial<Record<SkillType, string>>>> = {
+  EPS_TOPIK: {
+    reading: 'Hangul, signs, notices and short workplace texts',
+    listening: 'Everyday and workplace Korean, each recording heard twice',
+  },
+  JLPT: {
+    reading: 'Kanji and kana, vocabulary, grammar and short texts',
+    listening: 'Everyday Japanese conversations, each heard once',
+  },
 };
 
 /** How each daily amount feels, shown under the time. */
@@ -437,7 +468,36 @@ const EPS_FEATURES: Feature[] = [
   ...FEATURES.slice(2),
 ];
 
-const featuresFor = (exam: ExamType) => (exam === 'EPS_TOPIK' ? EPS_FEATURES : FEATURES);
+/** The toolkit for JLPT, built the same way as EPS-TOPIK's, with a Japanese course. */
+const JLPT_FEATURES: Feature[] = [
+  {
+    ...FEATURES[0],
+    tag: 'Reading & listening',
+    text: 'Drill all 14 JLPT N5 task types, one question at a time.',
+    highlights: [
+      'Vocabulary, grammar, reading and listening, as in the test',
+      'Marked instantly, with the answer explained',
+      'Good for NAT-TEST 5Q too: the same sections',
+    ],
+  },
+  {
+    ...EPS_FEATURES[1],
+    title: 'Learn Japanese',
+    text: 'A short-lesson course from hiragana to the JLPT N5 tasks.',
+    highlights: ['Hiragana, katakana, then everyday words and grammar', 'Every word can be played aloud'],
+    where: 'Learn Japanese, in the sidebar',
+  },
+  {
+    ...EPS_FEATURES[2],
+    text: 'Stuck on the Japanese? Read and hear it in English.',
+    highlights: ['On every Japanese practice question', 'Text and audio, side by side with the Japanese'],
+    where: 'On each practice question',
+  },
+  ...FEATURES.slice(2),
+];
+
+const featuresFor = (exam: ExamType) =>
+  exam === 'EPS_TOPIK' ? EPS_FEATURES : exam === 'JLPT' ? JLPT_FEATURES : FEATURES;
 
 const CONFETTI_COLORS = ['#1b40a7', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#1d4ed8'];
 
@@ -491,6 +551,10 @@ export default function OnboardingFlow({
   const steps = stepsFor(exam);
   const step = steps[stepIndex];
   const eps = exam === 'EPS_TOPIK';
+  // Both language exams have a Learn course and Help in English, and no
+  // speaking, writing or mock tests yet.
+  const languageExam = eps || exam === 'JLPT';
+  const courseName = exam === 'JLPT' ? 'Learn Japanese' : 'Learn Korean';
   const firstName = user.name?.trim().split(/\s+/)[0] || 'there';
   const chosen: ExamType = exam ?? 'PTE';
   const scale = SCORE_SCALE[chosen];
@@ -565,7 +629,11 @@ export default function OnboardingFlow({
     if (next === 'EPS_TOPIK') {
       setGoal('work');
       setDestination('south-korea');
-    } else if (exam === 'EPS_TOPIK') {
+    } else if (next === 'JLPT') {
+      // Japan, for study or for work: the goal is still asked.
+      if (exam === 'EPS_TOPIK') setGoal(null);
+      setDestination('japan');
+    } else if (exam === 'EPS_TOPIK' || exam === 'JLPT') {
       setGoal(null);
       setDestination(null);
     }
@@ -799,7 +867,7 @@ export default function OnboardingFlow({
                         Coming soon
                       </span>
                       {UPCOMING_PREPARATIONS.map(option => {
-                        const FlagComponent = option.flagCode === 'JP' ? JP : DE;
+                        const FlagComponent = DE;
                         return (
                           <span
                             key={option.id}
@@ -1287,7 +1355,7 @@ export default function OnboardingFlow({
                             tone={style}
                             icon={<Icon className="h-7 w-7" />}
                             title={option.label}
-                            detail={(eps && EPS_SKILL_DETAIL[option.id]) || option.detail}
+                            detail={(exam && LANGUAGE_SKILL_DETAIL[exam]?.[option.id]) || option.detail}
                             chips={SKILL_TASKS[chosen][option.id]}
                           />
                         );
@@ -1390,7 +1458,7 @@ export default function OnboardingFlow({
                       headingRef={headingRef}
                       title="Choose how you want to prepare"
                       subtitle={
-                        eps
+                        languageExam
                           ? 'Start free, or unlock more daily practice and Help in English. You can upgrade any time.'
                           : 'Start free, or unlock more daily practice and full mock tests. You can upgrade any time.'
                       }
@@ -1549,8 +1617,8 @@ export default function OnboardingFlow({
                         <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-500 sm:text-base">
                           {needsPayment && selectedPlan && !paymentSubmitted
                             ? `One last step: pay for ${formatPlanName(selectedPlan.id)} and your plan is ready on your dashboard.`
-                            : eps
-                              ? 'Your plan is ready and waiting on your dashboard. Start with the Learn Korean course, or go straight to practice questions.'
+                            : languageExam
+                              ? `Your plan is ready and waiting on your dashboard. Start with the ${courseName} course, or go straight to practice questions.`
                               : "Your plan is ready and waiting on your dashboard. A quick diagnostic test is the best place to start."}
                         </p>
                       </div>
@@ -1616,12 +1684,12 @@ export default function OnboardingFlow({
                       ) : (
                         <div className="flex flex-col gap-2.5 sm:flex-row">
                           <Button
-                            onClick={() => void finish(eps ? '/learn' : '/diagnostic')}
+                            onClick={() => void finish(languageExam ? '/learn' : '/diagnostic')}
                             disabled={saving}
                             className="h-12 gap-2 rounded-full bg-blue-600 px-7 text-sm font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700"
                           >
                             <Sparkles className="h-4 w-4" />
-                            {eps ? 'Start Learn Korean' : 'Take the diagnostic test'}
+                            {languageExam ? `Start ${courseName}` : 'Take the diagnostic test'}
                           </Button>
                           <Button
                             variant="outline"
@@ -1701,12 +1769,14 @@ function PlanCard({
   const tier = planUsageTier(plan.id);
   const access = free ? 'Free forever' : `${days} days of access${plan.bonusDays ? ` (incl. ${plan.bonusDays} bonus)` : ''}`;
   const practice = plan.unlimited ? 'Unlimited practice sub-tests' : `${tier} daily practice`;
-  // EPS-TOPIK has no speaking, writing or mock tests yet, so its plans are
-  // told apart by Help in English, which only paid plans include.
+  // EPS-TOPIK and JLPT have no speaking, writing or mock tests yet, so their
+  // plans are told apart by Help in English, which only paid plans include.
   const perks =
     exam === 'EPS_TOPIK'
       ? [practice, 'The full Learn Korean course', free ? 'Upgrade any time for Help in English' : 'Help in English on Korean listening', access]
-      : [practice, `${tier} AI gradings for speaking & writing`, `${tier} full mock exams`, access];
+      : exam === 'JLPT'
+        ? [practice, 'The full Learn Japanese course', free ? 'Upgrade any time for Help in English' : 'Help in English on Japanese questions', access]
+        : [practice, `${tier} AI gradings for speaking & writing`, `${tier} full mock exams`, access];
 
   return (
     <OptionCard

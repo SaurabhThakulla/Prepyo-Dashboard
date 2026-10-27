@@ -30,6 +30,10 @@ const SKILL_SUBTITLES: Record<ExamType, Partial<Record<SkillType, string>>> = {
     reading: 'Pictures, signs, notices & short texts',
     listening: 'Words, replies & workplace dialogues',
   },
+  JLPT: {
+    reading: 'Kanji, vocabulary, grammar & short texts',
+    listening: 'Tasks, key points & quick replies',
+  },
 };
 
 function buildSkillRows(exam: ExamType, progress: ProgressSummary | null): SkillRow[] {

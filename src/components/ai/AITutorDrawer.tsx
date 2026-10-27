@@ -107,6 +107,11 @@ export default function AITutorDrawer() {
     'How do I tell 은/는 and 이/가 apart?',
     'Common EPS-TOPIK words for factory work',
     'How to read Korean prices and dates quickly',
+  ] : activeExam === 'JLPT' ? [
+    'When do I use は and when が?',
+    'Explain the ます, ました and ません forms',
+    'How do I read Japanese dates and times?',
+    'Tips for the JLPT N5 listening section',
   ] : activeExam === 'PTE' ? [
     'Give me the 90/90 Describe Image template',
     'How to score 79+ in Read Aloud oral fluency?',

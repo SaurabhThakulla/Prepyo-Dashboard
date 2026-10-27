@@ -25,10 +25,10 @@ export const ME_HREF = '/me';
 
 export function buildMobileTabs(activeExam: ExamType, user: UserProfile | null): MobileTab[] {
   const admin = isAdmin(user);
-  // Only EPS-TOPIK has the beginner course; for the other exams the same slot
-  // holds the video lessons.
+  // Only EPS-TOPIK and JLPT have a beginner course; for the other exams the
+  // same slot holds the video lessons.
   const learn: MobileTab =
-    activeExam === 'EPS_TOPIK'
+    activeExam === 'EPS_TOPIK' || activeExam === 'JLPT'
       ? { id: 'learn', label: 'Learn', icon: GraduationCap, href: '/learn' }
       : { id: 'learn', label: 'Videos', icon: PlayCircle, href: '/tutorials' };
 

@@ -17,7 +17,7 @@ export function useNavSections(): PrimarySectionConfig[] {
   // Reading headings are only worth showing when the bank has something behind
   // them, so the menu is checked against the same list the practice page deals
   // from. Left undefined until it arrives, which shows every heading.
-  const readingTypes = useReadingTypes(activeExam, Boolean(user) && activeExam !== 'EPS_TOPIK');
+  const readingTypes = useReadingTypes(activeExam, Boolean(user) && activeExam !== 'EPS_TOPIK' && activeExam !== 'JLPT');
   const availableReadingTypes = useMemo(
     () =>
       readingTypes.data

@@ -40,7 +40,7 @@ interface ExamDateDialogProps {
 
 
 /** The target a learner starts from when they have not set one. */
-const TARGET_DEFAULT: Record<ExamType, number> = { PTE: 79, IELTS: 7.5, EPS_TOPIK: 60 };
+const TARGET_DEFAULT: Record<ExamType, number> = { PTE: 79, IELTS: 7.5, EPS_TOPIK: 60, JLPT: 100 };
 
 const daysAhead = (days: number) => {
   const d = new Date();

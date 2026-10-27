@@ -22,6 +22,9 @@ export const SCORE_SCALE: Record<ExamType, ScoreScale> = {
   // 40 items at 2.5 points. HRD Korea's minimum scores are 30 (fishery), 45
   // (most industries) and 60 (manufacturing); above that, places go by rank.
   EPS_TOPIK: { min: 30, max: 100, step: 2.5, presets: [45, 60, 70, 80], fallback: 60 },
+  // N5 is out of 180 and passes at 80, with at least 38 in vocabulary, grammar
+  // and reading and 19 in listening; schools and employers may ask for more.
+  JLPT: { min: 80, max: 180, step: 1, presets: [80, 100, 120, 140], fallback: 100 },
 };
 
 export function clampScore(exam: ExamType, score: number): number {
@@ -49,6 +52,7 @@ const IELTS_BANDS: [number, string][] = [
 export function scoreLabel(exam: ExamType, score: number): string {
   if (exam === 'PTE') return `${Math.round(score)} out of 90`;
   if (exam === 'EPS_TOPIK') return `${formatScore(exam, score)} out of 100`;
+  if (exam === 'JLPT') return `${Math.round(score)} out of 180`;
   const band = IELTS_BANDS.find(([floor]) => score >= floor);
   return band ? `Band ${band[0]}: ${band[1]}` : '';
 }
@@ -120,6 +124,7 @@ export const DESTINATIONS: { id: Destination; label: string; code: string }[] = 
   { id: 'usa', label: 'United States', code: 'US' },
   { id: 'new-zealand', label: 'New Zealand', code: 'NZ' },
   { id: 'south-korea', label: 'South Korea', code: 'KR' },
+  { id: 'japan', label: 'Japan', code: 'JP' },
   { id: 'other', label: 'Somewhere else', code: '•••' },
 ];
 
