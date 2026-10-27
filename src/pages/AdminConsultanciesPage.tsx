@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Building2, Loader2, Plus } from 'lucide-react';
+import { BookOpen, Building2, CalendarDays, Check, Cpu, Loader2, Mail, Phone, Plus, Sparkles, UserRound, Users, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api';
-import { PLANS, type InstitutionPlan, type InstitutionProfile } from '@/institution/api';
-import { branchesLabel, examName, studentRangeLabel } from '@/institution/profile';
+import { PLANS, type ExamCode, type InstitutionPlan, type InstitutionProfile } from '@/institution/api';
+import { branchesLabel, EXAM_CHOICES, examName, studentRangeLabel } from '@/institution/profile';
 
 interface Usage {
   practiceAttempts: number;
@@ -28,12 +29,23 @@ export interface Consultancy {
   createdAt: string;
   adminName: string;
   adminEmail: string;
-  // What it answered in its setup; empty until onboarded.
+  // Its exams, set when Prepyo creates it, and the details its admin can add in Settings.
   profile: InstitutionProfile;
   onboarded: boolean;
   students: number;
   activeStudents: number;
   usage: Usage;
+  // What the plan costs a month, at NPR 3,000 per 10 seats.
+  monthlyPriceNpr: number;
+  // AI gradings each calendar month: per student, and for all students together (null: no cap).
+  aiGradingsPerStudent: number;
+  aiGradingsTotal: number | null;
+  // Used by all its students this calendar month.
+  aiGradingsUsed: number;
+  // What its students' AI calls cost this calendar month, in rupees, and the part of it
+  // estimated from tokens (calls with no cost reported by the provider).
+  aiCostNpr: number;
+  aiCostEstimatedNpr: number;
 }
 
 export interface ConsultancyStudent {
@@ -46,6 +58,10 @@ export interface ConsultancyStudent {
   addedAt: string;
   disabled: boolean;
   usage: Usage;
+  // Used this calendar month.
+  aiGradingsUsed: number;
+  // What the student's AI calls cost this calendar month, in rupees.
+  aiCostNpr: number;
 }
 
 const PERIODS = [
@@ -62,6 +78,31 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 const date = (value: string | null) => (value ? new Date(value).toLocaleDateString() : '—');
+const gradings = (value: number) => value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+const npr = (value: number) => `NPR ${value.toLocaleString(undefined, { maximumFractionDigits: value < 100 ? 2 : 0 })}`;
+
+/** Whether part of an AI cost is estimated, said under it. */
+const costHint = (estimated: number) =>
+  estimated > 0 ? `this month · ${npr(estimated)} estimated` : 'this month';
+
+/** What the consultancy answered in its setup, on one line. */
+const profileLine = (c: Consultancy) =>
+  [
+    c.profile.exams.length > 0 ? c.profile.exams.map(examName).join(', ') : 'No exams chosen',
+    c.profile.city,
+    c.profile.city && branchesLabel(c.profile.branches),
+    c.profile.monthlyStudents && `${studentRangeLabel(c.profile.monthlyStudents)}/month`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+function StatusBadge({ status }: { status: Consultancy['status'] }) {
+  return (
+    <Badge variant="outline" className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${STATUS_STYLES[status]}`}>
+      {status === 'none' ? 'no plan' : status}
+    </Badge>
+  );
+}
 
 /** Every consultancy with its students' usage; click one to see each student. */
 export default function AdminConsultanciesPage() {
@@ -91,6 +132,7 @@ export default function AdminConsultanciesPage() {
   }, [load]);
 
   const period = PERIODS.find(([value]) => value === days)?.[1] ?? '';
+  const open = list.find(c => c.id === openId) ?? null;
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-5 pb-10">
@@ -100,28 +142,25 @@ export default function AdminConsultanciesPage() {
             <h1 className="font-display text-2xl font-bold text-foreground">Consultancies</h1>
             <Badge variant="destructive">Admin</Badge>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Usage counts cover the chosen period; last active is all time. Click a consultancy to see its students.
+          <p className="mt-1 text-sm text-muted-foreground">
+            Usage counts cover the chosen period; last active is all time. Open a consultancy to manage it.
           </p>
         </div>
-        {!creating && (
-          <Button type="button" size="sm" onClick={() => (setCreating(true), setCreated(null))} className="font-bold text-xs gap-1">
-            <Plus className="w-4 h-4" />
-            Create consultancy
-          </Button>
-        )}
+        <Button type="button" size="sm" onClick={() => (setCreating(true), setCreated(null))} className="font-bold text-xs gap-1">
+          <Plus className="w-4 h-4" />
+          Create consultancy
+        </Button>
       </div>
 
-      {creating && (
-        <CreateConsultancyForm
-          onCancel={() => setCreating(false)}
-          onCreated={message => {
-            setCreating(false);
-            setCreated(message);
-            load();
-          }}
-        />
-      )}
+      <CreateConsultancyDialog
+        open={creating}
+        onOpenChange={setCreating}
+        onCreated={message => {
+          setCreating(false);
+          setCreated(message);
+          load();
+        }}
+      />
 
       {created && (
         <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
@@ -129,18 +168,40 @@ export default function AdminConsultanciesPage() {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      {list.length > 0 && (
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+          <Stat label="Consultancies" value={String(list.length)} hint={`${list.filter(c => c.status === 'none').length} without a plan`} />
+          <Stat label="Active plans" value={String(list.filter(c => c.status === 'active').length)} hint={`${list.filter(c => c.status === 'expired').length} expired`} />
+          <Stat
+            label="Students"
+            value={String(list.reduce((n, c) => n + c.students, 0))}
+            hint={`${list.reduce((n, c) => n + c.activeStudents, 0)} active in ${period.toLowerCase()}`}
+          />
+          <Stat
+            label="Monthly revenue"
+            value={`NPR ${list.filter(c => c.status === 'active').reduce((n, c) => n + c.monthlyPriceNpr, 0).toLocaleString()}`}
+            hint="from active plans"
+          />
+          <Stat
+            label="AI cost"
+            value={npr(list.reduce((n, c) => n + c.aiCostNpr, 0))}
+            hint={costHint(list.reduce((n, c) => n + c.aiCostEstimatedNpr, 0))}
+          />
+        </div>
+      )}
+
+      <div className="inline-flex flex-wrap gap-1 rounded-full border border-border bg-muted/50 p-1">
         {PERIODS.map(([value, label]) => (
-          <Button
+          <button
             key={value}
             type="button"
-            variant={days === value ? 'default' : 'outline'}
-            size="sm"
             onClick={() => setDays(value)}
-            className="font-bold text-xs"
+            className={`rounded-full px-4 py-1.5 text-xs font-bold transition-colors ${
+              days === value ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
             {label}
-          </Button>
+          </button>
         ))}
       </div>
 
@@ -166,72 +227,299 @@ export default function AdminConsultanciesPage() {
       )}
 
       {list.length > 0 && (
-        <Card className="p-4">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs min-w-[920px]">
-              <thead>
-                <tr className="text-left text-xs uppercase text-muted-foreground font-bold border-b border-border">
-                  <th className="py-2 pr-3">Consultancy</th>
-                  <th className="py-2 pr-3">Admin</th>
-                  <th className="py-2 pr-3">Created</th>
-                  <th className="py-2 pr-3">Status</th>
-                  <th className="py-2 pr-3 text-right">Students</th>
-                  <UsageHeaders />
-                </tr>
-              </thead>
-              <tbody>
-                {list.map(c => (
-                  <React.Fragment key={c.id}>
-                    <tr
-                      onClick={() => setOpenId(openId === c.id ? null : c.id)}
-                      className={`border-b border-border/60 cursor-pointer hover:bg-muted/50 ${openId === c.id ? 'bg-muted/50' : ''}`}
-                    >
-                      <td className="py-2.5 pr-3">
-                        <div className="font-bold text-foreground">{c.name}</div>
-                        <div className="text-[11px] text-muted-foreground font-mono">/{c.code}</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {c.onboarded
-                            ? `${c.profile.exams.map(examName).join(', ')} · ${c.profile.city} · ${branchesLabel(c.profile.branches)} · ${studentRangeLabel(c.profile.monthlyStudents)}/month`
-                            : 'Setup not finished'}
-                        </div>
-                      </td>
-                      <td className="py-2.5 pr-3">
-                        <div className="text-foreground">{c.adminName || '—'}</div>
-                        <div className="text-[11px] text-muted-foreground">{c.adminEmail}</div>
-                        <div className="text-[11px] text-muted-foreground">{c.phone}</div>
-                      </td>
-                      <td className="py-2.5 pr-3">{date(c.createdAt)}</td>
-                      <td className="py-2.5 pr-3">
-                        {c.plan && <div className="font-bold text-foreground">{PLANS[c.plan].name}</div>}
-                        <Badge variant="outline" className={`text-xs font-bold ${STATUS_STYLES[c.status]}`}>
-                          {c.status === 'none' ? 'no plan' : c.status}
-                        </Badge>
-                        {c.validUntil && <div className="text-[11px] text-muted-foreground">until {date(c.validUntil)}</div>}
-                      </td>
-                      <td className="py-2.5 pr-3 text-right">
-                        <div className="font-bold text-foreground">
-                          {c.students} / {c.seatLimit}
-                        </div>
-                        <div className="text-[11px] text-muted-foreground">{c.activeStudents} active</div>
-                      </td>
-                      <UsageCells usage={c.usage} />
-                    </tr>
-                    {openId === c.id && (
-                      <tr className="border-b border-border/60">
-                        <td colSpan={10} className="p-3 bg-muted/30 space-y-3">
-                          <PlanForm consultancy={c} onSaved={load} />
-                          <StudentsTable consultancyId={c.id} days={days} period={period} />
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+        <div className="space-y-3">
+          {list.map(c => (
+            <ConsultancyCard key={c.id} consultancy={c} onOpen={() => setOpenId(c.id)} />
+          ))}
+        </div>
       )}
+
+      <ConsultancyDialog consultancy={open} days={days} period={period} onClose={() => setOpenId(null)} onSaved={load} />
     </div>
+  );
+}
+
+/** One consultancy as a full-width row of the list; opens its dialog. */
+function ConsultancyCard({ consultancy: c, onOpen }: { consultancy: Consultancy; onOpen: () => void }) {
+  const seatsUsed = c.seatLimit > 0 ? Math.min(100, (c.students / c.seatLimit) * 100) : 0;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group grid w-full gap-3 rounded-xl border border-border/80 bg-card/60 px-4 py-3 text-left shadow-xs transition-all hover:border-primary/40 hover:bg-card hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_minmax(0,1.5fr)_minmax(0,1.1fr)] lg:items-center"
+    >
+      {/* Who */}
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 font-display text-sm font-bold text-primary transition-colors group-hover:bg-primary/15">
+          {c.name.charAt(0).toUpperCase()}
+        </span>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <h3 className="truncate font-display text-sm font-bold leading-tight text-foreground group-hover:text-primary">
+              {c.name}
+            </h3>
+            <StatusBadge status={c.status} />
+          </div>
+          <p className="truncate text-xs text-muted-foreground mt-0.5">
+            {c.adminName || '—'}
+          </p>
+        </div>
+      </div>
+
+      {/* Seats */}
+      <div className="space-y-1">
+        <div className="flex items-baseline justify-between text-xs max-w-[7.5rem]">
+          <span className="text-[11px] font-medium text-muted-foreground">Students</span>
+          <span className="font-semibold text-foreground tabular-nums">
+            {c.students} / {c.seatLimit}
+          </span>
+        </div>
+        <div className="h-1 max-w-[7.5rem] overflow-hidden rounded-full bg-muted">
+          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${seatsUsed}%` }} />
+        </div>
+        <div className="text-[11px] text-muted-foreground">{c.activeStudents} active</div>
+      </div>
+
+      {/* AI gradings */}
+      <div className="space-y-0.5">
+        <div className="flex items-baseline justify-between text-xs max-w-[7.5rem]">
+          <span className="text-[11px] font-medium text-muted-foreground">AI gradings</span>
+          <span className="font-semibold text-foreground tabular-nums">
+            {gradings(c.aiGradingsUsed)}{c.aiGradingsTotal !== null && ` / ${c.aiGradingsTotal.toLocaleString()}`}
+          </span>
+        </div>
+        <div className="text-[11px] text-muted-foreground">
+          {c.aiGradingsTotal === null ? 'this month · no cap' : 'this month'}
+        </div>
+        <div className="text-[11px] font-medium text-foreground">{npr(c.aiCostNpr)} AI cost</div>
+      </div>
+
+      {/* Usage */}
+      <div className="grid grid-cols-4 rounded-lg bg-muted/40 py-1.5 px-1 text-center">
+        <MiniStat label="Practice" value={c.usage.practiceAttempts} />
+        <MiniStat label="Mocks" value={c.usage.mocksCompleted} />
+        <MiniStat label="AI evals" value={c.usage.aiEvaluations} />
+        <MiniStat label="Tutor" value={c.usage.tutorMessages} />
+      </div>
+
+      {/* Plan */}
+      <div className="flex items-center justify-between gap-2 text-xs lg:block lg:text-right">
+        <div>
+          {c.plan ? (
+            <>
+              <div className="text-xs font-bold text-foreground">{PLANS[c.plan].name}</div>
+              <div className="text-[11px] text-muted-foreground">NPR {c.monthlyPriceNpr.toLocaleString()}/month</div>
+            </>
+          ) : (
+            <div className="text-xs font-medium text-muted-foreground">No plan</div>
+          )}
+        </div>
+        <div className="text-[10px] text-muted-foreground lg:mt-0.5">Active {date(c.usage.lastActiveAt)}</div>
+      </div>
+    </button>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <div className="text-xs font-bold text-foreground tabular-nums">{value}</div>
+      <div className="text-[10px] text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+/** A titled block inside a dialog. */
+function Section({
+  icon: Icon,
+  title,
+  hint,
+  action,
+  children,
+}: {
+  icon: React.ElementType;
+  title: string;
+  hint?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5 space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Icon className="h-[18px] w-[18px]" />
+          </span>
+          <div>
+            <h3 className="font-display text-[15px] font-bold leading-tight text-foreground">{title}</h3>
+            {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
+          </div>
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+const TONES = {
+  blue: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  violet: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+  emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  rose: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+} as const;
+
+function Stat({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  tone = 'blue',
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  icon?: React.ElementType;
+  tone?: keyof typeof TONES;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</div>
+        {Icon && (
+          <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${TONES[tone]}`}>
+            <Icon className="h-4 w-4" />
+          </span>
+        )}
+      </div>
+      <div className="mt-1.5 font-display text-xl font-bold text-foreground tabular-nums">{value}</div>
+      {hint && <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>}
+    </div>
+  );
+}
+
+/** A thin bar for how much of something is used. */
+function UsageBar({ used, of, tone = 'bg-primary' }: { used: number; of: number; tone?: string }) {
+  const share = of > 0 ? Math.min(100, (used / of) * 100) : 0;
+  return (
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+      <div className={`h-full rounded-full ${share >= 90 ? 'bg-rose-500' : tone}`} style={{ width: `${share}%` }} />
+    </div>
+  );
+}
+
+/** A label and value in the admin login block. */
+function Detail({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl bg-muted/40 px-3 py-2.5">
+      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+        <div className="truncate text-sm font-semibold text-foreground">{value}</div>
+      </div>
+    </div>
+  );
+}
+
+/** One consultancy: its numbers, admin, plan, AI gradings and students. */
+function ConsultancyDialog({
+  consultancy: c,
+  days,
+  period,
+  onClose,
+  onSaved,
+}: {
+  consultancy: Consultancy | null;
+  days: number;
+  period: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  return (
+    <Dialog open={c !== null} onOpenChange={open => !open && onClose()}>
+      <DialogContent className="max-w-5xl gap-0 bg-slate-50 p-0 sm:p-0 dark:bg-background">
+        {c && (
+          <>
+            <DialogHeader className="border-b border-border bg-card px-5 pb-5 pt-6 text-left sm:px-7">
+              <div className="flex flex-wrap items-center gap-4 pr-10">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary font-display text-2xl font-bold text-primary-foreground shadow-md">
+                  {c.name.charAt(0).toUpperCase()}
+                </span>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <DialogTitle className="text-xl sm:text-2xl">{c.name}</DialogTitle>
+                    <StatusBadge status={c.status} />
+                  </div>
+                  <DialogDescription className="text-sm">
+                    <span className="font-mono text-xs">/{c.code}</span> · {profileLine(c)}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-5 px-5 py-5 sm:px-7 sm:py-6">
+              <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+                <Stat
+                  icon={Users}
+                  label="Students"
+                  value={`${c.students} of ${c.seatLimit}`}
+                  hint={`${c.activeStudents} active in ${period.toLowerCase()}`}
+                />
+                <Stat
+                  icon={Sparkles}
+                  tone="violet"
+                  label="AI gradings"
+                  value={gradings(c.aiGradingsUsed)}
+                  hint={c.aiGradingsTotal === null ? 'this month · no cap' : `of ${c.aiGradingsTotal.toLocaleString()} this month`}
+                />
+                <Stat
+                  icon={CalendarDays}
+                  tone="emerald"
+                  label="Plan"
+                  value={c.plan ? PLANS[c.plan].name : 'None'}
+                  hint={c.validUntil ? `until ${date(c.validUntil)}` : 'not set'}
+                />
+                <Stat
+                  icon={Wallet}
+                  tone="amber"
+                  label="Price"
+                  value={c.plan ? `NPR ${c.monthlyPriceNpr.toLocaleString()}` : '—'}
+                  hint={c.plan ? 'per month' : undefined}
+                />
+                <Stat icon={Cpu} tone="rose" label="AI cost" value={npr(c.aiCostNpr)} hint={costHint(c.aiCostEstimatedNpr)} />
+              </div>
+
+              <div className="grid gap-5 lg:grid-cols-2">
+                <Section icon={UserRound} title="Admin login" hint="Who signs in for the consultancy">
+                  <div className="grid gap-2">
+                    <Detail icon={UserRound} label="Name" value={c.adminName || '—'} />
+                    <Detail icon={Mail} label="Email" value={c.adminEmail || '—'} />
+                    <Detail icon={Phone} label="Phone" value={c.phone} />
+                    <Detail icon={CalendarDays} label="Created" value={date(c.createdAt)} />
+                  </div>
+                </Section>
+                <Section icon={CalendarDays} title="Plan" hint="Renew, upgrade or set custom seats">
+                  <PlanForm consultancy={c} onSaved={onSaved} />
+                </Section>
+              </div>
+
+              <Section icon={Sparkles} title="AI gradings" hint="Speaking and writing answers the AI marks; they renew on the 1st of each month">
+                <GradingsForm consultancy={c} onSaved={onSaved} />
+              </Section>
+
+              <Section
+                icon={Users}
+                title="Students"
+                hint={`${c.students} of ${c.seatLimit} seats · usage over ${period.toLowerCase()}`}
+              >
+                <StudentsList consultancyId={c.id} days={days} perStudent={c.aiGradingsPerStudent} />
+              </Section>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -242,26 +530,61 @@ const nextMonth = () => {
   return d.toISOString().slice(0, 10);
 };
 
-const EMPTY_FORM = { institutionName: '', name: '', email: '', phone: '', password: '', plan: 'basic', validUntil: nextMonth() };
-const FIELDS = [
+const EMPTY_FORM = { institutionName: '', name: '', email: '', phone: '', password: '' };
+const DEFAULT_GRADINGS = { perStudent: '900', total: '' };
+type TextField = readonly [keyof typeof EMPTY_FORM, string, string];
+const CONSULTANCY_FIELDS: readonly TextField[] = [
   ['institutionName', 'Consultancy name', 'text'],
+  ['phone', 'Phone', 'tel'],
+];
+const ADMIN_FIELDS: readonly TextField[] = [
   ['name', 'Admin name', 'text'],
   ['email', 'Admin email', 'email'],
-  ['phone', 'Phone', 'tel'],
   ['password', 'Password (10+ characters)', 'text'],
-] as const;
+];
 
-/** Adds a consultancy with its admin login, on the plan and end date chosen. */
-function CreateConsultancyForm({ onCancel, onCreated }: { onCancel: () => void; onCreated: (message: string) => void }) {
+/** Adds a consultancy with its admin login, on the plan, end date and AI gradings chosen. */
+function CreateConsultancyDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated: (message: string) => void;
+}) {
   const [form, setForm] = useState(EMPTY_FORM);
+  const [exams, setExams] = useState<ExamCode[]>([]);
+  const [plan, setPlan] = useState<PlanValue>(newPlan);
+  const [aiGradings, setAIGradings] = useState(DEFAULT_GRADINGS);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Each time it opens it starts empty.
+  useEffect(() => {
+    if (open) {
+      setForm(EMPTY_FORM);
+      setExams([]);
+      setPlan(newPlan());
+      setAIGradings(DEFAULT_GRADINGS);
+      setError(null);
+    }
+  }, [open]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (exams.length === 0) {
+      setError('Choose at least one exam the consultancy teaches.');
+      return;
+    }
     setSaving(true);
     try {
-      const made = await api.post<{ name: string; code: string }>('/admin/consultancies', form);
+      const made = await api.post<{ name: string; code: string }>('/admin/consultancies', {
+        ...form,
+        exams,
+        ...planBody(plan),
+        aiGradings: gradingsBody(aiGradings.perStudent, aiGradings.total),
+      });
       onCreated(`${made.name} created at /${made.code}. The admin signs in with ${form.email.trim().toLowerCase()}.`);
     } catch (err) {
       setError(errorMessage(err));
@@ -270,75 +593,205 @@ function CreateConsultancyForm({ onCancel, onCreated }: { onCancel: () => void; 
     }
   };
 
+  const fields = (list: readonly TextField[]) =>
+    list.map(([key, label, type]) => (
+      <label key={key} className="space-y-1 text-[11px] font-bold text-muted-foreground">
+        <span>{label}</span>
+        <Input
+          type={type}
+          required
+          value={form[key]}
+          onChange={e => setForm({ ...form, [key]: e.target.value })}
+          minLength={key === 'password' ? 10 : undefined}
+        />
+      </label>
+    ));
+
   return (
-    <Card className="p-4">
-      <form onSubmit={submit} className="space-y-3">
-        <CardTitle className="text-sm">New consultancy</CardTitle>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {FIELDS.map(([key, label, type]) => (
-            <label key={key} className="space-y-1 text-[11px] font-bold text-muted-foreground">
-              <span>{label}</span>
-              <Input
-                type={type}
-                required
-                value={form[key]}
-                onChange={e => setForm({ ...form, [key]: e.target.value })}
-                minLength={key === 'password' ? 10 : undefined}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl gap-4">
+        <DialogHeader className="text-left">
+          <DialogTitle>New consultancy</DialogTitle>
+          <DialogDescription>Creates the consultancy and the login its admin uses to add students.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <Section icon={Building2} title="Consultancy">
+            <div className="grid gap-3 sm:grid-cols-2">{fields(CONSULTANCY_FIELDS)}</div>
+          </Section>
+          <Section icon={BookOpen} title="Exams supported" hint="Students can be added for these exams">
+            <ExamPicker value={exams} onChange={setExams} />
+          </Section>
+          <Section icon={UserRound} title="Admin login">
+            <div className="grid gap-3 sm:grid-cols-2">{fields(ADMIN_FIELDS)}</div>
+          </Section>
+          <Section icon={CalendarDays} title="Plan">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <PlanFields value={plan} onChange={setPlan} />
+            </div>
+          </Section>
+          <Section icon={Sparkles} title="AI gradings" hint="You can change these later">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <GradingsFields
+                perStudent={aiGradings.perStudent}
+                total={aiGradings.total}
+                onChange={(perStudent, total) => setAIGradings({ perStudent, total })}
               />
-            </label>
-          ))}
-          <PlanFields
-            plan={form.plan}
-            validUntil={form.validUntil}
-            onChange={(plan, validUntil) => setForm({ ...form, plan, validUntil })}
-          />
-        </div>
-        {error && <p className="text-[11px] font-medium text-rose-600 dark:text-rose-400">{error}</p>}
-        <div className="flex gap-2">
-          <Button type="submit" size="sm" disabled={saving} className="font-bold text-xs">
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            Create
-          </Button>
-          <Button type="button" size="sm" variant="outline" onClick={onCancel} className="font-bold text-xs">
-            Cancel
-          </Button>
-        </div>
-      </form>
-    </Card>
+            </div>
+          </Section>
+          {error && <p className="text-[11px] font-medium text-rose-600 dark:text-rose-400">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => onOpenChange(false)} className="font-bold text-xs">
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" disabled={saving} className="font-bold text-xs">
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+              Create consultancy
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-/** Plan select and end date, shared by the create form and the change-plan form. */
-function PlanFields({ plan, validUntil, onChange }: { plan: string; validUntil: string; onChange: (plan: string, validUntil: string) => void }) {
+/** The exams a consultancy teaches, as toggles. */
+function ExamPicker({ value, onChange }: { value: ExamCode[]; onChange: (exams: ExamCode[]) => void }) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-3">
+      {EXAM_CHOICES.map(exam => {
+        const on = value.includes(exam.id);
+        return (
+          <button
+            key={exam.id}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onChange(on ? value.filter(id => id !== exam.id) : [...value, exam.id])}
+            className={`flex items-start gap-2.5 rounded-xl border p-3 text-left transition-colors ${
+              on ? 'border-primary bg-primary/5' : 'border-border bg-background hover:border-primary/40'
+            }`}
+          >
+            <span
+              className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                on ? 'border-primary bg-primary text-primary-foreground' : 'border-input'
+              }`}
+            >
+              {on && <Check className="h-3 w-3" />}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-foreground">{exam.name}</span>
+              <span className="block text-[11px] text-muted-foreground">{exam.detail}</span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A plan as the forms hold it; seats is only used on a custom plan. */
+interface PlanValue {
+  plan: string;
+  validUntil: string;
+  seats: string;
+}
+
+const newPlan = (): PlanValue => ({ plan: 'basic', validUntil: nextMonth(), seats: '' });
+
+/** The plan request body: seats go only with a custom plan. */
+const planBody = ({ plan, validUntil, seats }: PlanValue) =>
+  plan === 'custom' ? { plan, validUntil, seats: Number(seats) } : { plan, validUntil };
+
+/** Plan select, students on a custom plan, and end date; shared by the create form and the change-plan form. */
+function PlanFields({ value, onChange }: { value: PlanValue; onChange: (value: PlanValue) => void }) {
   return (
     <>
       <label className="space-y-1 text-[11px] font-bold text-muted-foreground">
         <span>Plan</span>
         <select
           required
-          value={plan}
-          onChange={e => onChange(e.target.value, validUntil)}
+          value={value.plan}
+          onChange={e => onChange({ ...value, plan: e.target.value })}
           className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
         >
           {Object.entries(PLANS).map(([id, p]) => (
             <option key={id} value={id}>
-              {p.name} · {p.seats} students
+              {id === 'custom' ? 'Custom · you choose the students' : `${p.name} · ${p.seats} students`}
             </option>
           ))}
         </select>
       </label>
+      {value.plan === 'custom' && (
+        <label className="space-y-1 text-[11px] font-bold text-muted-foreground">
+          <span>Number of students</span>
+          <Input
+            type="number"
+            min={1}
+            max={10000}
+            required
+            value={value.seats}
+            placeholder="e.g. 40"
+            onChange={e => onChange({ ...value, seats: e.target.value })}
+          />
+        </label>
+      )}
       <label className="space-y-1 text-[11px] font-bold text-muted-foreground">
         <span>Plan ends on</span>
-        <Input type="date" required value={validUntil} onChange={e => onChange(plan, e.target.value)} />
+        <Input type="date" required value={value.validUntil} onChange={e => onChange({ ...value, validUntil: e.target.value })} />
       </label>
     </>
   );
 }
 
+/** The AI gradings request body; an empty total means no cap. */
+const gradingsBody = (perStudent: string, total: string) => ({
+  perStudent: Number(perStudent),
+  total: total.trim() === '' ? null : Number(total),
+});
+
+/** Per-student and overall monthly AI gradings, shared by the create form and the gradings form. */
+function GradingsFields({
+  perStudent,
+  total,
+  onChange,
+}: {
+  perStudent: string;
+  total: string;
+  onChange: (perStudent: string, total: string) => void;
+}) {
+  return (
+    <>
+      <label className="space-y-1 text-[11px] font-bold text-muted-foreground">
+        <span>AI gradings per student / month</span>
+        <Input type="number" min={0} required value={perStudent} onChange={e => onChange(e.target.value, total)} />
+      </label>
+      <label className="space-y-1 text-[11px] font-bold text-muted-foreground">
+        <span>All students together / month (empty: no cap)</span>
+        <Input type="number" min={0} value={total} placeholder="No cap" onChange={e => onChange(perStudent, e.target.value)} />
+      </label>
+    </>
+  );
+}
+
+/** A form's save button with what happened after the last save. */
+function SaveRow({ saving, label, message }: { saving: boolean; label: string; message: string | null }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <Button type="submit" size="sm" disabled={saving} className="font-bold text-xs">
+        {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+        {label}
+      </Button>
+      {message && <p className="text-[11px] font-medium text-muted-foreground">{message}</p>}
+    </div>
+  );
+}
+
 /** Changes a consultancy's plan or end date, to renew or upgrade it. */
 function PlanForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved: () => void }) {
-  const [plan, setPlan] = useState<string>(consultancy.plan || 'basic');
-  const [validUntil, setValidUntil] = useState(consultancy.validUntil?.slice(0, 10) || nextMonth());
+  const [plan, setPlan] = useState<PlanValue>({
+    plan: consultancy.plan || 'basic',
+    validUntil: consultancy.validUntil?.slice(0, 10) || nextMonth(),
+    seats: consultancy.plan === 'custom' ? String(consultancy.seatLimit) : '',
+  });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -346,7 +799,7 @@ function PlanForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved:
     e.preventDefault();
     setSaving(true);
     try {
-      await api.put(`/admin/consultancies/${consultancy.id}/plan`, { plan, validUntil });
+      await api.put(`/admin/consultancies/${consultancy.id}/plan`, planBody(plan));
       setMessage('Plan saved.');
       onSaved();
     } catch (err) {
@@ -357,21 +810,60 @@ function PlanForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved:
   };
 
   return (
-    <form onSubmit={save} className="flex flex-wrap items-end gap-3">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <PlanFields plan={plan} validUntil={validUntil} onChange={(p, v) => (setPlan(p), setValidUntil(v))} />
+    <form onSubmit={save} className="space-y-3">
+      {/* One column: it sits in half the dialog */}
+      <div className="grid gap-3">
+        <PlanFields value={plan} onChange={setPlan} />
       </div>
-      <Button type="submit" size="sm" disabled={saving} className="font-bold text-xs">
-        {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-        Save plan
-      </Button>
-      {message && <p className="text-[11px] font-medium text-muted-foreground">{message}</p>}
+      <SaveRow saving={saving} label="Save plan" message={message} />
     </form>
   );
 }
 
-/** One consultancy's students with their own usage. */
-function StudentsTable({ consultancyId, days, period }: { consultancyId: string; days: number; period: string }) {
+/** Sets the AI gradings a consultancy's students get each calendar month. */
+function GradingsForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved: () => void }) {
+  const [perStudent, setPerStudent] = useState(String(consultancy.aiGradingsPerStudent));
+  const [total, setTotal] = useState(consultancy.aiGradingsTotal === null ? '' : String(consultancy.aiGradingsTotal));
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.put(`/admin/consultancies/${consultancy.id}/ai-gradings`, gradingsBody(perStudent, total));
+      setMessage('AI gradings saved.');
+      onSaved();
+    } catch (err) {
+      setMessage(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cap = consultancy.aiGradingsTotal;
+  return (
+    <form onSubmit={save} className="space-y-4">
+      <div className="space-y-2 rounded-xl bg-muted/40 p-3">
+        <div className="flex items-baseline justify-between gap-3 text-sm">
+          <span className="font-semibold text-foreground">Used this month</span>
+          <span className="tabular-nums text-muted-foreground">
+            <span className="font-display text-base font-bold text-foreground">{gradings(consultancy.aiGradingsUsed)}</span>
+            {cap === null ? ' · no cap' : ` of ${cap.toLocaleString()}`}
+          </span>
+        </div>
+        {cap !== null && <UsageBar used={consultancy.aiGradingsUsed} of={cap} tone="bg-violet-500" />}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <GradingsFields perStudent={perStudent} total={total} onChange={(p, t) => (setPerStudent(p), setTotal(t))} />
+      </div>
+      <SaveRow saving={saving} label="Save AI gradings" message={message} />
+    </form>
+  );
+}
+
+/** One consultancy's students, one row each, with their own usage. */
+function StudentsList({ consultancyId, days, perStudent }: { consultancyId: string; days: number; perStudent: number }) {
   const [students, setStudents] = useState<ConsultancyStudent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -386,66 +878,72 @@ function StudentsTable({ consultancyId, days, period }: { consultancyId: string;
     };
   }, [consultancyId, days]);
 
-  if (error) return <p className="text-[11px] text-rose-600 dark:text-rose-400">{error}</p>;
-  if (!students) return <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />;
-  if (students.length === 0) return <p className="text-[11px] text-muted-foreground">No students added yet.</p>;
+  if (error) return <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>;
+  if (!students) return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
+  if (students.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border py-8 text-center text-sm text-muted-foreground">
+        No students added yet.
+      </div>
+    );
+  }
 
   return (
-    <table className="w-full text-xs">
-      <caption className="text-left text-[11px] font-bold text-foreground pb-2">
-        {students.length} students · usage over {period.toLowerCase()}
-      </caption>
-      <thead>
-        <tr className="text-left text-xs uppercase text-muted-foreground font-bold border-b border-border">
-          <th className="py-1.5 pr-3">Student</th>
-          <th className="py-1.5 pr-3">Exam</th>
-          <th className="py-1.5 pr-3">Own plan</th>
-          <th className="py-1.5 pr-3">Added</th>
-          <UsageHeaders />
-        </tr>
-      </thead>
-      <tbody>
-        {students.map(s => (
-          <tr key={s.userId} className="border-b border-border/60 last:border-0">
-            <td className="py-2 pr-3">
-              <div className="font-bold text-foreground">{s.name}</div>
-              <div className="text-[11px] text-muted-foreground font-mono">{s.username}</div>
-              {s.disabled && <div className="text-[11px] font-bold text-rose-600 dark:text-rose-400">Turned off</div>}
-            </td>
-            <td className="py-2 pr-3">{s.targetExam.replace('_', '-')}</td>
-            <td className="py-2 pr-3">
-              {s.planId}
-              {s.planValidUntil && <div className="text-[11px] text-muted-foreground">until {date(s.planValidUntil)}</div>}
-            </td>
-            <td className="py-2 pr-3">{date(s.addedAt)}</td>
-            <UsageCells usage={s.usage} />
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
+    <ul className="space-y-2.5">
+      {students.map(s => (
+        <li
+          key={s.userId}
+          className="grid gap-3 rounded-xl border border-border bg-background/70 p-3.5 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1.6fr)_auto] md:items-center"
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+              {s.name.charAt(0).toUpperCase()}
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="truncate text-sm font-bold text-foreground">{s.name}</span>
+                <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-bold text-muted-foreground">
+                  {s.targetExam.replace('_', '-')}
+                </span>
+                {s.disabled && (
+                  <span className="rounded-md bg-rose-500/10 px-1.5 py-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                    Turned off
+                  </span>
+                )}
+              </div>
+              <div className="truncate text-xs text-muted-foreground">
+                <span className="font-mono">@{s.username}</span> · added {date(s.addedAt)}
+                {s.planId !== 'free' && ` · own plan ${s.planId}${s.planValidUntil ? ` until ${date(s.planValidUntil)}` : ''}`}
+              </div>
+            </div>
+          </div>
 
-function UsageHeaders() {
-  return (
-    <>
-      <th className="py-2 pr-3 text-right">Practice</th>
-      <th className="py-2 pr-3 text-right">Mocks</th>
-      <th className="py-2 pr-3 text-right">AI evals</th>
-      <th className="py-2 pr-3 text-right">Tutor</th>
-      <th className="py-2">Last active</th>
-    </>
-  );
-}
+          <div className="space-y-1">
+            <div className="flex items-baseline justify-between gap-2 text-xs">
+              <span className="text-muted-foreground">AI gradings</span>
+              <span className="font-semibold text-foreground tabular-nums">
+                {gradings(s.aiGradingsUsed)} / {perStudent.toLocaleString()}
+              </span>
+            </div>
+            <UsageBar used={s.aiGradingsUsed} of={perStudent} tone="bg-violet-500" />
+            <div className="text-xs text-muted-foreground">
+              AI cost <span className="font-semibold text-foreground tabular-nums">{npr(s.aiCostNpr)}</span>
+            </div>
+          </div>
 
-function UsageCells({ usage }: { usage: Usage }) {
-  return (
-    <>
-      <td className="py-2 pr-3 text-right tabular-nums">{usage.practiceAttempts}</td>
-      <td className="py-2 pr-3 text-right tabular-nums">{usage.mocksCompleted}</td>
-      <td className="py-2 pr-3 text-right tabular-nums">{usage.aiEvaluations}</td>
-      <td className="py-2 pr-3 text-right tabular-nums">{usage.tutorMessages}</td>
-      <td className="py-2">{date(usage.lastActiveAt)}</td>
-    </>
+          <div className="grid grid-cols-4 rounded-lg bg-muted/50 py-2 text-center">
+            <MiniStat label="Practice" value={s.usage.practiceAttempts} />
+            <MiniStat label="Mocks" value={s.usage.mocksCompleted} />
+            <MiniStat label="AI evals" value={s.usage.aiEvaluations} />
+            <MiniStat label="Tutor" value={s.usage.tutorMessages} />
+          </div>
+
+          <div className="text-xs text-muted-foreground md:text-right">
+            <div>Last active</div>
+            <div className="font-semibold text-foreground">{date(s.usage.lastActiveAt)}</div>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
