@@ -10,6 +10,7 @@ import SettingsSection from './SettingsSection';
 import StudentsCard from './StudentsCard';
 import StudentLoginPage from './StudentLoginPage';
 import SetupPage from './SetupPage';
+import { EXAM_CHOICES } from './profile';
 
 const TITLES: Record<InstitutionSection, string> = {
   overview: 'Overview',
@@ -47,8 +48,8 @@ export default function DashboardPage() {
     }
   };
 
-  // The dashboard opens only once the setup is finished.
-  if (!institution.onboarded) return <SetupPage account={account} onSaved={setAccount} onSignOut={signOut} />;
+  // Prepyo sets the institution up when it creates it, so there is no setup to finish first;
+  // the setup page only edits the details from Settings.
   if (editing) {
     return (
       <SetupPage
@@ -66,7 +67,14 @@ export default function DashboardPage() {
   return (
     <InstitutionLayout account={account} title={TITLES[page]} signingOut={signingOut} onSignOut={signOut}>
       {page === 'overview' && <OverviewSection account={account} />}
-      {page === 'students' && <StudentsCard code={institution.code} seatLimit={institution.seatLimit} exams={institution.profile.exams} />}
+      {page === 'students' && (
+        <StudentsCard
+          code={institution.code}
+          seatLimit={institution.seatLimit}
+          // An institution created before exams were set at creation may have none: offer them all.
+          exams={institution.profile.exams.length > 0 ? institution.profile.exams : EXAM_CHOICES.map(exam => exam.id)}
+        />
+      )}
       {page === 'settings' && <SettingsSection account={account} onEdit={() => setEditing(true)} />}
     </InstitutionLayout>
   );

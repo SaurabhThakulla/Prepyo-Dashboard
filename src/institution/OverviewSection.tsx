@@ -79,7 +79,7 @@ export default function OverviewSection({ account }: { account: InstitutionAccou
         </div>
         <div className="min-w-0 space-y-1.5">
           <div className="flex flex-wrap gap-1.5">
-            {plan && <Badge variant="secondary">{plan.name} · {plan.seats} students</Badge>}
+            {plan && <Badge variant="secondary">{plan.name} · {institution.seatLimit} students</Badge>}
             <Badge variant="outline" className={status.color}>{status.label}</Badge>
           </div>
           <CardTitle className="text-base">{status.title}</CardTitle>
