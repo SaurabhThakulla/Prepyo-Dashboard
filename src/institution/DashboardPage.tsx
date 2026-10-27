@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { logOut } from './api';
+import { ExamCode, InstitutionAccount, logOut } from './api';
 import { useInstitutionAccount } from './account';
 import { dashboardPath, LOGIN_PATH, sectionPath } from './paths';
 import { InstitutionLoading } from './InstitutionPage';
@@ -71,11 +71,21 @@ export default function DashboardPage() {
         <StudentsCard
           code={institution.code}
           seatLimit={institution.seatLimit}
-          // An institution created before exams were set at creation may have none: offer them all.
-          exams={institution.profile.exams.length > 0 ? institution.profile.exams : EXAM_CHOICES.map(exam => exam.id)}
+          exams={studentExams(institution)}
         />
       )}
       {page === 'settings' && <SettingsSection account={account} onEdit={() => setEditing(true)} />}
     </InstitutionLayout>
   );
+}
+
+/**
+ * The exams students can be given: only those in Prepyo's plan (the server
+ * refuses any other), with the ones the institution teaches first, so a new
+ * student starts on its main exam.
+ */
+function studentExams(institution: InstitutionAccount['institution']): ExamCode[] {
+  const plan = institution.planExams?.length ? institution.planExams : EXAM_CHOICES.map(exam => exam.id);
+  const taught = institution.profile.exams.filter(exam => plan.includes(exam));
+  return [...taught, ...plan.filter(exam => !taught.includes(exam))];
 }

@@ -26,6 +26,8 @@ export interface Consultancy {
   plan: InstitutionPlan | '';
   validUntil: string | null;
   seatLimit: number;
+  // The exams the plan includes: the consultancy can give its students only these.
+  planExams: ExamCode[];
   createdAt: string;
   adminName: string;
   adminEmail: string;
@@ -531,7 +533,7 @@ const nextMonth = () => {
 };
 
 const EMPTY_FORM = { institutionName: '', name: '', email: '', phone: '', password: '' };
-const DEFAULT_GRADINGS = { perStudent: '900', total: '' };
+const DEFAULT_GRADINGS = { perStudent: '1100', total: '' };
 type TextField = readonly [keyof typeof EMPTY_FORM, string, string];
 const CONSULTANCY_FIELDS: readonly TextField[] = [
   ['institutionName', 'Consultancy name', 'text'],
@@ -583,6 +585,8 @@ function CreateConsultancyDialog({
         ...form,
         exams,
         ...planBody(plan),
+        // What it teaches is also what its plan includes, until changed on the Plan card.
+        planExams: exams,
         aiGradings: gradingsBody(aiGradings.perStudent, aiGradings.total),
       });
       onCreated(`${made.name} created at /${made.code}. The admin signs in with ${form.email.trim().toLowerCase()}.`);
@@ -618,7 +622,7 @@ function CreateConsultancyDialog({
           <Section icon={Building2} title="Consultancy">
             <div className="grid gap-3 sm:grid-cols-2">{fields(CONSULTANCY_FIELDS)}</div>
           </Section>
-          <Section icon={BookOpen} title="Exams supported" hint="Students can be added for these exams">
+          <Section icon={BookOpen} title="Exams supported" hint="The plan includes these; students can be given only these exams">
             <ExamPicker value={exams} onChange={setExams} />
           </Section>
           <Section icon={UserRound} title="Admin login">
@@ -654,10 +658,18 @@ function CreateConsultancyDialog({
   );
 }
 
-/** The exams a consultancy teaches, as toggles. */
-function ExamPicker({ value, onChange }: { value: ExamCode[]; onChange: (exams: ExamCode[]) => void }) {
+/** The exams a consultancy teaches, as toggles; compact fits half the dialog. */
+function ExamPicker({
+  value,
+  onChange,
+  compact,
+}: {
+  value: ExamCode[];
+  onChange: (exams: ExamCode[]) => void;
+  compact?: boolean;
+}) {
   return (
-    <div className="grid gap-2 sm:grid-cols-3">
+    <div className={`grid gap-2 ${compact ? 'grid-cols-2' : 'sm:grid-cols-3'}`}>
       {EXAM_CHOICES.map(exam => {
         const on = value.includes(exam.id);
         return (
@@ -792,14 +804,19 @@ function PlanForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved:
     validUntil: consultancy.validUntil?.slice(0, 10) || nextMonth(),
     seats: consultancy.plan === 'custom' ? String(consultancy.seatLimit) : '',
   });
+  const [planExams, setPlanExams] = useState<ExamCode[]>(consultancy.planExams ?? []);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (planExams.length === 0) {
+      setMessage('Choose at least one exam the plan includes.');
+      return;
+    }
     setSaving(true);
     try {
-      await api.put(`/admin/consultancies/${consultancy.id}/plan`, planBody(plan));
+      await api.put(`/admin/consultancies/${consultancy.id}/plan`, { ...planBody(plan), planExams });
       setMessage('Plan saved.');
       onSaved();
     } catch (err) {
@@ -814,6 +831,11 @@ function PlanForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved:
       {/* One column: it sits in half the dialog */}
       <div className="grid gap-3">
         <PlanFields value={plan} onChange={setPlan} />
+      </div>
+      <div className="space-y-1.5">
+        <p className="text-[11px] font-bold text-muted-foreground">Exams in the plan</p>
+        <ExamPicker value={planExams} onChange={setPlanExams} compact />
+        <p className="text-[11px] text-muted-foreground">The consultancy can give its students only these exams.</p>
       </div>
       <SaveRow saving={saving} label="Save plan" message={message} />
     </form>

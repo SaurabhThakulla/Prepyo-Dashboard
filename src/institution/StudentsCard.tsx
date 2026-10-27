@@ -1,9 +1,10 @@
 import React, { FormEvent, useCallback, useEffect, useState } from 'react';
-import { Ban, Copy, KeyRound, Loader2, RotateCcw, Trash2, UserPlus } from 'lucide-react';
+import { Ban, Check, ChevronDown, Copy, KeyRound, Loader2, RotateCcw, Trash2, UserPlus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api';
 import {
@@ -52,6 +53,11 @@ export default function StudentsCard({ code, seatLimit, exams }: Props) {
   const [students, setStudents] = useState<Student[] | null>(null);
   const [name, setName] = useState('');
   const [exam, setExam] = useState<ExamCode>(exams[0] ?? 'IELTS');
+
+  // A plan changed while the page was open: start new students on an exam it still has.
+  useEffect(() => {
+    if (exams.length > 0 && !exams.includes(exam)) setExam(exams[0]);
+  }, [exams, exam]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<Credentials | null>(null);
@@ -243,6 +249,7 @@ export default function StudentsCard({ code, seatLimit, exams }: Props) {
                         <ExamSelect
                           label={`Exam for ${student.name}`}
                           value={student.exam}
+                          options={exams}
                           disabled={busy}
                           onChange={next => changeExam(student, next)}
                         />
@@ -329,7 +336,7 @@ export default function StudentsCard({ code, seatLimit, exams }: Props) {
             disabled={busy}
             className="h-10 flex-1 rounded-xl text-sm"
           />
-          <ExamSelect label="Exam" value={exam} disabled={busy} onChange={setExam} className="h-10 text-sm" />
+          <ExamSelect label="Exam" value={exam} options={exams} disabled={busy} onChange={setExam} size="md" />
           <Button type="submit" disabled={busy} className="h-10 rounded-xl text-xs font-bold">
             {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <UserPlus className="mr-1.5 h-3.5 w-3.5" />}
             Add student
@@ -340,33 +347,84 @@ export default function StudentsCard({ code, seatLimit, exams }: Props) {
   );
 }
 
+/** An exam's short name, as the table shows it. */
+const examLabel = (exam: ExamCode) => {
+  const choice = EXAM_CHOICES.find(c => c.id === exam);
+  return exam === 'PTE' || !choice ? exam : choice.name;
+};
+const examAccent = (exam: ExamCode) => EXAM_CHOICES.find(c => c.id === exam)?.accent ?? '#64748b';
+
+/**
+ * Picks a student's exam from the ones the plan includes. A student already
+ * on an exam the plan no longer has keeps it shown, marked, but cannot be
+ * moved back to it. With one exam there is nothing to choose, so it is a label.
+ */
 function ExamSelect({
   label,
   value,
+  options,
   onChange,
   disabled,
-  className = 'h-8 text-xs',
+  size = 'sm',
 }: {
   label: string;
   value: ExamCode;
+  options: ExamCode[];
   onChange: (exam: ExamCode) => void;
   disabled: boolean;
-  className?: string;
+  size?: 'sm' | 'md';
 }) {
+  const height = size === 'md' ? 'h-10 text-sm' : 'h-8 text-xs';
+  const dot = <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: examAccent(value) }} />;
+  if (options.length === 1 && options[0] === value) {
+    return (
+      <span
+        aria-label={label}
+        className={`inline-flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 font-semibold text-foreground ${height}`}
+      >
+        {dot}
+        {examLabel(value)}
+      </span>
+    );
+  }
+  const outOfPlan = !options.includes(value);
   return (
-    <select
-      aria-label={label}
-      value={value}
-      disabled={disabled}
-      onChange={event => onChange(event.target.value as ExamCode)}
-      className={`rounded-xl border border-input bg-background px-2.5 font-semibold text-foreground ${className}`}
-    >
-      {EXAM_CHOICES.map(choice => (
-        <option key={choice.id} value={choice.id}>
-          {choice.id === 'PTE' ? 'PTE' : choice.name}
-        </option>
-      ))}
-    </select>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild disabled={disabled}>
+        <button
+          type="button"
+          aria-label={label}
+          className={`inline-flex min-w-[9rem] items-center justify-between gap-2 rounded-xl border border-input bg-background px-3 font-semibold text-foreground shadow-2xs transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50 data-[state=open]:border-primary ${height}`}
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            {dot}
+            <span className="truncate">{examLabel(value)}</span>
+          </span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-72">
+        {outOfPlan && (
+          <DropdownMenuItem disabled className="items-start">
+            <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: examAccent(value) }} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold">{examLabel(value)}</span>
+              <span className="block text-[11px] text-muted-foreground">Not in your plan any more</span>
+            </span>
+          </DropdownMenuItem>
+        )}
+        {EXAM_CHOICES.filter(choice => options.includes(choice.id)).map(choice => (
+          <DropdownMenuItem key={choice.id} onSelect={() => choice.id !== value && onChange(choice.id)} className="items-start">
+            <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: choice.accent }} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-foreground">{examLabel(choice.id)}</span>
+              <span className="block text-[11px] leading-snug text-muted-foreground">{choice.detail}</span>
+            </span>
+            {choice.id === value && <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

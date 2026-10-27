@@ -30,7 +30,7 @@ const STATUS: Record<InstitutionStatus, { label: string; color: string; icon: Lu
     color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25',
     icon: ShieldAlert,
     title: 'Your plan has ended',
-    text: 'Your students can still practise reading and listening. AI scoring, the AI tutor and full mocks are off until you renew. Contact Prepyo to renew.',
+    text: 'Your students can still practise reading and listening. AI scoring and full mocks are off until you renew. Contact Prepyo to renew.',
   },
 };
 

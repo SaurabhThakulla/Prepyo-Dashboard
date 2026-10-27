@@ -15,11 +15,12 @@ export const PLANS: Record<InstitutionPlan, { name: string; seats: number }> = {
   custom: { name: 'Custom', seats: 0 },
 };
 
-export const STUDENT_ALLOWANCE = '50 practice sets and 5 AI tutor messages a day, 900 AI gradings a month and 6 full mocks a month';
+export const STUDENT_ALLOWANCE =
+  '1,100 AI credits a month for marked answers, sectional mocks and full mocks, with no daily limit; reading and listening practice is free';
 
-export const AI_GRADINGS_PER_MONTH = 900;
+export const AI_GRADINGS_PER_MONTH = 1100;
 
-export type ExamCode = 'IELTS' | 'PTE' | 'EPS_TOPIK';
+export type ExamCode = 'IELTS' | 'PTE' | 'EPS_TOPIK' | 'JLPT';
 
 // What the institution answers in its setup after sign-up.
 export interface InstitutionProfile {
@@ -39,6 +40,8 @@ export interface InstitutionAccount {
     plan: InstitutionPlan | '';
     validUntil?: string;
     seatLimit: number;
+    // The exams Prepyo's plan includes: students can be given only these.
+    planExams?: ExamCode[];
     profile: InstitutionProfile;
     // false until the setup is finished; the dashboard waits for it.
     onboarded: boolean;
