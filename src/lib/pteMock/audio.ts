@@ -12,7 +12,7 @@ export { beep } from '@/lib/audio';
 
 /** Whether an item has a recording to play. */
 export function hasPromptAudio(question: Question): boolean {
-  return Boolean(question.audioUrl || question.audioTranscript?.trim());
+  return Boolean(question.audioUrl || question.audioTranscript?.trim() || question.scriptOnRequest);
 }
 
 /**
@@ -21,9 +21,15 @@ export function hasPromptAudio(question: Question): boolean {
  */
 export async function playPrompt(question: Question, onProgress?: (fraction: number) => void): Promise<Playback> {
   if (question.audioUrl) return playFile(question.audioUrl, onProgress);
+  const audioUrl = `/questions/${question.id}/playback/audio`;
+  // In a mock the script is withheld; /playback refuses it there and the
+  // server's voice plays instead.
+  if (question.scriptOnRequest) {
+    return playRecording({ scriptUrl: `/questions/${question.id}/playback`, audioUrl }, onProgress);
+  }
   const script = question.audioTranscript?.trim();
   if (!script) return { done: Promise.resolve(), stop: () => {} };
-  return playRecording({ script, audioUrl: `/questions/${question.id}/playback/audio` }, onProgress);
+  return playRecording({ script, audioUrl }, onProgress);
 }
 
 function playFile(url: string, onProgress?: (fraction: number) => void): Playback {
