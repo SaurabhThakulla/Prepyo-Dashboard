@@ -4,13 +4,15 @@ import { api } from '@/lib/api';
 // none = no plan yet (no seats); expired = students get reading and listening only.
 export type InstitutionStatus = 'none' | 'active' | 'expired';
 
-export type InstitutionPlan = 'basic' | 'extended' | 'ultimate';
+export type InstitutionPlan = 'basic' | 'extended' | 'ultimate' | 'custom';
 
-// Seats per plan; every student gets the same allowance on all three.
+// Seats per plan; every student gets the same allowance on all of them. A custom
+// plan has the seats Prepyo agrees with the institution (its seatLimit), so 0 here.
 export const PLANS: Record<InstitutionPlan, { name: string; seats: number }> = {
   basic: { name: 'Basic', seats: 10 },
   extended: { name: 'Extended', seats: 25 },
   ultimate: { name: 'Ultimate', seats: 50 },
+  custom: { name: 'Custom', seats: 0 },
 };
 
 export const STUDENT_ALLOWANCE = '50 practice sets and 5 AI tutor messages a day, 900 AI gradings a month and 6 full mocks a month';
