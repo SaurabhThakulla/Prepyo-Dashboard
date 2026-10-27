@@ -365,6 +365,7 @@ export default function AdminQuestionForm({
               <option value="IELTS">IELTS</option>
               <option value="PTE">PTE</option>
               <option value="EPS_TOPIK">EPS-TOPIK</option>
+              <option value="JLPT">JLPT</option>
             </select>
           </Field>
           <Field label="Task type" error={fieldErrors.typeId} className="lg:col-span-2">
@@ -402,7 +403,7 @@ export default function AdminQuestionForm({
             label={
               skill === 'speaking'
                 ? 'Text the learner reads aloud'
-                : exam === 'EPS_TOPIK'
+                : exam === 'EPS_TOPIK' || exam === 'JLPT'
                   ? 'Text the learner reads (a word, sentence or short passage; mark a blank with ( ))'
                   : 'Passage the learner summarises'
             }
@@ -467,7 +468,9 @@ export default function AdminQuestionForm({
             <p className="-mt-1 text-[11px] text-muted-foreground">
               {exam === 'EPS_TOPIK'
                 ? 'Without a recording, the browser reads the script in a Korean voice. Label speakers 남: and 여: to give each their own voice.'
-                : 'Without a recording, the learner’s browser reads the script aloud.'}
+                : exam === 'JLPT'
+                  ? 'Without a recording, the browser reads the script in a Japanese voice. Put each turn on its own line, labelled 男: or 女:, to give each speaker their own voice.'
+                  : 'Without a recording, the learner’s browser reads the script aloud.'}
             </p>
           </div>
         )}
