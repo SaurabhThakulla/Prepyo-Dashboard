@@ -122,6 +122,14 @@ export interface SubscriptionState {
 
 export type AIGradingsPeriod = 'day' | 'plan' | 'month';
 
+export interface InstitutionMembership {
+  name: string;
+  code: string;
+  /** The institution's admin login. */
+  email: string;
+  username: string;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -171,6 +179,9 @@ export interface UserProfile {
   previousScore?: number | null;
   focusSkill?: SkillType;
   dailyMinutes?: number | null;
+
+  /** Set for a student an institution added: they sign in with a username and have no email. */
+  institution?: InstitutionMembership;
 
   // Only present on endpoints that ask for them.
   estimate?: ScoreEstimate;
