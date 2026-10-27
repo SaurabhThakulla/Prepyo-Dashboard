@@ -128,7 +128,7 @@ function Sidebar({ account, signingOut, onSignOut }: { account: InstitutionAccou
       <div className="space-y-2 p-4">
         <div className="rounded-2xl border border-white/15 bg-white/10 p-3 text-xs">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-white/60">Plan</p>
-          <p className="mt-0.5 font-display text-sm font-bold">{plan ? `${plan.name} · ${plan.seats} students` : 'No plan yet'}</p>
+          <p className="mt-0.5 font-display text-sm font-bold">{plan ? `${plan.name} · ${institution.seatLimit} students` : 'No plan yet'}</p>
           {institution.validUntil && (
             <p className="mt-0.5 text-white/70">
               {institution.status === 'expired' ? 'Ended' : 'Until'} {formatExamDate(institution.validUntil)}
