@@ -65,15 +65,15 @@ export function PageHero({
   children?: React.ReactNode;
 }) {
   return (
-    <header className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-indigo-600 p-5 text-primary-foreground shadow-lg sm:p-7">
+    <header className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/75 p-5 text-primary-foreground shadow-lg sm:p-7">
       <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
-      <div className="pointer-events-none absolute -bottom-24 right-40 h-56 w-56 rounded-full bg-sky-400/20 blur-2xl" />
+      <div className="pointer-events-none absolute -bottom-24 right-40 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
       <div className="relative flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
         <div className="min-w-0 space-y-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide">
             <EyebrowIcon className="h-3.5 w-3.5" /> {eyebrow}
           </span>
-          <h1 className="break-words font-display text-2xl font-black tracking-tight sm:text-3xl">{title}</h1>
+          <h1 className="break-words font-display text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
           {subtitle && <div className="text-sm text-white/80">{subtitle}</div>}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -83,7 +83,7 @@ export function PageHero({
   );
 }
 
-/** A big number with its meaning, coloured by tone, as on the admin overview. */
+/** A number with its meaning: a plain card, the tone only on the small icon and the bar. */
 export function Kpi({
   icon: Icon,
   tone,
@@ -108,31 +108,31 @@ export function Kpi({
   pressed?: boolean;
 }) {
   const t = TONES[tone];
-  const actionClass = `inline-flex items-center gap-1 whitespace-nowrap text-sm font-bold hover:underline ${t.text}`;
+  const actionClass = `inline-flex items-center gap-0.5 whitespace-nowrap text-xs font-semibold hover:underline ${t.text}`;
   return (
-    <Card className={`flex flex-col gap-3 border p-5 ${t.card} ${pressed ? 'ring-2 ring-current ring-offset-2 ring-offset-background' : ''}`}>
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-bold text-foreground">{label}</span>
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm ${t.icon}`}>
-          <Icon className="h-5 w-5" />
+    <Card className={`flex flex-col gap-2 p-4 shadow-none ${pressed ? 'border-primary ring-1 ring-primary' : ''}`}>
+      <div className="flex items-center gap-2">
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${t.soft}`}>
+          <Icon className="h-3.5 w-3.5" />
         </span>
+        <span className="truncate text-xs font-medium text-muted-foreground">{label}</span>
       </div>
-      <div className={`font-display text-3xl font-black tabular-nums sm:text-4xl ${t.text}`}>{value}</div>
+      <div className="font-display text-2xl font-medium tabular-nums text-foreground">{value}</div>
       {progress !== undefined && (
-        <div className="h-2 w-full overflow-hidden rounded-full bg-foreground/10">
+        <div className="h-1 w-full overflow-hidden rounded-full bg-foreground/10">
           <div className={`h-full rounded-full ${t.bar}`} style={{ width: `${Math.max(0, Math.min(progress, 100))}%` }} />
         </div>
       )}
       <div className="mt-auto flex items-center justify-between gap-2">
-        <span className="text-sm text-foreground/70">{note}</span>
+        <span className="min-w-0 text-xs leading-snug text-muted-foreground">{note}</span>
         {action && to && (
           <Link to={to} className={actionClass}>
-            {action} <ArrowRight className="h-3.5 w-3.5" />
+            {action} <ArrowRight className="h-3 w-3" />
           </Link>
         )}
         {action && onClick && !to && (
           <button type="button" onClick={onClick} aria-pressed={pressed} className={actionClass}>
-            {action} <ArrowRight className="h-3.5 w-3.5" />
+            {action} <ArrowRight className="h-3 w-3" />
           </button>
         )}
       </div>
@@ -158,7 +158,7 @@ export function SectionTitle({
         <Icon className="h-[18px] w-[18px]" aria-hidden />
       </span>
       <div className="min-w-0">
-        <CardTitle className="text-lg font-bold text-foreground">{title}</CardTitle>
+        <CardTitle className="text-lg font-medium text-foreground">{title}</CardTitle>
         {description && <CardDescription className="text-sm text-foreground/60">{description}</CardDescription>}
       </div>
     </div>
@@ -196,7 +196,7 @@ export function FilterTabs<T extends string>({
             {Icon && <Icon className="h-4 w-4" />}
             {option.label}
             {option.count !== undefined && (
-              <span className="rounded-full bg-foreground/10 px-1.5 text-[11px] font-bold tabular-nums">{option.count}</span>
+              <span className="rounded-full bg-foreground/10 px-1.5 text-[11px] font-medium tabular-nums">{option.count}</span>
             )}
           </button>
         );
@@ -206,6 +206,6 @@ export function FilterTabs<T extends string>({
 }
 
 /** White button for the banner. */
-export const heroButton = 'font-bold bg-white text-primary hover:bg-white/90';
+export const heroButton = 'font-medium bg-white text-primary hover:bg-white/90';
 /** See-through button for the banner. */
-export const heroGhostButton = 'font-bold bg-white/15 text-white hover:bg-white/25 border border-white/25';
+export const heroGhostButton = 'font-medium bg-white/15 text-white hover:bg-white/25 border border-white/25';
