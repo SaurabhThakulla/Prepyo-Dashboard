@@ -1,5 +1,5 @@
 import React, { FormEvent, useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, CircleCheck, Coins, Download, Loader2, Printer, ReceiptText, Trash2, Wallet } from 'lucide-react';
+import { AlertTriangle, CircleCheck, Coins, Download, Loader2, ReceiptText, Trash2, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -12,12 +12,14 @@ import {
   fetchBatches,
   fetchFees,
   fetchPayments,
+  fetchSignature,
   FeeTotals,
   InstitutionAccount,
   Payment,
   PAYMENT_METHODS,
   PaymentMethod,
   setStudentFee,
+  SIGNATURE_IMAGE_URL,
   StudentFee,
 } from './api';
 import FormField, { FormError } from './FormField';
@@ -84,18 +86,32 @@ export default function FeesSection({ account }: { account: InstitutionAccount }
     setDownloadingId(f.studentId);
     setError(null);
     try {
-      const { payments } = await fetchPayments(f.studentId);
-      const last = [...payments].sort((a, b) => b.paidOn.localeCompare(a.paidOn) || b.receiptNo - a.receiptNo)[0];
+      const [{ payments }, signature] = await Promise.all([
+        fetchPayments(f.studentId),
+        // A receipt without a signature is still a receipt.
+        fetchSignature()
+          .then(data => data.signature)
+          .catch(() => null),
+      ]);
       await downloadFeeReceipt({
         institution: {
           name: account.institution.name,
           code: account.institution.code,
           logoUrl: account.institution.logoUrl,
           brandColor: account.institution.profile.brandColor,
+          city: account.institution.profile.city,
+          email: account.admin.email,
         },
         student: { name: f.name, username: f.username, course: f.exam ? examName(f.exam) : '', batch: batchName(f.batchId) },
         fee: f,
-        lastPayment: last ? { receiptNo: last.receiptNo, paidOn: last.paidOn, method: methodName(last.method) } : null,
+        signature: signature
+          ? {
+              imageUrl: signature.hasImage ? `${SIGNATURE_IMAGE_URL}?v=${encodeURIComponent(signature.updatedAt ?? '')}` : null,
+              name: signature.signerName,
+              title: signature.signerTitle,
+            }
+          : undefined,
+        payments: payments.map(p => ({ receiptNo: p.receiptNo, paidOn: p.paidOn, method: methodName(p.method), amountNpr: p.amountNpr })),
         rupees,
       });
     } catch (err) {
@@ -210,7 +226,7 @@ export default function FeesSection({ account }: { account: InstitutionAccount }
               {list.map(f => (
                 <tr key={f.studentId} className="transition-colors hover:bg-muted/40">
                   <td className="px-4 py-3">
-                    <span className="block font-medium text-foreground">{f.name}</span>
+                    <span className="block whitespace-nowrap font-medium text-foreground">{f.name}</span>
                     <span className="block font-mono text-xs text-foreground/60">{f.username}</span>
                   </td>
                   <td className="whitespace-nowrap px-5 py-3 text-foreground/75">{f.exam ? examName(f.exam) : '—'}</td>
@@ -438,9 +454,6 @@ function StudentFeeDialog({ fee, account, onChanged }: { fee: StudentFee; accoun
                   </p>
                 </div>
                 <div className="flex gap-0.5">
-                  <Button type="button" variant="ghost" size="sm" title="Print receipt" aria-label={`Print receipt ${p.receiptNo}`} onClick={() => printReceipt(account, fee, p)} className="h-8 w-8 p-0">
-                    <Printer className="h-3.5 w-3.5" />
-                  </Button>
                   <Button
                     type="button"
                     variant="ghost"
@@ -461,44 +474,4 @@ function StudentFeeDialog({ fee, account, onChanged }: { fee: StudentFee; accoun
       </div>
     </DialogContent>
   );
-}
-
-const escapeHtml = (text: string) =>
-  text.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
-
-/** Opens a printable receipt in the institution's colours, with its logo when it has one. */
-function printReceipt(account: InstitutionAccount, fee: StudentFee, payment: Payment) {
-  const { institution } = account;
-  const color = /^#[0-9a-f]{6}$/i.test(institution.profile.brandColor) ? institution.profile.brandColor : '#1d4ed8';
-  const logo = institution.logoUrl ? `<img src="${escapeHtml(new URL(institution.logoUrl, window.location.origin).href)}" alt="" />` : '';
-  const rows: [string, string][] = [
-    ['Receipt no.', String(payment.receiptNo)],
-    ['Date', day(payment.paidOn)],
-    ['Student', `${fee.name} (${fee.username})`],
-    ['Amount', rupees(payment.amountNpr)],
-    ['Method', methodName(payment.method)],
-  ];
-  if (payment.note) rows.push(['Note', payment.note]);
-
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Receipt ${payment.receiptNo} · ${escapeHtml(institution.name)}</title>
-<style>
-  body { font-family: system-ui, sans-serif; color: #0f172a; margin: 40px; }
-  header { display: flex; align-items: center; gap: 16px; border-bottom: 4px solid ${color}; padding-bottom: 16px; }
-  header img { width: 56px; height: 56px; object-fit: contain; }
-  h1 { margin: 0; font-size: 22px; } h2 { margin: 24px 0 8px; font-size: 16px; color: ${color}; letter-spacing: .05em; text-transform: uppercase; }
-  table { border-collapse: collapse; width: 100%; max-width: 520px; } td { padding: 8px 0; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
-  td:first-child { color: #64748b; width: 40%; } footer { margin-top: 48px; font-size: 12px; color: #64748b; }
-</style></head><body>
-<header>${logo}<div><h1>${escapeHtml(institution.name)}</h1></div></header>
-<h2>Payment receipt</h2>
-<table>${rows.map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td><strong>${escapeHtml(v)}</strong></td></tr>`).join('')}</table>
-<footer>Received with thanks.</footer>
-<script>window.onload = () => { window.print(); };</script>
-</body></html>`;
-
-  const win = window.open('', '_blank', 'width=720,height=800');
-  if (!win) return;
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
 }

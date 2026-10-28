@@ -911,7 +911,7 @@ function AddStudentDialog({
   };
 
   return (
-    <DialogContent className="gap-5 sm:max-w-md">
+    <DialogContent className="gap-5 sm:max-w-xl">
       <DialogHeader className="space-y-1 text-left">
         <DialogTitle className="font-sans text-lg font-semibold">Add a student</DialogTitle>
         <DialogDescription>They get a username and password to sign in at your page.</DialogDescription>

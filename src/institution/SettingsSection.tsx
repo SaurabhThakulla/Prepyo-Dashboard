@@ -1,4 +1,4 @@
-import React, { useId, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import * as SheetPrimitive from '@radix-ui/react-dialog';
 import {
   Building2,
@@ -15,6 +15,7 @@ import {
   LucideIcon,
   Mail,
   Palette,
+  PenLine,
   UserRound,
   X,
 } from 'lucide-react';
@@ -22,7 +23,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatExamDate } from '@/lib/dates';
 import { ApiError, errorMessage } from '@/lib/api';
-import { ExamCode, InstitutionAccount, InstitutionProfile, PLANS, saveProfile, STUDENT_ALLOWANCE, uploadLogo } from './api';
+import {
+  ExamCode,
+  fetchSignature,
+  InstitutionAccount,
+  InstitutionProfile,
+  PLANS,
+  ReceiptSignature,
+  removeSignatureImage,
+  saveProfile,
+  saveSigner,
+  SIGNATURE_IMAGE_URL,
+  STUDENT_ALLOWANCE,
+  uploadLogo,
+  uploadSignature,
+} from './api';
 import { dashboardPath } from './paths';
 import BrandMark from './BrandMark';
 import {
@@ -43,7 +58,7 @@ const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const STATUS_LABEL = { active: 'Active', expired: 'Ended', none: 'No plan yet' } as const;
 const FIELD = 'h-10 rounded-lg text-sm font-normal';
 
-type PanelId = 'details' | 'exams' | 'branding' | 'signin' | 'plan' | 'account';
+type PanelId = 'details' | 'exams' | 'branding' | 'signature' | 'signin' | 'plan' | 'account';
 
 /** The saved profile as a form starts from: an institution Prepyo created may have gaps. */
 function draftOf(profile: InstitutionProfile): InstitutionProfile {
@@ -71,6 +86,14 @@ export default function SettingsSection({
 }) {
   const { admin, institution } = account;
   const [open, setOpen] = useState<PanelId | null>(null);
+  // undefined while loading; the card works without it.
+  const [signature, setSignature] = useState<ReceiptSignature | null | undefined>(undefined);
+
+  useEffect(() => {
+    fetchSignature()
+      .then(data => setSignature(data.signature))
+      .catch(() => setSignature(null));
+  }, []);
   const profile = draftOf(institution.profile);
   const plan = institution.plan ? PLANS[institution.plan] : null;
   const signInAddress = window.location.origin + dashboardPath(institution.code);
@@ -92,6 +115,17 @@ export default function SettingsSection({
           {institution.logoUrl ? 'Logo uploaded' : 'No logo yet'}
         </span>
       ),
+    },
+    {
+      id: 'signature',
+      icon: PenLine,
+      title: 'Receipt signature',
+      summary:
+        signature === undefined
+          ? 'Loading…'
+          : signature?.hasImage
+            ? [signature.signerName, signature.signerTitle].filter(Boolean).join(' · ') || 'Signature added'
+            : 'Sign your fee receipts',
     },
     { id: 'signin', icon: Link2, title: 'Student sign-in page', summary: signInAddress.replace(/^https?:\/\//, '') },
     {
@@ -137,6 +171,7 @@ export default function SettingsSection({
               {open === 'details' && <DetailsPanel account={account} onSaved={onSaved} onClose={() => setOpen(null)} />}
               {open === 'exams' && <ExamsPanel account={account} onSaved={onSaved} onClose={() => setOpen(null)} />}
               {open === 'branding' && <BrandingPanel account={account} onSaved={onSaved} onClose={() => setOpen(null)} />}
+              {open === 'signature' && <SignaturePanel signature={signature ?? null} onChanged={setSignature} onClose={() => setOpen(null)} />}
               {open === 'signin' && <SignInPanel account={account} address={signInAddress} />}
               {open === 'plan' && <PlanPanel account={account} />}
               {open === 'account' && <AccountPanel account={account} />}
@@ -145,6 +180,247 @@ export default function SettingsSection({
         </SheetPrimitive.Portal>
       </SheetPrimitive.Root>
     </>
+  );
+}
+
+// ---------------------------------------------------------------- receipt signature
+
+const MAX_SIGNATURE_BYTES = 1 << 20;
+
+/** Who signs the fee receipts, and the signature image: uploaded, or drawn here. */
+function SignaturePanel({
+  signature,
+  onChanged,
+  onClose,
+}: {
+  signature: ReceiptSignature | null;
+  onChanged: (signature: ReceiptSignature) => void;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(signature?.signerName ?? '');
+  const [title, setTitle] = useState(signature?.signerTitle ?? '');
+  const [drawing, setDrawing] = useState(false);
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputId = useId();
+  const nameId = useId();
+  const titleId = useId();
+  const dirty = name.trim() !== (signature?.signerName ?? '') || title.trim() !== (signature?.signerTitle ?? '');
+
+  const run = async (change: () => Promise<{ signature: ReceiptSignature }>) => {
+    setWorking(true);
+    setError(null);
+    try {
+      const { signature: next } = await change();
+      onChanged(next);
+      return true;
+    } catch (err) {
+      setError(errorMessage(err));
+      return false;
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const chooseFile = (file: File | undefined) => {
+    if (!file) return;
+    if (!LOGO_TYPES.includes(file.type)) {
+      setError('Please choose a PNG, JPEG or WebP image.');
+      return;
+    }
+    if (file.size > MAX_SIGNATURE_BYTES) {
+      setError('That image is larger than 1 MB. Please choose a smaller one.');
+      return;
+    }
+    void run(() => uploadSignature(file));
+  };
+
+  const imageSrc = signature?.hasImage ? `${SIGNATURE_IMAGE_URL}?v=${encodeURIComponent(signature.updatedAt ?? '')}` : null;
+
+  return (
+    <>
+      <PanelHeader title="Receipt signature" description="Printed above the signatory line on every fee receipt. Only you can see it." />
+      <PanelBody>
+        {drawing ? (
+          <SignaturePad
+            busy={working}
+            onCancel={() => setDrawing(false)}
+            onDone={async blob => {
+              if (await run(() => uploadSignature(blob))) setDrawing(false);
+            }}
+          />
+        ) : (
+          <div className="space-y-3">
+            <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-border bg-white">
+              {working ? (
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              ) : imageSrc ? (
+                <img src={imageSrc} alt="Your receipt signature" className="max-h-28 max-w-[90%] object-contain" />
+              ) : (
+                <span className="text-sm text-slate-500">No signature yet</span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <label
+                htmlFor={inputId}
+                className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground hover:bg-muted/50"
+              >
+                <ImagePlus className="mr-1.5 h-4 w-4" /> Upload image
+              </label>
+              <input
+                id={inputId}
+                type="file"
+                accept={LOGO_TYPES.join(',')}
+                className="sr-only"
+                disabled={working}
+                onChange={event => {
+                  chooseFile(event.target.files?.[0]);
+                  event.target.value = '';
+                }}
+              />
+              <Button type="button" variant="outline" className="h-9 rounded-lg font-medium" disabled={working} onClick={() => setDrawing(true)}>
+                <PenLine className="mr-1.5 h-4 w-4" /> Draw it
+              </Button>
+              {signature?.hasImage && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-9 rounded-lg font-medium text-rose-600 hover:text-rose-700 dark:text-rose-400"
+                  disabled={working}
+                  onClick={() => void run(removeSignatureImage)}
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">A signature on white or a transparent background looks best. PNG, JPEG or WebP, up to 1 MB.</p>
+          </div>
+        )}
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <label htmlFor={nameId} className="font-medium text-foreground">
+              Signed by
+            </label>
+            <Input id={nameId} value={name} onChange={event => setName(event.target.value)} placeholder="e.g. Ram Sharma" maxLength={80} className={FIELD} />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor={titleId} className="font-medium text-foreground">
+              Role
+            </label>
+            <Input id={titleId} value={title} onChange={event => setTitle(event.target.value)} placeholder="e.g. Accounts Officer" maxLength={80} className={FIELD} />
+          </div>
+        </div>
+      </PanelBody>
+      <PanelFooter
+        dirty={dirty}
+        saving={working}
+        error={error}
+        onCancel={onClose}
+        onSave={async () => {
+          if (await run(() => saveSigner(name.trim(), title.trim()))) onClose();
+        }}
+      />
+    </>
+  );
+}
+
+/** A box to sign in with a mouse, finger or pen; returns the signature as a PNG with a clear background. */
+function SignaturePad({ busy, onCancel, onDone }: { busy: boolean; onCancel: () => void; onDone: (blob: Blob) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawingRef = useRef(false);
+  const [empty, setEmpty] = useState(true);
+
+  // Size the canvas to its box at the screen's pixel density, so lines stay sharp.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ratio = window.devicePixelRatio || 1;
+    const { width, height } = canvas.getBoundingClientRect();
+    canvas.width = Math.max(1, Math.round(width * ratio));
+    canvas.height = Math.max(1, Math.round(height * ratio));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.scale(ratio, ratio);
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#0f172a';
+  }, []);
+
+  const point = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  };
+
+  const start = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const ctx = event.currentTarget.getContext('2d');
+    if (!ctx) return;
+    try {
+      // Keeps the stroke going if the pen slips outside the box.
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Some pointers cannot be captured; drawing still works inside the box.
+    }
+    drawingRef.current = true;
+    const { x, y } = point(event);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + 0.1, y + 0.1);
+    ctx.stroke();
+    setEmpty(false);
+  };
+
+  const move = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!drawingRef.current) return;
+    const ctx = event.currentTarget.getContext('2d');
+    if (!ctx) return;
+    const { x, y } = point(event);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stop = () => {
+    drawingRef.current = false;
+  };
+
+  const clear = () => {
+    const canvas = canvasRef.current;
+    canvas?.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
+    setEmpty(true);
+  };
+
+  const finish = () => {
+    canvasRef.current?.toBlob(blob => blob && onDone(blob), 'image/png');
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="font-medium text-foreground">Sign below</p>
+      <canvas
+        ref={canvasRef}
+        aria-label="Signature pad"
+        onPointerDown={start}
+        onPointerMove={move}
+        onPointerUp={stop}
+        onPointerLeave={stop}
+        className="h-36 w-full touch-none rounded-lg border border-border bg-white"
+      />
+      <div className="flex flex-wrap justify-between gap-2">
+        <Button type="button" variant="ghost" className="h-9 rounded-lg font-medium" onClick={clear} disabled={busy || empty}>
+          Clear
+        </Button>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" className="h-9 rounded-lg font-medium" onClick={onCancel} disabled={busy}>
+            Cancel
+          </Button>
+          <Button type="button" className="h-9 rounded-lg font-medium" onClick={finish} disabled={busy || empty}>
+            {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+            Use this signature
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 

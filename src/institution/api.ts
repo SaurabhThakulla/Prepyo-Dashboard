@@ -195,6 +195,26 @@ export const saveProfile = (profile: InstitutionProfile) => api.put<InstitutionA
 
 export const uploadLogo = (file: Blob) => api.upload<{ logoUrl: string }>('/institution/logo', file);
 
+// The signature printed on fee receipts, and who signs. Private to the admin.
+export interface ReceiptSignature {
+  hasImage: boolean;
+  signerName: string;
+  signerTitle: string;
+  updatedAt: string | null;
+}
+
+// The image itself; add ?v=<updatedAt> so a new one is fetched again.
+export const SIGNATURE_IMAGE_URL = '/api/v1/institution/signature/image';
+
+export const fetchSignature = () => api.get<{ signature: ReceiptSignature }>('/institution/signature');
+
+export const saveSigner = (signerName: string, signerTitle: string) =>
+  api.put<{ signature: ReceiptSignature }>('/institution/signature', { signerName, signerTitle });
+
+export const uploadSignature = (file: Blob) => api.upload<{ signature: ReceiptSignature }>('/institution/signature/image', file);
+
+export const removeSignatureImage = () => api.delete<{ signature: ReceiptSignature }>('/institution/signature/image');
+
 // The admin's students. A password comes back only when it is created or reset.
 export const fetchStudents = (days: number) => api.get<{ students: Student[] }>(`/institution/students?days=${days}`);
 
