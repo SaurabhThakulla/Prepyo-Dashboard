@@ -8,6 +8,7 @@ import InstitutionLayout, { InstitutionSection } from './InstitutionLayout';
 import BatchesSection from './BatchesSection';
 import FeesSection from './FeesSection';
 import SettingsSection from './SettingsSection';
+import SubscriptionSection from './SubscriptionSection';
 import StudentsPage from './StudentsCard';
 import StudentLoginPage from './StudentLoginPage';
 import { EXAM_CHOICES } from './profile';
@@ -18,6 +19,7 @@ const TITLES: Record<InstitutionSection, string> = {
   overview: 'Students',
   batches: 'Batches',
   fees: 'Fees',
+  subscription: 'Subscription',
   settings: 'Settings',
 };
 
@@ -69,6 +71,7 @@ export default function DashboardPage() {
           <FeesSection account={account} />
         </div>
       )}
+      {page === 'subscription' && <SubscriptionSection account={account} />}
       {page === 'settings' && (
         <div className="space-y-6">
           <PageHero eyebrow="Account" eyebrowIcon={SettingsIcon} title="Settings" subtitle={`${institution.name} · your details and sign-in page`} />

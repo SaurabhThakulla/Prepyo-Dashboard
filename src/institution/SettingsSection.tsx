@@ -11,6 +11,7 @@ import {
   ImagePlus,
   Link2,
   Loader2,
+  Lock,
   LucideIcon,
   Mail,
   Palette,
@@ -106,7 +107,7 @@ export default function SettingsSection({
 
   return (
     <>
-      <ul className="mx-auto flex max-w-3xl flex-col gap-3">
+      <ul className="grid gap-3 lg:grid-cols-2">
         {tiles.map(tile => (
           <li key={tile.id}>
             <button
@@ -132,7 +133,7 @@ export default function SettingsSection({
         <SheetPrimitive.Portal>
           <SheetPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
           {open && (
-            <SheetPrimitive.Content className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l border-border bg-card font-sans shadow-2xl data-[state=open]:animate-in data-[state=open]:slide-in-from-right">
+            <SheetPrimitive.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-border bg-card font-sans shadow-2xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
               {open === 'details' && <DetailsPanel account={account} onSaved={onSaved} onClose={() => setOpen(null)} />}
               {open === 'exams' && <ExamsPanel account={account} onSaved={onSaved} onClose={() => setOpen(null)} />}
               {open === 'branding' && <BrandingPanel account={account} onSaved={onSaved} onClose={() => setOpen(null)} />}
@@ -151,7 +152,7 @@ export default function SettingsSection({
 
 function PanelHeader({ title, description }: { title: string; description: string }) {
   return (
-    <div className="flex items-start gap-3 border-b border-border px-6 py-5">
+    <div className="flex items-start gap-3 px-5 pb-2 pt-5">
       <div className="min-w-0 flex-1">
         <SheetPrimitive.Title className="text-base font-semibold text-foreground">{title}</SheetPrimitive.Title>
         <SheetPrimitive.Description className="mt-1 text-sm text-muted-foreground">{description}</SheetPrimitive.Description>
@@ -165,7 +166,7 @@ function PanelHeader({ title, description }: { title: string; description: strin
 }
 
 function PanelBody({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5 text-sm">{children}</div>;
+  return <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-3 text-sm">{children}</div>;
 }
 
 function PanelFooter({
@@ -182,7 +183,7 @@ function PanelFooter({
   onSave: () => void;
 }) {
   return (
-    <div className="space-y-2 border-t border-border px-6 py-4">
+    <div className="space-y-2 px-5 pb-5 pt-2">
       {error && (
         <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
           {error}
@@ -316,6 +317,27 @@ function ExamsPanel({ account, onSaved, onClose }: { account: InstitutionAccount
         <div role="group" aria-label="Exams you teach" className="space-y-2">
           {EXAM_CHOICES.map(choice => {
             const on = draft.exams.includes(choice.id);
+            // An exam outside the plan cannot be added; one already chosen can still be removed.
+            if (!planExams.includes(choice.id) && !on) {
+              return (
+                <div key={choice.id} aria-disabled className="flex w-full items-start gap-3 rounded-lg border border-dashed border-border bg-muted/40 p-3">
+                  <Lock aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-medium text-muted-foreground">{choice.name}</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Not in your plan.{' '}
+                      <a
+                        href={`mailto:contact@prepyo.online?subject=${encodeURIComponent(`Add ${choice.name} to our plan`)}`}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        Contact Prepyo
+                      </a>{' '}
+                      for access.
+                    </span>
+                  </span>
+                </div>
+              );
+            }
             return (
               <button
                 key={choice.id}
@@ -335,7 +357,9 @@ function ExamsPanel({ account, onSaved, onClose }: { account: InstitutionAccount
                 <span className="min-w-0 flex-1">
                   <span className="block font-medium text-foreground">{choice.name}</span>
                   <span className="block text-muted-foreground">{choice.detail}</span>
-                  {!planExams.includes(choice.id) && <span className="mt-1 block text-xs text-amber-700 dark:text-amber-300">Not in your plan yet</span>}
+                  {!planExams.includes(choice.id) && (
+                    <span className="mt-1 block text-xs text-amber-700 dark:text-amber-300">Not in your plan. Untick to remove it.</span>
+                  )}
                 </span>
               </button>
             );
