@@ -44,7 +44,7 @@ export default function StudentProgressPanel({ id }: { id: string }) {
     <div className="space-y-4">
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="font-bold text-foreground">Mock scores · {examName(progress.exam)}</p>
+          <p className="font-medium text-foreground">Mock scores · {examName(progress.exam)}</p>
           <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
             {progress.targetScore !== null && (
               <span className="inline-flex items-center gap-1">
@@ -86,7 +86,7 @@ export default function StudentProgressPanel({ id }: { id: string }) {
       </div>
 
       <div className="space-y-2">
-        <p className="font-bold text-foreground">Practice answers per week · last 12 weeks</p>
+        <p className="font-medium text-foreground">Practice answers per week · last 12 weeks</p>
         <div className="rounded-lg border border-border bg-background p-3">
           <div className="flex items-end gap-1" role="list" aria-label="Practice answers per week, oldest first">
             {progress.weeks.map(week => (

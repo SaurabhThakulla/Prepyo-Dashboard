@@ -3,22 +3,17 @@ import { Link, useSearchParams } from 'react-router-dom';
 import * as SheetPrimitive from '@radix-ui/react-dialog';
 import {
   AlertTriangle,
-  ArrowRight,
   Ban,
   BadgeCheck,
-  Building2,
   Check,
   ChevronDown,
   Copy,
-  GraduationCap,
   KeyRound,
-  Layers,
   Loader2,
   MoreHorizontal,
   RotateCcw,
   Search,
-  Settings,
-  ShieldAlert,
+  Target,
   Trash2,
   UserCheck,
   UserPlus,
@@ -29,13 +24,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { formatExamDate } from '@/lib/dates';
 import { errorMessage } from '@/lib/api';
 import {
+  addPayment,
   addStudent,
   AI_GRADINGS_PER_MONTH,
   Batch,
@@ -43,25 +38,31 @@ import {
   fetchBatches,
   fetchFees,
   fetchStudents,
+  fetchTargets,
   InstitutionAccount,
-  PLANS,
+  PAYMENT_METHODS,
+  PaymentMethod,
   Readiness,
   removeStudent,
   resetStudentPassword,
+  saveTargets,
+  setStudentFee,
   setStudentBatch,
   setStudentDisabled,
   setStudentExam,
   Student,
   STUDENT_ALLOWANCE,
   StudentFee,
+  TARGET_EXAMS,
+  TargetExam,
 } from './api';
 import { EXAM_CHOICES } from './profile';
 import { dashboardPath, sectionPath } from './paths';
 import { FormError } from './FormField';
-import { EXAM_TONE, FilterTabs, heroButton, heroGhostButton, Kpi, PageHero, SectionTitle, TONES } from './ui';
+import { EXAM_TONE, FilterTabs, Kpi, TONES } from './ui';
 import StudentActivityPanel from './StudentActivity';
 import StudentProgressPanel, { scoreOutOf } from './StudentProgress';
-import { rupees } from './FeesSection';
+import { rupees, today } from './FeesSection';
 
 interface Props {
   account: InstitutionAccount;
@@ -74,6 +75,8 @@ interface Credentials {
   name: string;
   username: string;
   password: string;
+  // Set when the student was added but their fee or payment could not be saved.
+  warning?: string;
 }
 
 type StatusFilter = 'all' | 'active' | 'ready' | 'idle' | 'off';
@@ -134,8 +137,11 @@ export default function StudentsPage({ account, exams }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<Credentials | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
+  // ?student=<id> opens that student's details, as a link from a batch does.
+  const [openId, setOpenId] = useState<string | null>(() => new URLSearchParams(window.location.search).get('student'));
   const [adding, setAdding] = useState(false);
+  const [settingTargets, setSettingTargets] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
   // ?batch=<id> shows one batch, ?batch=none the students without one.
@@ -231,7 +237,6 @@ export default function StudentsPage({ account, exams }: Props) {
   const seatsUsed = everyone.length;
   const full = seatsUsed >= institution.seatLimit;
   const period = PERIODS.find(([value]) => value === days)?.[1].toLowerCase() ?? '';
-  const sum = (key: 'practiceAttempts' | 'mocksCompleted') => inBatch.reduce((n, s) => n + s.usage[key], 0);
   const idleCount = inBatch.filter(s => isIdle(s, now)).length;
   const batchFees = fees ? inBatch.map(s => fees.get(s.id)).filter((f): f is StudentFee => !!f) : [];
   const toCollect = batchFees.reduce((n, f) => n + Math.max(0, f.balanceNpr), 0);
@@ -240,66 +245,22 @@ export default function StudentsPage({ account, exams }: Props) {
 
   const activeCount = inBatch.filter(s => !s.disabled && activeInPeriod(s)).length;
   const activeShare = inBatch.length ? Math.round((activeCount / inBatch.length) * 100) : 0;
-  const firstName = account.admin.name.split(' ')[0];
-  const plan = institution.plan ? PLANS[institution.plan] : null;
   const statusText = STATUS_TEXT[institution.status] ?? STATUS_TEXT.none;
   const shownBatch = filterKnown && batchFilter && batchFilter !== 'none' ? batches.find(b => b.id === batchFilter) : null;
+  const targetExams = TARGET_EXAMS.filter(exam => exams.includes(exam));
+
+  const copySignInLink = async () => {
+    try {
+      await navigator.clipboard.writeText(loginAddress);
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Clipboard access can be refused; the link is in Settings to copy by hand.
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <PageHero
-        eyebrow="Institution dashboard"
-        eyebrowIcon={Building2}
-        title={firstName ? `Welcome back, ${firstName}` : institution.name}
-        subtitle={
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span>{institution.name}</span>
-            <span aria-hidden>·</span>
-            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${institution.status === 'active' ? 'bg-emerald-400/20 text-white' : 'bg-rose-400/30 text-white'}`}>
-              {institution.status === 'active' ? <Check className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
-              {statusText.title}
-            </span>
-            {plan && (
-              <span>
-                {plan.name} plan
-                {institution.validUntil && <> · {institution.status === 'expired' ? 'ended' : 'until'} {formatExamDate(institution.validUntil)}</>}
-              </span>
-            )}
-          </span>
-        }
-        actions={
-          <>
-            <Button size="sm" className={heroButton} onClick={() => setAdding(true)} disabled={full} title={full ? 'All seats are in use' : undefined}>
-              <UserPlus className="mr-1.5 h-4 w-4" /> Add student
-            </Button>
-            <CopyButton text={loginAddress} label="Copy sign-in link" className={heroGhostButton} />
-          </>
-        }
-      >
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          {[
-            { to: sectionPath(institution.code, 'batches'), label: 'Batches', hint: batches.length === 1 ? '1 batch' : `${batches.length} batches`, icon: Layers },
-            { to: sectionPath(institution.code, 'fees'), label: 'Fees', hint: fees ? `${rupees(toCollect)} to collect` : 'Payments and receipts', icon: Wallet },
-            { to: sectionPath(institution.code, 'settings'), label: 'Settings', hint: 'Logo, colour and details', icon: Settings },
-          ].map(link => (
-            <Link
-              key={link.label}
-              to={link.to}
-              className="group flex flex-col items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-2 py-3 text-center transition-colors hover:bg-white/20 sm:flex-row sm:gap-3 sm:px-4 sm:text-left"
-            >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/20">
-                <link.icon className="h-[18px] w-[18px]" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-xs font-bold leading-tight sm:text-sm">{link.label}</span>
-                <span className="hidden truncate text-xs text-white/70 sm:block">{link.hint}</span>
-              </span>
-              <ArrowRight className="hidden h-4 w-4 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:opacity-100 sm:block" />
-            </Link>
-          ))}
-        </div>
-      </PageHero>
-
       {institution.status !== 'active' && (
         <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-sm font-medium text-amber-800 dark:text-amber-300">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -307,7 +268,7 @@ export default function StudentsPage({ account, exams }: Props) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi
           icon={Users}
           tone="blue"
@@ -348,53 +309,78 @@ export default function StudentsPage({ account, exams }: Props) {
       </div>
 
       <Card className="space-y-5 p-4 sm:p-6">
-        <div className="flex flex-col justify-between gap-3 xl:flex-row xl:items-center">
-          <SectionTitle
-            icon={GraduationCap}
-            title={shownBatch ? shownBatch.name : batchFilter === 'none' && filterKnown ? 'Students without a batch' : 'All students'}
-            description={`${sum('practiceAttempts').toLocaleString()} practice answers and ${sum('mocksCompleted').toLocaleString()} full mocks in the last ${period}`}
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-full sm:w-64">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/50" />
-              <Input
-                aria-label="Search students"
-                placeholder="Search name or username"
-                value={query}
-                onChange={event => setQuery(event.target.value)}
-                className="h-9 pl-9"
-              />
-            </div>
-            {batches.length > 0 && (
-              <BatchSelect label="Show batch" value={filterKnown ? batchFilter : ''} batches={batches} onChange={filterBy} disabled={false} allLabel="All batches" withNone />
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="mr-auto text-base font-semibold text-foreground">
+            {shownBatch ? shownBatch.name : batchFilter === 'none' && filterKnown ? 'Students without a batch' : 'Students'}
+            {linkCopied && (
+              <span role="status" className="ml-2 text-xs font-normal text-emerald-600 dark:text-emerald-400">
+                Link copied
+              </span>
             )}
-            <select
-              aria-label="Period"
-              value={days}
-              onChange={event => setDays(Number(event.target.value))}
-              className="h-9 rounded-lg border border-input bg-card px-2.5 text-sm font-semibold text-foreground"
-            >
-              {PERIODS.map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+          </h2>
+          <div className="relative w-full sm:w-56">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              aria-label="Search students"
+              placeholder="Search"
+              value={query}
+              onChange={event => setQuery(event.target.value)}
+              className="h-9 pl-9"
+            />
           </div>
+          <Button size="sm" className="h-9" onClick={() => setAdding(true)} disabled={full} title={full ? 'All seats are in use' : undefined}>
+            <UserPlus className="mr-1.5 h-4 w-4" /> Add student
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="h-9 w-9" aria-label="More actions">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onSelect={() => void copySignInLink()}>
+                <Copy className="mr-2 h-4 w-4" /> Copy sign-in link
+              </DropdownMenuItem>
+              {targetExams.length > 0 && (
+                <DropdownMenuItem onSelect={() => setSettingTargets(true)}>
+                  <Target className="mr-2 h-4 w-4" /> Booking targets
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        <FilterTabs
-          label="Filter by status"
-          value={status}
-          onChange={setStatus}
-          options={[
-            { id: 'all', label: 'All', count: inBatch.length, icon: Users },
-            { id: 'active', label: 'Active', count: activeCount, icon: UserCheck },
-            { id: 'ready', label: 'Ready to book', count: inBatch.filter(isReady).length, icon: BadgeCheck },
-            { id: 'idle', label: 'Need attention', count: idleCount, icon: AlertTriangle },
-            { id: 'off', label: 'Turned off', count: inBatch.filter(s => s.disabled).length, icon: Ban },
-          ]}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="mr-auto max-w-full">
+            <FilterTabs
+              label="Filter by status"
+              value={status}
+              onChange={setStatus}
+              options={[
+                { id: 'all', label: 'All', count: inBatch.length },
+                { id: 'active', label: 'Active', count: activeCount },
+                { id: 'ready', label: 'Ready to book', count: inBatch.filter(isReady).length },
+                { id: 'idle', label: 'Need attention', count: idleCount },
+                { id: 'off', label: 'Turned off', count: inBatch.filter(s => s.disabled).length },
+              ]}
+            />
+          </div>
+          {batches.length > 0 && (
+            <BatchSelect label="Show batch" value={filterKnown ? batchFilter : ''} batches={batches} onChange={filterBy} disabled={false} allLabel="All batches" withNone />
+          )}
+          <select
+            aria-label="Period"
+            value={days}
+            onChange={event => setDays(Number(event.target.value))}
+            className="h-9 rounded-lg border border-input bg-card px-2.5 text-sm text-foreground"
+          >
+            {PERIODS.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {students === null && !error && (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -407,7 +393,7 @@ export default function StudentsPage({ account, exams }: Props) {
             <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500 text-white">
               <Users className="h-6 w-6" />
             </span>
-            <p className="font-display text-lg font-bold text-foreground">No students yet</p>
+            <p className="font-display text-lg font-medium text-foreground">No students yet</p>
             <p className="max-w-sm text-sm text-muted-foreground">Add your first student to give them a login for your page.</p>
           </div>
         )}
@@ -415,18 +401,18 @@ export default function StudentsPage({ account, exams }: Props) {
 
         {list.length > 0 && (
           <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full min-w-[1080px] text-sm">
+            <table className="w-full min-w-[860px] text-sm">
               <caption className="sr-only">Students and their activity over {period}</caption>
               <thead>
-                <tr className="whitespace-nowrap bg-muted/60 text-left text-xs font-bold uppercase tracking-wide text-foreground/70">
-                  <th className="px-4 py-3">Student</th>
-                  <th className="py-3 pr-3">Exam</th>
-                  {batches.length > 0 && <th className="py-3 pr-3">Batch</th>}
-                  <th className="py-3 pr-3 text-right">Latest mock</th>
-                  <th className="py-3 pr-3">Booking</th>
-                  <th className="py-3 pr-3 text-right">Practice</th>
-                  <th className="py-3 pr-3">Last active</th>
-                  {fees && <th className="py-3 pr-3 text-right">Fee balance</th>}
+                <tr className="whitespace-nowrap bg-muted/60 text-left text-xs font-medium text-muted-foreground">
+                  <th className="w-full px-4 py-3">Student</th>
+                  <th className="px-5 py-3">Exam</th>
+                  {batches.length > 0 && <th className="px-5 py-3">Batch</th>}
+                  <th className="px-5 py-3">Latest mock</th>
+                  <th className="px-5 py-3">Booking</th>
+                  <th className="px-5 py-3">Practice</th>
+                  <th className="px-5 py-3">Last active</th>
+                  {fees && <th className="px-5 py-3">Fee balance</th>}
                   <th className="py-3 pr-4">
                     <span className="sr-only">Actions</span>
                   </th>
@@ -446,41 +432,41 @@ export default function StudentsPage({ account, exams }: Props) {
                         <button type="button" className="flex items-center gap-3 text-left" aria-haspopup="dialog">
                           <Avatar name={student.name} exam={student.exam} />
                           <span className="min-w-0">
-                            <span className="block truncate font-bold text-foreground">{student.name}</span>
+                            <span className="block truncate font-medium text-foreground">{student.name}</span>
                             <span className="block font-mono text-xs text-foreground/60">{student.username}</span>
                           </span>
                         </button>
                       </td>
-                      <td className="py-3 pr-3">
+                      <td className="whitespace-nowrap px-5 py-3">
                         <ExamPill exam={student.exam} />
                       </td>
-                      {batches.length > 0 && <td className="whitespace-nowrap py-3 pr-3 text-foreground/75">{batchName(student.batchId) || '—'}</td>}
-                      <td className="py-3 pr-3 text-right tabular-nums">
+                      {batches.length > 0 && <td className="whitespace-nowrap px-5 py-3 text-foreground/75">{batchName(student.batchId) || '—'}</td>}
+                      <td className="whitespace-nowrap px-5 py-3 tabular-nums">
                         {student.latestMock ? (
-                          <span title={student.latestMock.title} className="font-bold text-foreground">
+                          <span title={student.latestMock.title} className="font-medium text-foreground">
                             {scoreOutOf(student.latestMock.exam, student.latestMock.score)}
                           </span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="whitespace-nowrap py-3 pr-3">
+                      <td className="whitespace-nowrap px-5 py-3">
                         <ReadinessBadge student={student} />
                       </td>
-                      <td className="py-3 pr-3 text-right font-semibold tabular-nums">{student.usage.practiceAttempts}</td>
-                      <td className="whitespace-nowrap py-3 pr-3">
+                      <td className="px-5 py-3 tabular-nums text-foreground">{student.usage.practiceAttempts}</td>
+                      <td className="whitespace-nowrap px-5 py-3">
                         {student.disabled ? (
-                          <Badge variant="outline" className={`text-xs font-bold ${TONES.rose.soft}`}>
+                          <Badge variant="outline" className={`normal-case tracking-normal text-xs font-medium ${TONES.rose.soft}`}>
                             Turned off
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className={`text-xs font-bold ${idle ? TONES.amber.soft : TONES.green.soft}`}>
+                          <Badge variant="outline" className={`normal-case tracking-normal text-xs font-medium ${idle ? TONES.amber.soft : TONES.green.soft}`}>
                             {ago(student.usage.lastActiveAt, now)}
                           </Badge>
                         )}
                       </td>
                       {fees && (
-                        <td className="whitespace-nowrap py-3 pr-3 text-right tabular-nums">
+                        <td className="whitespace-nowrap px-5 py-3 tabular-nums">
                           <FeeBalance fee={fee} />
                         </td>
                       )}
@@ -500,7 +486,14 @@ export default function StudentsPage({ account, exams }: Props) {
       </Card>
       <StudentSheet
         student={openStudent}
-        onClose={() => setOpenId(null)}
+        onClose={() => {
+          setOpenId(null);
+          if (searchParams.has('student')) {
+            const next = new URLSearchParams(searchParams);
+            next.delete('student');
+            setSearchParams(next, { replace: true });
+          }
+        }}
         exams={exams}
         batches={batches}
         fee={openStudent ? fees?.get(openStudent.id) : undefined}
@@ -519,6 +512,18 @@ export default function StudentsPage({ account, exams }: Props) {
             onAdded={created => {
               setCredentials(created);
               setAdding(false);
+              void load();
+            }}
+          />
+        )}
+      </Dialog>
+
+      <Dialog open={settingTargets} onOpenChange={open => !open && setSettingTargets(false)}>
+        {settingTargets && (
+          <TargetsDialog
+            exams={targetExams}
+            onSaved={() => {
+              setSettingTargets(false);
               void load();
             }}
           />
@@ -552,7 +557,7 @@ function Avatar({ name, exam, large }: { name: string; exam: ExamCode; large?: b
   return (
     <span
       aria-hidden
-      className={`flex shrink-0 items-center justify-center rounded-full border font-black ${TONES[EXAM_TONE[exam] ?? 'blue'].soft} ${large ? 'h-14 w-14 text-lg' : 'h-9 w-9 text-sm'}`}
+      className={`flex shrink-0 items-center justify-center rounded-full border font-semibold ${TONES[EXAM_TONE[exam] ?? 'blue'].soft} ${large ? 'h-14 w-14 text-lg' : 'h-9 w-9 text-sm'}`}
     >
       {initialsOf(name) || '?'}
     </span>
@@ -561,7 +566,7 @@ function Avatar({ name, exam, large }: { name: string; exam: ExamCode; large?: b
 
 function ExamPill({ exam }: { exam: ExamCode }) {
   return (
-    <Badge variant="outline" className={`whitespace-nowrap text-xs font-bold ${TONES[EXAM_TONE[exam] ?? 'blue'].soft}`}>
+    <Badge variant="outline" className={`normal-case tracking-normal whitespace-nowrap text-xs font-medium ${TONES[EXAM_TONE[exam] ?? 'blue'].soft}`}>
       {examLabel(exam)}
     </Badge>
   );
@@ -576,10 +581,10 @@ const HAS_FULL_MOCK: ExamCode[] = ['PTE', 'IELTS'];
 
 /** Why the student is or is not ready to book, in one line. */
 function readinessReason(student: Student): string {
-  const { target, fullMocks } = readinessOf(student);
+  const { target, targetFrom, fullMocks } = readinessOf(student);
   if (!HAS_FULL_MOCK.includes(student.exam)) return `${examLabel(student.exam)} has no full mock test yet, so readiness can't be judged.`;
-  if (target === null) return 'The student has not set a target score yet.';
-  const goal = scoreOutOf(student.exam, target);
+  if (target === null) return 'No target score yet. Set one for everyone with Booking targets.';
+  const goal = scoreOutOf(student.exam, target) + (targetFrom === 'student' ? " (the student's own)" : '');
   if (fullMocks.length < 2) {
     return `Needs 2 full mocks in the last 90 days to judge (has ${fullMocks.length}). Target ${goal}.`;
   }
@@ -595,9 +600,9 @@ function ReadinessBadge({ student }: { student: Student }) {
     <Badge
       variant="outline"
       title={readinessReason(student)}
-      className={`whitespace-nowrap text-xs font-bold ${ready ? TONES.green.soft : 'border-border bg-muted/60 text-foreground/70'}`}
+      className={`normal-case tracking-normal whitespace-nowrap text-xs font-medium ${ready ? TONES.green.soft : 'border-border bg-muted/60 text-foreground/70'}`}
     >
-      {ready && <BadgeCheck className="mr-1 h-3.5 w-3.5" />}
+      {ready && <BadgeCheck className="normal-case tracking-normal mr-1 h-3.5 w-3.5" />}
       {ready ? 'Ready to book' : 'In progress'}
     </Badge>
   );
@@ -607,17 +612,17 @@ function FeeBalance({ fee }: { fee: StudentFee | undefined }) {
   if (!fee || (!fee.set && fee.paidNpr === 0)) return <span className="text-muted-foreground">—</span>;
   if (fee.balanceNpr > 0)
     return (
-      <span className={`font-bold ${fee.overdue ? TONES.rose.text : 'text-foreground'}`}>
+      <span className={`font-medium ${fee.overdue ? TONES.rose.text : 'text-foreground'}`}>
         {rupees(fee.balanceNpr)}
         {fee.overdue && (
-          <Badge variant="outline" className={`ml-1.5 text-[10px] font-bold ${TONES.rose.soft}`}>
+          <Badge variant="outline" className={`normal-case tracking-normal ml-1.5 text-[10px] font-medium ${TONES.rose.soft}`}>
             Overdue
           </Badge>
         )}
       </span>
     );
   return (
-    <Badge variant="outline" className={`text-xs font-bold ${TONES.green.soft}`}>
+    <Badge variant="outline" className={`normal-case tracking-normal text-xs font-medium ${TONES.green.soft}`}>
       Paid
     </Badge>
   );
@@ -678,57 +683,81 @@ function StudentSheet({
       <SheetPrimitive.Portal>
         <SheetPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px] data-[state=open]:animate-in data-[state=open]:fade-in-0" />
         {student && (
-          <SheetPrimitive.Content className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-border bg-card shadow-2xl data-[state=open]:animate-in data-[state=open]:slide-in-from-right">
-            <div className="flex items-start gap-3 border-b border-border bg-gradient-to-br from-primary/10 via-transparent to-transparent p-5">
-              <Avatar name={student.name} exam={student.exam} large />
-              <div className="min-w-0 flex-1">
-                <SheetPrimitive.Title className="break-words font-display text-lg font-bold text-foreground">{student.name}</SheetPrimitive.Title>
-                <SheetPrimitive.Description className="text-xs text-muted-foreground">
-                  <span className="font-mono font-semibold text-foreground">{student.username}</span> · added {shortDate(student.createdAt)}
-                </SheetPrimitive.Description>
-                <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
-                  <ExamPill exam={student.exam} />
-                  <ReadinessBadge student={student} />
-                  {student.batchId && (
-                    <span className="rounded-full border border-border px-2 py-0.5 font-semibold text-muted-foreground">
-                      {batches.find(b => b.id === student.batchId)?.name}
-                    </span>
-                  )}
-                  {student.disabled && (
-                    <Badge variant="outline" className="border-rose-500/25 bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                      Turned off
-                    </Badge>
-                  )}
+          <SheetPrimitive.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[88dvh] min-h-[min(30rem,88dvh)] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
+            <div className="space-y-4 px-5 pb-4 pt-5">
+              <div className="flex items-start gap-3">
+                <Avatar name={student.name} exam={student.exam} />
+                <div className="min-w-0 flex-1">
+                  <SheetPrimitive.Title className="break-words text-lg font-semibold leading-tight text-foreground">{student.name}</SheetPrimitive.Title>
+                  <SheetPrimitive.Description className="mt-0.5 text-sm text-muted-foreground">
+                    <span className="font-mono">{student.username}</span>
+                    {student.email && (
+                      <>
+                        {' · '}
+                        <a href={`mailto:${student.email}`} className="hover:text-foreground hover:underline">
+                          {student.email}
+                        </a>
+                      </>
+                    )}{' '}
+                    · added {shortDate(student.createdAt)}
+                  </SheetPrimitive.Description>
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">{readinessReason(student)}</p>
+                <SheetPrimitive.Close className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </SheetPrimitive.Close>
               </div>
-              <SheetPrimitive.Close className="rounded-full border border-border p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
-                <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
-              </SheetPrimitive.Close>
-            </div>
 
-            <div className="grid grid-cols-3 gap-px border-b border-border bg-border text-center">
-              {[
-                ['Latest mock', student.latestMock ? scoreOutOf(student.latestMock.exam, student.latestMock.score) : '—', TONES.violet.text],
-                [`Practice · ${period}`, String(student.usage.practiceAttempts), TONES.blue.text],
-                ['Last active', shortDate(student.usage.lastActiveAt), TONES.green.text],
-              ].map(([label, value, color]) => (
-                <div key={label} className="bg-card px-2 py-3.5">
-                  <p className="text-xs font-semibold text-muted-foreground">{label}</p>
-                  <p className={`font-display text-lg font-black tabular-nums ${color}`}>{value}</p>
-                </div>
-              ))}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                <ExamPill exam={student.exam} />
+                <ReadinessBadge student={student} />
+                {student.batchId && (
+                  <span className="rounded-md border border-border px-2 py-0.5 text-muted-foreground">
+                    {batches.find(b => b.id === student.batchId)?.name}
+                  </span>
+                )}
+                {student.disabled && (
+                  <Badge variant="outline" className="normal-case tracking-normal border-rose-500/25 bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                    Turned off
+                  </Badge>
+                )}
+              </div>
+
+              <p
+                className={`rounded-lg px-3 py-2 text-sm ${
+                  isReady(student) ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-muted/60 text-muted-foreground'
+                }`}
+              >
+                {readinessReason(student)}
+              </p>
+
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  ['Latest mock', student.latestMock ? scoreOutOf(student.latestMock.exam, student.latestMock.score) : '—'],
+                  [`Practice · ${period}`, String(student.usage.practiceAttempts)],
+                  ['Last active', student.usage.lastActiveAt ? shortDate(student.usage.lastActiveAt) : 'Never'],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-lg border border-border px-3 py-2.5">
+                    <p className="truncate text-xs text-muted-foreground">{label}</p>
+                    <p className="mt-0.5 text-base font-semibold tabular-nums text-foreground">{value}</p>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <Tabs defaultValue="progress" className="flex min-h-0 flex-1 flex-col">
-              <TabsList className="mx-5 mt-4 grid grid-cols-4">
-                <TabsTrigger value="progress">Progress</TabsTrigger>
-                <TabsTrigger value="activity">Activity</TabsTrigger>
-                <TabsTrigger value="fees">Fees</TabsTrigger>
-                <TabsTrigger value="account">Account</TabsTrigger>
+              <TabsList className="mx-5 h-auto justify-start gap-5 rounded-none border-x-0 border-b border-t-0 border-border bg-transparent p-0 shadow-none">
+                {(['progress', 'activity', 'fees', 'account'] as const).map(tab => (
+                  <TabsTrigger
+                    key={tab}
+                    value={tab}
+                    className="-mb-px rounded-none border-b-2 border-transparent bg-transparent px-0 pb-2 pt-0 text-sm font-medium capitalize text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                  >
+                    {tab}
+                  </TabsTrigger>
+                ))}
               </TabsList>
-              <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4 text-xs">
+              <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4 text-sm">
                 <TabsContent value="progress" className="mt-0">
                   <StudentProgressPanel id={student.id} />
                 </TabsContent>
@@ -752,7 +781,7 @@ function StudentSheet({
                   ) : (
                     <p className="text-muted-foreground">No fee set for this student yet.</p>
                   )}
-                  <Link to={sectionPath(code, 'fees')} className="inline-flex items-center gap-1.5 font-bold text-primary hover:underline">
+                  <Link to={sectionPath(code, 'fees')} className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline">
                     <Wallet className="h-3.5 w-3.5" /> Record a payment or set the fee
                   </Link>
                 </TabsContent>
@@ -777,10 +806,10 @@ function StudentSheet({
                     </div>
                   )}
                   <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-                    <Button type="button" variant="outline" size="sm" disabled={actions.busy} onClick={() => void actions.reset(student)} className="rounded-xl text-xs font-bold">
+                    <Button type="button" variant="outline" size="sm" disabled={actions.busy} onClick={() => void actions.reset(student)} className="rounded-xl text-xs font-medium">
                       <KeyRound className="mr-1.5 h-3.5 w-3.5" /> New password
                     </Button>
-                    <Button type="button" variant="outline" size="sm" disabled={actions.busy} onClick={() => actions.toggleDisabled(student)} className="rounded-xl text-xs font-bold">
+                    <Button type="button" variant="outline" size="sm" disabled={actions.busy} onClick={() => actions.toggleDisabled(student)} className="rounded-xl text-xs font-medium">
                       {student.disabled ? <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> : <Ban className="mr-1.5 h-3.5 w-3.5" />}
                       {student.disabled ? 'Turn on' : 'Turn off'}
                     </Button>
@@ -790,7 +819,7 @@ function StudentSheet({
                       size="sm"
                       disabled={actions.busy}
                       onClick={() => actions.remove(student)}
-                      className="rounded-xl border-rose-500/30 text-xs font-bold text-rose-600 dark:text-rose-400"
+                      className="rounded-xl border-rose-500/30 text-xs font-medium text-rose-600 dark:text-rose-400"
                     >
                       <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Remove
                     </Button>
@@ -805,6 +834,12 @@ function StudentSheet({
   );
 }
 
+// Every field's label in the add-student form.
+const FIELD_LABEL = 'text-sm font-medium text-foreground';
+
+// Whole rupees typed in a box: '' counts as 0, anything else that is not digits is NaN.
+const amountOf = (value: string) => (value.trim() === '' ? 0 : /^\d+$/.test(value.trim()) ? Number(value.trim()) : NaN);
+
 function AddStudentDialog({
   exams,
   batches,
@@ -817,10 +852,20 @@ function AddStudentDialog({
   onAdded: (credentials: Credentials) => void;
 }) {
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [exam, setExam] = useState<ExamCode>(exams[0] ?? 'IELTS');
   const [batch, setBatch] = useState(initialBatch);
+  const [total, setTotal] = useState('');
+  const [discount, setDiscount] = useState('');
+  const [dueOn, setDueOn] = useState('');
+  const [paid, setPaid] = useState('');
+  const [method, setMethod] = useState<PaymentMethod>('cash');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const totalNpr = amountOf(total);
+  const discountNpr = amountOf(discount);
+  const paidNpr = amountOf(paid);
 
   const add = async (event: FormEvent) => {
     event.preventDefault();
@@ -828,11 +873,231 @@ function AddStudentDialog({
       setError("Enter the student's name.");
       return;
     }
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Enter an email like name@example.com, or leave it empty.');
+      return;
+    }
+    if ([totalNpr, discountNpr, paidNpr].some(Number.isNaN)) {
+      setError('Enter amounts in whole rupees, like 25000.');
+      return;
+    }
+    if (discountNpr > totalNpr) {
+      setError('The discount cannot be more than the fee.');
+      return;
+    }
+    if ((discountNpr > 0 || dueOn) && totalNpr === 0) {
+      setError('Enter the course fee first.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    let created: { student: Student; password: string };
+    try {
+      created = await addStudent(name.trim(), exam, batch, email.trim());
+    } catch (err) {
+      setError(errorMessage(err));
+      setBusy(false);
+      return;
+    }
+    // The student exists now, so a fee or payment that fails is reported, not undone.
+    let warning: string | undefined;
+    try {
+      if (totalNpr > 0) await setStudentFee(created.student.id, { totalNpr, discountNpr, dueOn });
+      if (paidNpr > 0) await addPayment(created.student.id, { amountNpr: paidNpr, paidOn: today(), method, note: '' });
+    } catch (err) {
+      warning = `The fee was not saved (${errorMessage(err)}). Set it on the Fees page.`;
+    }
+    onAdded({ name: created.student.name, username: created.student.username, password: created.password, warning });
+  };
+
+  return (
+    <DialogContent className="gap-5 sm:max-w-md">
+      <DialogHeader className="space-y-1 text-left">
+        <DialogTitle className="font-sans text-lg font-semibold">Add a student</DialogTitle>
+        <DialogDescription>They get a username and password to sign in at your page.</DialogDescription>
+      </DialogHeader>
+      <form onSubmit={add} className="space-y-5">
+        <section className="space-y-3">
+          <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Student</h3>
+          <div className="space-y-1.5">
+            <label htmlFor="new-student-name" className={FIELD_LABEL}>
+              Full name
+            </label>
+            <Input
+              id="new-student-name"
+              aria-label="Student name"
+              placeholder="e.g. Sita Sharma"
+              value={name}
+              onChange={event => setName(event.target.value)}
+              disabled={busy}
+              autoFocus
+              className="h-10 text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="new-student-email" className={FIELD_LABEL}>
+              Email <span className="font-normal text-muted-foreground">(optional)</span>
+            </label>
+            <Input
+              id="new-student-email"
+              type="email"
+              inputMode="email"
+              autoComplete="off"
+              placeholder="name@example.com"
+              value={email}
+              onChange={event => setEmail(event.target.value)}
+              disabled={busy}
+              className="h-10 text-sm"
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <p className={FIELD_LABEL}>Exam</p>
+              <ExamSelect label="Exam" value={exam} options={exams} disabled={busy} onChange={setExam} size="md" />
+            </div>
+            {batches.length > 0 && (
+              <div className="space-y-1.5">
+                <p className={FIELD_LABEL}>Batch</p>
+                <BatchSelect label="Batch" value={batch} batches={batches} disabled={busy} onChange={setBatch} allLabel="No batch" size="md" />
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="space-y-3 border-t border-border pt-5">
+          <div className="flex items-baseline justify-between gap-2">
+            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Fee</h3>
+            <span className="text-xs text-muted-foreground">Optional · you can set it later</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <MoneyField id="new-student-fee" label="Course fee" value={total} onChange={setTotal} disabled={busy} placeholder="25000" />
+            <MoneyField id="new-student-discount" label="Discount" value={discount} onChange={setDiscount} disabled={busy} placeholder="0" />
+            <MoneyField id="new-student-paid" label="Paid now" value={paid} onChange={setPaid} disabled={busy} placeholder="0" />
+            <div className="space-y-1.5">
+              <label htmlFor="new-student-method" className={FIELD_LABEL}>
+                Paid by
+              </label>
+              <select
+                id="new-student-method"
+                value={method}
+                onChange={event => setMethod(event.target.value as PaymentMethod)}
+                disabled={busy || !(paidNpr > 0)}
+                className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {PAYMENT_METHODS.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="new-student-due" className={FIELD_LABEL}>
+                Due date
+              </label>
+              <Input id="new-student-due" type="date" value={dueOn} onChange={event => setDueOn(event.target.value)} disabled={busy} className="h-10 w-full text-sm" />
+            </div>
+            <div className="flex flex-col justify-end">
+              <div className="rounded-md bg-muted/60 px-3 py-2 text-xs">
+                <div className="flex justify-between gap-2 text-muted-foreground">
+                  <span>Fee after discount</span>
+                  <span className="tabular-nums">{totalNpr > 0 && !Number.isNaN(discountNpr) ? rupees(Math.max(0, totalNpr - discountNpr)) : '—'}</span>
+                </div>
+                <div className="mt-1 flex justify-between gap-2 font-medium text-foreground">
+                  <span>Left to pay</span>
+                  <span className="tabular-nums">
+                    {totalNpr > 0 && !Number.isNaN(discountNpr) && !Number.isNaN(paidNpr) ? rupees(Math.max(0, totalNpr - discountNpr - paidNpr)) : '—'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <FormError message={error} />
+        <div className="flex justify-end gap-2 border-t border-border pt-4">
+          <DialogClose asChild>
+            <Button type="button" variant="outline" className="h-10" disabled={busy}>
+              Cancel
+            </Button>
+          </DialogClose>
+          <Button type="submit" className="h-10" disabled={busy}>
+            {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <UserPlus className="mr-1.5 h-4 w-4" />}
+            Add student
+          </Button>
+        </div>
+      </form>
+    </DialogContent>
+  );
+}
+
+/** An amount in whole rupees: digits only, with Rs in front. */
+function MoneyField({
+  id,
+  label,
+  value,
+  onChange,
+  disabled,
+  placeholder,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+  placeholder: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={id} className={FIELD_LABEL}>
+        {label}
+      </label>
+      <div className="relative">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">Rs</span>
+        <Input
+          id={id}
+          inputMode="numeric"
+          value={value}
+          onChange={event => onChange(event.target.value.replace(/\D/g, ''))}
+          disabled={disabled}
+          placeholder={placeholder}
+          className="h-10 pl-9 text-sm tabular-nums"
+        />
+      </div>
+    </div>
+  );
+}
+
+const TARGET_SCALE: Record<TargetExam, { max: number; step: number }> = {
+  PTE: { max: 90, step: 1 },
+  IELTS: { max: 9, step: 0.5 },
+};
+
+/** One booking target per exam, for every student on it; an empty box leaves students' own targets. */
+function TargetsDialog({ exams, onSaved }: { exams: TargetExam[]; onSaved: () => void }) {
+  const [values, setValues] = useState<Partial<Record<TargetExam, string>> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const examKey = exams.join(',');
+
+  useEffect(() => {
+    fetchTargets()
+      .then(data => setValues(Object.fromEntries(exams.map(exam => [exam, data.targets[exam]?.toString() ?? '']))))
+      .catch(err => {
+        setValues({});
+        setError(errorMessage(err));
+      });
+    // examKey stands for exams: a new array each render, the same names.
+  }, [examKey]);
+
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!values) return;
     setBusy(true);
     setError(null);
     try {
-      const created = await addStudent(name.trim(), exam, batch);
-      onAdded({ name: created.student.name, username: created.student.username, password: created.password });
+      await saveTargets(Object.fromEntries(exams.map(exam => [exam, values[exam]?.trim() ? Number(values[exam]) : null])));
+      onSaved();
     } catch (err) {
       setError(errorMessage(err));
       setBusy(false);
@@ -840,45 +1105,56 @@ function AddStudentDialog({
   };
 
   return (
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader className="text-left">
-        <DialogTitle>Add a student</DialogTitle>
-        <DialogDescription>They get a username and password to sign in at your page.</DialogDescription>
+    <DialogContent className="gap-5 sm:max-w-sm">
+      <DialogHeader className="space-y-1 text-left">
+        <DialogTitle className="font-sans text-base font-semibold">Booking targets</DialogTitle>
+        <DialogDescription className="text-sm">Ready to book when the last 2 full mocks reach this score.</DialogDescription>
       </DialogHeader>
-      <form onSubmit={add} className="space-y-3">
-        <div className="space-y-1.5">
-          <label htmlFor="new-student-name" className="text-xs font-semibold text-foreground">
-            Full name
-          </label>
-          <Input
-            id="new-student-name"
-            aria-label="Student name"
-            placeholder="Student's full name"
-            value={name}
-            onChange={event => setName(event.target.value)}
-            disabled={busy}
-            autoFocus
-            className="h-10 rounded-xl text-sm"
-          />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <p className="text-xs font-semibold text-foreground">Exam</p>
-            <ExamSelect label="Exam" value={exam} options={exams} disabled={busy} onChange={setExam} size="md" />
+      {values === null ? (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        </p>
+      ) : (
+        <form onSubmit={save} className="space-y-4">
+          <div className="divide-y divide-border rounded-lg border border-border">
+            {exams.map(exam => (
+              <div key={exam} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                <label htmlFor={`target-${exam}`} className="text-sm text-foreground">
+                  {examLabel(exam)}
+                </label>
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Input
+                    id={`target-${exam}`}
+                    type="number"
+                    inputMode="decimal"
+                    min={TARGET_SCALE[exam].step === 1 ? 10 : 1}
+                    max={TARGET_SCALE[exam].max}
+                    step={TARGET_SCALE[exam].step}
+                    placeholder="—"
+                    value={values[exam] ?? ''}
+                    onChange={event => setValues({ ...values, [exam]: event.target.value })}
+                    disabled={busy}
+                    className="h-8 w-20 rounded-md text-right text-sm tabular-nums"
+                  />
+                  <span className="w-8 whitespace-nowrap">/ {TARGET_SCALE[exam].max}</span>
+                </span>
+              </div>
+            ))}
           </div>
-          {batches.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs font-semibold text-foreground">Batch</p>
-              <BatchSelect label="Batch" value={batch} batches={batches} disabled={busy} onChange={setBatch} allLabel="No batch" size="md" />
-            </div>
-          )}
-        </div>
-        <FormError message={error} />
-        <Button type="submit" disabled={busy} className="h-10 w-full rounded-xl text-sm font-bold">
-          {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <UserPlus className="mr-1.5 h-4 w-4" />}
-          Add student
-        </Button>
-      </form>
+          <FormError message={error} />
+          <div className="flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button type="button" variant="outline" size="sm" disabled={busy}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button type="submit" size="sm" disabled={busy}>
+              {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+              Save
+            </Button>
+          </div>
+        </form>
+      )}
     </DialogContent>
   );
 }
@@ -898,6 +1174,11 @@ function CredentialsDialog({ credentials, loginAddress }: { credentials: Credent
         <dt className="text-muted-foreground">Password</dt>
         <dd className="font-mono font-semibold text-foreground">{credentials.password}</dd>
       </dl>
+      {credentials.warning && (
+        <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
+          {credentials.warning}
+        </p>
+      )}
       <CopyButton text={`${loginAddress}\nUsername: ${credentials.username}\nPassword: ${credentials.password}`} label="Copy details" />
     </DialogContent>
   );
@@ -907,7 +1188,7 @@ function MiniStat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5">
       <p className="text-[11px] font-semibold text-muted-foreground">{label}</p>
-      <p className="font-display text-base font-bold tabular-nums text-foreground">{value}</p>
+      <p className="font-display text-base font-medium tabular-nums text-foreground">{value}</p>
     </div>
   );
 }
@@ -963,7 +1244,7 @@ function ExamSelect({
           <DropdownMenuItem disabled className="items-start">
             <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: examAccent(value) }} />
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold">{examLabel(value)}</span>
+              <span className="block text-sm font-medium">{examLabel(value)}</span>
               <span className="block text-[11px] text-muted-foreground">Not in your plan any more</span>
             </span>
           </DropdownMenuItem>
@@ -972,7 +1253,7 @@ function ExamSelect({
           <DropdownMenuItem key={choice.id} onSelect={() => choice.id !== value && onChange(choice.id)} className="items-start">
             <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: choice.accent }} />
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold text-foreground">{examLabel(choice.id)}</span>
+              <span className="block text-sm font-medium text-foreground">{examLabel(choice.id)}</span>
               <span className="block text-[11px] leading-snug text-muted-foreground">{choice.detail}</span>
             </span>
             {choice.id === value && <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
@@ -1038,7 +1319,7 @@ function CopyButton({ text, label, className = '' }: { text: string; label: stri
   };
 
   return (
-    <Button type="button" variant={className ? 'default' : 'outline'} size="sm" onClick={() => void copy()} className={className || 'shrink-0 rounded-xl text-xs font-bold'}>
+    <Button type="button" variant={className ? 'default' : 'outline'} size="sm" onClick={() => void copy()} className={className || 'shrink-0 rounded-xl text-xs font-medium'}>
       {copied ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Copy className="mr-1.5 h-3.5 w-3.5" />}
       {copied ? 'Copied' : label}
     </Button>

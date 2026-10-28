@@ -31,7 +31,7 @@ export default function StudentActivityPanel({ id, days, period }: { id: string;
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
-        <p className="font-bold text-foreground">Practice by skill · {period}</p>
+        <p className="font-medium text-foreground">Practice by skill · {period}</p>
         {activity.skills.length === 0 ? (
           <p className="text-muted-foreground">No practice in this period.</p>
         ) : (
@@ -50,7 +50,7 @@ export default function StudentActivityPanel({ id, days, period }: { id: string;
       </div>
 
       <div className="space-y-1.5">
-        <p className="font-bold text-foreground">Latest activity</p>
+        <p className="font-medium text-foreground">Latest activity</p>
         {activity.recent.length === 0 ? (
           <p className="text-muted-foreground">Nothing yet.</p>
         ) : (
