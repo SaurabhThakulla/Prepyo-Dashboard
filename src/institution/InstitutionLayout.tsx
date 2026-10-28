@@ -1,21 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Building2, LayoutDashboard, Loader2, LogOut, LucideIcon, Menu, Settings, Users, X } from 'lucide-react';
+import { Building2, Layers, Loader2, LogOut, LucideIcon, Menu, Settings, Users, Wallet, X } from 'lucide-react';
 import { formatExamDate } from '@/lib/dates';
 import { InstitutionAccount, PLANS } from './api';
 import { sectionPath } from './paths';
 import BrandMark from './BrandMark';
 
-export type InstitutionSection = 'overview' | 'students' | 'settings';
+// 'overview' is the institution's main address, which is its students page.
+export type InstitutionSection = 'overview' | 'batches' | 'fees' | 'settings';
 
 const NAV: { id: InstitutionSection; label: string; icon: LucideIcon }[] = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'students', label: 'Students', icon: Users },
+  { id: 'overview', label: 'Students', icon: Users },
+  { id: 'batches', label: 'Batches', icon: Layers },
+  { id: 'fees', label: 'Fees', icon: Wallet },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
 interface Props {
   account: InstitutionAccount;
+  // The page's name; its banner shows it.
   title: string;
   signingOut: boolean;
   onSignOut: () => void;
@@ -23,7 +26,7 @@ interface Props {
 }
 
 /** The signed-in institution admin's frame: blue sidebar on desktop, a slide-in menu on phones. */
-export default function InstitutionLayout({ account, title, signingOut, onSignOut, children }: Props) {
+export default function InstitutionLayout({ account, signingOut, onSignOut, children }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { pathname } = useLocation();
   const { institution } = account;
@@ -68,10 +71,9 @@ export default function InstitutionLayout({ account, title, signingOut, onSignOu
       )}
 
       <main className="px-4 py-6 sm:px-6 lg:ml-72 lg:px-8 lg:py-8">
-        <div className="mx-auto w-full max-w-5xl">
-          <h1 className="break-words font-display text-2xl font-black tracking-tight sm:text-3xl">{title}</h1>
-          <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{institution.name}</p>
-          <div className="mt-6">{children}</div>
+        <div className="mx-auto w-full max-w-7xl">
+          {/* Each page opens with its own banner, which carries the page's title. */}
+          {children}
         </div>
       </main>
     </div>

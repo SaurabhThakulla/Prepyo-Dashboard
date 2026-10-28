@@ -1,30 +1,32 @@
 import React, { useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { ExamCode, InstitutionAccount, logOut } from './api';
 import { useInstitutionAccount } from './account';
 import { dashboardPath, LOGIN_PATH, sectionPath } from './paths';
 import { InstitutionLoading } from './InstitutionPage';
 import InstitutionLayout, { InstitutionSection } from './InstitutionLayout';
-import OverviewSection from './OverviewSection';
+import BatchesSection from './BatchesSection';
+import FeesSection from './FeesSection';
 import SettingsSection from './SettingsSection';
-import StudentsCard from './StudentsCard';
+import StudentsPage from './StudentsCard';
 import StudentLoginPage from './StudentLoginPage';
-import SetupPage from './SetupPage';
 import { EXAM_CHOICES } from './profile';
+import { PageHero } from './ui';
+import { Layers, Settings as SettingsIcon, Wallet } from 'lucide-react';
 
 const TITLES: Record<InstitutionSection, string> = {
-  overview: 'Overview',
-  students: 'Students',
+  overview: 'Students',
+  batches: 'Batches',
+  fees: 'Fees',
   settings: 'Settings',
 };
 
 /** /<name>[/<page>]: the institution's own address. Its admin sees the dashboard, everyone else the student sign-in. */
 export default function DashboardPage() {
   const { code = '', section = 'overview' } = useParams<{ code: string; section: string }>();
-  const navigate = useNavigate();
+  const { search } = useLocation();
   const { account, setAccount } = useInstitutionAccount();
   const [signingOut, setSigningOut] = useState(false);
-  const [editing, setEditing] = useState(false);
 
   if (account === undefined) return <InstitutionLoading />;
   // An admin who just signed out goes to the admin login; to anyone else this address is the student sign-in.
@@ -34,6 +36,8 @@ export default function DashboardPage() {
   }
 
   const { institution } = account;
+  // Students used to have a page of their own; they are the main page now.
+  if (section === 'students') return <Navigate to={dashboardPath(institution.code) + search} replace />;
   // An admin only ever sees their own institution, whatever address they typed.
   if (code !== institution.code) return <Navigate to={sectionPath(institution.code, section in TITLES ? section : 'overview')} replace />;
   if (!(section in TITLES)) return <Navigate to={dashboardPath(institution.code)} replace />;
@@ -48,33 +52,29 @@ export default function DashboardPage() {
     }
   };
 
-  // Prepyo sets the institution up when it creates it, so there is no setup to finish first;
-  // the setup page only edits the details from Settings.
-  if (editing) {
-    return (
-      <SetupPage
-        account={account}
-        onSaved={saved => {
-          setAccount(saved);
-          setEditing(false);
-          navigate(sectionPath(saved.institution.code, 'settings'));
-        }}
-        onCancel={() => setEditing(false)}
-      />
-    );
-  }
-
+  // Prepyo sets the institution up when it creates it, so there is no setup to go
+  // through: the admin changes the details on the Settings page.
   return (
     <InstitutionLayout account={account} title={TITLES[page]} signingOut={signingOut} onSignOut={signOut}>
-      {page === 'overview' && <OverviewSection account={account} />}
-      {page === 'students' && (
-        <StudentsCard
-          code={institution.code}
-          seatLimit={institution.seatLimit}
-          exams={studentExams(institution)}
-        />
+      {page === 'overview' && <StudentsPage account={account} exams={studentExams(institution)} />}
+      {page === 'batches' && (
+        <div className="space-y-6">
+          <PageHero eyebrow="Classes" eyebrowIcon={Layers} title="Batches" subtitle={`${institution.name} · group students into classes to follow them together`} />
+          <BatchesSection code={institution.code} exams={studentExams(institution)} />
+        </div>
       )}
-      {page === 'settings' && <SettingsSection account={account} onEdit={() => setEditing(true)} />}
+      {page === 'fees' && (
+        <div className="space-y-6">
+          <PageHero eyebrow="Payments" eyebrowIcon={Wallet} title="Fees" subtitle={`${institution.name} · what each student owes, payments and receipts`} />
+          <FeesSection account={account} />
+        </div>
+      )}
+      {page === 'settings' && (
+        <div className="space-y-6">
+          <PageHero eyebrow="Account" eyebrowIcon={SettingsIcon} title="Settings" subtitle={`${institution.name} · your details and sign-in page`} />
+          <SettingsSection account={account} onSaved={setAccount} />
+        </div>
+      )}
     </InstitutionLayout>
   );
 }
