@@ -20,6 +20,10 @@ export const STUDENT_ALLOWANCE =
 
 export const AI_GRADINGS_PER_MONTH = 1100;
 
+// What Prepyo charges per student seat a month, in rupees. Keep in step with
+// PricePerTenSeatsNPR (Prepyo-Backend/internal/institution/institution.go), which is 10 seats.
+export const PRICE_PER_STUDENT_NPR = 300;
+
 export type ExamCode = 'IELTS' | 'PTE' | 'EPS_TOPIK' | 'JLPT';
 
 // The institution's details, kept up to date from its Settings page.
@@ -61,6 +65,8 @@ export interface Student {
   id: string;
   name: string;
   username: string;
+  // Optional contact email, for the institution only; '' or missing when not given.
+  email?: string;
   createdAt: string;
   disabled: boolean;
   exam: ExamCode;
@@ -76,7 +82,9 @@ export interface Student {
 // (last 90 days, their exam) each meet their target score.
 export interface Readiness {
   status: 'ready' | 'in_progress';
+  // The institution's target for the exam, else the student's own.
   target: number | null;
+  targetFrom?: 'institution' | 'student' | '';
   // Newest first, at most 2, on the exam's own scale.
   fullMocks: number[];
 }
@@ -130,6 +138,7 @@ export interface StudentFee {
   studentId: string;
   name: string;
   username: string;
+  exam: ExamCode; // the course the student is on
   batchId: string | null;
   set: boolean; // false until a fee is entered
   totalNpr: number;
@@ -196,8 +205,13 @@ export const fetchStudentActivity = (id: string, days: number) =>
 export const setStudentDisabled = (id: string, disabled: boolean) =>
   api.put(`/institution/students/${id}/disabled`, { disabled });
 
-export const addStudent = (name: string, exam: ExamCode, batchId = '') =>
-  api.post<{ student: Student; password: string }>('/institution/students', batchId ? { name, exam, batchId } : { name, exam });
+export const addStudent = (name: string, exam: ExamCode, batchId = '', email = '') =>
+  api.post<{ student: Student; password: string }>('/institution/students', {
+    name,
+    exam,
+    ...(batchId ? { batchId } : {}),
+    ...(email ? { email } : {}),
+  });
 
 // An empty batchId takes the student out of their batch.
 export const setStudentBatch = (id: string, batchId: string) => api.put(`/institution/students/${id}/batch`, { batchId });
@@ -225,6 +239,17 @@ export const addPayment = (id: string, payment: { amountNpr: number; paidOn: str
   api.post<{ payment: Payment }>(`/institution/students/${id}/payments`, payment);
 
 export const deletePayment = (id: string) => api.delete(`/institution/payments/${id}`);
+
+// Exams the institution can set one booking target for, applied to all their students.
+export type TargetExam = 'PTE' | 'IELTS';
+export const TARGET_EXAMS: TargetExam[] = ['PTE', 'IELTS'];
+export type Targets = Partial<Record<TargetExam, number>>;
+
+export const fetchTargets = () => api.get<{ targets: Targets }>('/institution/targets');
+
+// A number sets the exam's target, null clears it (students' own targets apply again).
+export const saveTargets = (targets: Partial<Record<TargetExam, number | null>>) =>
+  api.put<{ targets: Targets }>('/institution/targets', { targets });
 
 // Switches the exam the student practises; their target score is cleared.
 export const setStudentExam = (id: string, exam: ExamCode) => api.put(`/institution/students/${id}/exam`, { exam });
