@@ -22,7 +22,7 @@ export const AI_GRADINGS_PER_MONTH = 1100;
 
 export type ExamCode = 'IELTS' | 'PTE' | 'EPS_TOPIK' | 'JLPT';
 
-// What the institution answers in its setup after sign-up.
+// The institution's details, kept up to date from its Settings page.
 export interface InstitutionProfile {
   exams: ExamCode[];
   city: string;
@@ -43,8 +43,6 @@ export interface InstitutionAccount {
     // The exams Prepyo's plan includes: students can be given only these.
     planExams?: ExamCode[];
     profile: InstitutionProfile;
-    // false until the setup is finished; the dashboard waits for it.
-    onboarded: boolean;
     logoUrl?: string;
   };
 }
@@ -66,7 +64,97 @@ export interface Student {
   createdAt: string;
   disabled: boolean;
   exam: ExamCode;
+  batchId: string | null;
   usage: StudentUsage;
+  // The last finished mock, on the exam's own scale; null before the first.
+  latestMock: MockScore | null;
+  // Missing from an older API; read it through readinessOf.
+  readiness?: Readiness;
+}
+
+// Whether the student can book the real exam: ready once their last 2 full mocks
+// (last 90 days, their exam) each meet their target score.
+export interface Readiness {
+  status: 'ready' | 'in_progress';
+  target: number | null;
+  // Newest first, at most 2, on the exam's own scale.
+  fullMocks: number[];
+}
+
+export interface MockScore {
+  exam: ExamCode;
+  title: string;
+  score: number;
+  at: string;
+}
+
+// A class the institution groups students into.
+export interface Batch {
+  id: string;
+  name: string;
+  exam: ExamCode;
+  startsOn: string | null; // YYYY-MM-DD
+  endsOn: string | null;
+  students: number;
+}
+
+export interface BatchForm {
+  name: string;
+  exam: ExamCode;
+  startsOn: string; // YYYY-MM-DD or empty
+  endsOn: string;
+}
+
+export interface StudentProgress {
+  exam: ExamCode;
+  targetScore: number | null;
+  // Oldest first, the latest 30.
+  mocks: MockScore[];
+  // The last 12 weeks, oldest first; weekStart is a Monday.
+  weeks: { weekStart: string; answers: number; averageAccuracy: number | null }[];
+}
+
+export type PaymentMethod = 'cash' | 'bank' | 'esewa' | 'khalti' | 'fonepay' | 'other';
+
+export const PAYMENT_METHODS: { id: PaymentMethod; name: string }[] = [
+  { id: 'cash', name: 'Cash' },
+  { id: 'bank', name: 'Bank transfer' },
+  { id: 'esewa', name: 'eSewa' },
+  { id: 'khalti', name: 'Khalti' },
+  { id: 'fonepay', name: 'Fonepay' },
+  { id: 'other', name: 'Other' },
+];
+
+// What a student owes and has paid, in whole rupees.
+export interface StudentFee {
+  studentId: string;
+  name: string;
+  username: string;
+  batchId: string | null;
+  set: boolean; // false until a fee is entered
+  totalNpr: number;
+  discountNpr: number;
+  paidNpr: number;
+  balanceNpr: number; // negative when the student paid more than the fee
+  dueOn: string | null;
+  overdue: boolean;
+}
+
+export interface FeeTotals {
+  billedNpr: number;
+  collectedNpr: number;
+  outstandingNpr: number;
+  overdue: number;
+}
+
+export interface Payment {
+  id: string;
+  studentId: string;
+  receiptNo: number;
+  amountNpr: number;
+  paidOn: string;
+  method: PaymentMethod;
+  note: string;
 }
 
 export interface StudentActivity {
@@ -108,8 +196,35 @@ export const fetchStudentActivity = (id: string, days: number) =>
 export const setStudentDisabled = (id: string, disabled: boolean) =>
   api.put(`/institution/students/${id}/disabled`, { disabled });
 
-export const addStudent = (name: string, exam: ExamCode) =>
-  api.post<{ student: Student; password: string }>('/institution/students', { name, exam });
+export const addStudent = (name: string, exam: ExamCode, batchId = '') =>
+  api.post<{ student: Student; password: string }>('/institution/students', batchId ? { name, exam, batchId } : { name, exam });
+
+// An empty batchId takes the student out of their batch.
+export const setStudentBatch = (id: string, batchId: string) => api.put(`/institution/students/${id}/batch`, { batchId });
+
+export const fetchStudentProgress = (id: string) => api.get<StudentProgress>(`/institution/students/${id}/progress`);
+
+// Batches. Deleting one keeps its students, without a batch.
+export const fetchBatches = () => api.get<{ batches: Batch[] }>('/institution/batches');
+
+export const createBatch = (form: BatchForm) => api.post<{ batch: Batch }>('/institution/batches', form);
+
+export const updateBatch = (id: string, form: BatchForm) => api.put<{ batch: Batch }>(`/institution/batches/${id}`, form);
+
+export const deleteBatch = (id: string) => api.delete(`/institution/batches/${id}`);
+
+// Fees and payments.
+export const fetchFees = () => api.get<{ students: StudentFee[]; totals: FeeTotals }>('/institution/fees');
+
+export const setStudentFee = (id: string, fee: { totalNpr: number; discountNpr: number; dueOn: string }) =>
+  api.put(`/institution/students/${id}/fee`, fee);
+
+export const fetchPayments = (id: string) => api.get<{ payments: Payment[] }>(`/institution/students/${id}/payments`);
+
+export const addPayment = (id: string, payment: { amountNpr: number; paidOn: string; method: PaymentMethod; note: string }) =>
+  api.post<{ payment: Payment }>(`/institution/students/${id}/payments`, payment);
+
+export const deletePayment = (id: string) => api.delete(`/institution/payments/${id}`);
 
 // Switches the exam the student practises; their target score is cleared.
 export const setStudentExam = (id: string, exam: ExamCode) => api.put(`/institution/students/${id}/exam`, { exam });
