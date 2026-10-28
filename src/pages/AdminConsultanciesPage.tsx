@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { api, errorMessage } from '@/lib/api';
 import { PLANS, type ExamCode, type InstitutionPlan, type InstitutionProfile } from '@/institution/api';
-import { branchesLabel, EXAM_CHOICES, examName, studentRangeLabel } from '@/institution/profile';
+import { branchesLabel, EXAM_CHOICES, examName, STUDENT_RANGES, studentRangeLabel } from '@/institution/profile';
 
 interface Usage {
   practiceAttempts: number;
@@ -506,6 +506,10 @@ function ConsultancyDialog({
                 </Section>
               </div>
 
+              <Section icon={Users} title="Students a month" hint="Roughly how many they prepare. Only Prepyo sets this; the consultancy sees it read-only">
+                <MonthlyStudentsForm consultancy={c} onSaved={onSaved} />
+              </Section>
+
               <Section icon={Sparkles} title="AI gradings" hint="Speaking and writing answers the AI marks; they renew on the 1st of each month">
                 <GradingsForm consultancy={c} onSaved={onSaved} />
               </Section>
@@ -838,6 +842,52 @@ function PlanForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved:
         <p className="text-[11px] text-muted-foreground">The consultancy can give its students only these exams.</p>
       </div>
       <SaveRow saving={saving} label="Save plan" message={message} />
+    </form>
+  );
+}
+
+/** Sets roughly how many students a consultancy prepares a month: Prepyo's to set, not the consultancy's. */
+function MonthlyStudentsForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved: () => void }) {
+  const [value, setValue] = useState(consultancy.profile.monthlyStudents ?? '');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!value) {
+      setMessage('Choose a range.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.put(`/admin/consultancies/${consultancy.id}/monthly-students`, { monthlyStudents: value });
+      setMessage('Students a month saved.');
+      onSaved();
+    } catch (err) {
+      setMessage(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={save} className="space-y-3">
+      <select
+        aria-label="Students a month"
+        value={value}
+        onChange={event => setValue(event.target.value)}
+        className="h-10 w-full max-w-xs rounded-xl border border-input bg-background px-3 text-sm text-foreground"
+      >
+        <option value="" disabled>
+          Not set
+        </option>
+        {STUDENT_RANGES.map(range => (
+          <option key={range.id} value={range.id}>
+            {range.label} · {range.detail}
+          </option>
+        ))}
+      </select>
+      <SaveRow saving={saving} label="Save" message={message} />
     </form>
   );
 }
