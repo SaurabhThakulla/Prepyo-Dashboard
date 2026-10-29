@@ -7,10 +7,12 @@ import { startTour, tourSeen } from './tourStore';
 export default function TourButton({ autoStart }: { autoStart: boolean }) {
   const { user } = useApp();
   const userId = user?.id;
+  // Kept on the account, so a new browser or device does not show it again.
+  const seenOnAccount = !!user?.tourSeenAt;
 
   useEffect(() => {
-    if (autoStart && userId && !tourSeen(userId)) startTour(userId);
-  }, [autoStart, userId]);
+    if (autoStart && userId && !seenOnAccount && !tourSeen(userId)) startTour(userId);
+  }, [autoStart, userId, seenOnAccount]);
 
   if (!userId) return null;
   return (

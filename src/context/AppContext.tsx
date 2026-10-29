@@ -11,6 +11,8 @@ export interface ActiveTestSession {
   isActive: boolean;
   title?: string;
   skill?: string;
+  /** A mock test: the app hides its navigation and refuses to leave until the test is exited from its own controls. */
+  locked?: boolean;
   onStop?: () => Promise<void> | void;
 }
 
@@ -61,6 +63,8 @@ interface AppContextType {
   setPteVariant: (variant: PteExamVariant) => void;
   updateProfile: (updates: Partial<Pick<UserProfile, 'name' | 'targetExam' | 'targetModule' | 'targetScore' | 'examDate' | 'nepalRegion'>>) => Promise<void>;
   completeOnboarding: (answers?: OnboardingAnswers) => Promise<void>;
+  /** Records on the account that the app tour has been shown, so it opens by itself only once. */
+  markTourSeen: () => Promise<void>;
 
   isTutorOpen: boolean;
   setIsTutorOpen: (open: boolean) => void;
@@ -337,6 +341,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [applyUser],
   );
 
+  const markTourSeen = useCallback(async () => {
+    const data = await api.patch<{ user: UserProfile }>('/profile', { tourSeen: true });
+    applyUser(data.user);
+  }, [applyUser]);
+
   const setActiveExam = useCallback(
     async (exam: ExamType) => {
       setActiveExamState(exam);
@@ -460,6 +469,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setPteVariant,
       updateProfile,
       completeOnboarding,
+      markTourSeen,
       isTutorOpen,
       setIsTutorOpen,
       tutorContextPrompt,
@@ -482,7 +492,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       user, loading, signInWithGoogle, signInAsAdmin, logout, refreshUser,
       notifications, unreadCount, hasMoreNotifications, refreshNotifications, loadMoreNotifications,
       markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllNotifications,
-      activeExam, setActiveExam, pteVariant, setPteVariant, updateProfile, completeOnboarding,
+      activeExam, setActiveExam, pteVariant, setPteVariant, updateProfile, completeOnboarding, markTourSeen,
       isTutorOpen, tutorContextPrompt, tutorQuestion, askTutor, clearTutorQuestion,
       theme, setTheme, toggleTheme,
       activeTestSession, activeTutorialVideo, tutorialViewMode, closeTutorialVideo,
