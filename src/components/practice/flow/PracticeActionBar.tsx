@@ -41,21 +41,14 @@ export default function PracticeActionBar({ actions, middle, hideMiddleOnPhone, 
     <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-[#0f2a6b] bg-[#13307f] dark:border-border dark:bg-card p-2.5 shadow-md sm:gap-3 sm:p-3">
       {/* On a phone: buttons on one row, credits and paging on the next. */}
       <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:gap-2">{actions}</div>
-      {/* The recorder gets its own row above the buttons until there is room for one line. */}
+      {/* The recorder gets its own row above the buttons until there is room for one line.
+          min-w-max: xl is the window's width, not the bar's, so in a narrow column the
+          slot must not squash under the pill; the right corner wraps to a new row instead. */}
       {middle && (
-        <div className={cn('order-first flex w-full justify-center xl:order-none xl:w-auto xl:flex-1', hideMiddleOnPhone && 'max-sm:hidden')}>{middle}</div>
+        <div className={cn('order-first flex w-full justify-center xl:order-none xl:w-auto xl:min-w-max xl:flex-1', hideMiddleOnPhone && 'max-sm:hidden')}>{middle}</div>
       )}
       <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
-        {cost != null && (
-          <div
-            title={`Marking this answer uses ${cost} AI-grading units of your allowance${costDoublesWhenLong ? `, or ${cost * 2} for a recording over a minute` : ''}`}
-            className={cn(CHIP, 'gap-1.5 px-3 text-sm sm:px-3.5')}
-          >
-            <Coins className="h-4 w-4 text-amber-500" aria-hidden />
-            <span className="font-semibold tabular-nums text-foreground">{cost}</span>
-            <span className="sr-only text-muted-foreground sm:not-sr-only">credits</span>
-          </div>
-        )}
+        {cost != null && <CostChip cost={cost} costDoublesWhenLong={costDoublesWhenLong} />}
         {onShuffle && (
           <button
             type="button"
@@ -111,6 +104,20 @@ export default function PracticeActionBar({ actions, middle, hideMiddleOnPhone, 
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** What marking one answer costs, in AI-grading units. */
+export function CostChip({ cost, costDoublesWhenLong }: { cost: number; costDoublesWhenLong?: boolean }) {
+  return (
+    <div
+      title={`Marking this answer uses ${cost} AI-grading units of your allowance${costDoublesWhenLong ? `, or ${cost * 2} for a recording over a minute` : ''}`}
+      className={cn(CHIP, 'gap-1.5 px-3 text-sm sm:px-3.5')}
+    >
+      <Coins className="h-4 w-4 text-amber-500" aria-hidden />
+      <span className="font-semibold tabular-nums text-foreground">{cost}</span>
+      <span className="sr-only text-muted-foreground sm:not-sr-only">credits</span>
     </div>
   );
 }

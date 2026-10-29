@@ -4,6 +4,7 @@ import { Clock, LogOut, RefreshCw, RotateCcw, Send } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
+import { useTestLock } from '@/lib/hooks/useTestLock';
 import { useToast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -211,6 +212,7 @@ interface RunnerProps {
 }
 
 function WritingMockRunner({ session, drafts, active, submitting, onSelect, onChange, onSubmit, onLeave }: RunnerProps) {
+  useTestLock('Writing test', onLeave);
   // Counting down to the server's deadline, not a fresh hour, so a reopened
   // paper resumes with the time it has left.
   const [deadline] = useState(() => Date.now() + session.secondsRemaining * 1000);

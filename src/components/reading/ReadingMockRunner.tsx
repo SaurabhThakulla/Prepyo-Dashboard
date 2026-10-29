@@ -7,6 +7,7 @@ import { ReadingMockSession } from '@/lib/types';
 import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
 import { useReadingMock } from '@/lib/hooks/useReading';
+import { useTestLock } from '@/lib/hooks/useTestLock';
 import { needsParagraphLabels } from '@/lib/readingTypes';
 
 interface ReadingMockRunnerProps {
@@ -23,6 +24,7 @@ interface ReadingMockRunnerProps {
  * passages were spent the moment they were dealt.
  */
 export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerProps) {
+  useTestLock('Reading test', mock.exit);
   const sets = session.sets ?? [];
   const [activeIndex, setActiveIndex] = useState(0);
   // The clock is the server's: a reopened paper resumes with the time it has

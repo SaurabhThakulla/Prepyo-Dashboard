@@ -32,6 +32,9 @@ import { answerMark, OPTION_MARK_CLASS, OPTION_MARK_LABEL } from '@/lib/answerMa
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import OptionContent, { hasPictureOptions, MarkedText } from '@/components/practice/OptionContent';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
+import ListeningGapOutline from '@/components/listening/ListeningGapOutline';
+import { ListeningLetterPractice } from '@/components/listening/ListeningLetterBoard';
+import { isListeningGapTask, isListeningLetterTask } from '@/lib/listeningTypes';
 import ConversationPassage, { conversationTurns } from '@/components/practice/ConversationPassage';
 import { isAiRatedListening, isReadAloudTask, isRepeatSentenceTask, isWordHighlightTask, passageText } from '@/lib/listening';
 import { allowsMultipleChoices } from '@/lib/choices';
@@ -39,7 +42,7 @@ import { minimumWritingWords, writingLengthNote, writingWordCount, writingWordTa
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isPremiumUser, listeningPlays, PracticeAttempt, Question, SkillType, ieltsModuleOf } from '@/lib/types';
 import FreePlanNotice from '@/institution/FreePlanNotice';
-import PracticeActionBar, { gradingUnits, notesFor, ON_BAR, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
+import PracticeActionBar, { CostChip, gradingUnits, notesFor, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
 import MyScore from '@/components/practice/flow/MyScore';
 import RecordingPlayback from '@/components/practice/flow/RecordingPlayback';
 
@@ -943,15 +946,27 @@ function PracticePageContent() {
                       : <p className="text-sm text-muted-foreground leading-relaxed">{currentQuestion.prompt.trim().split(/\s*\n\s*\n\s*/).join(' ')}</p>)}
                   </div>
                 </div>
-                {currentQuestion.timeLimitSeconds > 0 && (
-                  <div className="hidden shrink-0 items-center gap-3 self-start rounded-2xl bg-primary/[0.07] px-4 py-2.5 sm:flex">
-                    <Clock className="h-6 w-6 text-primary" aria-hidden />
-                    <div className="leading-tight">
-                      <p className="text-xs text-muted-foreground">Time per question</p>
-                      <p className="text-sm font-bold text-primary">{timeAllowed(currentQuestion.timeLimitSeconds)}</p>
+                <div className="flex shrink-0 items-center gap-2 self-start">
+                  {!speakingUnscored && gradingUnits(selectedSkill, currentQuestion.typeId) != null && (
+                    <CostChip
+                      cost={gradingUnits(selectedSkill, currentQuestion.typeId)!}
+                      costDoublesWhenLong={selectedSkill === 'speaking' && gradingUnits(selectedSkill, currentQuestion.typeId) === 5}
+                    />
+                  )}
+                  <Button variant="outline" onClick={handleAskAITutor} className={`${PILL} gap-2`}>
+                    <Bot className="w-4 h-4 text-primary" />
+                    <span><span className="hidden sm:inline">Ask </span>AI Coach</span>
+                  </Button>
+                  {currentQuestion.timeLimitSeconds > 0 && (
+                    <div className="hidden shrink-0 items-center gap-3 rounded-2xl bg-primary/[0.07] px-4 py-2.5 sm:flex">
+                      <Clock className="h-6 w-6 text-primary" aria-hidden />
+                      <div className="leading-tight">
+                        <p className="text-xs text-muted-foreground">Time per question</p>
+                        <p className="text-sm font-bold text-primary">{timeAllowed(currentQuestion.timeLimitSeconds)}</p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               {/* The question: blue bar with its number and title, then its content */}
@@ -993,7 +1008,8 @@ function PracticePageContent() {
                   autoPlayAfter={result === null ? audioDelayFor(currentQuestion) : undefined}
                   title={currentQuestion.title}
                   allowTranscript={true}
-                  highlights={result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
+                  // A matching key is a letter, not words said in the recording.
+                  highlights={isListeningLetterTask(currentQuestion) ? undefined : result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
                   onFinished={() => setHeardPromptFor(currentQuestion.id)}
                 />}
 
@@ -1021,7 +1037,26 @@ function PracticePageContent() {
                   />
                 )}
 
-                {currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && !isRepeatSentenceTask(currentQuestion) && (
+                {/* IELTS Listening matching and lettered diagrams: letters dragged from a box. */}
+                {isListeningLetterTask(currentQuestion) ? (
+                  <ListeningLetterPractice
+                    question={currentQuestion}
+                    responses={blankResponses}
+                    disabled={submitting || result !== null}
+                    reviewBlanks={result?.review?.blanks}
+                    onChange={setBlankResponses}
+                  />
+                ) : isListeningGapTask(currentQuestion) && currentQuestion.contextPassage ? (
+                  // Table, flow-chart, summary, notes, typed diagram labels and short answers.
+                  <ListeningGapOutline
+                    passage={currentQuestion.contextPassage}
+                    blanks={currentQuestion.blanks}
+                    responses={blankResponses}
+                    disabled={submitting || result !== null}
+                    reviewBlanks={result?.review?.blanks}
+                    onChange={setBlankResponses}
+                  />
+                ) : currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && !isRepeatSentenceTask(currentQuestion) && (
                   passageHasGaps(currentQuestion.contextPassage) ? (
                     <InlineBlankPassage
                       passage={currentQuestion.contextPassage}
@@ -1124,7 +1159,7 @@ function PracticePageContent() {
                   correctAnswers={result?.review?.correctAnswers ?? null}
                 />
 
-                {!isWordHighlightTask(currentQuestion) && currentQuestion.options && currentQuestion.options.length > 0 && (
+                {!isWordHighlightTask(currentQuestion) && !isListeningLetterTask(currentQuestion) && currentQuestion.options && currentQuestion.options.length > 0 && (
                   <div className="space-y-2.5 pt-2">
                     <h4 className="text-xs font-bold text-foreground">Choose your answer:</h4>
                     <div className={hasPictureOptions(currentQuestion.options) ? 'grid grid-cols-2 gap-2.5' : 'space-y-2.5'}>
@@ -1221,8 +1256,6 @@ function PracticePageContent() {
             )}
 
             <PracticeActionBar
-              cost={speakingUnscored ? null : gradingUnits(selectedSkill, currentQuestion.typeId)}
-              costDoublesWhenLong={selectedSkill === 'speaking' && gradingUnits(selectedSkill, currentQuestion.typeId) === 5}
               index={mistakeId ? -1 : currentIndex}
               total={mistakeId ? 0 : questions.length}
               onJump={mistakeId ? undefined : i => openQuestion(questions[i])}
@@ -1305,10 +1338,6 @@ function PracticePageContent() {
                       </Button>
                     </>
                   )}
-                  <Button variant="ghost" onClick={handleAskAITutor} className={`${PILL} gap-2 ${ON_BAR}`}>
-                    <Bot className="w-4 h-4" />
-                    <span><span className="hidden sm:inline">Ask </span>AI Coach</span>
-                  </Button>
                 </>
               }
             />

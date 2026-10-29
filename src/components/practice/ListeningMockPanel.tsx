@@ -4,6 +4,7 @@ import { Clock, Headphones, LogOut, RefreshCw, RotateCcw, Send, Volume2 } from '
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
+import { useTestLock } from '@/lib/hooks/useTestLock';
 import { useToast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,13 +14,19 @@ import { subTestsLeft } from '@/lib/subscriptions';
 import { Playback, playClips, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import SectionMockIntro from '@/components/mocks/SectionMockIntro';
+import ListeningLetterBoard from '@/components/listening/ListeningLetterBoard';
+import { LISTENING_TYPES, lettersMayRepeat } from '@/lib/listeningTypes';
 
 /** Mirrors billing.SectionMockSubTests on the server, which is what enforces it. */
 const SECTION_MOCK_SUB_TESTS = 5;
 /** Time to check answers after the last recording, as on the computer test. */
 const REVIEW_SECONDS = 120;
+/** Groups whose questions are typed into a gap, one answer each. */
+const TYPED_GROUPS: string[] = ['ielts-listening-completion', LISTENING_TYPES.table, LISTENING_TYPES.diagram, LISTENING_TYPES.shortAnswer];
+/** Groups answered by dragging a letter from the box, as on the computer-delivered test. */
+const LETTER_GROUPS: string[] = [LISTENING_TYPES.matching, LISTENING_TYPES.diagram];
 
-interface ListeningGroup {
+export interface ListeningGroup {
   id: string;
   typeId: string;
   instructions: string;
@@ -164,6 +171,7 @@ interface RunnerProps {
  */
 export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title }: RunnerProps) {
   const toast = useToast();
+  useTestLock(title ?? 'Listening test', onLeave);
   const [answers, setAnswers] = useState<Record<string, AnswerSubmission>>(() => {
     const restored: Record<string, AnswerSubmission> = {};
     for (const saved of session.draftAnswers ?? []) restored[saved.questionId] = saved;
@@ -432,7 +440,7 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
   );
 }
 
-function ListeningGroupView({
+export function ListeningGroupView({
   group,
   answers,
   disabled,
@@ -444,6 +452,8 @@ function ListeningGroupView({
   onAnswer: (question: Question, patch: Partial<AnswerSubmission>) => void;
 }) {
   const last = group.firstNumber + group.questions.length - 1;
+  const box = group.questions[0]?.options ?? [];
+  const dragged = LETTER_GROUPS.includes(group.typeId) && box.length > 0;
   return (
     <div className="space-y-2.5">
       <div>
@@ -456,12 +466,33 @@ function ListeningGroupView({
           <img src={group.imageUrl} alt={group.heading || 'Map'} className="w-full h-auto" />
         </div>
       )}
+      {dragged ? (
+        <ListeningLetterBoard
+          options={box}
+          items={group.questions.map((question, index) => ({
+            slot: question.id,
+            number: group.firstNumber + index,
+            text: question.prompt,
+          }))}
+          values={Object.fromEntries(group.questions.map(question => [question.id, answers[question.id]?.selectedOptions?.[0]]))}
+          // A letter answers several questions where the box is shorter than the list, or the instruction says so.
+          reuse={box.length < group.questions.length || lettersMayRepeat(group.instructions)}
+          disabled={disabled}
+          boxTitle={group.typeId === LISTENING_TYPES.diagram ? 'Letters on the diagram' : 'Options'}
+          onChange={patch => {
+            for (const [id, letter] of Object.entries(patch)) {
+              const question = group.questions.find(q => q.id === id);
+              if (question) onAnswer(question, { selectedOptions: letter ? [letter] : [] });
+            }
+          }}
+        />
+      ) : (
       <ol className="space-y-2">
         {group.questions.map((question, index) => {
           const number = group.firstNumber + index;
           const current = answers[question.id];
-          if (group.typeId === 'ielts-listening-completion') {
-            const [before, after] = question.prompt.split('________');
+          if (TYPED_GROUPS.includes(group.typeId) && !(question.options?.length)) {
+            const [before, after] = question.prompt.split(/_{3,}(?:\s*\(\d+\))?/);
             return (
               <li key={question.id} className="flex flex-wrap items-center gap-1.5 text-xs sm:text-sm text-foreground">
                 <span className="font-bold tabular-nums w-6">{number}</span>
@@ -480,7 +511,7 @@ function ListeningGroupView({
               </li>
             );
           }
-          const compact = group.typeId === 'ielts-listening-map' || group.typeId === 'ielts-listening-matching';
+          const compact = group.typeId === 'ielts-listening-map';
           return (
             <li key={question.id} className="space-y-1">
               <p className="text-xs sm:text-sm text-foreground">
@@ -515,6 +546,7 @@ function ListeningGroupView({
           );
         })}
       </ol>
+      )}
     </div>
   );
 }

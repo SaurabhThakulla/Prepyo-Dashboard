@@ -187,6 +187,9 @@ export interface UserProfile {
   focusSkill?: SkillType;
   dailyMinutes?: number | null;
 
+  /** When the app tour was first shown, kept on the account; null until then, absent on servers that predate it. */
+  tourSeenAt?: string | null;
+
   /** Set for a student an institution added: they sign in with a username and have no email. */
   institution?: InstitutionMembership;
 
@@ -197,9 +200,12 @@ export interface UserProfile {
 
 export type IELTSModule = 'academic' | 'general_training';
 
-/** The learner's IELTS module, Academic unless they chose General Training. */
-export function ieltsModuleOf(user: Pick<UserProfile, 'targetModule'> | null | undefined): IELTSModule {
-  return user?.targetModule === 'general_training' ? 'general_training' : 'academic';
+/**
+ * The learner's IELTS module. Only IELTS Academic is offered (the test Nepali
+ * students take for study visas), so this is always Academic.
+ */
+export function ieltsModuleOf(_user?: Pick<UserProfile, 'targetModule'> | null): IELTSModule {
+  return 'academic';
 }
 
 export const IELTS_MODULE_LABEL: Record<IELTSModule, string> = {
@@ -258,6 +264,8 @@ export interface Blank {
   options?: string[];
   /** Only present on review responses, never while answering. */
   correctAnswer?: string;
+  /** Other forms the key accepts ("15" for "fifteen"); review responses only. */
+  acceptedAnswers?: string[];
 }
 
 export interface Question {
@@ -392,6 +400,8 @@ export interface ReadingGroup {
    */
   passageDisplay?: 'full' | 'hidden';
   timeLimitSeconds?: number;
+  /** The diagram a diagram-label set is completed on. */
+  imageUrl?: string;
   questions: Question[];
 }
 

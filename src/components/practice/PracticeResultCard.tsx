@@ -101,7 +101,8 @@ function BlankAnswers({ blanks, given }: { blanks: NonNullable<Question['blanks'
         <tbody>
           {blanks.map((b, i) => {
             const answer = (given[b.id] ?? '').trim();
-            const right = answer !== '' && blankKey(answer) === blankKey(b.correctAnswer ?? '');
+            // Any form the key accepts ("20" for "twenty") is right, as the server marked it.
+            const right = answer !== '' && [b.correctAnswer, ...(b.acceptedAnswers ?? [])].some(key => blankKey(answer) === blankKey(key ?? ''));
             return (
               <tr key={b.id} className="border-t border-foreground/15 first:border-t-0">
                 <td className="px-4 py-3 font-medium text-foreground">{i + 1}</td>

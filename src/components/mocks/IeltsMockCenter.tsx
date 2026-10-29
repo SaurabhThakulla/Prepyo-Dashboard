@@ -45,7 +45,7 @@ export default function IeltsMockCenter({ header }: IeltsMockCenterProps) {
       skill: 'writing',
       icon: PenTool,
       accent: 'from-emerald-500 to-teal-700',
-      description: `Task 1 (${module === 'general_training' ? 'Letter' : 'Report'}) & Task 2 (Essay) with official rubric scoring.`,
+      description: 'Task 1 (Report) & Task 2 (Essay) with official rubric scoring.',
       meta: '2 Tasks · 60 mins',
       papersCount: writingPapers.length,
       href: WRITING_MOCK_HREF,

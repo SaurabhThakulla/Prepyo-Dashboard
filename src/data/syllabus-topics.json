@@ -35,11 +35,6 @@
               "module": "academic"
             },
             {
-              "name": "Write a letter",
-              "simpleDescription": "General Training Task 1: write a formal, semi-formal or informal letter of at least 150 words",
-              "module": "general_training"
-            },
-            {
               "name": "Opinion / Agree or Disagree",
               "simpleDescription": "Write a 250-word essay stating your point of view on a topic"
             },
@@ -88,6 +83,30 @@
             {
               "name": "Fill in the Blanks",
               "simpleDescription": "Fill in missing words in sentences using words taken directly from the passage"
+            },
+            {
+              "name": "Matching Headings",
+              "simpleDescription": "Drag the heading that sums up each paragraph into place; there are more headings than paragraphs"
+            },
+            {
+              "name": "Matching Features",
+              "simpleDescription": "Match statements to the people, dates or places in the passage; a letter may be used more than once"
+            },
+            {
+              "name": "Matching Sentence Endings",
+              "simpleDescription": "Complete each sentence beginning by dragging in the ending that matches the passage"
+            },
+            {
+              "name": "Summary / Note / Table / Flow-chart Completion",
+              "simpleDescription": "Complete a summary, notes, a table or a flow-chart with words from the passage, typed or dragged from a box"
+            },
+            {
+              "name": "Diagram Label Completion",
+              "simpleDescription": "Type the missing labels on a diagram using words from the passage"
+            },
+            {
+              "name": "Short-answer Questions",
+              "simpleDescription": "Answer questions about facts in the passage in a few words taken from the text"
             }
           ]
         },
@@ -106,6 +125,22 @@
             {
               "name": "Navigating according to audio",
               "simpleDescription": "Follow directions on a map or plan as the speaker guides you"
+            },
+            {
+              "name": "Table / Flow-chart / Summary completion",
+              "simpleDescription": "Type the missing words into a table, flow-chart, summary or notes as you listen"
+            },
+            {
+              "name": "Diagram labelling",
+              "simpleDescription": "Label the parts of a machine, device or process, typed or by dragging letters"
+            },
+            {
+              "name": "Short-answer questions",
+              "simpleDescription": "Write a short answer of a few words to each question from what you hear"
+            },
+            {
+              "name": "Matching",
+              "simpleDescription": "Drag the letter from a list of options to each item you hear about"
             }
           ]
         }
