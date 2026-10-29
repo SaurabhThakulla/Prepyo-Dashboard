@@ -40,6 +40,7 @@ import {
 } from './api';
 import { dashboardPath } from './paths';
 import BrandMark from './BrandMark';
+import { useConfirm } from './ui';
 import {
   BRAND_COLORS,
   branchesLabel,
@@ -201,6 +202,7 @@ function SignaturePanel({
   const [title, setTitle] = useState(signature?.signerTitle ?? '');
   const [drawing, setDrawing] = useState(false);
   const [working, setWorking] = useState(false);
+  const [confirm, confirmDialog] = useConfirm();
   const [error, setError] = useState<string | null>(null);
   const inputId = useId();
   const nameId = useId();
@@ -287,7 +289,15 @@ function SignaturePanel({
                   variant="ghost"
                   className="h-9 rounded-lg font-medium text-rose-600 hover:text-rose-700 dark:text-rose-400"
                   disabled={working}
-                  onClick={() => void run(removeSignatureImage)}
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: 'Remove your signature?',
+                      description: 'Fee receipts print without it until you add a new one.',
+                      confirmLabel: 'Remove signature',
+                      tone: 'danger',
+                    });
+                    if (ok) void run(removeSignatureImage);
+                  }}
                 >
                   Remove
                 </Button>
@@ -321,6 +331,7 @@ function SignaturePanel({
           if (await run(() => saveSigner(name.trim(), title.trim()))) onClose();
         }}
       />
+      {confirmDialog}
     </>
   );
 }
@@ -859,11 +870,20 @@ function LogoField({ account, color, onSaved }: { account: InstitutionAccount; c
   const { institution } = account;
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirm, confirmDialog] = useConfirm();
   const inputId = useId();
 
   const choose = async (file: File | undefined) => {
     if (!file) return;
     setError(null);
+    if (institution.logoUrl) {
+      const ok = await confirm({
+        title: 'Replace your logo?',
+        description: 'The new logo shows on your sign-in page and fee receipts straight away.',
+        confirmLabel: 'Replace logo',
+      });
+      if (!ok) return;
+    }
     if (!LOGO_TYPES.includes(file.type)) {
       setError('Please choose a PNG, JPEG or WebP image.');
       return;
@@ -914,6 +934,7 @@ function LogoField({ account, color, onSaved }: { account: InstitutionAccount; c
         </div>
       </div>
       {error && <FieldError message={error} />}
+      {confirmDialog}
     </div>
   );
 }

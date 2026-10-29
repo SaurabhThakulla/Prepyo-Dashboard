@@ -9,6 +9,7 @@ import BatchesSection from './BatchesSection';
 import FeesSection from './FeesSection';
 import SettingsSection from './SettingsSection';
 import SubscriptionSection from './SubscriptionSection';
+import InstituteMocksSection from './InstituteMocks';
 import StudentsPage from './StudentsCard';
 import StudentLoginPage from './StudentLoginPage';
 import { EXAM_CHOICES } from './profile';
@@ -18,6 +19,7 @@ import { Layers, Settings as SettingsIcon, Wallet } from 'lucide-react';
 const TITLES: Record<InstitutionSection, string> = {
   overview: 'Students',
   batches: 'Batches',
+  mocks: 'Institute Mocks',
   fees: 'Fees',
   subscription: 'Subscription',
   settings: 'Settings',
@@ -71,6 +73,7 @@ export default function DashboardPage() {
           <FeesSection account={account} />
         </div>
       )}
+      {page === 'mocks' && <InstituteMocksSection account={account} />}
       {page === 'subscription' && <SubscriptionSection account={account} />}
       {page === 'settings' && (
         <div className="space-y-6">

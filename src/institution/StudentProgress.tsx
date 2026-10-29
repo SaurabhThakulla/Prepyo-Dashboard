@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, Target } from 'lucide-react';
+import { ClipboardList, LineChart, Loader2, Target } from 'lucide-react';
 import { errorMessage } from '@/lib/api';
 import { EXAM_MAX_SCORE } from '@/lib/types';
 import { ExamCode, fetchStudentProgress, StudentProgress } from './api';
@@ -40,11 +40,26 @@ export default function StudentProgressPanel({ id }: { id: string }) {
   const last = mocks[mocks.length - 1];
   const change = first && last && mocks.length > 1 ? Math.round((last.score - first.score) * 10) / 10 : null;
 
+  // Nothing to chart yet: one friendly card instead of empty charts.
+  if (mocks.length === 0 && progress.weeks.every(week => week.answers === 0)) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-6 py-10 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <LineChart className="h-6 w-6" />
+        </span>
+        <div>
+          <p className="font-display text-base font-semibold text-foreground">No activity yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">Charts appear after their first practice or mock test.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="font-medium text-foreground">Mock scores · {examName(progress.exam)}</p>
+          <p className="font-display font-semibold text-foreground">Mock scores · {examName(progress.exam)}</p>
           <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
             {progress.targetScore !== null && (
               <span className="inline-flex items-center gap-1">
@@ -60,7 +75,9 @@ export default function StudentProgressPanel({ id }: { id: string }) {
           </div>
         </div>
         {mocks.length === 0 ? (
-          <p className="text-muted-foreground">No finished mocks on this exam yet.</p>
+          <p className="flex items-center gap-2 rounded-lg border border-dashed border-border px-3 py-3 text-muted-foreground">
+            <ClipboardList className="h-4 w-4 shrink-0" /> No mock tests yet
+          </p>
         ) : (
           <div className="relative rounded-lg border border-border bg-background p-3">
             {progress.targetScore !== null && (
@@ -86,7 +103,7 @@ export default function StudentProgressPanel({ id }: { id: string }) {
       </div>
 
       <div className="space-y-2">
-        <p className="font-medium text-foreground">Practice answers per week · last 12 weeks</p>
+        <p className="font-display font-semibold text-foreground">Practice · last 12 weeks</p>
         <div className="rounded-lg border border-border bg-background p-3">
           <div className="flex items-end gap-1" role="list" aria-label="Practice answers per week, oldest first">
             {progress.weeks.map(week => (

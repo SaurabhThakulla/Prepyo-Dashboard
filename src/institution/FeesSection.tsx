@@ -25,7 +25,7 @@ import {
 import FormField, { FormError } from './FormField';
 import { examName } from './profile';
 import { downloadFeeReceipt } from './feeReceipt';
-import { FilterTabs, Kpi, TONES } from './ui';
+import { FilterTabs, Kpi, TONES, useConfirm } from './ui';
 
 /** Rupees with Nepali grouping: Rs 1,25,000. */
 export const rupees = (amount: number) => `Rs ${amount.toLocaleString('en-IN')}`;
@@ -313,6 +313,7 @@ function StudentFeeDialog({ fee, account, onChanged }: { fee: StudentFee; accoun
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  const [confirm, confirmDialog] = useConfirm();
 
   const loadPayments = useCallback(
     () =>
@@ -356,10 +357,16 @@ function StudentFeeDialog({ fee, account, onChanged }: { fee: StudentFee; accoun
     });
   };
 
-  const recordPayment = (event: FormEvent) => {
+  const recordPayment = async (event: FormEvent) => {
     event.preventDefault();
     const amountNpr = wholeRupees(amount);
     if (Number.isNaN(amountNpr) || amountNpr < 1) return setError('Enter the amount paid in whole rupees.');
+    const ok = await confirm({
+      title: `Record ${rupees(amountNpr)} from ${fee.name}?`,
+      description: `Paid by ${methodName(method)} on ${day(paidOn)}. This issues a new receipt number.`,
+      confirmLabel: 'Record payment',
+    });
+    if (!ok) return;
     void run(async () => {
       const { payment } = await addPayment(fee.studentId, { amountNpr, paidOn, method, note });
       setAmount('');
@@ -368,8 +375,14 @@ function StudentFeeDialog({ fee, account, onChanged }: { fee: StudentFee; accoun
     });
   };
 
-  const remove = (payment: Payment) => {
-    if (!window.confirm(`Delete receipt no. ${payment.receiptNo} for ${rupees(payment.amountNpr)}? Its number is not used again.`)) return;
+  const remove = async (payment: Payment) => {
+    const ok = await confirm({
+      title: `Delete receipt no. ${payment.receiptNo}?`,
+      description: `${rupees(payment.amountNpr)} paid on ${day(payment.paidOn)} is taken off ${fee.name}'s balance. The receipt number is not used again.`,
+      confirmLabel: 'Delete payment',
+      tone: 'danger',
+    });
+    if (!ok) return;
     void run(async () => {
       await deletePayment(payment.id);
       return 'Payment deleted.';
@@ -472,6 +485,7 @@ function StudentFeeDialog({ fee, account, onChanged }: { fee: StudentFee; accoun
           </ul>
         )}
       </div>
+      {confirmDialog}
     </DialogContent>
   );
 }

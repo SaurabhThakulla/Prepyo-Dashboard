@@ -15,6 +15,7 @@ export default function Header() {
     if (path === '/diagnostic') return 'Level check';
     if (path?.startsWith('/practice')) return 'Practice';
     if (path?.startsWith('/mocks')) return 'Mock tests';
+    if (path?.startsWith('/institute-mock')) return 'Institute Mock';
     if (path === '/mistakes' || path === '/history') return 'Practice history';
     if (path === '/subscription' || path === '/account') return 'Your plan';
     if (path === '/referrals') return 'Earn Rewards';

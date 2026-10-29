@@ -11,7 +11,7 @@ import { scoreOutOf } from './StudentProgress';
 import { examName } from './profile';
 import { dashboardPath } from './paths';
 import FormField, { FormError } from './FormField';
-import { EXAM_TONE, SectionTitle, TONES } from './ui';
+import { EXAM_TONE, SectionTitle, TONES, useConfirm } from './ui';
 
 interface Props {
   code: string;
@@ -37,6 +37,7 @@ export default function BatchesSection({ code, exams }: Props) {
   const [editing, setEditing] = useState<Batch | null | undefined>(undefined);
   // The batch whose students are shown.
   const [viewing, setViewing] = useState<Batch | null>(null);
+  const [confirm, confirmDialog] = useConfirm();
 
   const load = useCallback(
     () =>
@@ -51,8 +52,14 @@ export default function BatchesSection({ code, exams }: Props) {
   }, [load]);
 
   const remove = async (batch: Batch) => {
-    const students = batch.students === 1 ? '1 student stays' : `${batch.students} students stay`;
-    if (!window.confirm(`Delete the batch "${batch.name}"? Its ${students} in your institution, without a batch.`)) return;
+    const students = batch.students === 1 ? 'Its 1 student stays' : `Its ${batch.students} students stay`;
+    const ok = await confirm({
+      title: `Delete the batch "${batch.name}"?`,
+      description: `${students} in your institution, without a batch.`,
+      confirmLabel: 'Delete batch',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await deleteBatch(batch.id);
       await load();
@@ -158,6 +165,8 @@ export default function BatchesSection({ code, exams }: Props) {
       )}
 
       <FormError message={error} />
+
+      {confirmDialog}
 
       <Dialog open={viewing !== null} onOpenChange={open => !open && setViewing(null)}>
         {viewing && <BatchStudentsDialog batch={viewing} code={code} />}

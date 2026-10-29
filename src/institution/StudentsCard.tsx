@@ -2,9 +2,14 @@ import React, { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import * as SheetPrimitive from '@radix-ui/react-dialog';
 import {
+  Activity,
   AlertTriangle,
   Ban,
   BadgeCheck,
+  Clock,
+  LineChart,
+  Trophy,
+  UserCog,
   Check,
   ChevronDown,
   Copy,
@@ -59,7 +64,7 @@ import {
 import { EXAM_CHOICES } from './profile';
 import { dashboardPath, sectionPath } from './paths';
 import { FormError } from './FormField';
-import { EXAM_TONE, FilterTabs, Kpi, TONES } from './ui';
+import { EXAM_TONE, FilterTabs, Kpi, TONES, useConfirm } from './ui';
 import StudentActivityPanel from './StudentActivity';
 import StudentProgressPanel, { scoreOutOf } from './StudentProgress';
 import { rupees, today } from './FeesSection';
@@ -130,6 +135,7 @@ const STATUS_TEXT = {
 /** The institution's home: plan and seats, the numbers that matter, and every student in one list, CRM-style. */
 export default function StudentsPage({ account, exams }: Props) {
   const { institution } = account;
+  const [confirm, confirmDialog] = useConfirm();
   const [days, setDays] = useState(30);
   const [students, setStudents] = useState<Student[] | null>(null);
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -137,8 +143,7 @@ export default function StudentsPage({ account, exams }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<Credentials | null>(null);
-  // ?student=<id> opens that student's details, as a link from a batch does.
-  const [openId, setOpenId] = useState<string | null>(() => new URLSearchParams(window.location.search).get('student'));
+  const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [settingTargets, setSettingTargets] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -147,6 +152,11 @@ export default function StudentsPage({ account, exams }: Props) {
   // ?batch=<id> shows one batch, ?batch=none the students without one.
   const [searchParams, setSearchParams] = useSearchParams();
   const batchFilter = searchParams.get('batch') ?? '';
+  // ?student=<id> opens that student's details, as a link from a batch does.
+  const studentParam = searchParams.get('student');
+  useEffect(() => {
+    if (studentParam) setOpenId(studentParam);
+  }, [studentParam]);
   const now = Date.now();
 
   const loginAddress = window.location.origin + dashboardPath(institution.code);
@@ -187,23 +197,50 @@ export default function StudentsPage({ account, exams }: Props) {
 
   const actions: StudentActions = {
     busy,
-    reset: student =>
-      run(async () => {
+    reset: async student => {
+      const ok = await confirm({
+        title: `Make a new password for ${student.name}?`,
+        description: 'Their current password stops working straight away. You get the new one to give them.',
+        confirmLabel: 'Make new password',
+      });
+      if (!ok) return;
+      await run(async () => {
         const { password } = await resetStudentPassword(student.id);
         setCredentials({ name: student.name, username: student.username, password });
-      }),
-    changeExam: (student, next) => {
-      if (next !== student.exam) void run(() => setStudentExam(student.id, next).then(() => undefined));
+      });
+    },
+    changeExam: async (student, next) => {
+      if (next === student.exam) return;
+      const ok = await confirm({
+        title: `Switch ${student.name} to ${examLabel(next)}?`,
+        description: 'Their practice moves to the new exam, and the target score they set for themselves is cleared.',
+        confirmLabel: 'Switch exam',
+      });
+      if (ok) void run(() => setStudentExam(student.id, next).then(() => undefined));
     },
     changeBatch: (student, batchId) => {
       if (batchId !== (student.batchId ?? '')) void run(() => setStudentBatch(student.id, batchId).then(() => undefined));
     },
-    toggleDisabled: student => {
-      if (!student.disabled && !window.confirm(`Turn off ${student.name}'s account? They are signed out and cannot sign in until you turn it back on.`)) return;
+    toggleDisabled: async student => {
+      if (!student.disabled) {
+        const ok = await confirm({
+          title: `Turn off ${student.name}'s account?`,
+          description: 'They are signed out and cannot sign in until you turn it back on. Their data is kept.',
+          confirmLabel: 'Turn off',
+          tone: 'danger',
+        });
+        if (!ok) return;
+      }
       void run(() => setStudentDisabled(student.id, !student.disabled).then(() => undefined));
     },
-    remove: student => {
-      if (!window.confirm(`Remove ${student.name}? Their account, practice history and fee records are deleted.`)) return;
+    remove: async student => {
+      const ok = await confirm({
+        title: `Remove ${student.name}?`,
+        description: 'Their account, practice history and fee records are deleted. This cannot be undone.',
+        confirmLabel: 'Remove student',
+        tone: 'danger',
+      });
+      if (!ok) return;
       void run(async () => {
         await removeStudent(student.id);
         setOpenId(null);
@@ -530,6 +567,8 @@ export default function StudentsPage({ account, exams }: Props) {
         )}
       </Dialog>
 
+      {confirmDialog}
+
       <Dialog open={!!credentials} onOpenChange={open => !open && setCredentials(null)}>
         {credentials && <CredentialsDialog credentials={credentials} loginAddress={loginAddress} />}
       </Dialog>
@@ -578,6 +617,17 @@ const isReady = (student: Student) => readinessOf(student).status === 'ready';
 
 // Exams with a full mock test; readiness is decided from those.
 const HAS_FULL_MOCK: ExamCode[] = ['PTE', 'IELTS'];
+
+/** The readiness in a few words, for the student's details; readinessReason has the whole sentence. */
+function readinessShort(student: Student): string {
+  const { target, fullMocks } = readinessOf(student);
+  if (!HAS_FULL_MOCK.includes(student.exam)) return `No full mock for ${examLabel(student.exam)} yet`;
+  if (target === null) return 'No target set yet';
+  const goal = `Target ${scoreOutOf(student.exam, target)}`;
+  if (isReady(student)) return `${goal} · reached in the last 2 full mocks`;
+  if (fullMocks.length < 2) return `${goal} · ${fullMocks.length} of 2 full mocks done`;
+  return `${goal} · not reached yet`;
+}
 
 /** Why the student is or is not ready to book, in one line. */
 function readinessReason(student: Student): string {
@@ -684,76 +734,87 @@ function StudentSheet({
         <SheetPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[1px] data-[state=open]:animate-in data-[state=open]:fade-in-0" />
         {student && (
           <SheetPrimitive.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[88dvh] min-h-[min(30rem,88dvh)] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
-            <div className="space-y-4 px-5 pb-4 pt-5">
-              <div className="flex items-start gap-3">
-                <Avatar name={student.name} exam={student.exam} />
-                <div className="min-w-0 flex-1">
-                  <SheetPrimitive.Title className="break-words text-lg font-semibold leading-tight text-foreground">{student.name}</SheetPrimitive.Title>
-                  <SheetPrimitive.Description className="mt-0.5 text-sm text-muted-foreground">
-                    <span className="font-mono">{student.username}</span>
+            {/* A soft band in the brand colour behind the student's name. */}
+            <div className="relative bg-gradient-to-br from-primary/15 via-primary/5 to-transparent px-5 pb-4 pt-5">
+              <div className="flex items-start gap-4">
+                <span
+                  aria-hidden
+                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary font-display text-xl font-semibold text-primary-foreground shadow-md shadow-primary/25"
+                >
+                  {initialsOf(student.name) || '?'}
+                </span>
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <SheetPrimitive.Title className="break-words font-display text-xl font-semibold leading-tight text-foreground">{student.name}</SheetPrimitive.Title>
+                  <SheetPrimitive.Description className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                    <span className="font-mono text-xs">@{student.username}</span>
                     {student.email && (
-                      <>
-                        {' · '}
-                        <a href={`mailto:${student.email}`} className="hover:text-foreground hover:underline">
-                          {student.email}
-                        </a>
-                      </>
-                    )}{' '}
-                    · added {shortDate(student.createdAt)}
+                      <a href={`mailto:${student.email}`} className="truncate hover:text-foreground hover:underline">
+                        {student.email}
+                      </a>
+                    )}
                   </SheetPrimitive.Description>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs">
+                    <ExamPill exam={student.exam} />
+                    <ReadinessBadge student={student} />
+                    {student.batchId && (
+                      <span className="rounded-md border border-border bg-card/70 px-2 py-0.5 text-muted-foreground">
+                        {batches.find(b => b.id === student.batchId)?.name}
+                      </span>
+                    )}
+                    {student.disabled && (
+                      <Badge variant="outline" className="normal-case tracking-normal border-rose-500/25 bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                        Turned off
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                <SheetPrimitive.Close className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
+                <SheetPrimitive.Close className="rounded-full bg-card/70 p-1.5 text-muted-foreground shadow-sm hover:bg-card hover:text-foreground">
                   <X className="h-4 w-4" />
                   <span className="sr-only">Close</span>
                 </SheetPrimitive.Close>
               </div>
-
-              <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                <ExamPill exam={student.exam} />
-                <ReadinessBadge student={student} />
-                {student.batchId && (
-                  <span className="rounded-md border border-border px-2 py-0.5 text-muted-foreground">
-                    {batches.find(b => b.id === student.batchId)?.name}
-                  </span>
-                )}
-                {student.disabled && (
-                  <Badge variant="outline" className="normal-case tracking-normal border-rose-500/25 bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                    Turned off
-                  </Badge>
-                )}
-              </div>
-
-              <p
-                className={`rounded-lg px-3 py-2 text-sm ${
-                  isReady(student) ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-muted/60 text-muted-foreground'
-                }`}
-              >
-                {readinessReason(student)}
-              </p>
-
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  ['Latest mock', student.latestMock ? scoreOutOf(student.latestMock.exam, student.latestMock.score) : '—'],
-                  [`Practice · ${period}`, String(student.usage.practiceAttempts)],
-                  ['Last active', student.usage.lastActiveAt ? shortDate(student.usage.lastActiveAt) : 'Never'],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-lg border border-border px-3 py-2.5">
-                    <p className="truncate text-xs text-muted-foreground">{label}</p>
-                    <p className="mt-0.5 text-base font-semibold tabular-nums text-foreground">{value}</p>
-                  </div>
-                ))}
-              </div>
             </div>
 
-            <Tabs defaultValue="progress" className="flex min-h-0 flex-1 flex-col">
+            <div className="grid grid-cols-3 gap-2 px-5 pt-4">
+              {(
+                [
+                  { label: 'Latest mock', value: student.latestMock ? scoreOutOf(student.latestMock.exam, student.latestMock.score) : '—', icon: Trophy, tone: TONES.violet },
+                  { label: `Practice · ${period}`, value: String(student.usage.practiceAttempts), icon: Activity, tone: TONES.blue },
+                  { label: 'Last active', value: student.usage.lastActiveAt ? shortDate(student.usage.lastActiveAt) : 'Never', icon: Clock, tone: TONES.green },
+                ] as const
+              ).map(stat => (
+                <div key={stat.label} className={`rounded-xl border p-3 ${stat.tone.card}`}>
+                  <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${stat.tone.icon}`}>
+                    <stat.icon className="h-3.5 w-3.5" />
+                  </span>
+                  <p className="mt-2 font-display text-lg font-semibold tabular-nums leading-none text-foreground">{stat.value}</p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+
+            <p className="flex items-center gap-1.5 px-5 pt-3 text-xs text-muted-foreground" title={readinessReason(student)}>
+              <Target className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{readinessShort(student)}</span>
+            </p>
+
+            <Tabs defaultValue="progress" className="mt-3 flex min-h-0 flex-1 flex-col">
               <TabsList className="mx-5 h-auto justify-start gap-5 rounded-none border-x-0 border-b border-t-0 border-border bg-transparent p-0 shadow-none">
-                {(['progress', 'activity', 'fees', 'account'] as const).map(tab => (
+                {(
+                  [
+                    ['progress', 'Progress', LineChart],
+                    ['activity', 'Activity', Activity],
+                    ['fees', 'Fees', Wallet],
+                    ['account', 'Account', UserCog],
+                  ] as const
+                ).map(([tab, label, Icon]) => (
                   <TabsTrigger
                     key={tab}
                     value={tab}
-                    className="-mb-px rounded-none border-b-2 border-transparent bg-transparent px-0 pb-2 pt-0 text-sm font-medium capitalize text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                    className="-mb-px gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-0 pb-2 pt-0 text-sm font-medium text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
                   >
-                    {tab}
+                    <Icon className="h-3.5 w-3.5" />
+                    {label}
                   </TabsTrigger>
                 ))}
               </TabsList>

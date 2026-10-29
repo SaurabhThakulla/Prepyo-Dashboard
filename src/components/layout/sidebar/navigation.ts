@@ -117,7 +117,7 @@ export function getSectionFromPathname(path: string, searchParams?: URLSearchPar
   if (path.startsWith('/admin')) return 'home';
   if (path.startsWith('/practice')) return 'practice';
   if (path.startsWith('/learn')) return 'learn';
-  if (path.startsWith('/mocks') || path.startsWith('/diagnostic')) return 'mock';
+  if (path.startsWith('/mocks') || path.startsWith('/diagnostic') || path.startsWith('/institute-mock')) return 'mock';
   if (path.startsWith('/tutorials') || path.startsWith('/videos')) return 'tutorials';
   return 'practice';
 }
@@ -240,6 +240,10 @@ export function buildSections(
       title: 'Mock Exam Simulator',
       description: 'Timed full exams with scorecards',
       items: [
+        // An institution's students see the tests their institution sets them first.
+        ...(!isLanguageExam && user?.institution
+          ? [{ href: '/institute-mock', label: 'Institute Mock', icon: ClipboardCheck, sublabel: `Tests set by ${user.institution.name}` }]
+          : []),
         ...(isLanguageExam ? [] : isPTE ? pteMockItems(pteVariant) : ieltsMockItems()),
         {
           href: '/diagnostic',
@@ -344,7 +348,7 @@ function ieltsMockItems(): SecondaryNavItem[] {
       href: READING_MOCK_HREF,
       label: 'Reading Test',
       icon: BookOpen,
-      sublabel: 'Academic / GT passages, timed and auto-graded',
+      sublabel: 'Academic passages, timed and auto-graded',
       group: 'Sectional Tests',
     },
     {

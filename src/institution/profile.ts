@@ -2,7 +2,7 @@
 import type { ExamCode } from './api';
 
 export const EXAM_CHOICES: { id: ExamCode; name: string; detail: string; accent: string }[] = [
-  { id: 'IELTS', name: 'IELTS', detail: 'Academic and General Training, all four skills', accent: '#e11d48' },
+  { id: 'IELTS', name: 'IELTS', detail: 'IELTS Academic, all four skills', accent: '#e11d48' },
   { id: 'PTE', name: 'PTE Academic', detail: 'Every task type, scored by AI', accent: '#2563eb' },
   { id: 'EPS_TOPIK', name: 'EPS-TOPIK', detail: 'Korean reading and listening for work in Korea', accent: '#059669' },
   { id: 'JLPT', name: 'JLPT / NAT N5', detail: 'Japanese vocabulary, grammar, reading and listening', accent: '#dc2626' },

@@ -13,6 +13,7 @@ const PracticePage = lazy(() => import('@/pages/PracticePage'));
 const PracticeHubPage = lazy(() => import('@/pages/PracticeHubPage'));
 const MePage = lazy(() => import('@/pages/MePage'));
 const MocksPage = lazy(() => import('@/pages/MocksPage'));
+const InstituteMockPage = lazy(() => import('@/pages/InstituteMockPage'));
 const PteMockPage = lazy(() => import('@/pages/PteMockPage'));
 const MistakesPage = lazy(() => import('@/pages/MistakesPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
@@ -76,6 +77,8 @@ export default function App() {
         <Route path="/practice/tasks" element={<Suspense fallback={<AppPageSkeleton />}><PracticeHubPage /></Suspense>} />
         <Route path="/me" element={<Suspense fallback={<AppPageSkeleton />}><MePage /></Suspense>} />
         <Route path="/mocks" element={<Suspense fallback={<AppPageSkeleton />}><MocksPage /></Suspense>} />
+        <Route path="/institute-mock" element={<Suspense fallback={<AppPageSkeleton />}><InstituteMockPage /></Suspense>} />
+        <Route path="/institute-mock/:id" element={<Suspense fallback={<AppPageSkeleton />}><InstituteMockPage /></Suspense>} />
         <Route path="/mocks/pte/report/:sessionId" element={<Suspense fallback={<AppPageSkeleton />}><PteMockPage /></Suspense>} />
         <Route path="/mocks/pte/:kind" element={<Suspense fallback={<AppPageSkeleton />}><PteMockPage /></Suspense>} />
         <Route path="/history" element={<Suspense fallback={<AppPageSkeleton />}><MistakesPage /></Suspense>} />

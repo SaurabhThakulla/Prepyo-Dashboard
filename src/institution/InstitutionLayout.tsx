@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { Building2, ChevronLeft, ChevronRight, CreditCard, Layers, Loader2, LogOut, LucideIcon, Menu, Settings, Users, Wallet } from 'lucide-react';
+import { Building2, ChevronLeft, ChevronRight, ClipboardCheck, CreditCard, Layers, Loader2, LogOut, LucideIcon, Menu, Settings, Users, Wallet } from 'lucide-react';
 import { formatExamDate } from '@/lib/dates';
 import AnimatedLogo from '@/components/layout/AnimatedLogo';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -26,11 +26,12 @@ import BrandMark from './BrandMark';
 import { brandGradient, useBrandColor } from './brand';
 
 // 'overview' is the institution's main address, which is its students page.
-export type InstitutionSection = 'overview' | 'batches' | 'fees' | 'subscription' | 'settings';
+export type InstitutionSection = 'overview' | 'batches' | 'mocks' | 'fees' | 'subscription' | 'settings';
 
 const NAV: { id: InstitutionSection; label: string; icon: LucideIcon }[] = [
   { id: 'overview', label: 'Students', icon: Users },
   { id: 'batches', label: 'Batches', icon: Layers },
+  { id: 'mocks', label: 'Institute Mocks', icon: ClipboardCheck },
   { id: 'fees', label: 'Fees', icon: Wallet },
   { id: 'subscription', label: 'Subscription', icon: CreditCard },
   { id: 'settings', label: 'Settings', icon: Settings },

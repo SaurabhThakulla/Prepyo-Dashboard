@@ -32,7 +32,7 @@ export const sectionPath = (code: string, section: string) =>
 // The first word of every address the app itself uses. Keep in step with App.tsx,
 // and with reservedCodes in the backend's internal/institution/signup.go.
 const APP_PAGES = new Set([
-  'login', 'signup', 'home', 'dashboard', 'practice', 'me', 'mocks', 'mistakes', 'history', 'evaluations',
+  'login', 'signup', 'home', 'dashboard', 'practice', 'me', 'mocks', 'institute-mock', 'mistakes', 'history', 'evaluations',
   'profile', 'referrals', 'subscription', 'diagnostic', 'tutorials', 'videos', 'learn',
   'reports', 'admin', 'terms', 'privacy', 'terms-and-conditions', 'privacy-policy', 'account', 'progress',
 ]);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BadgeCheck, BookOpen, Building, Building2, CalendarClock, ClipboardList, Home, Layers, LucideIcon, Mail, Palette, SlidersHorizontal, Sparkles, Users } from 'lucide-react';
+import { BadgeCheck, BookOpen, Building, Building2, CalendarClock, ClipboardList, Home, Layers, LucideIcon, Mail, Palette, SlidersHorizontal, SpellCheck, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -55,7 +55,7 @@ const BEST_FOR: Record<InstitutionPlan, string> = {
 // What every plan gives each student.
 const INCLUDED: { text: string; icon: LucideIcon; tile: string }[] = [
   { text: 'Unlimited reading and listening questions', icon: BookOpen, tile: 'bg-sky-500/15 text-sky-600 dark:text-sky-300' },
-  { text: `${AI_GRADINGS_PER_MONTH.toLocaleString()} AI credits a month per student`, icon: Sparkles, tile: 'bg-violet-500/15 text-violet-600 dark:text-violet-300' },
+  { text: `${AI_GRADINGS_PER_MONTH.toLocaleString()} AI credits a month per student`, icon: SpellCheck, tile: 'bg-violet-500/15 text-violet-600 dark:text-violet-300' },
   { text: 'Full and sectional mock tests', icon: ClipboardList, tile: 'bg-amber-500/15 text-amber-600 dark:text-amber-300' },
   { text: 'Ready-to-book status and booking targets', icon: BadgeCheck, tile: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300' },
   { text: 'Batches, fees and receipts', icon: Layers, tile: 'bg-rose-500/15 text-rose-600 dark:text-rose-300' },

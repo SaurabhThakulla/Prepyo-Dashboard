@@ -96,6 +96,7 @@ export function mobileTitle(pathname: string, searchParams: URLSearchParams, act
     if (searchParams.get('tab') === 'reports') return 'Score Reports';
     return searchParams.get('view') === 'full' ? 'Full Mock Test' : 'Mock Tests';
   }
+  if (pathname.startsWith('/institute-mock')) return 'Institute Mock';
   if (pathname === '/diagnostic') return 'Level check';
   if (pathname === '/learn/review') return 'Review words';
   if (pathname.startsWith('/learn')) return 'Learn Korean';

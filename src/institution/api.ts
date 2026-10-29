@@ -285,3 +285,241 @@ export const lookUpInstitution = (code: string) =>
 
 export const studentLogIn = (code: string, username: string, password: string) =>
   api.post('/institution/student-login', { code, username, password });
+
+// ---------------------------------------------------------------- Institute Mocks
+
+export type InstituteMockKind = 'full' | 'speaking' | 'writing' | 'reading' | 'listening';
+export type InstituteMockExam = 'PTE' | 'IELTS';
+export type IELTSModule = 'academic' | 'general_training';
+
+/** The tests an exam's Institute Mock can be: the full test or one section, in the test's order. */
+export const instituteMockKinds = (exam: InstituteMockExam): { id: InstituteMockKind; name: string }[] =>
+  exam === 'IELTS'
+    ? [
+        { id: 'full', name: 'Full IELTS test' },
+        { id: 'listening', name: 'Listening section' },
+        { id: 'reading', name: 'Reading section' },
+        { id: 'writing', name: 'Writing section' },
+        { id: 'speaking', name: 'Speaking section' },
+      ]
+    : [
+        { id: 'full', name: 'Full PTE test' },
+        { id: 'speaking', name: 'Speaking section' },
+        { id: 'writing', name: 'Writing section' },
+        { id: 'reading', name: 'Reading section' },
+        { id: 'listening', name: 'Listening section' },
+      ];
+
+export type MockState = 'draft' | 'scheduled' | 'open' | 'closed';
+
+export interface InstituteMockSummary {
+  id: string;
+  name: string;
+  exam: InstituteMockExam;
+  module?: IELTSModule;
+  kind: InstituteMockKind;
+  title: string;
+  state: MockState;
+  opensAt: string | null;
+  closesAt: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+  students: number;
+  started: number;
+  waiting: number;
+  released: number;
+  questions: number;
+  needed: number;
+}
+
+export interface MockSlot {
+  task: string;
+  name: string;
+  count: number;
+  part: string;
+  skill: string;
+}
+
+export interface BankQuestion {
+  id: string;
+  task: string;
+  title: string;
+  preview: string;
+  difficulty: string;
+  imageUrl?: string;
+  audioUrl?: string;
+  seenBy: number;
+}
+
+export interface PaperItem {
+  questionId: string;
+  task: string;
+  part?: string;
+}
+
+export interface MockAttemptRow {
+  id: string;
+  userId: string;
+  name: string;
+  username: string;
+  status: 'in_progress' | 'submitted' | 'released';
+  submittedAt: string | null;
+  releasedAt: string | null;
+  purgeAfter: string | null;
+  finalScore: number | null;
+}
+
+export interface InstituteMockDetail extends InstituteMockSummary {
+  slots: MockSlot[];
+  items: (PaperItem & { question: BankQuestion | null })[];
+  studentIds: string[];
+  attempts: MockAttemptRow[];
+}
+
+export interface MockForm {
+  name: string;
+  kind: InstituteMockKind;
+  opensAt: string | null;
+  closesAt: string | null;
+  studentIds: string[];
+  items: PaperItem[];
+}
+
+export interface PteResult {
+  overall: number | null;
+  skills: Record<string, number>;
+  unscored: number;
+  answered: number;
+  items: number;
+}
+
+export interface ReviewItem {
+  position: number;
+  task: string;
+  taskName: string;
+  part: string;
+  marking: 'key' | 'spoken' | 'written';
+  status: string;
+  title: string;
+  prompt: string;
+  passage?: string;
+  imageUrl?: string;
+  audioUrl?: string;
+  response?: string;
+  correct?: string;
+  transcript?: string;
+  aiScore: number | null;
+  feedback?: string;
+  level: number | null;
+  comment: string;
+  hasRecording: boolean;
+  needsMark: boolean;
+}
+
+/** An IELTS sitting's bands: each section's, and the overall band when all four were sat. */
+export interface IeltsResult {
+  overall: number | null;
+  skills: Record<string, number>;
+}
+
+export interface IeltsTurn {
+  position: number;
+  part: number;
+  question: string;
+  transcript: string;
+  seconds: number;
+  hasRecording: boolean;
+}
+
+export interface EvaluationCriterion {
+  name: string;
+  score: number;
+  maxScore: number;
+  feedback: string;
+}
+
+/** One thing the teacher looks at in an IELTS section: a writing task, the speaking test, or a paper's score. */
+export interface IeltsPart {
+  key: 'task1' | 'task2' | 'speaking' | 'listening' | 'reading';
+  name: string;
+  title?: string;
+  prompt?: string;
+  imageUrl?: string;
+  response?: string;
+  words?: number;
+  turns?: IeltsTurn[];
+  correct?: number;
+  total?: number;
+  aiBand: number | null;
+  summary?: string;
+  criteria?: EvaluationCriterion[];
+  markable: boolean;
+  band: number | null;
+  comment: string;
+  needsMark: boolean;
+}
+
+export interface IeltsSection {
+  skill: string;
+  name: string;
+  status: 'not_started' | 'in_progress' | 'submitted';
+  aiBand: number | null;
+  finalBand: number | null;
+  parts: IeltsPart[];
+}
+
+export interface MockReview {
+  attemptId: string;
+  mockId: string;
+  mockName: string;
+  exam: InstituteMockExam;
+  module?: IELTSModule;
+  kind: InstituteMockKind;
+  studentName: string;
+  username: string;
+  status: MockAttemptRow['status'];
+  submittedAt: string | null;
+  releasedAt: string | null;
+  purgeAfter: string | null;
+  purgedAt: string | null;
+  comment: string;
+  reviewerName: string;
+  aiResult: PteResult | null;
+  finalResult: PteResult | null;
+  finalScore: number | null;
+  items: ReviewItem[];
+  levels: number[];
+  // IELTS only.
+  sections?: IeltsSection[];
+  bands?: number[];
+  ieltsAiResult?: IeltsResult | null;
+  ieltsResult?: IeltsResult | null;
+}
+
+export interface BandMark {
+  key: IeltsPart['key'];
+  band: number | null;
+  comment: string;
+}
+
+export const fetchInstituteMocks = () => api.get<{ mocks: InstituteMockSummary[] }>('/institution/mocks');
+export const createInstituteMock = (form: { name: string; exam: InstituteMockExam; kind: InstituteMockKind; module?: IELTSModule }) =>
+  api.post<{ mock: InstituteMockDetail }>('/institution/mocks', form);
+export const fetchInstituteMock = (id: string) => api.get<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}`);
+export const saveInstituteMock = (id: string, form: MockForm) => api.put<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}`, form);
+export const fillInstituteMock = (id: string) => api.post<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}/fill`);
+export const publishInstituteMock = (id: string) => api.post<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}/publish`);
+export const deleteInstituteMock = (id: string) => api.delete(`/institution/mocks/${id}`);
+export const fetchQuestionBank = (task: string, search: string, difficulty: string, offset = 0, module = '') =>
+  api.get<{ questions: BankQuestion[]; total: number }>('/institution/question-bank', { task, search, difficulty, limit: 30, offset, module });
+export const fetchMockReview = (mockId: string, attemptId: string) =>
+  api.get<{ review: MockReview }>(`/institution/mocks/${mockId}/attempts/${attemptId}`);
+export const saveMockReview = (
+  mockId: string,
+  attemptId: string,
+  form: { marks: { position: number; level: number | null; comment: string }[]; comment: string; bands?: BandMark[] },
+) => api.put<{ review: MockReview }>(`/institution/mocks/${mockId}/attempts/${attemptId}`, form);
+export const releaseMockResult = (mockId: string, attemptId: string, reviewerName: string) =>
+  api.post<{ review: MockReview }>(`/institution/mocks/${mockId}/attempts/${attemptId}/release`, { reviewerName });
+export const mockRecordingUrl = (mockId: string, attemptId: string, position: number) =>
+  `/api/v1/institution/mocks/${mockId}/attempts/${attemptId}/recordings/${position}`;

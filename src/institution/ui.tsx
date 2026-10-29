@@ -1,8 +1,10 @@
 // The building blocks the institution pages share, in the admin dashboard's style.
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, LucideIcon } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Info, LucideIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import type { ExamCode } from './api';
 
 /** One colour family per meaning, used the same way in every card. */
@@ -209,3 +211,64 @@ export function FilterTabs<T extends string>({
 export const heroButton = 'font-medium bg-white text-primary hover:bg-white/90';
 /** See-through button for the banner. */
 export const heroGhostButton = 'font-medium bg-white/15 text-white hover:bg-white/25 border border-white/25';
+
+export interface ConfirmOptions {
+  title: string;
+  description?: React.ReactNode;
+  confirmLabel?: string;
+  // 'danger' for something that deletes or cannot be undone: a red button.
+  tone?: 'danger' | 'default';
+}
+
+/**
+ * Asks before a risky action, in the dashboard's own style instead of the browser's pop-up.
+ * Render the returned element once; `await confirm({...})` resolves true on Confirm.
+ */
+export function useConfirm(): [(options: ConfirmOptions) => Promise<boolean>, React.ReactNode] {
+  const [pending, setPending] = useState<(ConfirmOptions & { resolve: (ok: boolean) => void }) | null>(null);
+
+  const confirm = useCallback((options: ConfirmOptions) => new Promise<boolean>(resolve => setPending({ ...options, resolve })), []);
+
+  const close = (ok: boolean) => {
+    pending?.resolve(ok);
+    setPending(null);
+  };
+
+  const danger = pending?.tone === 'danger';
+  const element = (
+    <Dialog open={pending !== null} onOpenChange={open => !open && close(false)}>
+      {pending && (
+        <DialogContent centered className="gap-5 font-sans sm:max-w-sm">
+          <div className="flex items-start gap-3">
+            <span
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                danger ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' : 'bg-primary/10 text-primary'
+              }`}
+            >
+              {danger ? <AlertTriangle className="h-5 w-5" /> : <Info className="h-5 w-5" />}
+            </span>
+            <div className="min-w-0 space-y-1.5 pr-6 pt-0.5">
+              <DialogTitle className="font-sans text-base font-semibold leading-snug">{pending.title}</DialogTitle>
+              {pending.description && <DialogDescription className="text-sm leading-relaxed">{pending.description}</DialogDescription>}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" className="h-9" onClick={() => close(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              autoFocus
+              className={`h-9 ${danger ? 'bg-rose-600 text-white hover:bg-rose-600/90' : ''}`}
+              onClick={() => close(true)}
+            >
+              {pending.confirmLabel ?? 'Confirm'}
+            </Button>
+          </div>
+        </DialogContent>
+      )}
+    </Dialog>
+  );
+
+  return [confirm, element];
+}
