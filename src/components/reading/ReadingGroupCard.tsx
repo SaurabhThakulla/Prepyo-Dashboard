@@ -4,7 +4,10 @@ import { AnswerSubmission, ReadingGroup } from '@/lib/types';
 import { ReadingAnswerResult } from '@/lib/hooks/useReading';
 import ReadingQuestionRow, { isAnswered } from '@/components/reading/ReadingQuestionRow';
 import ReadingParagraphGroup from '@/components/reading/ReadingParagraphGroup';
-import { READING_TYPES, isGapFill } from '@/lib/readingTypes';
+import ListMatchingGroup from '@/components/reading/ListMatchingGroup';
+import SummaryGroup from '@/components/reading/SummaryGroup';
+import DiagramGroup from '@/components/reading/DiagramGroup';
+import { READING_TYPES, isGapFill, isListMatching } from '@/lib/readingTypes';
 import { findPteTaskConfig } from '@/lib/pteExamConfig';
 
 interface ReadingGroupCardProps {
@@ -33,6 +36,8 @@ export default function ReadingGroupCard({
   // A gap-fill draws its words from the set. Every other task that carries
   // resources — the boxes of an ordering task — shows them above the questions.
   const wordBank = isGapFill(group.typeId) ? group.resources : undefined;
+  // These print their own list or box of words, laid out for dragging.
+  const ownLayout = isListMatching(group.typeId) || group.typeId === READING_TYPES.summaryCompletion;
 
   const total = group.questions.length;
   const answered = group.questions.filter(question => isAnswered(answers[question.id])).length;
@@ -79,7 +84,7 @@ export default function ReadingGroupCard({
           )}
         </div>
 
-        {!wordBank && group.resources && group.resources.length > 0 && (
+        {!wordBank && !ownLayout && group.resources && group.resources.length > 0 && (
           <div className="space-y-1.5 p-3 sm:p-4 pb-0 sm:pb-0">
             {group.resources.map(resource => (
               <div key={resource.label} className="p-2.5 rounded-lg bg-muted/30 border border-border space-y-0.5">
@@ -92,7 +97,34 @@ export default function ReadingGroupCard({
 
         {/* Sentence completion is printed as running text with gaps, the way the
             paper does it. Every other task lists its questions one per row. */}
-        {group.typeId === READING_TYPES.sentenceCompletion ? (
+        {isListMatching(group.typeId) ? (
+          <ListMatchingGroup
+            group={group}
+            startNumber={startNumber}
+            answers={answers}
+            results={results}
+            disabled={disabled}
+            onAnswer={onAnswer}
+          />
+        ) : group.typeId === READING_TYPES.summaryCompletion ? (
+          <SummaryGroup
+            group={group}
+            startNumber={startNumber}
+            answers={answers}
+            results={results}
+            disabled={disabled}
+            onAnswer={onAnswer}
+          />
+        ) : group.typeId === READING_TYPES.diagramLabel ? (
+          <DiagramGroup
+            group={group}
+            startNumber={startNumber}
+            answers={answers}
+            results={results}
+            disabled={disabled}
+            onAnswer={onAnswer}
+          />
+        ) : group.typeId === READING_TYPES.sentenceCompletion ? (
           <div className="p-3 sm:p-4">
             <ReadingParagraphGroup
               group={group}

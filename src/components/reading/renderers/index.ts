@@ -4,6 +4,8 @@ import { AnswerProps } from './types';
 
 import VerdictTriad from './VerdictTriad';
 import ParagraphMatcher from './ParagraphMatcher';
+import ListChoice from './ListChoice';
+import TypedAnswer from './TypedAnswer';
 import MCQSingle from './MCQSingle';
 import MCQMultiple from './MCQMultiple';
 import SentenceCompletion from './SentenceCompletion';
@@ -33,6 +35,14 @@ export const RENDERERS: Record<string, ComponentType<AnswerProps>> = {
   [READING_TYPES.findTheParagraph]: ParagraphMatcher,
   [READING_TYPES.sentenceCompletion]: SentenceCompletion,
   [READING_TYPES.arrangePassage]: OrderedChoice,
+  // A whole set of these is laid out by ReadingGroupCard, with drag and drop.
+  // These are the one-question forms, as the mistake bank deals them.
+  [READING_TYPES.matchingHeadings]: ListChoice,
+  [READING_TYPES.matchingFeatures]: ListChoice,
+  [READING_TYPES.sentenceEndings]: ListChoice,
+  [READING_TYPES.summaryCompletion]: SentenceCompletion,
+  [READING_TYPES.diagramLabel]: SentenceCompletion,
+  [READING_TYPES.shortAnswer]: TypedAnswer,
 
   // Set by both exams
   [READING_TYPES.mcqSingle]: MCQSingle,

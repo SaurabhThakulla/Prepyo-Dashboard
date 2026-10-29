@@ -14,9 +14,14 @@ export const READING_TYPES = {
   trueFalse: 'reading-true-false',
   findTheParagraph: 'reading-find-the-paragraph',
   arrangePassage: 'reading-arrange-passage',
-  matchHeading: 'reading-arrange-passage',
   yesNoNotGiven: 'reading-yes-no-not-given',
   matchingInformation: 'reading-matching-information',
+  matchingHeadings: 'reading-matching-headings',
+  matchingFeatures: 'reading-matching-features',
+  sentenceEndings: 'reading-sentence-endings',
+  summaryCompletion: 'reading-summary-completion',
+  diagramLabel: 'reading-diagram-label',
+  shortAnswer: 'reading-short-answer',
 
   // PTE
   fillBlanksRW: 'fill-in-blanks-rw',
@@ -48,13 +53,20 @@ export const TYPE_BY_SYLLABUS_KEY: Record<string, string | string[]> = {
     READING_TYPES.findTheParagraph,
     READING_TYPES.matchingInformation,
   ],
-  // No genuine heading-matching bank exists yet. Never deal information or
-  // sequencing questions through these links just because their names are similar.
-  matchheading: [],
-  matchtheheading: [],
-  matchheadings: [],
-  matchingheadings: [],
-  matchingheading: [],
+  // Headings only: never information or sequencing questions, whose names
+  // are similar.
+  matchheading: READING_TYPES.matchingHeadings,
+  matchtheheading: READING_TYPES.matchingHeadings,
+  matchheadings: READING_TYPES.matchingHeadings,
+  matchingheadings: READING_TYPES.matchingHeadings,
+  matchingheading: READING_TYPES.matchingHeadings,
+  matchingfeatures: READING_TYPES.matchingFeatures,
+  matchingsentenceendings: READING_TYPES.sentenceEndings,
+  sentenceendings: READING_TYPES.sentenceEndings,
+  summarynotetableflowchartcompletion: READING_TYPES.summaryCompletion,
+  summarycompletion: READING_TYPES.summaryCompletion,
+  diagramlabelcompletion: READING_TYPES.diagramLabel,
+  shortanswerquestions: READING_TYPES.shortAnswer,
   matchinginformation: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
 
   truefalse: READING_TYPES.trueFalse,
@@ -123,7 +135,25 @@ export const isGapFill = (typeId: string): boolean =>
  * printed with its [A]-[J] labels showing.
  */
 export const needsParagraphLabels = (typeId: string): boolean =>
-  typeId === READING_TYPES.matchingInformation || typeId === READING_TYPES.findTheParagraph;
+  typeId === READING_TYPES.matchingInformation ||
+  typeId === READING_TYPES.findTheParagraph ||
+  typeId === READING_TYPES.matchingHeadings;
+
+/**
+ * Tasks answered by dragging an entry from a list the set prints once (the
+ * headings, the people, the sentence endings) onto each question. On the
+ * computer-delivered test these are drag and drop.
+ */
+export const isListMatching = (typeId: string): boolean =>
+  typeId === READING_TYPES.matchingHeadings ||
+  typeId === READING_TYPES.matchingFeatures ||
+  typeId === READING_TYPES.sentenceEndings;
+
+/**
+ * Whether one list entry may answer more than one question. Only matching
+ * features allows it ("You may use any option more than once", ielts.org).
+ */
+export const listAllowsReuse = (typeId: string): boolean => typeId === READING_TYPES.matchingFeatures;
 
 /** Tasks where more than one option may be selected. */
 export const isMultiSelect = (typeId: string): boolean =>
