@@ -48,7 +48,7 @@ const ListeningItem = forwardRef<ItemHandle, ItemProps>(function ListeningItem({
       <AudioStatusPanel phase={playback.phase} countdown={playback.countdown} progress={playback.progress} />
 
       {question.prompt && (
-        <p className="text-sm font-semibold text-foreground leading-relaxed whitespace-pre-line">{question.prompt}</p>
+        <p className="text-base font-semibold text-foreground leading-relaxed whitespace-pre-line">{question.prompt}</p>
       )}
 
       {inlineGaps && (
@@ -61,7 +61,7 @@ const ListeningItem = forwardRef<ItemHandle, ItemProps>(function ListeningItem({
         />
       )}
       {question.contextPassage && !inlineGaps && !isWordHighlightTask(question) && (
-        <div className="rounded-xl border border-border bg-background p-4 text-sm leading-7 text-foreground whitespace-pre-line">
+        <div className="rounded-xl bg-muted/40 p-4 sm:p-5 text-[15px] leading-7 text-foreground whitespace-pre-line">
           {question.contextPassage}
         </div>
       )}

@@ -135,33 +135,31 @@ const SpeakingItem = forwardRef<ItemHandle, ItemProps>(function SpeakingItem({ i
   );
 
   const isAudioTask = playback.present;
+  // As practice lays it out: the recording and what to speak about, then the recorder below.
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {question.prompt && task.code !== 'RA' && (
-        <p className="text-sm font-medium text-foreground leading-relaxed whitespace-pre-line">{question.prompt}</p>
+        <p className="text-base leading-relaxed text-foreground whitespace-pre-line">{question.prompt}</p>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-start">
-        {isAudioTask && (
-          <AudioStatusPanel phase={playback.phase} countdown={playback.countdown} progress={playback.progress} />
-        )}
-        <RecorderStatusPanel phase={phase} countdown={countdown} total={response} level={level} note={note} />
-      </div>
+      {isAudioTask && <AudioStatusPanel phase={playback.phase} countdown={playback.countdown} progress={playback.progress} />}
 
       {question.imageUrl && (
-        <div className="rounded-xl border border-border bg-white p-3 flex justify-center">
+        <div className="flex justify-center rounded-xl border border-border bg-white p-3">
           <img src={question.imageUrl} alt={question.title || 'Image to describe'} className="max-h-[360px] w-auto object-contain" />
         </div>
       )}
 
       {question.contextPassage && !isRepeatSentenceTask(question) && (
-        <div className="rounded-xl border border-border bg-background p-5 text-[15px] leading-8 text-foreground whitespace-pre-line select-none">
+        <div className="rounded-xl bg-muted/40 p-4 text-[15px] leading-relaxed text-foreground whitespace-pre-line select-none sm:p-5 sm:text-base">
           {passageText(question)}
         </div>
       )}
 
+      <RecorderStatusPanel phase={phase} countdown={countdown} total={response} prepTotal={prep} level={level} note={note} />
+
       {phase === 'recording' && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Speak clearly. Recording stops by itself when the time is up or after {TestMicrophone.SILENCE_SECONDS} seconds of silence.
         </p>
       )}

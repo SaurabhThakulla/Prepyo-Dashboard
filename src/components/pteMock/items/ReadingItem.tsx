@@ -58,7 +58,7 @@ const ReadingItem = forwardRef<ItemHandle, ItemProps>(function ReadingItem({ ite
   const control = (
     <div className="space-y-4">
       {question.prompt && !gapped && (
-        <p className="text-sm font-semibold text-foreground leading-relaxed whitespace-pre-line">{question.prompt}</p>
+        <p className="text-base font-semibold text-foreground leading-relaxed whitespace-pre-line">{question.prompt}</p>
       )}
       <Renderer
         question={question}
@@ -76,10 +76,10 @@ const ReadingItem = forwardRef<ItemHandle, ItemProps>(function ReadingItem({ ite
   if (!text) return control;
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-      <article className="rounded-xl border border-border bg-background p-5 max-h-[55vh] overflow-y-auto space-y-3">
-        {passage?.title && <h3 className="font-display text-sm font-bold text-foreground">{passage.title}</h3>}
+      <article className="rounded-xl bg-muted/40 p-4 sm:p-5 max-h-[60vh] overflow-y-auto space-y-3">
+        {passage?.title && <h3 className="font-display text-base font-bold text-foreground">{passage.title}</h3>}
         {text.map((paragraph, i) => (
-          <p key={i} className="text-sm leading-7 text-foreground">{paragraph}</p>
+          <p key={i} className="text-[15px] leading-7 text-foreground">{paragraph}</p>
         ))}
       </article>
       {control}
