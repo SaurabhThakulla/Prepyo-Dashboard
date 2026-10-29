@@ -309,6 +309,18 @@ function SetSummary({ set, startNumber }: { set: AuthoredSet; startNumber: numbe
       </div>
       {set.boxTitle && <p className="text-[11px] font-semibold text-foreground">{set.boxTitle}</p>}
       {set.instructions && <p className="text-[11px] text-muted-foreground">{set.instructions}</p>}
+      {set.imageUrl && (
+        <img src={set.imageUrl} alt={set.boxTitle || 'Diagram'} className="max-h-56 w-auto rounded-lg border border-border bg-white" />
+      )}
+      {set.resources && set.resources.length > 0 && (
+        <ul className="grid gap-0.5 text-[11px] sm:grid-cols-2">
+          {set.resources.map(entry => (
+            <li key={entry.label}>
+              <span className="font-mono font-bold text-primary">{entry.label}</span> {entry.text}
+            </li>
+          ))}
+        </ul>
+      )}
 
       {/* The questions themselves, with their keys. Reviewing content means
           reading the answers, which is the one thing the learner endpoint will

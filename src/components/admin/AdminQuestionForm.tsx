@@ -171,6 +171,10 @@ export default function AdminQuestionForm({
   );
   const spec = available.find(type => type.typeId === typeId);
   const isChoice = spec?.answer === 'single' || spec?.answer === 'multiple';
+  // IELTS Listening gap tasks: typed gaps ("15 | fifteen"), or letters from a box
+  // (matching; a diagram labelled with letters when its box has entries).
+  const hasBox = spec?.answer === 'matching' || spec?.answer === 'gaps-or-letters';
+  const hasBlanks = spec?.answer === 'blanks' || spec?.answer === 'gaps' || hasBox;
 
   const applyType = (next: QuestionTypeSpec | undefined) => {
     setTypeId(next?.typeId ?? '');
@@ -291,13 +295,15 @@ export default function AdminQuestionForm({
         audioUrl,
         imageUrl,
         figureData,
-        options: isChoice ? options : [],
+        options: isChoice || hasBox ? options : [],
         optionImages: isChoice && spec.optionImages ? options.map((_, i) => optionImages[i] ?? '') : [],
         correctAnswers: isChoice ? correct.map(index => options[index]) : [],
-        blanks:
-          spec.answer === 'blanks'
-            ? blanks.map(blank => ({ correctAnswer: blank.answer, options: splitList(blank.choices) }))
-            : [],
+        blanks: hasBlanks
+          ? blanks.map(blank => ({
+              correctAnswer: blank.answer,
+              options: spec.answer === 'blanks' ? splitList(blank.choices) : [],
+            }))
+          : [],
         modelAnswer,
         explanation,
         difficulty,
@@ -706,27 +712,77 @@ export default function AdminQuestionForm({
           </div>
         )}
 
-        {spec?.answer === 'blanks' && (
+        {hasBox && (
           <div className="space-y-2">
-            <span className="text-[11px] font-bold text-foreground">Blanks and their answers</span>
+            <span className="text-[11px] font-bold text-foreground">
+              Box {spec?.answer === 'gaps-or-letters' && '(optional: leave empty for typed labels)'}
+            </span>
             <p className="text-[11px] text-muted-foreground">
-              Number the gaps in the instructions — (1), (2) … Blank 1 answers gap (1). Leave choices empty for a typed
-              answer.
+              Entries are lettered A, B, C … in this order. For a diagram, write each letter on the picture and enter the
+              letters themselves (A, B, C …). Give more entries than questions unless the instructions say a letter may be
+              used more than once.
+            </p>
+            {fieldErrors.options && <p className="text-[11px] text-rose-600">{fieldErrors.options}</p>}
+            {options.map((option, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <span className="shrink-0 w-6 h-6 rounded-md bg-primary/10 text-primary font-mono font-bold text-xs flex items-center justify-center border border-primary/20">
+                  {String.fromCharCode(65 + index)}
+                </span>
+                <Input value={option} onChange={e => setOption(index, e.target.value)} aria-label={`Box entry ${String.fromCharCode(65 + index)}`} />
+                <button
+                  type="button"
+                  onClick={() => removeOption(index)}
+                  className="text-muted-foreground hover:text-rose-600"
+                  aria-label={`Remove entry ${String.fromCharCode(65 + index)}`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+            {options.length < MAX_OPTIONS && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setOptions(current => [...current, ''])}
+                className="text-xs font-bold h-7"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Add entry
+              </Button>
+            )}
+          </div>
+        )}
+
+        {hasBlanks && (
+          <div className="space-y-2">
+            <span className="text-[11px] font-bold text-foreground">
+              {spec?.answer === 'blanks' ? 'Blanks and their answers' : 'Questions and their answers'}
+            </span>
+            <p className="text-[11px] text-muted-foreground">
+              {spec?.answer === 'blanks'
+                ? 'Number the gaps in the instructions — (1), (2) … Blank 1 answers gap (1). Leave choices empty for a typed answer.'
+                : hasBox
+                  ? 'Write the outline with one numbered gap per question, e.g. "Castle tour ____ (2)". Answer 1 is the letter for gap (1); for typed diagram labels, give the words instead.'
+                  : 'Write the outline with numbered gaps, ____ (1), ____ (2) … (a table as lines like | a | ____ (1) |). Answer 1 fills gap (1); list other accepted forms after a bar: 15 | fifteen.'}
             </p>
             {fieldErrors.blanks && <p className="text-[11px] text-rose-600">{fieldErrors.blanks}</p>}
             {blanks.map((blank, index) => (
               <div key={index} className="flex items-center gap-2">
-                <span className="shrink-0 text-[11px] font-bold text-primary w-14">Blank {index + 1}</span>
+                <span className="shrink-0 text-[11px] font-bold text-primary w-14">{spec?.answer === 'blanks' ? 'Blank' : 'Question'} {index + 1}</span>
                 <Input
                   value={blank.answer}
                   onChange={e => setBlank(index, { answer: e.target.value })}
-                  placeholder="Answer"
+                  placeholder={spec?.answer === 'blanks' ? 'Answer' : hasBox ? 'Letter, e.g. C' : 'Answer | other accepted forms'}
+                  aria-label={`Answer ${index + 1}`}
                 />
-                <Input
-                  value={blank.choices}
-                  onChange={e => setBlank(index, { choices: e.target.value })}
-                  placeholder="Choices, comma separated (optional)"
-                />
+                {spec?.answer === 'blanks' && (
+                  <Input
+                    value={blank.choices}
+                    onChange={e => setBlank(index, { choices: e.target.value })}
+                    placeholder="Choices, comma separated (optional)"
+                  />
+                )}
                 {blanks.length > 1 && (
                   <button
                     type="button"
@@ -747,7 +803,7 @@ export default function AdminQuestionForm({
               className="text-xs font-bold h-7"
             >
               <Plus className="w-3.5 h-3.5 mr-1.5" />
-              Add blank
+              {spec?.answer === 'blanks' ? 'Add blank' : 'Add question'}
             </Button>
           </div>
         )}

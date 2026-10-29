@@ -15,7 +15,7 @@ import { ExamType } from '@/lib/types';
  * validates all of this again, because a form cannot be trusted with an answer
  * key.
  */
-export type AnswerStyle = 'choice' | 'multi' | 'verdict' | 'paragraph' | 'text' | 'blanks' | 'reorder' | 'boxes';
+export type AnswerStyle = 'choice' | 'multi' | 'verdict' | 'paragraph' | 'text' | 'blanks' | 'reorder' | 'boxes' | 'list';
 
 export interface TaskType {
   id: string;
@@ -28,6 +28,14 @@ export interface TaskType {
   wordBank?: boolean;
   /** The set may carry a list, the way a summary is completed from words A-H. */
   optionalWordBank?: boolean;
+  /**
+   * For a list task: how the server numbers the list (i, ii, iii for headings,
+   * A, B, C otherwise) and whether one entry may answer several questions.
+   */
+  listLabels?: 'roman' | 'letters';
+  reuse?: boolean;
+  /** The set is answered on a diagram, given as an image URL. */
+  image?: boolean;
   hint?: string;
   /** The instruction line as the real paper words it, shown as a placeholder. */
   instructionsHint?: string;
@@ -90,6 +98,61 @@ export const TASK_TYPES: TaskType[] = [
     optionalWordBank: true,
     hint: 'Write the sentence with ______ where the gap goes. Leave the list empty for typed answers; fill it in and every gap is completed from it, the way a summary is completed from words A-H.',
     instructionsHint: 'Complete the summary below. Write ONE WORD ONLY from the passage in each gap.',
+  },
+  // After ielts.org, "IELTS Academic: Reading test format" (checked 2026-10-30).
+  {
+    id: 'reading-matching-headings',
+    name: 'Matching Headings',
+    style: 'list',
+    exam: 'IELTS',
+    listLabels: 'roman',
+    hint: 'List the headings, one per line: the server numbers them i, ii, iii… Write more headings than paragraphs; none may be used twice. Each question is a paragraph ("Paragraph B").',
+    instructionsHint: 'The passage has seven paragraphs, A-G. Choose the correct heading for each paragraph from the list of headings below.',
+  },
+  {
+    id: 'reading-matching-features',
+    name: 'Matching Features',
+    style: 'list',
+    exam: 'IELTS',
+    listLabels: 'letters',
+    reuse: true,
+    hint: 'List the people, dates or places, one per line, lettered A, B, C… Each question is a statement. A letter may answer more than one statement.',
+    instructionsHint: 'Look at the following statements and the list of people below. Match each statement with the correct person, A-C. You may use any letter more than once.',
+  },
+  {
+    id: 'reading-sentence-endings',
+    name: 'Matching Sentence Endings',
+    style: 'list',
+    exam: 'IELTS',
+    listLabels: 'letters',
+    hint: 'List the endings, one per line, lettered A, B, C… with more endings than beginnings. Each question is a sentence beginning, in the order of the passage.',
+    instructionsHint: 'Complete each sentence with the correct ending, A-I, below.',
+  },
+  {
+    id: 'reading-summary-completion',
+    name: 'Summary / Note / Table / Flow-chart Completion',
+    style: 'text',
+    exam: 'IELTS',
+    optionalWordBank: true,
+    hint: 'One gap per question, written ____. Say "summary", "notes", "table" or "flow-chart" in the instructions to set the layout; for a table write each row as "Row label | text with ____". Fill in the list and the gaps are dragged from it (more words than gaps); leave it empty for typed answers from the passage.',
+    instructionsHint: 'Complete the summary below. Choose NO MORE THAN TWO WORDS from the passage for each answer.',
+  },
+  {
+    id: 'reading-diagram-label',
+    name: 'Diagram Label Completion',
+    style: 'text',
+    exam: 'IELTS',
+    image: true,
+    hint: 'Give the diagram, with the labels numbered 1, 2, 3… in question order. Each question is one label with ____ for the missing words.',
+    instructionsHint: 'Label the diagram below. Choose ONE WORD ONLY from the passage for each answer.',
+  },
+  {
+    id: 'reading-short-answer',
+    name: 'Short-answer Questions',
+    style: 'text',
+    exam: 'IELTS',
+    hint: 'A question about a fact in the passage, in passage order. List every acceptable answer within the word limit.',
+    instructionsHint: 'Answer the questions below. Choose NO MORE THAN TWO WORDS AND/OR A NUMBER from the passage for each answer.',
   },
   {
     id: 'fill-in-blanks-rw',
@@ -164,6 +227,8 @@ export interface DraftGroup {
   wordBank: string[];
   exams: ExamType[];
   boxes: string[];
+  /** The diagram of a diagram-label set. */
+  imageUrl: string;
 }
 
 /** Mirrors reading_passages_word_count_floor: below this a passage cannot
@@ -191,6 +256,7 @@ export const emptyGroup = (typeId: string, exams: ExamType[] = []): DraftGroup =
     wordBank: [],
     exams: wanted.length > 0 ? wanted : allowed,
     boxes: ['', ''],
+    imageUrl: '',
   };
 };
 
@@ -230,6 +296,7 @@ export const groupPayload = (group: DraftGroup) => ({
   exams: group.exams,
   boxes: group.boxes.map(box => box.trim()).filter(Boolean),
   wordBank: group.wordBank.map(word => word.trim()).filter(Boolean),
+  imageUrl: group.imageUrl.trim(),
   questions: group.questions.map(question => {
     const gaps = gapsIn(question.contextPassage);
     return {
@@ -313,6 +380,7 @@ export const createGroupsFromSlotTemplate = (slot: 'A' | 'B' | 'C'): DraftGroup[
       wordBank: [],
       exams: ['IELTS'],
       boxes: g.typeId === 'reading-arrange-passage' ? ['', '', '', ''] : ['', ''],
+      imageUrl: '',
     };
   });
 };
