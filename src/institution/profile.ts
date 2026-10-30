@@ -1,10 +1,11 @@
-// The choices offered in the institution setup, and how its answers read back.
-import type { ExamCode, InstitutionProfile } from './api';
+// The choices offered on the institution's Settings page, and how its answers read back.
+import type { ExamCode } from './api';
 
 export const EXAM_CHOICES: { id: ExamCode; name: string; detail: string; accent: string }[] = [
-  { id: 'IELTS', name: 'IELTS', detail: 'Academic and General Training, all four skills', accent: '#e11d48' },
+  { id: 'IELTS', name: 'IELTS', detail: 'IELTS Academic, all four skills', accent: '#e11d48' },
   { id: 'PTE', name: 'PTE Academic', detail: 'Every task type, scored by AI', accent: '#2563eb' },
   { id: 'EPS_TOPIK', name: 'EPS-TOPIK', detail: 'Korean reading and listening for work in Korea', accent: '#059669' },
+  { id: 'JLPT', name: 'JLPT / NAT N5', detail: 'Japanese vocabulary, grammar, reading and listening', accent: '#dc2626' },
 ];
 
 export const CITIES = [
@@ -22,15 +23,7 @@ export const STUDENT_RANGES: { id: string; label: string; detail: string }[] = [
 export const BRAND_COLORS = ['#1d4ed8', '#0f766e', '#7c3aed', '#be123c', '#c2410c', '#0369a1', '#15803d', '#1e293b'];
 
 export const MAX_BRANCHES = 50;
-export const MAX_LOGO_BYTES = 512 * 1024;
-
-export const EMPTY_PROFILE: InstitutionProfile = {
-  exams: [],
-  city: '',
-  branches: 1,
-  monthlyStudents: '',
-  brandColor: BRAND_COLORS[0],
-};
+export const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
 export const examName = (id: ExamCode) => EXAM_CHOICES.find(exam => exam.id === id)?.name ?? id;
 export const studentRangeLabel = (id: string) => STUDENT_RANGES.find(range => range.id === id)?.label ?? '';

@@ -49,6 +49,8 @@ export interface AuthoredSet {
   boxTitle: string;
   passageDisplay: string;
   resources?: { label: string; text: string }[] | null;
+  /** The diagram of a diagram-label set. */
+  imageUrl?: string;
   questions: AuthoredQuestion[];
 }
 

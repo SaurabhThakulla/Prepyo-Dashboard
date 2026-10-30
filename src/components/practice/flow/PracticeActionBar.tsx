@@ -5,6 +5,7 @@ import type { SkillType } from '@/lib/types';
 
 /** AI-grading units one answer spends (see billing/gradings.go); reading and listening cost none. */
 export function gradingUnits(skill: SkillType, typeId?: string): number | null {
+  if (typeId === 'summarize-spoken-text') return 5;
   if (skill === 'reading' || skill === 'listening') return null;
   return /(^|-)(read-aloud|repeat-sentence)$/.test(typeId ?? '') ? 2 : 5;
 }
@@ -17,6 +18,8 @@ interface Props {
   /** On a phone, drop `middle` when it only repeats what is just above the bar. */
   hideMiddleOnPhone?: boolean;
   cost?: number | null;
+  /** A speaking answer marked from its recording costs double past a minute (billing.SpeakingUnits). */
+  costDoublesWhenLong?: boolean;
   /** Position in the list, 0-based; navigation is hidden without a list. */
   index?: number;
   total?: number;
@@ -32,27 +35,20 @@ export const ON_BAR = 'text-white hover:bg-white/15 hover:text-white';
 const ARROW = 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-30';
 
 /** The row under every practice item: actions on the left; cost, shuffle, and pagination in the right corner. */
-export default function PracticeActionBar({ actions, middle, hideMiddleOnPhone, cost, index = -1, total = 0, onJump, onShuffle, disabled }: Props) {
+export default function PracticeActionBar({ actions, middle, hideMiddleOnPhone, cost, costDoublesWhenLong, index = -1, total = 0, onJump, onShuffle, disabled }: Props) {
   const nav = onJump && total > 0;
   return (
     <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-[#0f2a6b] bg-[#13307f] dark:border-border dark:bg-card p-2.5 shadow-md sm:gap-3 sm:p-3">
       {/* On a phone: buttons on one row, credits and paging on the next. */}
       <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:gap-2">{actions}</div>
-      {/* The recorder gets its own row above the buttons until there is room for one line. */}
+      {/* The recorder gets its own row above the buttons until there is room for one line.
+          min-w-max: xl is the window's width, not the bar's, so in a narrow column the
+          slot must not squash under the pill; the right corner wraps to a new row instead. */}
       {middle && (
-        <div className={cn('order-first flex w-full justify-center xl:order-none xl:w-auto xl:flex-1', hideMiddleOnPhone && 'max-sm:hidden')}>{middle}</div>
+        <div className={cn('order-first flex w-full justify-center xl:order-none xl:w-auto xl:min-w-max xl:flex-1', hideMiddleOnPhone && 'max-sm:hidden')}>{middle}</div>
       )}
       <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
-        {cost != null && (
-          <div
-            title={`Marking this answer uses ${cost} AI-grading units of your allowance`}
-            className={cn(CHIP, 'gap-1.5 px-3 text-sm sm:px-3.5')}
-          >
-            <Coins className="h-4 w-4 text-amber-500" aria-hidden />
-            <span className="font-semibold tabular-nums text-foreground">{cost}</span>
-            <span className="sr-only text-muted-foreground sm:not-sr-only">credits</span>
-          </div>
-        )}
+        {cost != null && <CostChip cost={cost} costDoublesWhenLong={costDoublesWhenLong} />}
         {onShuffle && (
           <button
             type="button"
@@ -108,6 +104,20 @@ export default function PracticeActionBar({ actions, middle, hideMiddleOnPhone, 
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** What marking one answer costs, in AI-grading units. */
+export function CostChip({ cost, costDoublesWhenLong }: { cost: number; costDoublesWhenLong?: boolean }) {
+  return (
+    <div
+      title={`Marking this answer uses ${cost} AI-grading units of your allowance${costDoublesWhenLong ? `, or ${cost * 2} for a recording over a minute` : ''}`}
+      className={cn(CHIP, 'gap-1.5 px-3 text-sm sm:px-3.5')}
+    >
+      <Coins className="h-4 w-4 text-amber-500" aria-hidden />
+      <span className="font-semibold tabular-nums text-foreground">{cost}</span>
+      <span className="sr-only text-muted-foreground sm:not-sr-only">credits</span>
     </div>
   );
 }

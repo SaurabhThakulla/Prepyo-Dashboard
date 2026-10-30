@@ -29,21 +29,22 @@ export default function PracticeResultDialog({ result, answerText, blankAnswers,
   const spoken = result.evaluation?.skill === 'speaking' ? result.evaluation : null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent data-tour="practice-result" className="max-w-5xl gap-5">
-        <div className="space-y-1 border-b border-border pb-4 pr-8">
-          <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
-          <DialogDescription className="text-sm">How this answer was marked, and what to work on next.</DialogDescription>
+      <DialogContent data-tour="practice-result" className="max-w-5xl gap-4 sm:p-5">
+        <div className="space-y-0.5 pr-8">
+          <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
+          <DialogDescription className="text-xs">How this answer was marked, and what to work on next.</DialogDescription>
         </div>
 
-        {taskType && <PteSkillScores taskType={taskType} result={result} />}
+        {/* A rated answer shows its skill scores inside its card. */}
+        {taskType && !result.evaluation && <PteSkillScores taskType={taskType} result={result} />}
 
         {spoken ? (
-          <SpeakingResult evaluation={spoken} xpAwarded={result.xpAwarded} recording={recording} />
+          <SpeakingResult evaluation={spoken} xpAwarded={result.xpAwarded} recording={recording} taskType={taskType} />
         ) : (
-          <PracticeResultCard result={result} bare answerText={answerText} blankAnswers={blankAnswers} />
+          <PracticeResultCard result={result} bare answerText={answerText} blankAnswers={blankAnswers} taskType={taskType} />
         )}
 
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Button variant="ghost" className="mr-auto h-10 rounded-xl px-5 text-xs font-bold" onClick={() => onOpenChange(false)}>Close</Button>
           {onRedo && (
             <Button variant="outline" className="h-10 gap-2 rounded-xl px-5 text-xs font-bold" onClick={onRedo} disabled={busy}>

@@ -51,7 +51,7 @@ export default function StudentLoginPage() {
     // No institution has this name, so it is simply an address that does not exist.
     if (!error) return <NotFoundPage />;
     return (
-      <InstitutionAuthLayout title="We could not load this page" subtitle={error} mode="login">
+      <InstitutionAuthLayout title="We could not load this page" subtitle={error}>
         <AdminLink />
       </InstitutionAuthLayout>
     );
@@ -79,7 +79,7 @@ export default function StudentLoginPage() {
   };
 
   return (
-    <InstitutionAuthLayout title={institutionName} subtitle={`Student sign-in for ${institutionName}.`} mode="login">
+    <InstitutionAuthLayout title={institutionName} subtitle={`Student sign-in for ${institutionName}.`}>
       <div className="mb-5 flex justify-center lg:justify-start">
         <BrandMark name={institutionName} logoUrl={brand.logoUrl} color={brand.brandColor} className="h-14 w-14 rounded-2xl text-lg" />
       </div>

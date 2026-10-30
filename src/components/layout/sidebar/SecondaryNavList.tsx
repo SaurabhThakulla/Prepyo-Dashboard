@@ -227,7 +227,7 @@ export default function SecondaryNavList({
             return (
               <div
                 key={`group-${group.name}-${groupIndex}`}
-                className={groupIndex > 0 ? 'mt-2.5 pt-3 border-t border-white/10' : ''}
+                className={groupIndex > 0 ? 'mt-5' : ''}
               >
                 <GroupHeading
                   groupName={group.name}
@@ -239,7 +239,8 @@ export default function SecondaryNavList({
                 />
 
                 {!isCollapsed && (
-                  <div className="space-y-0.5">
+                  // Tasks hang off the heading's icon on a guide line, like a folder tree.
+                  <div className="ml-[13px] pl-2 border-l border-white/20 space-y-0.5">
                     {group.items.map((item, idx) => (
                       <TooltipItem
                         key={`${item.href ?? item.label}-${idx}`}
@@ -279,15 +280,15 @@ function GroupHeading({
   const GroupIcon = getGroupIcon(groupName);
 
   return (
-    <div className="flex items-center justify-between w-full pl-2 pr-1 pb-1.5">
-      <div className={`flex items-center gap-2 min-w-0 flex-1 ${isGroupActive ? 'text-white' : 'text-white/55'}`}>
-        <GroupIcon className="w-3.5 h-3.5 shrink-0" />
-        {isGroupActive && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#00c4a7]" aria-hidden />}
+    // Flat full-width strip (bleeds past the list's px-3), square edges.
+    <div className={`-mx-3 mb-1.5 flex items-center justify-between pl-4 pr-3 py-2 ${isGroupActive ? 'bg-white/15' : 'bg-white/[0.08]'}`}>
+      <div className={`flex items-center gap-2.5 min-w-0 flex-1 ${isGroupActive ? 'text-white' : 'text-white/90'}`}>
+        <GroupIcon className={`w-[18px] h-[18px] shrink-0 ${isGroupActive ? 'text-[#00c4a7]' : ''}`} />
         {groupHref ? (
           <Link
             to={groupHref}
             onClick={onNavigate}
-            className="font-display text-[11px] font-semibold uppercase tracking-[0.12em] truncate hover:text-white transition-colors"
+            className="font-display text-[17px] font-semibold tracking-wide truncate hover:text-white transition-colors"
           >
             {groupName}
           </Link>
@@ -295,7 +296,7 @@ function GroupHeading({
           <button
             type="button"
             onClick={onToggleCollapse}
-            className="font-display text-[11px] font-semibold uppercase tracking-[0.12em] truncate text-left hover:text-white transition-colors"
+            className="font-display text-[17px] font-semibold tracking-wide truncate text-left hover:text-white transition-colors"
           >
             {groupName}
           </button>
@@ -305,11 +306,11 @@ function GroupHeading({
       <button
         type="button"
         onClick={onToggleCollapse}
-        className="p-1 ml-1.5 shrink-0 rounded-md text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+        className="p-1 shrink-0 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors"
         title={isCollapsed ? `Expand ${groupName}` : `Collapse ${groupName}`}
         aria-label={isCollapsed ? `Expand ${groupName}` : `Collapse ${groupName}`}
       >
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
+        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
       </button>
     </div>
   );

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Bot, ChevronDown, RefreshCw, Send } from 'lucide-react';
+import { Bot, RefreshCw, Send } from 'lucide-react';
+import AnswerSelect from '@/components/ui/answer-select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -52,12 +53,7 @@ export default function PracticeAnswerForm({
 
       {grading === 'ai' && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-sm font-bold text-foreground">Your response</span>
-            <Badge variant={wordCount >= (target ?? minWords) ? 'success' : 'warning'}>
-              {target ? `${wordCount} / ${target} words` : `${wordCount} words`}
-            </Badge>
-          </div>
+          <span className="block text-sm font-bold text-foreground">Your response</span>
           <Textarea
             rows={8}
             value={session.textAnswer}
@@ -65,7 +61,12 @@ export default function PracticeAnswerForm({
             placeholder="Write your response here…"
             className="border-2 border-primary bg-background px-4 py-3 text-[15px] leading-7 text-foreground placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-primary/30"
           />
-          <p className="text-xs leading-relaxed text-foreground/75">{writingLengthNote(question)}</p>
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <p className="leading-relaxed text-foreground/75">{writingLengthNote(question)}</p>
+            <Badge variant={wordCount >= (target ?? minWords) ? 'success' : 'warning'} className="shrink-0">
+              {target ? `${wordCount} / ${target} words` : `${wordCount} words`}
+            </Badge>
+          </div>
         </div>
       )}
 
@@ -134,23 +135,19 @@ export default function PracticeAnswerForm({
               >
                 <span className="font-bold text-primary shrink-0">Blank {index + 1}:</span>
                 {blank.options && blank.options.length > 0 ? (
-                  <div className="relative inline-flex items-center group">
-                    <select
-                      value={session.blankResponses[blank.id] || ''}
-                      onChange={event => setBlank(event.target.value)}
-                      className="appearance-none pr-8 pl-3 py-1.5 rounded-lg border border-input bg-card hover:border-primary/50 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary shadow-2xs cursor-pointer transition-all"
-                    >
-                      <option value="">— Select —</option>
-                      {blank.options.map(option => (
-                        <option key={option} value={option}>{option}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 pointer-events-none text-muted-foreground group-hover:text-primary transition-colors" />
-                  </div>
+                  <AnswerSelect
+                    value={session.blankResponses[blank.id] || ''}
+                    options={blank.options}
+                    onChange={setBlank}
+                    aria-label={`Blank ${index + 1}`}
+                    className="text-xs"
+                  />
                 ) : (
                   <input
                     value={session.blankResponses[blank.id] || ''}
                     onChange={event => setBlank(event.target.value)}
+                    autoComplete="off"
+                    spellCheck={false}
                     className="bg-card border border-border text-xs font-medium text-foreground px-3 py-1.5 rounded-lg focus:outline-none focus:border-primary"
                     placeholder="Type your answer"
                   />

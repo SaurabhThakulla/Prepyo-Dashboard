@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { useApp } from '@/context/AppContext';
 import { useMockPapers } from '@/lib/hooks/useMockPapers';
 import { ieltsModuleOf } from '@/lib/types';
+import { IELTS_FULL_MOCK_CREDITS } from '@/lib/fullMock';
 import {
   SPEAKING_MOCK_HREF,
   WRITING_MOCK_HREF,
@@ -44,7 +45,7 @@ export default function IeltsMockCenter({ header }: IeltsMockCenterProps) {
       skill: 'writing',
       icon: PenTool,
       accent: 'from-emerald-500 to-teal-700',
-      description: `Task 1 (${module === 'general_training' ? 'Letter' : 'Report'}) & Task 2 (Essay) with official rubric scoring.`,
+      description: 'Task 1 (Report) & Task 2 (Essay) with official rubric scoring.',
       meta: '2 Tasks · 60 mins',
       papersCount: writingPapers.length,
       href: WRITING_MOCK_HREF,
@@ -112,7 +113,10 @@ export default function IeltsMockCenter({ header }: IeltsMockCenterProps) {
               Start Full Mock Test
             </Button>
             <p className="hidden sm:block text-[11px] text-white/75 text-center lg:text-right">
-              Uses one full mock test from your plan. Progress is saved between sections.
+              {user?.subscription?.fullMocksFromPool
+                ? `Uses ${IELTS_FULL_MOCK_CREDITS} AI credits from your monthly pool.`
+                : 'Uses one full mock test from your plan.'}{' '}
+              Progress is saved between sections.
             </p>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { useApp } from '@/context/AppContext';
+import { courseForExam, CourseId } from '@/data/learnCourses';
 import { api } from '@/lib/api';
 import {
   completeLesson,
@@ -12,16 +13,20 @@ import {
 } from '@/lib/learn/progress';
 
 /**
- * The learner's place in the beginner Korean course.
+ * The learner's place in a beginner course: Korean for EPS-TOPIK, Japanese
+ * for JLPT, each with its own record.
  *
- * Kept in this browser, one record per signed-in account, and shared through
- * one store so the sidebar and the lesson page always agree. A signed-in
- * learner's record is also kept on the server (/learn/progress): it is merged
- * in once per visit and saved after every lesson or review, so progress
- * follows them to another device. Storage or the network can fail; the course
- * then works for the visit and catches up next time.
+ * Kept in this browser, one record per signed-in account and course, and
+ * shared through one store so the sidebar and the lesson page always agree. A
+ * signed-in learner's record is also kept on the server
+ * (/learn/progress?course=): it is merged in once per visit and saved after
+ * every lesson or review, so progress follows them to another device. Storage
+ * or the network can fail; the course then works for the visit and catches up
+ * next time.
  */
-const storageKey = (userId: string | undefined) => `prepyo-learn-korean-v1:${userId ?? 'guest'}`;
+const storageKey = (course: CourseId, userId: string | undefined) => `prepyo-learn-${course}-v1:${userId ?? 'guest'}`;
+const courseOfKey = (key: string) => key.slice('prepyo-learn-'.length).split('-')[0] as CourseId;
+const progressPath = (key: string) => `/learn/progress?course=${courseOfKey(key)}`;
 
 const cache = new Map<string, LearnProgress>();
 const listeners = new Set<() => void>();
@@ -52,9 +57,9 @@ function write(key: string, value: LearnProgress) {
   listeners.forEach(listener => listener());
 }
 
-function save(value: LearnProgress) {
+function save(key: string, value: LearnProgress) {
   // Best effort: the browser copy is already saved, and the next visit retries.
-  api.put('/learn/progress', { progress: value }).catch(() => {});
+  api.put(progressPath(key), { progress: value }).catch(() => {});
 }
 
 function subscribe(listener: () => void) {
@@ -67,19 +72,20 @@ async function syncWithServer(key: string) {
   if (synced.has(key)) return;
   synced.add(key);
   try {
-    const { progress: stored } = await api.get<{ progress: unknown }>('/learn/progress');
+    const { progress: stored } = await api.get<{ progress: unknown }>(progressPath(key));
     const server = parseProgress(stored);
     const merged = mergeProgress(read(key), server);
     write(key, merged);
-    if (JSON.stringify(merged) !== JSON.stringify(server)) save(merged);
+    if (JSON.stringify(merged) !== JSON.stringify(server)) save(key, merged);
   } catch {
     synced.delete(key);
   }
 }
 
-export function useLearnProgress() {
-  const { user } = useApp();
-  const key = storageKey(user?.id);
+/** Progress in the given course, or in the one for the learner's exam. */
+export function useLearnProgress(course?: CourseId) {
+  const { user, activeExam } = useApp();
+  const key = storageKey(course ?? courseForExam(activeExam).id, user?.id);
   const progress = useSyncExternalStore(subscribe, () => read(key), () => EMPTY_PROGRESS);
 
   useEffect(() => {
@@ -90,7 +96,7 @@ export function useLearnProgress() {
     (unitId: string, lessonId: string, mistakes: number) => {
       const result = completeLesson(read(key), unitId, lessonId, mistakes);
       write(key, result.progress);
-      if (user?.id) save(result.progress);
+      if (user?.id) save(key, result.progress);
       return result.earned;
     },
     [key, user?.id],
@@ -100,7 +106,7 @@ export function useLearnProgress() {
     (results: { ko: string; correct: boolean }[]) => {
       const result = completeReview(read(key), results);
       write(key, result.progress);
-      if (user?.id) save(result.progress);
+      if (user?.id) save(key, result.progress);
       return result.earned;
     },
     [key, user?.id],

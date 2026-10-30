@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Send, X, Sparkles, RefreshCw, Zap, MessageSquare } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Send, X, Sparkles, RefreshCw, Zap, MessageSquare, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import TutorText from './TutorText';
+import { canUseTutor } from '@/lib/types';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -11,7 +13,10 @@ interface ChatMessage {
 }
 
 export default function AITutorDrawer() {
-  const { isTutorOpen, setIsTutorOpen, activeExam, tutorContextPrompt, tutorQuestion, clearTutorQuestion } = useApp();
+  const { user, isTutorOpen, setIsTutorOpen, activeExam, tutorContextPrompt, tutorQuestion, clearTutorQuestion } = useApp();
+  // Every reply is a paid call, so free learners get an upgrade card instead
+  // of the chat. The server refuses them too.
+  const allowed = canUseTutor(user);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // The greeting follows the exam currently selected, and is shown only: it is
   // not part of the conversation sent to the coach.
@@ -76,12 +81,22 @@ export default function AITutorDrawer() {
     }
   };
 
+  // A new task starts a new conversation: replies about the last question
+  // would only confuse the coach and cost tokens on every later message. A
+  // changed draft of the same answer is still the same task.
+  const contextTopic = tutorContextPrompt.split('\nMy answer so far:')[0];
+  const contextLabel = /^Task type: (.+)$/m.exec(tutorContextPrompt)?.[1];
+  useEffect(() => {
+    setMessages([]);
+  }, [contextTopic]);
+
   // A question asked from elsewhere in the app (such as "Explain my mistake")
   // starts a new conversation about its own context, then sends itself.
   useEffect(() => {
     if (!isTutorOpen || !tutorQuestion || loading) return;
     const question = tutorQuestion;
     clearTutorQuestion();
+    if (!allowed) return;
     void handleSend(question, []);
     // handleSend is recreated each render; only a new question should trigger this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -92,6 +107,11 @@ export default function AITutorDrawer() {
     'How do I tell 은/는 and 이/가 apart?',
     'Common EPS-TOPIK words for factory work',
     'How to read Korean prices and dates quickly',
+  ] : activeExam === 'JLPT' ? [
+    'When do I use は and when が?',
+    'Explain the ます, ました and ません forms',
+    'How do I read Japanese dates and times?',
+    'Tips for the JLPT N5 listening section',
   ] : activeExam === 'PTE' ? [
     'Give me the 90/90 Describe Image template',
     'How to score 79+ in Read Aloud oral fluency?',
@@ -160,6 +180,16 @@ export default function AITutorDrawer() {
             <X className="w-4 h-4" />
           </Button>
         </div>
+
+        {allowed ? (<>
+        {contextLabel && (
+          <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border/80 bg-primary/5 text-[11px] text-muted-foreground">
+            <MessageSquare className="w-3 h-3 shrink-0 text-primary" />
+            <span className="truncate">
+              The coach can see this question: <span className="font-semibold text-foreground">{contextLabel}</span>
+            </span>
+          </div>
+        )}
 
         {/* Quick Suggestion Chips */}
         <div className="px-4 py-2.5 bg-muted/40 border-b border-border/80 flex gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
@@ -248,6 +278,20 @@ export default function AITutorDrawer() {
             </Button>
           </form>
         </div>
+        </>) : (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Lock className="h-5 w-5" />
+            </span>
+            <h4 className="font-display text-base font-bold text-foreground">The AI Coach is for paid plans</h4>
+            <p className="max-w-xs text-xs text-muted-foreground">
+              Upgrade to ask the coach about any question, get your mistakes explained and get tips for {activeExam}.
+            </p>
+            <Button asChild size="sm" className="mt-1">
+              <Link to="/subscription" onClick={() => setIsTutorOpen(false)}>See plans</Link>
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

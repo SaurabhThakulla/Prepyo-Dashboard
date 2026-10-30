@@ -62,7 +62,8 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
       quotas={[
         { label: 'Practice', percentUsed: subTestsPercent, unlimited: sub.unlimited },
         { label: 'AI grading', percentUsed: gradingsPercent },
-        { label: 'Mocks', percentUsed: mocksPercent },
+        // An institution's full mocks are paid in AI credits, so there is no count to show.
+        ...(sub.fullMocksFromPool ? [] : [{ label: 'Mocks', percentUsed: mocksPercent }]),
       ]}
     />
     <div className="relative hidden w-full overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-shadow duration-300 hover:shadow-md dark:border-white/10 dark:bg-[#12161c] sm:block sm:p-6">
@@ -160,13 +161,15 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
             accent="text-emerald-500"
           />
 
-          <QuotaGauge
-            title="Full mock tests"
-            percentUsed={mocksPercent}
-            period={isFree ? 'in total' : 'this month'}
-            hint={isFree ? 'Included with your account' : 'Renews on the 1st'}
-            accent="text-violet-500"
-          />
+          {!sub.fullMocksFromPool && (
+            <QuotaGauge
+              title="Full mock tests"
+              percentUsed={mocksPercent}
+              period={isFree ? 'in total' : 'this month'}
+              hint={isFree ? 'Included with your account' : 'Renews on the 1st'}
+              accent="text-violet-500"
+            />
+          )}
         </div>
       </div>
     </div>

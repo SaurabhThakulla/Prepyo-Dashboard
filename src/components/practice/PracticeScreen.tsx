@@ -98,7 +98,7 @@ export default function PracticeScreen() {
               onBlankChange={session.setBlankResponses}
               disabled={session.submitting || session.result !== null}
               reviewBlanks={session.result?.review?.blanks}
-              allowTranscript={session.result !== null}
+              allowTranscript={true}
               reviewTranscript={session.result?.review?.audioTranscript}
             />
             <PracticeAnswerForm

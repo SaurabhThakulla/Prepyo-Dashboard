@@ -97,6 +97,10 @@ export default function InlineBlankPassage({
               type="text"
               id={`blank-gap-${blankId}`}
               name={`blank-${blankId}`}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               value={currentVal}
               disabled={disabled}
               onChange={e => onChange({ ...responses, [blankId]: e.target.value })}

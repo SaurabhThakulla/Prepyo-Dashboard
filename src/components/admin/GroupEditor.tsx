@@ -122,6 +122,40 @@ export default function GroupEditor({
                 </Field>
               )}
 
+              {type.image && (
+                <Field label="Diagram — an image URL (https: or data:), labels numbered 1, 2, 3… in question order">
+                  <Input
+                    value={group.imageUrl}
+                    onChange={e => onChange({ imageUrl: e.target.value })}
+                    placeholder="https://…/diagram.svg"
+                  />
+                </Field>
+              )}
+
+              {type.style === 'list' && (
+                <>
+                  <Field label="List title (optional)">
+                    <Input
+                      value={group.boxTitle}
+                      onChange={e => onChange({ boxTitle: e.target.value })}
+                      placeholder={type.listLabels === 'roman' ? 'List of Headings' : 'List of People'}
+                    />
+                  </Field>
+                  <Field
+                    label={`The list, one entry per line, numbered ${type.listLabels === 'roman' ? 'i, ii, iii' : 'A, B, C'}… in the order you type them${
+                      type.reuse ? '' : ' (more entries than questions)'
+                    }`}
+                  >
+                    <textarea
+                      value={group.wordBank.join('\n')}
+                      onChange={e => onChange({ wordBank: e.target.value.split(/\r?\n/) })}
+                      rows={8}
+                      className="w-full rounded-xl border border-input bg-card p-3 text-xs font-mono"
+                    />
+                  </Field>
+                </>
+              )}
+
               {type.style === 'text' && (
                 <Field label="Box title — the heading a summary is printed under (optional)">
                   <Input
@@ -183,6 +217,20 @@ export default function GroupEditor({
           
   );
 }
+
+/** i, ii, iii… as the server numbers a list of headings. */
+export const romanFor = (index: number): string => {
+  const numerals: [number, string][] = [[10, 'x'], [9, 'ix'], [5, 'v'], [4, 'iv'], [1, 'i']];
+  let n = index + 1;
+  let out = '';
+  for (const [value, symbol] of numerals) {
+    while (n >= value) {
+      out += symbol;
+      n -= value;
+    }
+  }
+  return out;
+};
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -415,6 +463,27 @@ function QuestionEditor({ number, type, labels, wordBank, question, onChange, on
             ))}
           </div>
         </div>
+      )}
+
+      {type.style === 'list' && (
+        <Field label="Correct entry from the list">
+          {wordBank.length === 0 ? (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400">Write the list above first.</p>
+          ) : (
+            <select
+              value={question.correctAnswers[0] ?? ''}
+              onChange={e => onChange({ correctAnswers: e.target.value ? [e.target.value] : [] })}
+              className="h-9 w-full rounded-xl border border-input bg-card px-3 text-xs"
+            >
+              <option value="">— select —</option>
+              {wordBank.map((entry, i) => (
+                <option key={entry} value={entry}>
+                  {type.listLabels === 'roman' ? romanFor(i) : labelFor(i)} {entry}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
       )}
 
       {(type.style === 'paragraph' || type.style === 'boxes') && (

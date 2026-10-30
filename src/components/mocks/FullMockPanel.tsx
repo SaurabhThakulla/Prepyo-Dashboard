@@ -17,6 +17,7 @@ import {
   FullMockSession,
   FullMockSkill,
   fullMocksLeft,
+  IELTS_FULL_MOCK_CREDITS,
   sectionLabel,
 } from '@/lib/fullMock';
 import { ListeningMockRunner, ListeningSession } from '@/components/practice/ListeningMockPanel';
@@ -281,7 +282,9 @@ export default function FullMockPanel({ header }: { header: React.ReactNode }) {
               <span>Start full mock</span>
             </Button>
             <p className="text-[11px] text-muted-foreground">
-              {left > 0
+              {user?.subscription?.fullMocksFromPool
+                ? `Uses ${IELTS_FULL_MOCK_CREDITS} AI credits from your monthly pool. The sections do not use your daily sub-tests.`
+                : left > 0
                 ? `Uses one of your full mock tests (${limitLabel(left, !Number.isFinite(left))} left). The sections do not use your daily sub-tests.`
                 : 'You have used the full mock tests in your plan.'}{' '}
               {left <= 0 && (

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Volume2, Play, Square, Pause, ChevronDown, ChevronUp } from 'lucide-react';
+import { Volume2, Play, Square, Pause, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { assignVoices, FALLBACK_LANG, scriptLanguage, splitSentences, splitTurns } from '@/lib/listeningScript';
@@ -53,13 +53,55 @@ interface PromptAudioProps {
    * cannot speak it themselves. Defaults to the question's playback audio.
    */
   serverAudioUrl?: string;
+  /**
+   * Start playing on its own after this many seconds, as PTE speaking items
+   * do ("Beginning in 3 seconds"). Pressing play first starts it sooner.
+   */
+  autoPlayAfter?: number;
 }
+
+/**
+ * Counts down from `seconds`, then calls `start` once. Returns the seconds
+ * left, or null when not counting. Skipped on a page the learner has not
+ * clicked yet: the browser would refuse the sound, and a refused voice would
+ * be taken for a broken one.
+ */
+function useAutoPlay(seconds: number | undefined, start: () => void, key?: string): number | null {
+  const [left, setLeft] = useState<number | null>(null);
+  const startRef = useRef(start);
+  startRef.current = start;
+
+  useEffect(() => {
+    const activation = (navigator as { userActivation?: { hasBeenActive: boolean } }).userActivation;
+    if (!seconds || activation?.hasBeenActive === false) {
+      setLeft(null);
+      return;
+    }
+    let remaining = seconds;
+    setLeft(remaining);
+    const tick = setInterval(() => {
+      remaining -= 1;
+      if (remaining > 0) {
+        setLeft(remaining);
+        return;
+      }
+      clearInterval(tick);
+      setLeft(null);
+      startRef.current();
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [seconds, key]);
+
+  return left;
+}
+
+const beginningIn = (seconds: number) => `Beginning in ${seconds} second${seconds === 1 ? '' : 's'}…`;
 
 /** What the panel says before and after a limited play, for one or two runs. */
 function playNotes(repeat: number) {
   return repeat > 1
-    ? { done: 'Played twice. In the test you hear each recording twice.', ready: 'Press play when you are ready. It plays twice.' }
-    : { done: 'Played once. In the test you hear each recording only once.', ready: 'Press play when you are ready. It plays once.' };
+    ? { done: 'Played twice. In the test you hear each recording twice.', ready: 'Plays twice in the test.' }
+    : { done: 'Played once. In the test you hear each recording only once.', ready: 'Plays once in the test.' };
 }
 
 /** The gap between two runs of a repeated recording, as between the test's two plays. */
@@ -89,6 +131,7 @@ export default function PromptAudio({
   highlights,
   scriptUrl,
   serverAudioUrl,
+  autoPlayAfter,
 }: PromptAudioProps) {
   const notes = playNotes(repeat);
   const playbackUrl = scriptUrl ?? (questionId ? `/questions/${questionId}/playback` : undefined);
@@ -101,7 +144,6 @@ export default function PromptAudio({
   onFinishedRef.current = onFinished;
   const [canSpeak, setCanSpeak] = useState(() => typeof window !== 'undefined' && 'speechSynthesis' in window);
   const [speaking, setSpeaking] = useState(false);
-  const [showTranscript, setShowTranscript] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const contextRef = useRef<AudioContext | null>(null);
   const generation = useRef(0);
@@ -109,12 +151,14 @@ export default function PromptAudio({
   // 0..1 through the script, from the voice's word boundaries.
   const [progress, setProgress] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const speedRef = useRef(1);
+  speedRef.current = speed;
   // A script fetched at play time, for items that do not carry one.
   const [fetchedScript, setFetchedScript] = useState<string | null>(null);
-  // Once is once: set when playback starts, so stopping early does not earn a
-  // second hearing. Lifted after submission.
+  // Once is once: set when playback finishes, so stopping/pausing does not lock it out.
   const [played, setPlayed] = useState(false);
-  const oncePlayed = singlePlay && !allowTranscript && played;
+  const oncePlayed = singlePlay && !allowTranscript && finished;
 
   const script = audioTranscript?.trim() || fetchedScript || undefined;
 
@@ -152,7 +196,6 @@ export default function PromptAudio({
   useEffect(() => {
     cancelPlayback();
     setSpeaking(false);
-    setShowTranscript(false);
     setError(null);
     setProgress(0);
     setFinished(false);
@@ -315,7 +358,7 @@ export default function PromptAudio({
             voices.find(candidate => candidate.lang.startsWith(language));
           if (voice) utterance.voice = voice;
           utterance.lang = voice?.lang ?? FALLBACK_LANG[language];
-          utterance.rate = 0.95;
+          utterance.rate = 0.95 * speedRef.current;
           utterance.onstart = () => {
             anyStarted = true;
           };
@@ -332,28 +375,7 @@ export default function PromptAudio({
     } catch { fail(); }
   }, [script, scriptOnRequest, playbackUrl, spokenUrl, oncePlayed, cancelPlayback, repeat]);
 
-  if (audioUrl && !(recordingBroken && spokenUrl)) {
-    return (
-      <RecordedAudio
-        src={audioUrl}
-        onLoadError={() => setRecordingBroken(true)}
-        title={title}
-        questionId={questionId}
-        singlePlay={singlePlay && !allowTranscript}
-        repeat={repeat}
-        onFinished={() => onFinishedRef.current?.()}
-        footer={
-          allowTranscript && script ? (
-            <p className="text-[13px] sm:text-sm text-foreground italic leading-relaxed border-t border-border pt-2 whitespace-pre-line">
-              &ldquo;<ScriptText text={script ?? ''} highlights={highlights} />&rdquo;
-            </p>
-          ) : null
-        }
-      />
-    );
-  }
-
-  if (!script && !scriptOnRequest && !recordingBroken) return null;
+  const recorded = Boolean(audioUrl && !(recordingBroken && spokenUrl));
 
   // A device can have voices and still none in the script's language: many
   // Windows PCs have no Korean voice, and an English one reading Hangul says
@@ -363,9 +385,44 @@ export default function PromptAudio({
     browserVoice === 'ready' &&
     language !== 'en' &&
     !window.speechSynthesis.getVoices().some(voice => voice.lang.toLowerCase().startsWith(language));
-
   // A browser that cannot speak gets the same script spoken on the server.
-  if ((recordingBroken || !canSpeak || browserVoice === 'none' || voiceFailed || noVoiceForScript) && spokenUrl) {
+  const serverSpoken = Boolean((recordingBroken || !canSpeak || browserVoice === 'none' || voiceFailed || noVoiceForScript) && spokenUrl);
+  const browserSpoken = !recorded && !serverSpoken && canSpeak && Boolean(script || scriptOnRequest);
+
+  const voiceStartsIn = useAutoPlay(browserSpoken ? autoPlayAfter : undefined, () => {
+    if (!played) void speak();
+  }, questionId);
+
+  const transcriptFooter = (
+    <TranscriptSection
+      allowTranscript={allowTranscript}
+      script={script}
+      highlights={highlights}
+      questionId={questionId}
+      scriptUrl={playbackUrl}
+      onScriptFetched={text => setFetchedScript(text)}
+    />
+  );
+
+  if (audioUrl && recorded) {
+    return (
+      <RecordedAudio
+        src={audioUrl}
+        onLoadError={() => setRecordingBroken(true)}
+        title={title}
+        questionId={questionId}
+        singlePlay={singlePlay && !allowTranscript}
+        repeat={repeat}
+        autoPlayAfter={autoPlayAfter}
+        onFinished={() => onFinishedRef.current?.()}
+        footer={transcriptFooter}
+      />
+    );
+  }
+
+  if (!script && !scriptOnRequest && !recordingBroken) return null;
+
+  if (serverSpoken && spokenUrl) {
     return (
       <ServerSpokenAudio
         listUrl={spokenUrl}
@@ -373,14 +430,9 @@ export default function PromptAudio({
         questionId={questionId}
         singlePlay={singlePlay && !allowTranscript}
         repeat={repeat}
+        autoPlayAfter={autoPlayAfter}
         onFinished={() => onFinishedRef.current?.()}
-        footer={
-          allowTranscript && script ? (
-            <p className="text-[13px] sm:text-sm text-foreground italic leading-relaxed border-t border-border pt-2 whitespace-pre-line">
-              &ldquo;<ScriptText text={script ?? ''} highlights={highlights} />&rdquo;
-            </p>
-          ) : null
-        }
+        footer={transcriptFooter}
       />
     );
   }
@@ -395,7 +447,7 @@ export default function PromptAudio({
         <p className="text-[11px] text-muted-foreground leading-relaxed">
           Audio can't play on this device. Try opening Prepyo in Chrome or Edge.
         </p>
-        {allowTranscript && <p className="text-xs text-foreground italic leading-relaxed">&ldquo;<ScriptText text={script ?? ''} highlights={highlights} />&rdquo;</p>}
+        {allowTranscript && transcriptFooter}
       </div>
     );
   }
@@ -407,40 +459,26 @@ export default function PromptAudio({
       status={
         speaking
           ? 'Listen carefully…'
+          : voiceStartsIn !== null && !played
+            ? beginningIn(voiceStartsIn)
           : oncePlayed
             ? notes.done
             : finished
               ? 'Finished · play it again any time'
-              : singlePlay && !allowTranscript
+              : singlePlay
                 ? notes.ready
-                : "Press play when you're ready"
+                : ''
       }
-      onToggle={speaking ? (singlePlay && !allowTranscript ? () => {} : stop) : speak}
+      onToggle={speaking ? stop : speak}
       disabled={oncePlayed}
       toggleLabel={speaking ? `Stop reading ${title}` : `Play ${title}`}
-      toggleIcon={speaking && !(singlePlay && !allowTranscript) ? 'stop' : 'play'}
+      toggleIcon={speaking ? 'pause' : 'play'}
+      speed={speed}
+      onSpeedChange={setSpeed}
       footer={
         <>
-          {allowTranscript && (
-            <Button
-              type="button"
-              onClick={() => setShowTranscript(open => !open)}
-              size="sm"
-              variant="ghost"
-              className="font-bold gap-1.5 text-muted-foreground -ml-2"
-            >
-              {showTranscript ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              <span>{showTranscript ? 'Hide transcript' : 'Show transcript'}</span>
-            </Button>
-          )}
-          {/* Collapsed by default: reading along while it plays turns a listening
-              task into a reading one. */}
           {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
-          {allowTranscript && showTranscript && (
-            <p className="text-[13px] sm:text-sm text-foreground italic leading-relaxed border-t border-border pt-2 whitespace-pre-line">
-              &ldquo;{script ? <ScriptText text={script} highlights={highlights} /> : 'The transcript will appear once the recording has been played.'}&rdquo;
-            </p>
-          )}
+          {transcriptFooter}
         </>
       }
     />
@@ -490,6 +528,7 @@ function ServerSpokenAudio({
   questionId,
   singlePlay,
   repeat = 1,
+  autoPlayAfter,
   onFinished,
   footer,
 }: {
@@ -498,6 +537,7 @@ function ServerSpokenAudio({
   questionId?: string;
   singlePlay: boolean;
   repeat?: number;
+  autoPlayAfter?: number;
   onFinished: () => void;
   footer?: React.ReactNode;
 }) {
@@ -510,6 +550,15 @@ function ServerSpokenAudio({
   const [started, setStarted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [speed, setSpeed] = useState(1);
+  const speedRef = useRef(1);
+  speedRef.current = speed;
+
+  const handleSpeedChange = (newSpeed: number) => {
+    setSpeed(newSpeed);
+    speedRef.current = newSpeed;
+    playbackRef.current?.setSpeed?.(newSpeed);
+  };
 
   useEffect(() => {
     run.current += 1;
@@ -526,8 +575,14 @@ function ServerSpokenAudio({
     playbackRef.current?.stop();
   }, []);
 
+  const stop = () => {
+    run.current += 1;
+    playbackRef.current?.stop();
+    setPlaying(false);
+  };
+
   const play = async () => {
-    if (playing || loading || (singlePlay && started)) return;
+    if (playing || loading || (singlePlay && finished)) return;
     // Before the fetch: iOS lets audio start only inside the tap.
     unlockAudio();
     const current = ++run.current;
@@ -548,7 +603,7 @@ function ServerSpokenAudio({
         }
         const playback = playClips(segments, fraction => {
           if (current === run.current) setProgress((round + fraction) / repeat);
-        });
+        }, speedRef.current);
         playbackRef.current = playback;
         await playback.done;
         if (current !== run.current) return;
@@ -570,7 +625,11 @@ function ServerSpokenAudio({
     }
   };
 
-  const locked = singlePlay && started && !playing;
+  const startsIn = useAutoPlay(autoPlayAfter, () => {
+    if (!started) void play();
+  }, `${listUrl}|${questionId}`);
+
+  const locked = singlePlay && finished;
   return (
     <VoicePanel
       playing={playing}
@@ -580,18 +639,22 @@ function ServerSpokenAudio({
           ? 'Preparing the recording…'
           : playing
             ? 'Listen carefully…'
+          : startsIn !== null && !started
+            ? beginningIn(startsIn)
             : locked
               ? notes.done
               : finished
                 ? 'Finished · play it again any time'
                 : singlePlay
                   ? notes.ready
-                  : "Press play when you're ready"
+                  : ''
       }
-      onToggle={() => void play()}
+      onToggle={() => void (playing ? stop() : play())}
       disabled={locked || loading}
-      toggleLabel={`Play ${title}`}
-      toggleIcon="play"
+      toggleLabel={playing ? `Pause ${title}` : `Play ${title}`}
+      toggleIcon={playing ? 'pause' : 'play'}
+      speed={speed}
+      onSpeedChange={handleSpeedChange}
       footer={
         <>
           {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
@@ -609,6 +672,7 @@ function RecordedAudio({
   questionId,
   singlePlay = false,
   repeat = 1,
+  autoPlayAfter,
   onFinished,
   onLoadError,
   footer,
@@ -618,6 +682,7 @@ function RecordedAudio({
   questionId?: string;
   singlePlay?: boolean;
   repeat?: number;
+  autoPlayAfter?: number;
   onFinished: () => void;
   onLoadError?: () => void;
   /** Shown under the player, as the transcript is once the answer is in. */
@@ -631,6 +696,11 @@ function RecordedAudio({
   const [progress, setProgress] = useState(0);
   const [finished, setFinished] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [speed, setSpeed] = useState(1);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = speed;
+  }, [speed]);
 
   useEffect(() => {
     round.current = 0;
@@ -644,16 +714,20 @@ function RecordedAudio({
   const toggle = () => {
     const audio = audioRef.current;
     if (!audio) return;
-    // Once is once: no pausing, and no second play before submission.
-    if (singlePlay && started) return;
     if (playing) {
       audio.pause();
       return;
     }
+    // Finished single-play recording cannot be replayed before submission
+    if (singlePlay && finished) return;
     setError(null);
     if (finished) round.current = 0;
     audio.play().catch(() => setError("The audio couldn't play. Check your sound is on and try again."));
   };
+
+  const startsIn = useAutoPlay(autoPlayAfter, () => {
+    if (!started) toggle();
+  }, `${src}|${questionId}`);
 
   return (
     <>
@@ -662,6 +736,7 @@ function RecordedAudio({
         src={src}
         preload="metadata"
         onPlay={() => {
+          if (audioRef.current) audioRef.current.playbackRate = speed;
           setPlaying(true);
           setFinished(false);
         }}
@@ -700,6 +775,8 @@ function RecordedAudio({
         status={
           playing
             ? 'Listen carefully…'
+            : startsIn !== null && !started
+              ? beginningIn(startsIn)
             : singlePlay && finished
               ? notes.done
               : finished
@@ -708,12 +785,14 @@ function RecordedAudio({
                   ? 'Paused'
                   : singlePlay
                     ? notes.ready
-                    : "Press play when you're ready"
+                    : ''
         }
         onToggle={toggle}
-        disabled={singlePlay && started && !playing}
+        disabled={singlePlay && finished}
         toggleLabel={playing ? `Pause ${title}` : `Play ${title}`}
-        toggleIcon={playing && !singlePlay ? 'pause' : 'play'}
+        toggleIcon={playing ? 'pause' : 'play'}
+        speed={speed}
+        onSpeedChange={setSpeed}
         footer={
           (error || footer) && (
             <>
@@ -730,6 +809,7 @@ function RecordedAudio({
 const BAR_COUNT = 96;
 // Fixed, speech-like heights so the resting wave has a shape, not a flat line.
 const BAR_SHAPE = Array.from({ length: BAR_COUNT }, (_, i) => 0.3 + 0.7 * Math.abs(Math.sin(i * 0.9) * Math.cos(i * 0.37)));
+const SPEED_OPTIONS = [1.0, 1.25, 1.5, 2.0];
 
 interface VoicePanelProps {
   /** The control can no longer be used, as after a recording's one play. */
@@ -740,6 +820,8 @@ interface VoicePanelProps {
   onToggle: () => void;
   toggleLabel: string;
   toggleIcon: 'play' | 'stop' | 'pause';
+  speed?: number;
+  onSpeedChange?: (speed: number) => void;
   footer?: React.ReactNode;
 }
 
@@ -747,7 +829,18 @@ interface VoicePanelProps {
  * The listening panel: a glowing play orb and a voice waveform that comes alive
  * while the audio plays and fills in as it goes.
  */
-function VoicePanel({ disabled = false, playing, progress, status, onToggle, toggleLabel, toggleIcon, footer }: VoicePanelProps) {
+function VoicePanel({
+  disabled = false,
+  playing,
+  progress,
+  status,
+  onToggle,
+  toggleLabel,
+  toggleIcon,
+  speed = 1,
+  onSpeedChange,
+  footer,
+}: VoicePanelProps) {
   const played = Math.round(Math.min(1, Math.max(0, progress)) * BAR_COUNT);
   const Icon = toggleIcon === 'play' ? Play : toggleIcon === 'pause' ? Pause : Square;
 
@@ -766,7 +859,7 @@ function VoicePanel({ disabled = false, playing, progress, status, onToggle, tog
         />
       )}
 
-      <div className="relative flex items-center gap-4 sm:gap-5">
+      <div className="relative flex items-center gap-3 sm:gap-4">
         <div className="relative shrink-0">
           {playing && (
             <>
@@ -779,11 +872,7 @@ function VoicePanel({ disabled = false, playing, progress, status, onToggle, tog
             onClick={onToggle}
             disabled={disabled}
             aria-label={toggleLabel}
-            className={`relative flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-all duration-300 active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 ${
-              toggleIcon === 'stop'
-                ? 'bg-gradient-to-br from-rose-500 to-rose-600 shadow-rose-500/30'
-                : 'bg-gradient-to-br from-primary to-indigo-600 shadow-primary/30 hover:scale-105'
-            }`}
+            className="relative flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-all duration-300 active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 bg-gradient-to-br from-primary to-indigo-600 shadow-primary/30 hover:scale-105"
           >
             <Icon className={`h-5 w-5 ${toggleIcon === 'play' ? 'ml-0.5 fill-current' : 'fill-current'}`} />
           </button>
@@ -795,9 +884,11 @@ function VoicePanel({ disabled = false, playing, progress, status, onToggle, tog
               <Volume2 className={`h-4 w-4 ${playing ? 'text-primary' : 'text-muted-foreground'}`} />
               Listen
             </span>
-            <span className="min-w-0 text-xs font-semibold text-muted-foreground" aria-live="polite">
-              {status}
-            </span>
+            {status && (
+              <span className="min-w-0 text-xs font-semibold text-muted-foreground" aria-live="polite">
+                {status}
+              </span>
+            )}
           </div>
 
           <div aria-hidden className="mt-2.5 flex h-10 items-center justify-between gap-px">
@@ -823,6 +914,27 @@ function VoicePanel({ disabled = false, playing, progress, status, onToggle, tog
               style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
             />
           </div>
+
+          {onSpeedChange && (
+            <div className="mt-2 flex items-center justify-end">
+              <div className="relative group inline-flex items-center">
+                <select
+                  value={speed}
+                  onChange={e => onSpeedChange(Number(e.target.value))}
+                  aria-label="Playback speed"
+                  title="Audio playback speed"
+                  className="appearance-none cursor-pointer rounded-full border border-border/80 bg-background/95 hover:bg-background px-3 py-1 pr-6 text-xs font-semibold font-mono text-foreground hover:text-primary hover:border-primary/50 shadow-2xs focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all"
+                >
+                  {SPEED_OPTIONS.map(s => (
+                    <option key={s} value={s} className="bg-background text-foreground font-sans font-medium">
+                      {s.toFixed(1)}x
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -831,20 +943,148 @@ function VoicePanel({ disabled = false, playing, progress, status, onToggle, tog
   );
 }
 
+interface TranscriptSectionProps {
+  allowTranscript?: boolean;
+  script?: string;
+  highlights?: string[];
+  questionId?: string;
+  scriptUrl?: string;
+  onScriptFetched?: (script: string) => void;
+}
+
+function TranscriptSection({
+  allowTranscript = false,
+  script,
+  highlights,
+  questionId,
+  scriptUrl,
+  onScriptFetched,
+}: TranscriptSectionProps) {
+  const [showTranscript, setShowTranscript] = useState(false);
+  const [fetchedScript, setFetchedScript] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setShowTranscript(false);
+    setFetchedScript(null);
+    setFetchError(null);
+    setLoading(false);
+  }, [questionId, script]);
+
+  if (!allowTranscript) return null;
+
+  const currentScript = script?.trim() || fetchedScript?.trim() || '';
+
+  const handleToggle = async () => {
+    if (showTranscript) {
+      setShowTranscript(false);
+      return;
+    }
+    if (currentScript) {
+      setShowTranscript(true);
+      return;
+    }
+    const url = scriptUrl ?? (questionId ? `/questions/${questionId}/playback` : undefined);
+    if (!url) {
+      setShowTranscript(true);
+      return;
+    }
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const data = await api.get<{ script: string }>(url);
+      const text = data.script?.trim();
+      if (text) {
+        setFetchedScript(text);
+        onScriptFetched?.(text);
+        setShowTranscript(true);
+      } else {
+        setShowTranscript(true);
+      }
+    } catch {
+      setFetchError('Transcript is not available for this audio.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2 pt-2 border-t border-border/50">
+      <Button
+        type="button"
+        onClick={handleToggle}
+        size="sm"
+        variant="ghost"
+        disabled={loading}
+        className="font-bold gap-1.5 text-muted-foreground hover:text-foreground -ml-2 transition-colors"
+      >
+        {loading ? (
+          <span className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <FileText className="w-3.5 h-3.5 text-primary" />
+        )}
+        <span>{loading ? 'Loading transcript…' : showTranscript ? 'Hide transcript' : 'Show transcript'}</span>
+        {showTranscript ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+      </Button>
+
+      {fetchError && <p role="alert" className="text-xs text-destructive">{fetchError}</p>}
+
+      {showTranscript && (
+        <div className="rounded-xl bg-card border border-border/80 p-4 sm:p-5 text-sm sm:text-[15px] font-normal not-italic text-foreground leading-relaxed sm:leading-7 whitespace-pre-line shadow-xs">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2.5 select-none border-b border-border/40 pb-2">
+            <FileText className="w-3.5 h-3.5 text-primary" />
+            <span>Audio Transcript</span>
+          </div>
+          <div className="text-foreground/90 font-sans">
+            {currentScript ? (
+              <ScriptText text={currentScript} highlights={highlights} />
+            ) : (
+              <span className="text-muted-foreground italic">The transcript will appear once the recording has been played.</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Clean up hard-wrapped script lines from database text so paragraphs flow
+ * naturally across the full width, while preserving real paragraph breaks
+ * and dialogue speaker turns.
+ */
+function formatTranscriptText(raw: string): string {
+  if (!raw) return '';
+  const paragraphs = raw.split(/\r?\n\s*\r?\n/);
+  return paragraphs
+    .map(para => {
+      const lines = para.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      if (lines.length <= 1) return para.trim();
+      const isDialogue = lines.some(l => /^([A-Z][a-zA-Z0-9\s]{0,15}|남|여|남자|여자|Speaker\s*\d*):/i.test(l));
+      if (isDialogue) {
+        return lines.join('\n');
+      }
+      return lines.join(' ');
+    })
+    .join('\n\n');
+}
+
 /** The transcript with each answer marked, so the learner sees where it was said. */
 function ScriptText({ text, highlights = [] }: { text: string; highlights?: string[] }) {
+  const normalized = formatTranscriptText(text);
   const words = highlights.map(word => word.trim()).filter(Boolean);
-  if (!words.length) return <>{text}</>;
+  if (!words.length) return <>{normalized}</>;
   const alternatives = words
     .map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .sort((a, b) => b.length - a.length)
     .join('|');
-  const parts = text.split(new RegExp(`(?<![\\p{L}\\p{N}])(${alternatives})(?![\\p{L}\\p{N}])`, 'giu'));
+  const parts = normalized.split(new RegExp(`(?<![\\p{L}\\p{N}])(${alternatives})(?![\\p{L}\\p{N}])`, 'giu'));
   return (
     <>
       {parts.map((part, i) =>
         i % 2 ? (
-          <mark key={i} className="rounded px-1 not-italic font-semibold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300">
+          <mark key={i} className="rounded px-1.5 py-0.5 not-italic font-semibold bg-primary/15 text-primary border border-primary/20 dark:bg-primary/25 dark:text-primary-300">
             {part}
           </mark>
         ) : (

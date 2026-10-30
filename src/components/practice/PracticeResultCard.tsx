@@ -1,47 +1,36 @@
-import React, { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { wordDiff } from '@/lib/wordDiff';
 import type { PracticeResult } from '@/lib/hooks/usePracticeSession';
-import type { Evaluation, ExamType, PracticeAttempt, Question } from '@/lib/types';
-import CriteriaTable from './CriteriaTable';
+import type { Evaluation, PracticeAttempt, Question } from '@/lib/types';
+import EvaluationCard from './EvaluationCard';
 import ExplainMistake from './ExplainMistake';
-import { FeedbackLists, MarkedAnswer, MarkedAnswerLegend, ResultSection, ResultSummary, toneFor, xpMeta, type Tone } from './ResultParts';
+import { CONFIDENCE_LABEL, SCALE, MarkedAnswer, onExamScale, MarkedAnswerLegend, ResultSection, ResultSummary, xpMeta, type Tone } from './ResultParts';
 
 /**
  * What came back from grading. Two shapes, because the two paths differ:
  * reading and listening return a right/wrong attempt, writing and speaking
  * return a rubric from the AI evaluator. `bare` drops the card, for the pop-up.
  */
-export default function PracticeResultCard({ result, bare = false, answerText, blankAnswers }: {
+export default function PracticeResultCard({ result, bare = false, answerText, blankAnswers, taskType }: {
   result: PracticeResult;
   bare?: boolean;
   answerText?: string;
+  /** A PTE question's type id, for the per-skill scores of a rated answer. */
+  taskType?: string;
   /** What was typed or picked in each blank, by blank id. */
   blankAnswers?: Record<string, string>;
 }) {
   const body = result.attempt ? (
     <DeterministicResult attempt={result.attempt} review={result.review} xpAwarded={result.xpAwarded} blankAnswers={blankAnswers} />
   ) : result.evaluation ? (
-    <EvaluationResult evaluation={result.evaluation} xpAwarded={result.xpAwarded} answerText={answerText} />
+    <EvaluationResult evaluation={result.evaluation} xpAwarded={result.xpAwarded} answerText={answerText} taskType={taskType} />
   ) : null;
-  if (!body || bare) return body;
+  // A rated answer is already its own card.
+  if (!body || bare || result.evaluation) return body;
   return <Card className="p-5 animate-in fade-in slide-in-from-bottom-2 duration-300 sm:p-6">{body}</Card>;
 }
 
-/** The exam's own reporting scale, so an estimate is drawn against the range it lives in. */
-export const SCALE: Record<ExamType, { min: number; max: number; label: string }> = {
-  PTE: { min: 10, max: 90, label: 'PTE score' },
-  IELTS: { min: 0, max: 9, label: 'IELTS band' },
-  EPS_TOPIK: { min: 0, max: 100, label: 'EPS-TOPIK score' },
-};
-
-export const CONFIDENCE_LABEL: Record<Evaluation['scoreConfidence'], string> = {
-  high: 'High confidence',
-  medium: 'Medium confidence',
-  low: 'Low confidence',
-};
+export { CONFIDENCE_LABEL, SCALE } from './ResultParts';
 
 /** Reading and listening: graded on the server, right or wrong. */
 function DeterministicResult({ attempt, review, xpAwarded, blankAnswers }: {
@@ -51,6 +40,8 @@ function DeterministicResult({ attempt, review, xpAwarded, blankAnswers }: {
   blankAnswers?: Record<string, string>;
 }) {
   const fraction = attempt.maxScore > 0 ? attempt.score / attempt.maxScore : attempt.isCorrect ? 1 : 0;
+  // PTE and IELTS show the exam's own scale (/90, /9) rather than raw marks.
+  const shown = onExamScale(review?.exam, fraction) ?? { score: attempt.score, max: attempt.maxScore };
   const tone: Tone = attempt.isCorrect ? 'good' : attempt.score > 0 ? 'fair' : 'poor';
   const verdict = attempt.isCorrect ? 'Correct' : attempt.score > 0 ? 'Partly right' : 'Not quite';
   // Typed answers to something heard are compared with the recording's script.
@@ -60,8 +51,8 @@ function DeterministicResult({ attempt, review, xpAwarded, blankAnswers }: {
     <div className="space-y-6">
       <ResultSummary
         label="Your score"
-        score={attempt.score}
-        outOf={attempt.maxScore}
+        score={shown.score}
+        outOf={shown.max}
         fraction={fraction}
         tone={tone}
         verdict={verdict}
@@ -110,7 +101,8 @@ function BlankAnswers({ blanks, given }: { blanks: NonNullable<Question['blanks'
         <tbody>
           {blanks.map((b, i) => {
             const answer = (given[b.id] ?? '').trim();
-            const right = answer !== '' && blankKey(answer) === blankKey(b.correctAnswer ?? '');
+            // Any form the key accepts ("20" for "twenty") is right, as the server marked it.
+            const right = answer !== '' && [b.correctAnswer, ...(b.acceptedAnswers ?? [])].some(key => blankKey(answer) === blankKey(key ?? ''));
             return (
               <tr key={b.id} className="border-t border-foreground/15 first:border-t-0">
                 <td className="px-4 py-3 font-medium text-foreground">{i + 1}</td>
@@ -138,36 +130,6 @@ function CompareBox({ title, text }: { title?: string; text: string }) {
 }
 
 /**
- * The learner's sentence with only the words that changed marked: the wrong
- * ones struck through, the correction right after them.
- */
-function CorrectedSentence({ original, correction }: { original: string; correction: string }) {
-  const parts = wordDiff(original, correction);
-  return (
-    <p className="leading-relaxed text-foreground">
-      {parts.map((part, i) => (
-        <React.Fragment key={i}>
-          {i > 0 && ' '}
-          {part.kind === 'same' && part.text}
-          {part.kind === 'removed' && (
-            <del className="text-rose-600 decoration-rose-500/70 dark:text-rose-400">
-              <span className="sr-only">remove </span>
-              {part.text}
-            </del>
-          )}
-          {part.kind === 'added' && (
-            <ins className="rounded bg-emerald-500/10 px-1 text-emerald-700 no-underline dark:text-emerald-300">
-              <span className="sr-only">add </span>
-              {part.text}
-            </ins>
-          )}
-        </React.Fragment>
-      ))}
-    </p>
-  );
-}
-
-/**
  * What an IELTS estimate does and does not cover. A speaking estimate from a
  * transcript has no Pronunciation criterion, so it is three of the four the
  * Speaking band is made of; a writing estimate is one task, where the Writing
@@ -187,88 +149,31 @@ function ieltsNote(evaluation: Evaluation, score: number | null, criteria: Evalu
   return null;
 }
 
-/** Writing and speaking: an estimate on the exam's scale plus rubric feedback. */
-function EvaluationResult({ evaluation, xpAwarded, answerText }: { evaluation: Evaluation; xpAwarded: number; answerText?: string }) {
-  const [showRewrite, setShowRewrite] = useState(false);
-  const scale = SCALE[evaluation.exam] ?? SCALE.PTE;
+/** Writing and speaking: an estimate on the exam's scale plus rubric feedback, on one card. */
+function EvaluationResult({ evaluation, xpAwarded, answerText, taskType }: { evaluation: Evaluation; xpAwarded: number; answerText?: string; taskType?: string }) {
   const score = evaluation.estimatedScore;
-  const fraction = score === null ? null : (score - scale.min) / (scale.max - scale.min);
-  // The server encodes an empty list as null, so none of these can be assumed.
-  const criteria = evaluation.criteria ?? [];
-  const sentenceFeedback = evaluation.sentenceFeedback ?? [];
-  const note = ieltsNote(evaluation, score, criteria);
+  const note = ieltsNote(evaluation, score, evaluation.criteria ?? []);
+  // A past result opened from My Score has no draft on screen; the server keeps the answer with it.
+  const typed = answerText?.trim() ? answerText : evaluation.answer;
+  const written = evaluation.skill === 'writing' && typed?.trim() ? typed : null;
+  // What was actually heard: every judgement is about these words.
+  const heard = evaluation.skill === 'speaking'
+    ? evaluation.transcript || 'No speech could be made out in that recording, so there is no score for it. Check your microphone and record the answer again.'
+    : null;
 
   return (
-    <div className="space-y-6">
-      <ResultSummary
-        label={`${scale.label} estimate`}
-        score={score ?? '—'}
-        outOf={scale.max}
-        fraction={fraction ?? 0}
-        tone={toneFor(fraction)}
-        verdict={score === null ? 'Not rated' : undefined}
-        meta={[score !== null ? CONFIDENCE_LABEL[evaluation.scoreConfidence] : null, xpMeta(xpAwarded)]}
-        summary={evaluation.summary}
-        notes={['A practice estimate, not an official result.', ...(note ? [note] : [])]}
-      />
-
-      {criteria.length > 0 && (
-        <ResultSection title="Score breakdown">
-          <CriteriaTable criteria={criteria} />
-        </ResultSection>
-      )}
-
-      {evaluation.skill === 'writing' && answerText?.trim() && (
-        <ResultSection title="Your answer" aside={score !== null && <MarkedAnswerLegend writing />}>
-          <div className="rounded-xl border border-border px-4 py-3">
-            <MarkedAnswer text={answerText} fixes={sentenceFeedback} rated={score !== null} />
-          </div>
-        </ResultSection>
-      )}
-
-      {/* What was actually heard: every judgement is about these words. */}
-      {evaluation.skill === 'speaking' && (
-        <ResultSection title="What we heard">
-          <p className="rounded-xl border border-border px-4 py-3 text-sm leading-relaxed text-foreground">
-            {evaluation.transcript ||
-              'No speech could be made out in that recording, so there is no score for it. Check your microphone and record the answer again.'}
-          </p>
-        </ResultSection>
-      )}
-
-      <FeedbackLists strengths={evaluation.strengths ?? []} weaknesses={evaluation.weaknesses ?? []} />
-
-      {sentenceFeedback.length > 0 && (
-        <ResultSection title="Sentence fixes">
-          <ul className="space-y-2">
-            {sentenceFeedback.map((fix, i) => (
-              <li key={i} className="space-y-1.5 rounded-xl border border-border px-4 py-3 text-sm">
-                <CorrectedSentence original={fix.original} correction={fix.correction} />
-                {fix.explanation && <p className="text-xs leading-relaxed text-muted-foreground">{fix.explanation}</p>}
-              </li>
-            ))}
-          </ul>
-        </ResultSection>
-      )}
-
-      {evaluation.modelRewrite && (
-        <section className="rounded-xl border border-border">
-          <button
-            type="button"
-            onClick={() => setShowRewrite(open => !open)}
-            aria-expanded={showRewrite}
-            className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm font-semibold text-foreground"
-          >
-            A stronger version
-            <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', showRewrite && 'rotate-180')} aria-hidden />
-          </button>
-          {showRewrite && (
-            <p className="whitespace-pre-line border-t border-border px-4 py-3 text-sm leading-relaxed text-foreground">
-              {evaluation.modelRewrite}
-            </p>
-          )}
-        </section>
-      )}
-    </div>
+    <EvaluationCard
+      evaluation={evaluation}
+      xpAwarded={xpAwarded}
+      taskType={taskType}
+      notes={note ? [note] : []}
+      answerTitle={heard !== null ? 'What we heard' : 'Your answer'}
+      answerLegend={written && score !== null ? <MarkedAnswerLegend writing /> : undefined}
+      answer={written ? (
+        <MarkedAnswer text={written} fixes={evaluation.sentenceFeedback ?? []} rated={score !== null} />
+      ) : heard !== null ? (
+        <p className="text-sm leading-relaxed text-foreground">{heard}</p>
+      ) : undefined}
+    />
   );
 }

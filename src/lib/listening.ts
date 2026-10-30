@@ -7,6 +7,11 @@ export function listeningTextTask(question: Question): 'summary' | 'dictation' |
   return null;
 }
 
+/** Summarize Spoken Text is rated by the AI writing evaluator, not an answer key. */
+export function isAiRatedListening(question?: Question | null): boolean {
+  return question?.typeId === 'summarize-spoken-text';
+}
+
 export function isWordHighlightTask(question: Question): boolean {
   return question.skill === 'listening' && question.typeId === 'pte-highlight-incorrect-word';
 }

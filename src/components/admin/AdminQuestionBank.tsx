@@ -183,6 +183,7 @@ export default function AdminQuestionBank({
               { value: 'IELTS', label: 'IELTS' },
               { value: 'PTE', label: 'PTE' },
               { value: 'EPS_TOPIK', label: 'EPS-TOPIK' },
+              { value: 'JLPT', label: 'JLPT' },
             ]}
           />
           <Chips

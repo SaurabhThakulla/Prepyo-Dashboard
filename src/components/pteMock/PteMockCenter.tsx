@@ -9,7 +9,7 @@ import { useToast } from '@/components/ui/toast';
 import { errorMessage } from '@/lib/api';
 import { usePteMockCatalog } from '@/lib/hooks/usePteMock';
 import { useMockPapers } from '@/lib/hooks/useMockPapers';
-import { formatMinutes, pteMockHref, pteMockMeta, pteReportHref } from '@/lib/pteMock/catalog';
+import { costLabel, formatMinutes, pteMockHref, pteMockMeta, pteReportHref } from '@/lib/pteMock/catalog';
 import { PteCatalogEntry } from '@/lib/pteMock/types';
 import { useApp } from '@/context/AppContext';
 import { PteExamVariant } from '@/lib/pteExamConfig';
@@ -179,7 +179,7 @@ function FullTestCard({
             {entry.live ? <RotateCcw className="h-4 w-4" /> : <PlayCircle className="h-4 w-4" />}
             {entry.live ? 'Resume full test' : 'Start full test'}
           </Button>
-          <p className="hidden sm:block text-[11px] text-white/75">Uses one full mock test from your plan.</p>
+          <p className="hidden sm:block text-[11px] text-white/75">{costLabel(entry.cost)}</p>
         </div>
       </div>
     </Card>

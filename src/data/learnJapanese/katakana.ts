@@ -1,0 +1,78 @@
+import { Unit } from '../learnKorean/types';
+
+/** Katakana: the same sounds as hiragana, used for words from other languages. */
+export const KATAKANA: Unit = {
+  id: 'katakana',
+  number: 2,
+  title: 'Katakana',
+  description: 'The second script, for words from other languages. Same sounds as hiragana, new shapes.',
+  emoji: 'ア',
+  lessons: [
+    {
+      id: 'a-to-so',
+      title: 'ア to ソ',
+      summary: 'Vowels, K and S in katakana',
+      exercises: [
+        { kind: 'teach', ko: 'ア · イ · ウ · エ · オ', speak: 'ア、イ、ウ、エ、オ', roman: 'a · i · u · e · o', en: 'The vowels', note: 'Katakana is sharper and more angular than hiragana. Each one has the same sound as its hiragana partner: ア is あ.' },
+        { kind: 'teach', ko: 'カ · キ · ク · ケ · コ', speak: 'カ、キ、ク、ケ、コ', roman: 'ka · ki · ku · ke · ko', en: 'K with each vowel' },
+        { kind: 'teach', ko: 'サ · シ · ス · セ · ソ', speak: 'サ、シ、ス、セ、ソ', roman: 'sa · shi · su · se · so', en: 'S with each vowel', note: 'シ (shi) and ツ (tsu) look alike: シ is drawn more from the left, ツ from the top.' },
+        { kind: 'choice', prompt: 'Which sound does this letter make?', ko: 'ケ', options: ['ke', 'ku', 'ki', 'ka'], answer: 0 },
+        { kind: 'choice', prompt: 'Which hiragana has the same sound as ソ?', ko: 'ソ', options: ['そ', 'さ', 'す', 'つ'], answer: 0 },
+        { kind: 'match', prompt: 'Match each letter to its sound', pairs: [['ア', 'a'], ['キ', 'ki'], ['ス', 'su'], ['オ', 'o']] },
+        { kind: 'choice', prompt: 'Listen. Which letter did you hear?', speak: 'シ', listenOnly: true, options: ['ツ', 'ソ', 'シ', 'ン'], answer: 2, explain: 'シ is "shi".' },
+        { kind: 'choice', prompt: 'Listen. Which letter did you hear?', speak: 'コ', listenOnly: true, options: ['コ', 'ク', 'カ', 'ケ'], answer: 0, explain: 'コ is "ko".' },
+      ],
+    },
+    {
+      id: 'ta-to-ho',
+      title: 'タ to ホ',
+      summary: 'T, N and H in katakana',
+      exercises: [
+        { kind: 'teach', ko: 'タ · チ · ツ · テ · ト', speak: 'タ、チ、ツ、テ、ト', roman: 'ta · chi · tsu · te · to', en: 'T with each vowel' },
+        { kind: 'teach', ko: 'ナ · ニ · ヌ · ネ · ノ', speak: 'ナ、ニ、ヌ、ネ、ノ', roman: 'na · ni · nu · ne · no', en: 'N with each vowel' },
+        { kind: 'teach', ko: 'ハ · ヒ · フ · ヘ · ホ', speak: 'ハ、ヒ、フ、ヘ、ホ', roman: 'ha · hi · fu · he · ho', en: 'H with each vowel', note: 'ヘ looks almost the same as hiragana へ.' },
+        { kind: 'choice', prompt: 'Which sound does this letter make?', ko: 'ツ', options: ['shi', 'tsu', 'so', 'n'], answer: 1 },
+        { kind: 'choice', prompt: 'Which sound does this letter make?', ko: 'ホ', options: ['ho', 'ha', 'fu', 'na'], answer: 0 },
+        { kind: 'match', prompt: 'Match each letter to its sound', pairs: [['タ', 'ta'], ['ニ', 'ni'], ['ヒ', 'hi'], ['ノ', 'no']] },
+        { kind: 'choice', prompt: 'Listen. Which letter did you hear?', speak: 'テ', listenOnly: true, options: ['チ', 'ト', 'テ', 'タ'], answer: 2, explain: 'テ is "te".' },
+        { kind: 'choice', prompt: 'Listen. Which letter did you hear?', speak: 'ネ', listenOnly: true, options: ['ネ', 'ヌ', 'ナ', 'ノ'], answer: 0, explain: 'ネ is "ne".' },
+      ],
+    },
+    {
+      id: 'ma-to-n',
+      title: 'マ to ン',
+      summary: 'M, Y, R, W, ン and the long-vowel bar',
+      exercises: [
+        { kind: 'teach', ko: 'マ · ミ · ム · メ · モ', speak: 'マ、ミ、ム、メ、モ', roman: 'ma · mi · mu · me · mo', en: 'M with each vowel' },
+        { kind: 'teach', ko: 'ヤ · ユ · ヨ', speak: 'ヤ、ユ、ヨ', roman: 'ya · yu · yo', en: 'Y in katakana' },
+        { kind: 'teach', ko: 'ラ · リ · ル · レ · ロ', speak: 'ラ、リ、ル、レ、ロ', roman: 'ra · ri · ru · re · ro', en: 'R with each vowel' },
+        { kind: 'teach', ko: 'ワ · ヲ · ン', speak: 'ワ、ヲ、ン', roman: 'wa · o · n', en: 'The last three', note: 'ン (n) and ソ (so) look alike: ン is drawn upwards, ソ downwards.' },
+        { kind: 'teach', ko: 'コ + ー = コー', speak: 'コー', roman: 'ko + ー = kō', en: 'A bar (ー) makes the vowel before it long', note: 'In katakana a long vowel is a bar, not a second vowel letter.' },
+        { kind: 'choice', prompt: 'Which sound does this letter make?', ko: 'ル', options: ['ru', 're', 'ro', 'ri'], answer: 0 },
+        { kind: 'choice', prompt: 'Which sound does this letter make?', ko: 'ン', options: ['so', 'n', 'tsu', 'shi'], answer: 1 },
+        { kind: 'match', prompt: 'Match each letter to its sound', pairs: [['メ', 'me'], ['ユ', 'yu'], ['ロ', 'ro'], ['ワ', 'wa']] },
+        { kind: 'choice', prompt: 'Listen. Which letter did you hear?', speak: 'ミ', listenOnly: true, options: ['ム', 'ミ', 'モ', 'マ'], answer: 1, explain: 'ミ is "mi".' },
+        { kind: 'choice', prompt: 'Listen. Which letter did you hear?', speak: 'リ', listenOnly: true, options: ['ル', 'レ', 'ラ', 'リ'], answer: 3, explain: 'リ is "ri".' },
+      ],
+    },
+    {
+      id: 'loan-words',
+      title: 'Words from English',
+      summary: 'Coffee, bus, television, bread',
+      exercises: [
+        { kind: 'teach', ko: 'コーヒー', roman: 'kō-hī', en: 'coffee', picture: '☕', note: 'Katakana words often come from English. Say them the Japanese way, every syllable with its vowel.' },
+        { kind: 'teach', ko: 'バス', roman: 'ba-su', en: 'bus', picture: '🚌', note: 'Sound marks work as in hiragana: ハ → バ.' },
+        { kind: 'teach', ko: 'テレビ', roman: 'te-re-bi', en: 'television', picture: '📺' },
+        { kind: 'teach', ko: 'パン', roman: 'pa-n', en: 'bread', picture: '🍞', note: 'Not every katakana word is English: パン comes from Portuguese.' },
+        { kind: 'teach', ko: 'タクシー', roman: 'ta-ku-shī', en: 'taxi', picture: '🚕' },
+        { kind: 'teach', ko: 'カメラ', roman: 'ka-me-ra', en: 'camera', picture: '📷' },
+        { kind: 'teach', ko: 'ノート', roman: 'nō-to', en: 'notebook', picture: '📓' },
+        { kind: 'teach', ko: 'ホテル', roman: 'ho-te-ru', en: 'hotel', picture: '🏨' },
+        { kind: 'choice', prompt: 'How do you read this word?', ko: 'テレビ', options: ['terebi', 'tenebi', 'terehi', 'telebe'], answer: 0 },
+        { kind: 'choice', prompt: 'Which picture is タクシー?', ko: 'タクシー', options: ['🚌', '🚕', '📷', '🏨'], pictureOptions: true, answer: 1 },
+        { kind: 'choice', prompt: 'Listen. What did you hear?', speak: 'コーヒー', listenOnly: true, options: ['coffee', 'bread', 'camera', 'hotel'], answer: 0, explain: 'コーヒー (kōhī) is coffee.' },
+        { kind: 'match', prompt: 'Match the word to its meaning', pairs: [['バス', 'bus'], ['パン', 'bread'], ['ノート', 'notebook'], ['カメラ', 'camera']] },
+      ],
+    },
+  ],
+};

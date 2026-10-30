@@ -153,7 +153,8 @@ export interface PteCatalogEntry {
   missing: string[];
   available: boolean;
   /** What starting it spends: a full mock from the plan, or sub-tests plus AI gradings. */
-  cost: { kind: 'full_mock' | 'sub_tests'; credits: number; gradings?: number };
+  /** ai_gradings: an institution's student pays only `gradings` AI credits from the monthly pool. */
+  cost: { kind: 'full_mock' | 'sub_tests' | 'ai_gradings'; credits: number; gradings?: number };
   live?: { id: string; current: number; totalItems: number; createdAt: string };
   latest?: PteHistoryEntry;
 }

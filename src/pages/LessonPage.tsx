@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { findLesson, lessonHref, type Exercise } from '@/data/learnKorean';
 import { ChoiceCard, MatchCard, TaskIntroCard, TeachCard } from '@/components/learn/exercises';
 import { useLearnProgress } from '@/lib/hooks/useLearnProgress';
+import { useLearnCourse } from '@/lib/learn/course';
 import { lessonState } from '@/lib/learn/progress';
-import { stopKorean, useKoreanVoice } from '@/lib/learn/speakKorean';
+import { stopSpeech, useLearnVoice } from '@/lib/learn/speech';
 
 type Phase = 'answer' | 'checked';
 
@@ -17,7 +18,8 @@ type Phase = 'answer' | 'checked';
  */
 export default function LessonPage() {
   const { unitId, lessonId } = useParams();
-  const found = findLesson(unitId, lessonId);
+  const course = useLearnCourse();
+  const found = findLesson(unitId, lessonId, course.units);
   const { progress } = useLearnProgress();
 
   if (!found) {
@@ -51,9 +53,10 @@ export default function LessonPage() {
 
 function LessonRun({ unitId, lessonId }: { unitId: string; lessonId: string }) {
   const navigate = useNavigate();
-  const { unit, lesson, index } = findLesson(unitId, lessonId)!;
+  const course = useLearnCourse();
+  const { unit, lesson, index } = findLesson(unitId, lessonId, course.units)!;
   const { streak, finishLesson } = useLearnProgress();
-  const voice = useKoreanVoice();
+  const voice = useLearnVoice(course);
 
   const [queue, setQueue] = useState<Exercise[]>(() => lesson.exercises);
   const [position, setPosition] = useState(0);
@@ -63,7 +66,7 @@ function LessonRun({ unitId, lessonId }: { unitId: string; lessonId: string }) {
   const [mistakes, setMistakes] = useState(0);
   const [result, setResult] = useState<{ earned: number } | null>(null);
 
-  useEffect(() => stopKorean, []);
+  useEffect(() => stopSpeech, []);
 
   const exercise = queue[position];
   const total = lesson.exercises.length;
@@ -76,7 +79,7 @@ function LessonRun({ unitId, lessonId }: { unitId: string; lessonId: string }) {
   const next = unit.lessons[index + 1];
 
   const advance = () => {
-    stopKorean();
+    stopSpeech();
     if (position + 1 >= queue.length) {
       setResult({ earned: finishLesson(unit.id, lesson.id, mistakes) });
       return;
@@ -157,7 +160,7 @@ function LessonRun({ unitId, lessonId }: { unitId: string; lessonId: string }) {
         </p>
         {voice === 'none' && exercise.kind === 'teach' && (
           <p className="mb-4 rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
-            This device has no Korean voice, so audio is off. Open Prepyo in Chrome or Edge, or add Korean in your device's speech settings, to hear the words.
+            This device has no {course.language} voice, so audio is off. Open Prepyo in Chrome or Edge, or add {course.language} in your device's speech settings, to hear the words.
           </p>
         )}
         {exercise.kind === 'teach' && <TeachCard key={position} ex={exercise} voice={voice} />}
@@ -210,7 +213,7 @@ function LessonRun({ unitId, lessonId }: { unitId: string; lessonId: string }) {
                     {correct ? 'Correct!' : 'Not quite. It will come round again.'}
                   </p>
                   {!correct && !exercise.pictureOptions && (
-                    <p lang="ko" className="text-sm text-rose-900 dark:text-rose-100">Answer: {exercise.options[exercise.answer].replace(/[[\]]/g, '')}</p>
+                    <p lang={course.lang} className="text-sm text-rose-900 dark:text-rose-100">Answer: {exercise.options[exercise.answer].replace(/[[\]]/g, '')}</p>
                   )}
                   {exercise.explain && <p className="text-sm text-foreground/80">{exercise.explain}</p>}
                 </div>

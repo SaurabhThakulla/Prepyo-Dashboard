@@ -68,6 +68,8 @@ export default function ReadingMockPanel({ section }: { section?: FullMockSectio
   if (section && !mock.session) return null;
 
   if (mock.outcome) {
+    // Inside another test the section hands back (above) instead of showing its own report.
+    if (section) return null;
     return (
       <Suspense fallback={<AppPageSkeleton />}>
         <ScoreReport

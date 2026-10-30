@@ -11,7 +11,6 @@ import {
   AlertCircle,
   Send,
   CheckCircle2,
-  ChevronDown,
   Volume2,
   LayoutList,
   PanelRight,
@@ -24,22 +23,26 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import AudioRecorder, { type RecorderStatus } from '@/components/practice/AudioRecorder';
-import { prepSecondsFor } from '@/components/practice/prepTime';
+import { audioDelayFor, prepSecondsFor } from '@/components/practice/prepTime';
 import QuestionFigure from '@/components/practice/QuestionFigure';
 import PromptAudio from '@/components/practice/PromptAudio';
 import KoreanHelp from '@/components/practice/KoreanHelp';
 import PracticeResultDialog from '@/components/practice/PracticeResultDialog';
 import { answerMark, OPTION_MARK_CLASS, OPTION_MARK_LABEL } from '@/lib/answerMarks';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
-import OptionContent, { hasPictureOptions } from '@/components/practice/OptionContent';
+import OptionContent, { hasPictureOptions, MarkedText } from '@/components/practice/OptionContent';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
-import { isReadAloudTask, isRepeatSentenceTask, isWordHighlightTask, passageText } from '@/lib/listening';
+import ListeningGapOutline from '@/components/listening/ListeningGapOutline';
+import { ListeningLetterPractice } from '@/components/listening/ListeningLetterBoard';
+import { isListeningGapTask, isListeningLetterTask } from '@/lib/listeningTypes';
+import ConversationPassage, { conversationTurns } from '@/components/practice/ConversationPassage';
+import { isAiRatedListening, isReadAloudTask, isRepeatSentenceTask, isWordHighlightTask, passageText } from '@/lib/listening';
 import { allowsMultipleChoices } from '@/lib/choices';
 import { minimumWritingWords, writingLengthNote, writingWordCount, writingWordTarget } from '@/lib/writing';
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isPremiumUser, listeningPlays, PracticeAttempt, Question, SkillType, ieltsModuleOf } from '@/lib/types';
 import FreePlanNotice from '@/institution/FreePlanNotice';
-import PracticeActionBar, { gradingUnits, notesFor, ON_BAR, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
+import PracticeActionBar, { CostChip, gradingUnits, notesFor, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
 import MyScore from '@/components/practice/flow/MyScore';
 import RecordingPlayback from '@/components/practice/flow/RecordingPlayback';
 
@@ -58,6 +61,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { familyOf, typeIdsFor } from '@/lib/readingTypes';
 import { api, ApiError, errorMessage } from '@/lib/api';
+import { answeredContext, questionContext } from '@/lib/tutorContext';
 import { encodeForUpload } from '@/lib/audio';
 import { matchesTypeKey, typeLabel } from '@/lib/syllabus';
 import { pteMockHref } from '@/lib/pteMock/catalog';
@@ -87,6 +91,7 @@ function getSubtaskTitle(exam: ExamType, skill: SkillType, typeKey?: string | nu
 }
 
 import { useToast } from '@/components/ui/toast';
+import AnswerSelect from '@/components/ui/answer-select';
 
 const PILL = 'h-9 gap-1.5 rounded-full px-3 text-xs font-bold sm:px-4';
 
@@ -166,7 +171,7 @@ function PracticePageContent() {
   // EPS-TOPIK reading items stand alone rather than sitting on a passage, so
   // they are dealt one at a time like listening, not from the passage list.
   const readingList =
-    selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK' && !isMockMode && !mistakeId && !isAdmin(user);
+    selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK' && activeExam !== 'JLPT' && !isMockMode && !mistakeId && !isAdmin(user);
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -471,7 +476,7 @@ function PracticePageContent() {
 
   // Passage-based reading (IELTS, PTE). EPS-TOPIK reading items stand alone,
   // so they are practised and authored like any other single question.
-  const isReading = selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK';
+  const isReading = selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK' && activeExam !== 'JLPT';
   const isAdminUser = isAdmin(user);
   // The list (rendered at the bottom) only shows for these; while it shows, the left menu stays shut.
   const drawerShown = readingList || (!isAdminUser && !mistakeId && !isMockMode);
@@ -560,7 +565,7 @@ function PracticePageContent() {
         showEvaluation(data);
         const scoreVal = data.evaluation.estimatedScore ?? (data.evaluation as any)?.overallScore ?? (data.evaluation as any)?.score ?? (activeExam === 'PTE' ? 79 : 7);
         recordQuestionAttempt(activeExam, currentQuestion.id, scoreVal, EXAM_MAX_SCORE[activeExam]);
-      } else if (grading === 'ai') {
+      } else if (grading === 'ai' || isAiRatedListening(currentQuestion)) {
         const data = await api.post<EvaluationResponse>('/evaluations/writing', {
           questionId: currentQuestion.id,
           text: textAnswer,
@@ -626,10 +631,16 @@ function PracticePageContent() {
     }
   };
 
+  // The coach is told about a question only while it is on screen.
+  useEffect(() => () => setTutorContextPrompt(''), [currentQuestion?.id, setTutorContextPrompt]);
+
   const handleAskAITutor = () => {
     if (!currentQuestion) return;
+    // Once marked, the coach may see the key the result card already shows.
     setTutorContextPrompt(
-      `Question: ${currentQuestion.title}\nTask type: ${currentQuestion.typeName}\nPrompt: ${currentQuestion.prompt}`,
+      result?.attempt && result.review
+        ? answeredContext(result.attempt, result.review, 'I have just answered this practice question. It has been marked, so we can discuss the correct answer.')
+        : questionContext(currentQuestion, textAnswer),
     );
     setIsTutorOpen(true);
   };
@@ -653,7 +664,7 @@ function PracticePageContent() {
     submitting,
     grading === 'speech'
       ? [{ afterSeconds: 0, label: 'Scoring…' }] // the steps show in ScoringProgress below
-      : grading === 'ai'
+      : grading === 'ai' || isAiRatedListening(currentQuestion)
         ? [
           { afterSeconds: 0, label: 'Sending your response…' },
           { afterSeconds: 3, label: 'Marking against the rubric…' },
@@ -663,6 +674,10 @@ function PracticePageContent() {
   );
 
   const isPteListening = activeExam === 'PTE' && selectedSkill === 'listening';
+  // Outside reading the prompt goes in the question card, under the blue bar, not in the header.
+  const promptInCard = !!currentQuestion && currentQuestion.skill !== 'reading';
+  // An IELTS speaking prompt is the question itself, so it reads larger.
+  const promptIsQuestion = currentQuestion?.exam === 'IELTS' && currentQuestion?.skill === 'speaking';
 
   const currentIndex = currentQuestion ? questions.findIndex(q => q.id === currentQuestion.id) : -1;
   const isLast = currentIndex === questions.length - 1;
@@ -914,7 +929,7 @@ function PracticePageContent() {
                   <span className="inline-flex h-12 min-w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 px-2 text-sm font-bold text-primary-foreground shadow-md sm:h-14 sm:min-w-14">
                     {taskCode}
                   </span>
-                  <div className="min-w-0 space-y-1 pt-0.5">
+                  <div data-dictionary className="min-w-0 space-y-1 pt-0.5">
                     <h2 className="text-xl sm:text-2xl font-bold text-primary leading-tight">{currentQuestion.typeName}</h2>
                     {currentQuestion.timeLimitSeconds > 0 && (
                       <p className="flex items-center gap-1.5 text-xs font-semibold text-primary sm:hidden">
@@ -922,7 +937,7 @@ function PracticePageContent() {
                       </p>
                     )}
                     {/* Plain sentences flow across the full width; prompts with lists keep their lines. */}
-                    {currentQuestion.prompt && (/\S\r?\n\S/.test(currentQuestion.prompt.trim())
+                    {!promptInCard && currentQuestion.prompt && (/\S\r?\n\S/.test(currentQuestion.prompt.trim())
                       ? currentQuestion.prompt.split(/\n\s*\n/).map((paragraph, i) => (
                         <p key={i} className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                           {paragraph.trim()}
@@ -931,19 +946,31 @@ function PracticePageContent() {
                       : <p className="text-sm text-muted-foreground leading-relaxed">{currentQuestion.prompt.trim().split(/\s*\n\s*\n\s*/).join(' ')}</p>)}
                   </div>
                 </div>
-                {currentQuestion.timeLimitSeconds > 0 && (
-                  <div className="hidden shrink-0 items-center gap-3 self-start rounded-2xl bg-primary/[0.07] px-4 py-2.5 sm:flex">
-                    <Clock className="h-6 w-6 text-primary" aria-hidden />
-                    <div className="leading-tight">
-                      <p className="text-xs text-muted-foreground">Time per question</p>
-                      <p className="text-sm font-bold text-primary">{timeAllowed(currentQuestion.timeLimitSeconds)}</p>
+                <div className="flex shrink-0 items-center gap-2 self-start">
+                  {!speakingUnscored && gradingUnits(selectedSkill, currentQuestion.typeId) != null && (
+                    <CostChip
+                      cost={gradingUnits(selectedSkill, currentQuestion.typeId)!}
+                      costDoublesWhenLong={selectedSkill === 'speaking' && gradingUnits(selectedSkill, currentQuestion.typeId) === 5}
+                    />
+                  )}
+                  <Button variant="outline" onClick={handleAskAITutor} className={`${PILL} gap-2`}>
+                    <Bot className="w-4 h-4 text-primary" />
+                    <span><span className="hidden sm:inline">Ask </span>AI Coach</span>
+                  </Button>
+                  {currentQuestion.timeLimitSeconds > 0 && (
+                    <div className="hidden shrink-0 items-center gap-3 rounded-2xl bg-primary/[0.07] px-4 py-2.5 sm:flex">
+                      <Clock className="h-6 w-6 text-primary" aria-hidden />
+                      <div className="leading-tight">
+                        <p className="text-xs text-muted-foreground">Time per question</p>
+                        <p className="text-sm font-bold text-primary">{timeAllowed(currentQuestion.timeLimitSeconds)}</p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               {/* The question: blue bar with its number and title, then its content */}
-              <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+              <div data-dictionary className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
               {(questionHeading || (!isPteListening && currentIndex >= 0)) && (
                 <div className="flex items-center gap-3 bg-gradient-to-r from-primary to-primary/75 px-4 py-3 text-primary-foreground dark:!bg-muted dark:!text-foreground sm:px-5">
                   {!isPteListening && currentIndex >= 0 && <span className="rounded-lg bg-white/15 px-2.5 py-0.5 font-bold tabular-nums">#{currentIndex + 1}</span>}
@@ -953,6 +980,12 @@ function PracticePageContent() {
               )}
 
               <div className="p-3 sm:p-4 space-y-3 empty:hidden">
+
+                {promptInCard && currentQuestion.prompt && (
+                  <p className={`leading-relaxed whitespace-pre-line ${promptIsQuestion ? 'text-base text-foreground' : 'text-sm text-muted-foreground'}`}>
+                    {currentQuestion.prompt.trim()}
+                  </p>
+                )}
 
                 {currentQuestion.imageUrl && (
                   // On a phone the figure runs edge to edge across the card, for a larger table.
@@ -968,19 +1001,33 @@ function PracticePageContent() {
                   singlePlay={
                     (currentQuestion.exam === 'IELTS' && currentQuestion.skill === 'listening') ||
                     (currentQuestion.exam === 'PTE' && (currentQuestion.skill === 'listening' || currentQuestion.skill === 'speaking')) ||
-                    (currentQuestion.exam === 'EPS_TOPIK' && currentQuestion.skill === 'listening')
+                    ((currentQuestion.exam === 'EPS_TOPIK' || currentQuestion.exam === 'JLPT') && currentQuestion.skill === 'listening')
                   }
                   repeat={listeningPlays(currentQuestion)}
+                  // The recording plays on its own after the test's lead-in; speaking recording follows it.
+                  autoPlayAfter={result === null ? audioDelayFor(currentQuestion) : undefined}
                   title={currentQuestion.title}
-                  allowTranscript={result !== null}
-                  highlights={result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
+                  allowTranscript={true}
+                  // A matching key is a letter, not words said in the recording.
+                  highlights={isListeningLetterTask(currentQuestion) ? undefined : result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
                   onFinished={() => setHeardPromptFor(currentQuestion.id)}
                 />}
 
-                {currentQuestion.exam === 'EPS_TOPIK' && (currentQuestion.hasTranslation || result?.review?.audioTranslation) && (
+                {/* Read Aloud: hear the passage. Stored audio when there is some, the browser's voice for now otherwise. */}
+                {isReadAloudTask(currentQuestion) && currentQuestion.contextPassage && (
+                  <PromptAudio
+                    key={`read-aloud-${currentQuestion.id}`}
+                    audioUrl={currentQuestion.audioUrl}
+                    audioTranscript={passageText(currentQuestion)}
+                    title={currentQuestion.title}
+                  />
+                )}
+
+                {(currentQuestion.exam === 'EPS_TOPIK' || currentQuestion.exam === 'JLPT') && (currentQuestion.hasTranslation || result?.review?.audioTranslation) && (
                   <KoreanHelp
                     key={`help-${currentQuestion.id}-${result?.review?.audioTranslation ? 'review' : 'question'}`}
                     questionId={currentQuestion.id}
+                    language={currentQuestion.exam === 'JLPT' ? 'Japanese' : 'Korean'}
                     premium={isPremiumUser(user)}
                     initial={
                       result?.review?.audioTranslation
@@ -990,7 +1037,26 @@ function PracticePageContent() {
                   />
                 )}
 
-                {currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && !isRepeatSentenceTask(currentQuestion) && (
+                {/* IELTS Listening matching and lettered diagrams: letters dragged from a box. */}
+                {isListeningLetterTask(currentQuestion) ? (
+                  <ListeningLetterPractice
+                    question={currentQuestion}
+                    responses={blankResponses}
+                    disabled={submitting || result !== null}
+                    reviewBlanks={result?.review?.blanks}
+                    onChange={setBlankResponses}
+                  />
+                ) : isListeningGapTask(currentQuestion) && currentQuestion.contextPassage ? (
+                  // Table, flow-chart, summary, notes, typed diagram labels and short answers.
+                  <ListeningGapOutline
+                    passage={currentQuestion.contextPassage}
+                    blanks={currentQuestion.blanks}
+                    responses={blankResponses}
+                    disabled={submitting || result !== null}
+                    reviewBlanks={result?.review?.blanks}
+                    onChange={setBlankResponses}
+                  />
+                ) : currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && !isRepeatSentenceTask(currentQuestion) && (
                   passageHasGaps(currentQuestion.contextPassage) ? (
                     <InlineBlankPassage
                       passage={currentQuestion.contextPassage}
@@ -1001,8 +1067,17 @@ function PracticePageContent() {
                       onChange={setBlankResponses}
                     />
                   ) : (
-                    <div className="px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl bg-primary/[0.04] text-[15px] sm:text-[16px] text-foreground leading-relaxed whitespace-pre-line sm:max-h-72 sm:overflow-y-auto">
-                      {passageText(currentQuestion)}
+                    <div
+                      lang={currentQuestion.exam === 'JLPT' ? 'ja' : undefined}
+                      className="px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl bg-primary/[0.04] text-[15px] sm:text-[16px] text-foreground leading-relaxed whitespace-pre-line sm:max-h-72 sm:overflow-y-auto"
+                    >
+                      {(() => {
+                        const text = passageText(currentQuestion);
+                        const turns = conversationTurns(text);
+                        if (turns) return <ConversationPassage turns={turns} className="whitespace-normal" />;
+                        // JLPT underlines the word a vocabulary question asks about, as the test paper does.
+                        return currentQuestion.exam === 'JLPT' ? <MarkedText text={text} /> : text;
+                      })()}
                     </div>
                   )
                 )}
@@ -1039,6 +1114,8 @@ function PracticePageContent() {
                       // Prep counts down in the recorder as soon as the task (or its audio) is done, then recording starts.
                       autoStart
                       maxSeconds={currentQuestion.timeLimitSeconds}
+                      // PTE's microphone closes after 3 seconds of silence; an IELTS examiner waits.
+                      stopAfterSilence={currentQuestion.exam === 'PTE'}
                       disabled={submitting || result !== null || waitingForPrompt}
                       controlRef={recorderControl}
                       onStatus={setRecorderStatus}
@@ -1053,12 +1130,7 @@ function PracticePageContent() {
 
                 {grading === 'ai' && (
                   <div className="space-y-3 pt-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-sm font-bold text-foreground">Your response</span>
-                      <Badge variant={wordCount >= (wordTarget ?? minWords) ? 'success' : 'warning'}>
-                        {wordTarget ? `${wordCount} / ${wordTarget} words` : `${wordCount} words`}
-                      </Badge>
-                    </div>
+                    <span className="block text-sm font-bold text-foreground">Your response</span>
                     <Textarea
                       rows={8}
                       value={textAnswer}
@@ -1066,9 +1138,14 @@ function PracticePageContent() {
                       placeholder="Write your response here…"
                       className="border-2 border-primary bg-background px-4 py-3 text-[15px] leading-7 text-foreground placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-primary/30"
                     />
-                    <p className="text-xs leading-relaxed text-foreground/75">
-                      {currentQuestion ? writingLengthNote(currentQuestion) : ''}
-                    </p>
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <p className="leading-relaxed text-foreground/75">
+                        {currentQuestion ? writingLengthNote(currentQuestion) : ''}
+                      </p>
+                      <Badge variant={wordCount >= (wordTarget ?? minWords) ? 'success' : 'warning'} className="shrink-0">
+                        {wordTarget ? `${wordCount} / ${wordTarget} words` : `${wordCount} words`}
+                      </Badge>
+                    </div>
                   </div>
                 )}
 
@@ -1082,7 +1159,7 @@ function PracticePageContent() {
                   correctAnswers={result?.review?.correctAnswers ?? null}
                 />
 
-                {!isWordHighlightTask(currentQuestion) && currentQuestion.options && currentQuestion.options.length > 0 && (
+                {!isWordHighlightTask(currentQuestion) && !isListeningLetterTask(currentQuestion) && currentQuestion.options && currentQuestion.options.length > 0 && (
                   <div className="space-y-2.5 pt-2">
                     <h4 className="text-xs font-bold text-foreground">Choose your answer:</h4>
                     <div className={hasPictureOptions(currentQuestion.options) ? 'grid grid-cols-2 gap-2.5' : 'space-y-2.5'}>
@@ -1135,19 +1212,13 @@ function PracticePageContent() {
                       <div key={b.id} className={`flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl border text-xs sm:text-sm ${!reviewed ? 'bg-card border-border' : right ? 'border-emerald-500 bg-emerald-500/10' : 'border-rose-500 bg-rose-500/10'}`}>
                         <span className="font-bold text-primary shrink-0">Blank {idx + 1}:</span>
                         {b.options && b.options.length > 0 ? (
-                          <div className="relative inline-flex items-center group">
-                            <select
-                              value={blankResponses[b.id] || ''}
-                              onChange={e => setBlankResponses({ ...blankResponses, [b.id]: e.target.value })}
-                              className="appearance-none pr-8 pl-3 py-1.5 rounded-lg border border-input bg-background hover:border-primary/50 text-xs sm:text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary shadow-2xs cursor-pointer transition-all"
-                            >
-                              <option value="">— Select —</option>
-                              {b.options.map(opt => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                            <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 pointer-events-none text-muted-foreground group-hover:text-primary transition-colors" />
-                          </div>
+                          <AnswerSelect
+                            value={blankResponses[b.id] || ''}
+                            options={b.options}
+                            onChange={value => setBlankResponses({ ...blankResponses, [b.id]: value })}
+                            aria-label={`Blank ${idx + 1}`}
+                            className="bg-background text-xs sm:text-sm"
+                          />
                         ) : (
                           <input
                             value={blankResponses[b.id] || ''}
@@ -1185,7 +1256,6 @@ function PracticePageContent() {
             )}
 
             <PracticeActionBar
-              cost={speakingUnscored ? null : gradingUnits(selectedSkill, currentQuestion.typeId)}
               index={mistakeId ? -1 : currentIndex}
               total={mistakeId ? 0 : questions.length}
               onJump={mistakeId ? undefined : i => openQuestion(questions[i])}
@@ -1268,10 +1338,6 @@ function PracticePageContent() {
                       </Button>
                     </>
                   )}
-                  <Button variant="ghost" onClick={handleAskAITutor} className={`${PILL} gap-2 ${ON_BAR}`}>
-                    <Bot className="w-4 h-4" />
-                    <span><span className="hidden sm:inline">Ask </span>AI Coach</span>
-                  </Button>
                 </>
               }
             />
@@ -1280,7 +1346,7 @@ function PracticePageContent() {
 
             <PracticeNotes notes={speakingUnscored ? [] : notesFor(selectedSkill)} />
 
-            <MyScore questionIds={[currentQuestion.id]} />
+            <MyScore questionIds={[currentQuestion.id]} taskType={activeExam === 'PTE' ? currentQuestion.typeId : undefined} />
           </div>
         </div>
       )}

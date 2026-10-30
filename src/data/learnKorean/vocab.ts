@@ -63,9 +63,9 @@ function hearWord(words: Word[], target: number, slot: number): ChoiceExercise {
   return { kind: 'choice', prompt: 'Listen. Which one did you hear?', speak: words[target].ko, listenOnly: true, options: opts, answer };
 }
 
-function sayIt(words: Word[], target: number, slot: number): ChoiceExercise {
+function sayIt(words: Word[], target: number, slot: number, language: string): ChoiceExercise {
   const { options: opts, answer } = options(words.map(w => w.ko), target, slot);
-  return { kind: 'choice', prompt: `How do you say “${words[target].en}” in Korean?`, options: opts, answer };
+  return { kind: 'choice', prompt: `How do you say “${words[target].en}” in ${language}?`, options: opts, answer };
 }
 
 function picture(words: Word[], target: number, slot: number): ChoiceExercise | undefined {
@@ -89,12 +89,13 @@ const built = new WeakSet<Lesson>();
  * A vocabulary lesson from a list of words: the first half taught then
  * tested (meaning, listening, saying it), the same for the second half, a
  * picture question where the words have pictures, and two matching rounds.
- * Every lesson built here has at least two listening questions.
+ * Every lesson built here has at least two listening questions. `language`
+ * names the course language in the "How do you say" questions.
  */
-export function vocabLesson(id: string, title: string, summary: string, words: Word[]): Lesson {
+export function vocabLesson(id: string, title: string, summary: string, words: Word[], language = 'Korean'): Lesson {
   if (words.length < 6) throw new Error(`${id}: a vocabulary lesson needs at least 6 words`);
   if (new Set(words.map(w => w.ko)).size !== words.length || new Set(words.map(w => w.en)).size !== words.length) {
-    throw new Error(`${id}: every word needs its own Korean and its own meaning`);
+    throw new Error(`${id}: every word needs its own ${language} and its own meaning`);
   }
   const half = Math.ceil(words.length / 2);
   const firstPicture = words.findIndex((w, i) => i >= half && w.picture);
@@ -102,12 +103,12 @@ export function vocabLesson(id: string, title: string, summary: string, words: W
     ...words.slice(0, half).map(teach),
     meaning(words, 0, 0),
     listening(words, 1, 1),
-    sayIt(words, 2, 2),
+    sayIt(words, 2, 2, language),
     ...words.slice(half).map(teach),
     picture(words, firstPicture >= 0 ? firstPicture : half, 3) ?? meaning(words, half, 3),
     hearWord(words, half + 1, 1),
     listening(words, half + 2 < words.length ? half + 2 : half, 2),
-    sayIt(words, words.length - 1, 0),
+    sayIt(words, words.length - 1, 0, language),
     match(words.slice(0, 4)),
     match(words.slice(half, half + 4)),
   ];

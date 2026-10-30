@@ -2,7 +2,6 @@ import React from 'react';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { AnswerSubmission, ReadingGroup } from '@/lib/types';
 import { ReadingAnswerResult } from '@/lib/hooks/useReading';
-import { correctIds } from '@/components/reading/renderers/types';
 import SentenceGap from '@/components/reading/renderers/SentenceGap';
 
 interface ReadingParagraphGroupProps {
@@ -27,9 +26,8 @@ interface ReadingParagraphGroupProps {
  * to do: the group header promises "Questions 1–7", and the answer key below
  * refers back by number.
  *
- * Verdicts are not printed per sentence here, for the same reason: an inline
- * box after every gap would break the paragraph apart again. The gap itself
- * turns green or rose, and anything wrong is listed underneath.
+ * After marking, each gap shows a tick, or a cross with the right word beside
+ * it, and a one-line score sits underneath.
  */
 export default function ReadingParagraphGroup({
   group,
@@ -50,23 +48,18 @@ export default function ReadingParagraphGroup({
   const wrong = graded.filter(entry => !entry.result?.attempt.isCorrect);
 
   return (
-    <div className="rounded-lg p-3.5 bg-card/60 dark:bg-white/[0.015] border border-border/70 space-y-2.5 shadow-2xs">
-      {/* The paper heads a summary box with a title of its own, which tells the
-          learner which stretch of the passage the summary covers. */}
-      {group.boxTitle && (
-        <h4 className="text-center text-xs sm:text-sm font-bold text-foreground">{group.boxTitle}</h4>
-      )}
-
+    <div data-dictionary className="rounded-xl bg-muted/20 px-3 py-4 sm:px-6 sm:py-5 space-y-3">
       {/* leading-loose keeps the lines apart enough that inline controls do not
           collide once the text wraps. */}
-      <p className="text-xs sm:text-sm text-foreground leading-loose">
-        {group.questions.map(question => (
+      <p className="mx-auto max-w-[66ch] font-reading text-[15px] sm:text-[17px] leading-[2.6] text-foreground/90">
+        {group.questions.map((question, index) => (
           <React.Fragment key={question.id}>
             <SentenceGap
               question={question}
               answer={answers[question.id]}
               result={results?.[question.id]}
               locked={disabled || Boolean(results?.[question.id])}
+              number={startNumber + index}
               onChange={patch => onAnswer(question.id, patch)}
             />{' '}
           </React.Fragment>
@@ -81,24 +74,10 @@ export default function ReadingParagraphGroup({
               All {graded.length} correct
             </p>
           ) : (
-            <>
-              <p className="flex items-center gap-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300">
-                <XCircle className="w-3.5 h-3.5" />
-                {wrong.length} of {graded.length} to review
-              </p>
-              <ul className="space-y-0.5">
-                {wrong.map(entry => {
-                  const key = entry.result ? correctIds(entry.result) : [];
-                  if (key.length === 0) return null;
-                  return (
-                    <li key={entry.question.id} className="text-[11px] text-muted-foreground">
-                      <span className="font-mono font-bold text-foreground">{entry.number}.</span>{' '}
-                      <span className="font-semibold text-foreground">{key.join(' / ')}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-rose-700 dark:text-rose-300">
+              <XCircle className="w-3.5 h-3.5" />
+              {graded.length - wrong.length} of {graded.length} correct, the right words are shown beside each gap
+            </p>
           )}
         </div>
       )}

@@ -537,7 +537,7 @@ export default function PassageReader({
 
   return (
     <Card
-      data-no-dictionary="true"
+      data-dictionary
       data-passage-container="true"
       className="p-3.5 sm:p-4 gap-2.5 bg-card dark:bg-[#0f141f] border-border/80 border-l-0 rounded-l-none rounded-r-lg shadow-2xs flex flex-col h-full overflow-hidden relative"
     >
@@ -596,7 +596,7 @@ export default function PassageReader({
       {/* Paragraphs and Content Container with MouseUp Selection Detection */}
       <div
         ref={containerRef}
-        data-no-dictionary="true"
+        data-dictionary
         data-passage-container="true"
         onMouseUp={handleMouseUp}
         className={`flex-1 min-h-0 ${
@@ -634,7 +634,7 @@ export default function PassageReader({
                   {paragraph.label}
                 </span>
               )}
-              <span data-paragraph-body={index} data-no-dictionary="true">
+              <span data-paragraph-body={index}>
                 {renderParagraphContent(paragraph.text, index)}
               </span>
             </p>

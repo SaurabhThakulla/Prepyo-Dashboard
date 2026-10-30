@@ -8,6 +8,7 @@ import { matchesTypeKey } from '@/lib/syllabus';
 import { allowsMultipleChoices } from '@/lib/choices';
 import { minimumWritingWords, writingWordCount } from '@/lib/writing';
 import { useQuestions } from '@/lib/hooks/useResources';
+import { isAiRatedListening } from '@/lib/listening';
 import { Evaluation, PracticeAttempt, Question, SkillType } from '@/lib/types';
 
 /**
@@ -178,7 +179,7 @@ export function usePracticeSession() {
           durationSeconds: encoded.durationSeconds,
         });
         setResult({ evaluation: data.evaluation, xpAwarded: data.xpAwarded });
-      } else if (grading === 'ai') {
+      } else if (grading === 'ai' || isAiRatedListening(currentQuestion)) {
         const data = await api.post<{ evaluation: Evaluation; xpAwarded: number }>('/evaluations/writing', {
           questionId: currentQuestion.id,
           text: textAnswer,

@@ -18,8 +18,9 @@ export interface ScriptTurn {
 
 // A label is one or two capitalised words and a colon, at the start of the
 // script or after the end of a sentence. Korean scripts label speakers the way
-// EPS-TOPIK's do, with a short Hangul word: "남: … 여: …" (man, woman).
-const SPEAKER = '[A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+)?|[가-힣]{1,4}';
+// EPS-TOPIK's do, with a short Hangul word: "남: … 여: …" (man, woman), and
+// Japanese ones with a short kanji or kana word: "男: … 女: …", a turn a line.
+const SPEAKER = '[A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+)?|[가-힣]{1,4}|[一-龯ぁ-ん]{1,4}';
 const LABEL = new RegExp(`(?:^|(?<=[.!?]["”’)]?)\\s+|\\n+)(${SPEAKER}):\\s+`, 'g');
 const OPENS_WITH_LABEL = new RegExp(`^(?:${SPEAKER}):\\s`);
 
@@ -46,15 +47,19 @@ export function splitTurns(script: string): ScriptTurn[] {
 // dialogue sound as different as the device allows.
 const ACCENT_ORDER = ['en-GB', 'en-AU', 'en-US', 'en-NZ', 'en-IE', 'en-CA', 'en-ZA', 'en-IN'];
 
-export type ScriptLanguage = 'en' | 'ko';
+export type ScriptLanguage = 'en' | 'ko' | 'ja';
 
-/** The language a script is read in: Korean if it has any Hangul, else English. */
+/**
+ * The language a script is read in: Japanese if it has any kana, Korean if it
+ * has any Hangul, else English.
+ */
 export function scriptLanguage(script: string): ScriptLanguage {
+  if (/[ぁ-んァ-ン]/.test(script)) return 'ja';
   return /[가-힣]/.test(script) ? 'ko' : 'en';
 }
 
 /** The voice language to fall back on when no voice was assigned. */
-export const FALLBACK_LANG: Record<ScriptLanguage, string> = { en: 'en-GB', ko: 'ko-KR' };
+export const FALLBACK_LANG: Record<ScriptLanguage, string> = { en: 'en-GB', ko: 'ko-KR', ja: 'ja-JP' };
 
 /**
  * Chooses a voice for each speaker, in order of first appearance: a new accent

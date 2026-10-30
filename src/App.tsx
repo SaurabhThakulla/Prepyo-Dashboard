@@ -13,6 +13,7 @@ const PracticePage = lazy(() => import('@/pages/PracticePage'));
 const PracticeHubPage = lazy(() => import('@/pages/PracticeHubPage'));
 const MePage = lazy(() => import('@/pages/MePage'));
 const MocksPage = lazy(() => import('@/pages/MocksPage'));
+const InstituteMockPage = lazy(() => import('@/pages/InstituteMockPage'));
 const PteMockPage = lazy(() => import('@/pages/PteMockPage'));
 const MistakesPage = lazy(() => import('@/pages/MistakesPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
@@ -20,7 +21,7 @@ const ReferralsPage = lazy(() => import('@/pages/ReferralsPage'));
 const SubscriptionPage = lazy(() => import('@/pages/SubscriptionPage'));
 const DiagnosticPage = lazy(() => import('@/pages/DiagnosticPage'));
 const TutorialsPage = lazy(() => import('@/pages/TutorialsPage'));
-const LearnKoreanPage = lazy(() => import('@/pages/LearnKoreanPage'));
+const LearnPage = lazy(() => import('@/pages/LearnPage'));
 const ReviewPage = lazy(() => import('@/pages/ReviewPage'));
 const LessonPage = lazy(() => import('@/pages/LessonPage'));
 const AdminPage = lazy(() => import('@/pages/AdminPage'));
@@ -76,6 +77,8 @@ export default function App() {
         <Route path="/practice/tasks" element={<Suspense fallback={<AppPageSkeleton />}><PracticeHubPage /></Suspense>} />
         <Route path="/me" element={<Suspense fallback={<AppPageSkeleton />}><MePage /></Suspense>} />
         <Route path="/mocks" element={<Suspense fallback={<AppPageSkeleton />}><MocksPage /></Suspense>} />
+        <Route path="/institute-mock" element={<Suspense fallback={<AppPageSkeleton />}><InstituteMockPage /></Suspense>} />
+        <Route path="/institute-mock/:id" element={<Suspense fallback={<AppPageSkeleton />}><InstituteMockPage /></Suspense>} />
         <Route path="/mocks/pte/report/:sessionId" element={<Suspense fallback={<AppPageSkeleton />}><PteMockPage /></Suspense>} />
         <Route path="/mocks/pte/:kind" element={<Suspense fallback={<AppPageSkeleton />}><PteMockPage /></Suspense>} />
         <Route path="/history" element={<Suspense fallback={<AppPageSkeleton />}><MistakesPage /></Suspense>} />
@@ -87,7 +90,7 @@ export default function App() {
         <Route path="/diagnostic" element={<Suspense fallback={<AppPageSkeleton />}><DiagnosticPage /></Suspense>} />
         <Route path="/tutorials" element={<Suspense fallback={<AppPageSkeleton />}><TutorialsPage /></Suspense>} />
         <Route path="/videos" element={<Navigate to="/tutorials" replace />} />
-        <Route path="/learn" element={<Suspense fallback={<AppPageSkeleton />}><LearnKoreanPage /></Suspense>} />
+        <Route path="/learn" element={<Suspense fallback={<AppPageSkeleton />}><LearnPage /></Suspense>} />
         <Route path="/learn/review" element={<Suspense fallback={<AppPageSkeleton />}><ReviewPage /></Suspense>} />
         <Route path="/learn/:unitId/:lessonId" element={<Suspense fallback={<AppPageSkeleton />}><LessonPage /></Suspense>} />
         <Route path="/reports" element={<Suspense fallback={<AppPageSkeleton />}><MyReportsPage /></Suspense>} />

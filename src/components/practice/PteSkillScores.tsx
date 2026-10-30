@@ -3,7 +3,7 @@ import { getPteTaskContributions } from '@/lib/pteExamConfig';
 import type { SkillType } from '@/lib/types';
 import type { PracticeResult } from '@/lib/hooks/usePracticeSession';
 
-const SKILL_STYLE: Record<SkillType, { label: string; head: string; ring: string; text: string }> = {
+export const SKILL_STYLE: Record<SkillType, { label: string; head: string; ring: string; text: string }> = {
   speaking: { label: 'Speaking', head: 'bg-orange-400', ring: 'stroke-orange-400', text: 'text-orange-500' },
   writing: { label: 'Writing', head: 'bg-sky-400', ring: 'stroke-sky-400', text: 'text-sky-500' },
   reading: { label: 'Reading', head: 'bg-emerald-500', ring: 'stroke-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },

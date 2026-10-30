@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ChevronDown } from 'lucide-react';
+import AnswerSelect from '@/components/ui/answer-select';
 import { Textarea } from '@/components/ui/textarea';
 import { AnswerSubmission, Question } from '@/lib/types';
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
@@ -69,27 +69,21 @@ export default function MockAnswerInput({ question, answer, onChange }: MockAnsw
             >
               <span className="font-bold text-primary shrink-0">Blank {index + 1}:</span>
               {blank.options && blank.options.length > 0 ? (
-                <div className="relative inline-flex items-center group">
-                  <select
-                    value={blankResponses[blank.id] || ''}
-                    onChange={event =>
-                      onChange({ blankResponses: { ...blankResponses, [blank.id]: event.target.value } })
-                    }
-                    className="appearance-none pr-8 pl-3 py-1.5 rounded-lg border border-input bg-card hover:border-primary/50 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary shadow-2xs cursor-pointer transition-all"
-                  >
-                    <option value="">— Select —</option>
-                    {blank.options.map(option => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 pointer-events-none text-muted-foreground group-hover:text-primary transition-colors" />
-                </div>
+                <AnswerSelect
+                  value={blankResponses[blank.id] || ''}
+                  options={blank.options}
+                  onChange={value => onChange({ blankResponses: { ...blankResponses, [blank.id]: value } })}
+                  aria-label={`Blank ${index + 1}`}
+                  className="text-xs"
+                />
               ) : (
                 <input
                   value={blankResponses[blank.id] || ''}
                   onChange={event =>
                     onChange({ blankResponses: { ...blankResponses, [blank.id]: event.target.value } })
                   }
+                  autoComplete="off"
+                  spellCheck={false}
                   className="bg-card border border-border text-xs font-medium text-foreground px-3 py-1.5 rounded-lg focus:outline-none focus:border-primary"
                 />
               )}

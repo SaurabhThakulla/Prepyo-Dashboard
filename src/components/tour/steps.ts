@@ -88,8 +88,8 @@ export const TOUR_STEPS: TourStep[] = [
     target: '[data-tour="dash-skills"]',
     title: 'Questions per skill',
     body: ({ exam }) =>
-      exam === 'EPS_TOPIK'
-        ? 'Reading and Listening, the two parts of EPS-TOPIK. Each card shows how many questions you have done and opens that practice.'
+      exam === 'EPS_TOPIK' || exam === 'JLPT'
+        ? `Reading and Listening, the two parts of ${exam === 'JLPT' ? 'JLPT N5' : 'EPS-TOPIK'}. Each card shows how many questions you have done and opens that practice.`
         : 'Speaking, Writing, Reading and Listening. Each card shows how many questions you have done and opens that practice.',
     next: { label: 'Next' },
     optional: true,
@@ -138,7 +138,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: '#question-drawer-panel',
     title: 'Start a question',
     body: ctx =>
-      ctx.exam === 'EPS_TOPIK'
+      ctx.exam === 'EPS_TOPIK' || ctx.exam === 'JLPT'
           ? `${act(ctx)} any question in the list. It opens straight away.`
           : `${act(ctx)} any passage in the list. It opens straight away.`,
     done: ({ visible }) => visible(SUBMIT),
@@ -153,7 +153,7 @@ export const TOUR_STEPS: TourStep[] = [
     scroll: false,
     title: 'Answer, then Submit',
     body: ({ exam }) =>
-      exam === 'EPS_TOPIK'
+      exam === 'EPS_TOPIK' || exam === 'JLPT'
         ? 'Choose the answer you think is right, then press Submit to have it marked.'
         : 'Read the passage and answer the questions (one is enough for now), then press Submit to have them marked.',
     done: ({ visible }) => visible(RESULT),

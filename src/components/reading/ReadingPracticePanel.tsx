@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 import { useApp } from '@/context/AppContext';
 import { errorMessage } from '@/lib/api';
+import { readingContext } from '@/lib/tutorContext';
 import { useToast } from '@/components/ui/toast';
 import { useReadingPractice, useReadingTypes } from '@/lib/hooks/useReading';
 import PassageReader from '@/components/reading/PassageReader';
@@ -215,15 +216,12 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
     reset();
   }, [initialTypeKey, activeExam, reset]);
 
+  // The coach is told about a passage only while it is on screen.
+  useEffect(() => () => setTutorContextPrompt(''), [set, setTutorContextPrompt]);
+
   const askTutor = () => {
     if (!set) return;
-    const group = set.groups[0];
-    const subject = set.passage
-      ? `Reading passage: ${set.passage.title}`
-      : `Reading task: ${group?.typeName}`;
-    setTutorContextPrompt(
-      `${subject}\nTask type: ${group?.typeName}\nInstructions: ${group?.instructions}`,
-    );
+    setTutorContextPrompt(readingContext(set, displayedGroups));
     setIsTutorOpen(true);
   };
 

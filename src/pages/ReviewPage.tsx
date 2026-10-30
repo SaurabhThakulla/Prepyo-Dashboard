@@ -4,8 +4,9 @@ import { ArrowRight, CheckCircle2, Flame, RotateCcw, Target, X, XCircle, Zap } f
 import { Button } from '@/components/ui/button';
 import { ChoiceCard } from '@/components/learn/exercises';
 import { useLearnProgress } from '@/lib/hooks/useLearnProgress';
+import { useLearnCourse } from '@/lib/learn/course';
 import { buildReview } from '@/lib/learn/progress';
-import { stopKorean, useKoreanVoice } from '@/lib/learn/speakKorean';
+import { stopSpeech, useLearnVoice } from '@/lib/learn/speech';
 
 type Phase = 'answer' | 'checked';
 
@@ -16,10 +17,11 @@ type Phase = 'answer' | 'checked';
  */
 export default function ReviewPage() {
   const navigate = useNavigate();
+  const course = useLearnCourse();
   const { progress, streak, finishReview } = useLearnProgress();
-  const voice = useKoreanVoice();
+  const voice = useLearnVoice(course);
   // Fixed for the session: progress changes as answers are saved.
-  const [session] = useState(() => buildReview(progress));
+  const [session] = useState(() => buildReview(progress, new Date(), course));
   const [queue, setQueue] = useState(() => session.map((_, i) => i));
   const [position, setPosition] = useState(0);
   const [phase, setPhase] = useState<Phase>('answer');
@@ -27,7 +29,7 @@ export default function ReviewPage() {
   const [firstTry, setFirstTry] = useState<Record<string, boolean>>({});
   const [earned, setEarned] = useState<number | null>(null);
 
-  useEffect(() => stopKorean, []);
+  useEffect(() => stopSpeech, []);
 
   if (session.length === 0) {
     return (
@@ -76,7 +78,7 @@ export default function ReviewPage() {
   };
 
   const advance = () => {
-    stopKorean();
+    stopSpeech();
     if (position + 1 >= queue.length) {
       const results = session.map(item => ({ ko: item.word.ko, correct: firstTry[item.word.ko] ?? false }));
       setEarned(finishReview(results));

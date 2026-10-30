@@ -3,6 +3,7 @@ import { Mic, MicOff, Square, Loader2, AlertCircle, Check, Info } from 'lucide-r
 import { canRecord, formatDuration, pickRecorderMimeType, beep } from '@/lib/audio';
 import { startTranscribing, type TranscriptSession } from '@/lib/speech';
 import { createDeliveryMeter, type Delivery, type DeliveryMeter } from '@/lib/delivery';
+import { TestMicrophone } from '@/lib/pteMock/audio';
 
 /**
  * The exam's own sequence: a fixed think time, then recording starts on its own
@@ -41,6 +42,11 @@ interface AudioRecorderProps {
   controlRef?: React.MutableRefObject<(() => void) | null>;
   /** Called with the phase and seconds left whenever either changes. */
   onStatus?: (status: RecorderStatus) => void;
+  /**
+   * Stop by itself after three seconds of silence, before the learner says
+   * anything or after they stop, as PTE's microphone does.
+   */
+  stopAfterSilence?: boolean;
 }
 
 export default function AudioRecorder({
@@ -51,6 +57,7 @@ export default function AudioRecorder({
   onRecorded,
   controlRef,
   onStatus,
+  stopAfterSilence = false,
 }: AudioRecorderProps) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [remaining, setRemaining] = useState(0);
@@ -63,6 +70,11 @@ export default function AudioRecorder({
   // Set after 2 s with no sound, so short pauses do not flip the note back and forth.
   const [quiet, setQuiet] = useState(false);
   const lastSoundRef = useRef(0);
+  // Last time the level reached speech (the mock test's threshold), for the silence stop.
+  const lastVoiceRef = useRef(0);
+  const stopAfterSilenceRef = useRef(stopAfterSilence);
+  stopAfterSilenceRef.current = stopAfterSilence;
+  const [silenceStopped, setSilenceStopped] = useState(false);
 
   const streamRef = useRef<MediaStream | null>(null);
   const transcriberRef = useRef<TranscriptSession | null>(null);
@@ -185,6 +197,15 @@ export default function AudioRecorder({
     setWave(waveRef.current);
     waveTimerRef.current = setInterval(() => {
       setQuiet(Date.now() - lastSoundRef.current > 2000);
+      const recorder = recorderRef.current;
+      if (
+        stopAfterSilenceRef.current &&
+        recorder?.state === 'recording' &&
+        Date.now() - lastVoiceRef.current > TestMicrophone.SILENCE_SECONDS * 1000
+      ) {
+        setSilenceStopped(true);
+        recorder.stop();
+      }
       waveRef.current = [...waveRef.current.slice(1), measure()];
       setWave(waveRef.current);
     }, 60);
@@ -192,6 +213,7 @@ export default function AudioRecorder({
     const read = () => {
       const level = measure();
       if (level >= 0.02) lastSoundRef.current = Date.now();
+      if (level >= TestMicrophone.VOICE_LEVEL) lastVoiceRef.current = Date.now();
       setLevel(level);
       // The meter is already reading the microphone frame by frame, so timing
       // the silences costs nothing beyond this one call.
@@ -263,7 +285,9 @@ export default function AudioRecorder({
     // than when the microphone opened.
     deliveryRef.current = createDeliveryMeter();
     lastSoundRef.current = Date.now();
+    lastVoiceRef.current = Date.now();
     setQuiet(false);
+    setSilenceStopped(false);
     setPhase('recording');
 
     // The exam cuts the answer off at the limit, so this does too.
@@ -378,8 +402,12 @@ export default function AudioRecorder({
         : phase === 'recording'
           ? silent
             ? 'No sound is reaching your microphone yet.'
-            : 'Speaking. Stops on its own when the timer ends, or click anywhere here to stop now.'
-          : '';
+            : stopAfterSilence
+              ? 'Speaking. Stops on its own when the timer ends or after 3 seconds of silence, as in the test.'
+              : 'Speaking. Stops on its own when the timer ends, or click anywhere here to stop now.'
+          : silenceStopped
+            ? 'The microphone closed after 3 seconds of silence, as it does in the test.'
+            : '';
 
   const tone =
     phase === 'recording'

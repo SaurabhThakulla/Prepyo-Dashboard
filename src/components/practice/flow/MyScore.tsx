@@ -10,7 +10,12 @@ import { TONE, toneFor, type Tone } from '../ResultParts';
 import { pastTries, usePracticeHistory, type PastTry } from './history';
 
 /** The "My Score" tab under a practice item: this learner's earlier tries at it, each openable to its full result. */
-export default function MyScore({ questionIds, bySitting = false }: { questionIds: string[]; bySitting?: boolean }) {
+export default function MyScore({ questionIds, bySitting = false, taskType }: {
+  questionIds: string[];
+  bySitting?: boolean;
+  /** A PTE question's type id, so a past result shows the same skill scores as a fresh one. */
+  taskType?: string;
+}) {
   const history = usePracticeHistory(questionIds);
   const tries = pastTries(history.data, bySitting);
   const [open, setOpen] = useState<PastTry | null>(null);
@@ -66,6 +71,7 @@ export default function MyScore({ questionIds, bySitting = false }: { questionId
           title={`Your result · ${when(open.at)}`}
           result={open.kind === 'attempt' ? { attempt: open.attempt, xpAwarded: 0 } : { evaluation: open.evaluation, xpAwarded: 0 }}
           recording={null}
+          taskType={taskType}
           open
           onOpenChange={o => !o && setOpen(null)}
         />

@@ -1,5 +1,5 @@
 import { BookOpenCheck, ClipboardCheck, Headphones, LucideIcon, Mic, PenTool } from 'lucide-react';
-import { PteMockKind, PtePart } from './types';
+import { PteCatalogEntry, PteMockKind, PtePart } from './types';
 
 /**
  * How each kind of PTE mock is presented: its route, icon and short label.
@@ -100,4 +100,15 @@ export function formatMinutes(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m ? `${h} h ${m} min` : `${h} h`;
+}
+
+/** What starting a test costs the learner, in one sentence. */
+export function costLabel(cost: PteCatalogEntry['cost']): string {
+  if (cost.kind === 'full_mock') return 'Uses one full mock test from your plan.';
+  if (cost.kind === 'ai_gradings') {
+    return cost.gradings
+      ? `Uses ${cost.gradings} AI credits from your monthly pool.`
+      : 'Uses no AI credits: it is marked against the answer key.';
+  }
+  return `Uses ${cost.credits} of your daily practice sub-tests${cost.gradings ? ` and ${cost.gradings} AI gradings` : ''}.`;
 }

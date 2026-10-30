@@ -4,7 +4,7 @@ import { useApp } from '@/context/AppContext';
 import { isAdmin } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { backStep, TOUR_STEPS, TourContext } from './steps';
-import { bindTourUser, endTour, goToStep, startTour, useTour } from './tourStore';
+import { bindTourUser, endTour, goToStep, startTour, tourSeen, useTour } from './tourStore';
 import TourCard, { TourPill } from './TourCard';
 
 type Box = { top: number; left: number; width: number; height: number; pinned?: boolean };
@@ -102,11 +102,21 @@ const isTyping = (el: EventTarget | null) =>
 /** The guided tour over the real app, mounted once in the layout. */
 export default function AppTour() {
   const { step: index, did } = useTour();
-  const { user, activeExam, activeTestSession, setActiveTestSession } = useApp();
+  const { user, activeExam, activeTestSession, setActiveTestSession, markTourSeen } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => bindTourUser(user && !isAdmin(user) ? user.id : null), [user]);
+
+  // Once a tour has started here (or this browser saw one before the account kept it), the
+  // account remembers it. Sent once per learner; a failed save only means it may open once more.
+  const markedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!user || isAdmin(user) || user.tourSeenAt !== null || markedFor.current === user.id) return;
+    if (index === null && !tourSeen(user.id)) return;
+    markedFor.current = user.id;
+    void markTourSeen().catch(() => {});
+  }, [user, index, markTourSeen]);
 
   const step = index === null ? undefined : TOUR_STEPS[index];
   const [box, setBox] = useState<Box | null>(null);

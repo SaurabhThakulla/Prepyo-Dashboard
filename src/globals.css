@@ -338,12 +338,6 @@ html.theme-switching *::after {
 .dark [class*="dark:border-indigo-"] {
   border-color: hsl(var(--border)) !important;
 }
-/* Brand-colour text on a white chip turns black, since the brand colour is white here. */
-.dark .bg-white.text-primary,
-.dark .bg-white .text-primary {
-  color: hsl(var(--primary-foreground)) !important;
-}
-
 /* Brand-gradient chips and buttons become solid white with black text and icons. */
 .dark [class~="from-primary"]:not(.bg-clip-text) {
   background-color: hsl(var(--primary));
@@ -356,4 +350,10 @@ html.theme-switching *::after {
 .dark ::selection {
   background-color: hsl(0 0% 96%) !important;
   color: hsl(0 0% 4%) !important;
+}
+
+/* Dictionary: a hand cursor while hovering a word that can be looked up. */
+html[data-dictionary-hover] [data-dictionary],
+html[data-dictionary-hover] [data-dictionary] * {
+  cursor: pointer;
 }

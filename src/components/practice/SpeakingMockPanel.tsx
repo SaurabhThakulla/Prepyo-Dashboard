@@ -4,6 +4,7 @@ import { Mic, Square, Send, LogOut, RefreshCw, RotateCcw, User } from 'lucide-re
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
+import { useTestLock } from '@/lib/hooks/useTestLock';
 import { useToast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -182,6 +183,7 @@ interface RunnerProps {
  */
 export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: RunnerProps) {
   const toast = useToast();
+  useTestLock('Speaking test', onLeave);
   const answered = new Set(session.answers.map(a => a.key));
   const [index, setIndex] = useState(() => {
     const next = session.steps.findIndex(step => !answered.has(step.key));

@@ -25,10 +25,10 @@ export const ME_HREF = '/me';
 
 export function buildMobileTabs(activeExam: ExamType, user: UserProfile | null): MobileTab[] {
   const admin = isAdmin(user);
-  // Only EPS-TOPIK has the beginner course; for the other exams the same slot
-  // holds the video lessons.
+  // Only EPS-TOPIK and JLPT have a beginner course; for the other exams the
+  // same slot holds the video lessons.
   const learn: MobileTab =
-    activeExam === 'EPS_TOPIK'
+    activeExam === 'EPS_TOPIK' || activeExam === 'JLPT'
       ? { id: 'learn', label: 'Learn', icon: GraduationCap, href: '/learn' }
       : { id: 'learn', label: 'Videos', icon: PlayCircle, href: '/tutorials' };
 
@@ -96,6 +96,7 @@ export function mobileTitle(pathname: string, searchParams: URLSearchParams, act
     if (searchParams.get('tab') === 'reports') return 'Score Reports';
     return searchParams.get('view') === 'full' ? 'Full Mock Test' : 'Mock Tests';
   }
+  if (pathname.startsWith('/institute-mock')) return 'Institute Mock';
   if (pathname === '/diagnostic') return 'Level check';
   if (pathname === '/learn/review') return 'Review words';
   if (pathname.startsWith('/learn')) return 'Learn Korean';

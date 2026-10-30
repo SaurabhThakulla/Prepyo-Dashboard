@@ -21,7 +21,7 @@ export default function VerdictTriad({ question, answer, result, locked, onChang
   const correct = correctIds(result);
 
   return (
-    <div className="grid grid-cols-3 gap-1.5">
+    <div className="grid grid-cols-3 gap-1.5 max-w-sm">
       {options.map(option => {
         const isSelected = selected.includes(option.id);
         const isCorrect = correct.includes(option.id);

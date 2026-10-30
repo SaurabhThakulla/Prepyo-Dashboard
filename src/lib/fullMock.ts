@@ -69,8 +69,17 @@ export function sectionLabel(skill: FullMockSkill): string {
   return FULL_MOCK_SECTIONS.find(section => section.skill === skill)?.label ?? skill;
 }
 
-/** Full mocks left in the plan. Every plan counts them, unlimited ones included. */
-export function fullMocksLeft(sub?: { totalMockTestsAllowed: number; mockTestsUsed: number } | null): number {
+/** AI credits an IELTS full mock takes from an institution student's pool (billing.IELTSFullMockUnits). */
+export const IELTS_FULL_MOCK_CREDITS = 9;
+
+/**
+ * Full mocks left in the plan. Every plan counts them, unlimited ones included,
+ * except an institution's, whose full mocks are paid in AI credits.
+ */
+export function fullMocksLeft(
+  sub?: { totalMockTestsAllowed: number; mockTestsUsed: number; fullMocksFromPool?: boolean } | null,
+): number {
   if (!sub) return 0;
+  if (sub.fullMocksFromPool) return Number.POSITIVE_INFINITY;
   return Math.max(0, (sub.totalMockTestsAllowed ?? 0) - (sub.mockTestsUsed ?? 0));
 }

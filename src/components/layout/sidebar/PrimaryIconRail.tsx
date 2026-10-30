@@ -29,6 +29,7 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/comp
 import AnimatedLogo from '../AnimatedLogo';
 import { PrimarySectionConfig, PrimarySectionId } from './navigation';
 import { isAdmin, UserProfile } from '@/lib/types';
+import { accountLines } from '@/lib/account';
 import { useApp } from '@/context/AppContext';
 
 interface PrimaryIconRailProps {
@@ -200,9 +201,11 @@ export default function PrimaryIconRail({
                       {user?.subscription?.planId || 'Free'}
                     </span>
                   </div>
-                  <p className="text-[11px] leading-tight text-slate-500 dark:text-slate-400 truncate">
-                    {user?.email || 'learner@prepyo.com'}
-                  </p>
+                  {accountLines(user).map(line => (
+                    <p key={line} className="text-[11px] leading-tight text-slate-500 dark:text-slate-400 truncate">
+                      {line}
+                    </p>
+                  ))}
                 </div>
               </div>
             </DropdownMenuLabel>

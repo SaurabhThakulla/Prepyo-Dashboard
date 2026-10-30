@@ -1,5 +1,5 @@
 import React from 'react';
-import { AnswerProps, correctIds } from './types';
+import { AnswerProps } from './types';
 import SentenceGap from './SentenceGap';
 
 /**
@@ -15,29 +15,16 @@ import SentenceGap from './SentenceGap';
  * the gap through SentenceGap so the two cannot diverge.
  */
 export default function SentenceCompletion({ question, answer, result, locked, onChange }: AnswerProps) {
-  const isCorrect = result?.attempt.isCorrect;
-
-  // The answer key is words, and for a chooser those words are the option ids,
-  // so both forms read the same list.
-  const answerKey = result ? correctIds(result) : [];
-
+  // The gap itself shows the tick, or the cross and the right word.
   return (
-    <div className="space-y-1.5">
-      <p className="text-xs sm:text-sm text-foreground leading-relaxed">
-        <SentenceGap
-          question={question}
-          answer={answer}
-          result={result}
-          locked={locked}
-          onChange={onChange}
-        />
-      </p>
-
-      {result && !isCorrect && answerKey.length > 0 && (
-        <p className="text-[11px] text-muted-foreground pl-0.5">
-          Answer: <span className="font-semibold text-foreground">{answerKey.join(' / ')}</span>
-        </p>
-      )}
-    </div>
+    <p className="font-reading text-[15px] sm:text-base text-foreground leading-loose">
+      <SentenceGap
+        question={question}
+        answer={answer}
+        result={result}
+        locked={locked}
+        onChange={onChange}
+      />
+    </p>
   );
 }

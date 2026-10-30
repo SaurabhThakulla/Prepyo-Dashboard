@@ -36,17 +36,18 @@ const WritingItem = forwardRef<ItemHandle, ItemProps>(function WritingItem({ ite
   return (
     <div className="space-y-4">
       {question.contextPassage ? (
-        <div className="rounded-xl border border-border bg-background p-5 text-sm leading-7 text-foreground whitespace-pre-line max-h-[40vh] overflow-y-auto">
+        <div className="rounded-xl bg-muted/40 p-4 sm:p-5 text-[15px] leading-7 text-foreground whitespace-pre-line max-h-[40vh] overflow-y-auto">
           {passageText(question)}
         </div>
       ) : null}
       {question.prompt && (
         <div className={isEssay ? 'rounded-xl border border-primary/20 bg-primary/5 p-4' : ''}>
-          <p className="text-sm font-semibold text-foreground leading-relaxed whitespace-pre-line">{question.prompt}</p>
+          <p className="text-base font-semibold text-foreground leading-relaxed whitespace-pre-line">{question.prompt}</p>
         </div>
       )}
 
-      <div className="space-y-1.5">
+      <div className="space-y-2">
+        <span className="block text-sm font-bold text-foreground">Your response</span>
         <textarea
           aria-label="Your response"
           value={text}
@@ -56,7 +57,7 @@ const WritingItem = forwardRef<ItemHandle, ItemProps>(function WritingItem({ ite
           autoCapitalize="off"
           autoComplete="off"
           rows={isEssay ? 14 : 5}
-          className="w-full rounded-xl border border-input bg-card p-4 text-sm leading-7 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-y"
+          className="w-full rounded-xl border-2 border-primary bg-background px-4 py-3 text-[15px] leading-7 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
         />
         <div className="flex items-center justify-between text-xs">
           <span className={`font-semibold ${outOfRange ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`} aria-live="polite">

@@ -18,6 +18,9 @@ import { isInstitutionPath } from '@/institution/paths';
 import { useExclusivePanel } from './sidePanels';
 import DictionaryPopup from '@/components/dictionary/DictionaryPopup';
 
+// Paste blocking, turned off temporarily for staging testers.
+const PASTE_GUARD = false;
+
 const AITutorDrawer = lazy(() => import('@/components/ai/AITutorDrawer'));
 const GlobalMiniPlayer = lazy(() => import('@/components/tutorials/GlobalMiniPlayer'));
 
@@ -28,6 +31,7 @@ const PROTECTED_PREFIXES = [
   '/dashboard',
   '/practice',
   '/mocks',
+  '/institute-mock',
   '/mistakes',
   '/profile',
   '/referrals',
@@ -51,9 +55,29 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [pathname, navigationType]);
 
   // Signed-out pages (login, sign-up) and institution pages keep paste for emails and passwords.
-  useClipboardGuard(!!user && !isAdmin(user) && !isInstitutionPath(pathname), () =>
+  // Paste blocking is off for now so staging testers can paste; set PASTE_GUARD to true to bring it back.
+  useClipboardGuard(PASTE_GUARD && !!user && !isAdmin(user) && !isInstitutionPath(pathname), () =>
     toast.info('Pasting is turned off', 'Type your answer yourself, the way you will in the exam.'),
   );
+
+  // A mock test holds the learner until they leave it from its own controls.
+  const locked = !!activeTestSession?.isActive && !!activeTestSession.locked;
+  const lockedNotice = () =>
+    toast.info('You are in a mock test', 'Finish it, or press Save and Exit, before going anywhere else.');
+
+  // The browser's Back button too: a copy of this page is pushed, and going
+  // back to it puts the learner where they were.
+  useEffect(() => {
+    if (!locked) return;
+    window.history.pushState(window.history.state, '', window.location.href);
+    const onPop = () => {
+      window.history.pushState(window.history.state, '', window.location.href);
+      lockedNotice();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locked]);
 
   // A link or button that leaves a running task ends it first, with no
   // question asked, then is clicked again for the learner.
@@ -71,13 +95,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    const leaveBy = (element: HTMLElement) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (locked) lockedNotice();
+      else void endAndLeave(element);
+    };
+
     const anchor = target.closest('a');
     if (anchor) {
       const href = anchor.getAttribute('href');
       if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
-        e.preventDefault();
-        e.stopPropagation();
-        void endAndLeave(anchor);
+        leaveBy(anchor);
         return;
       }
     }
@@ -93,9 +122,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         button.closest('[data-sidebar]') !== null ||
         button.getAttribute('data-nav') !== null
       ) {
-        e.preventDefault();
-        e.stopPropagation();
-        void endAndLeave(button);
+        leaveBy(button);
         return;
       }
     }
@@ -215,16 +242,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       onClickCapture={handleContainerClickCapture}
       className={`${showTabBar ? '[--mobile-nav-h:calc(4rem+env(safe-area-inset-bottom))]' : '[--mobile-nav-h:0px]'} lg:[--mobile-nav-h:0px] min-h-screen app-backdrop text-foreground flex flex-col transition-colors duration-200`}
     >
-      <AppSidebar
-        isOpen={isSidebarOpen}
-        setIsOpen={setIsSidebarOpen}
-        isSecondaryOpen={isSecondaryOpen}
-        setIsSecondaryOpen={setIsSecondaryOpen}
-        panelOverlays={!isWide}
-      />
+      {/* A mock test takes the whole screen: no menu to leave it by. */}
+      {!locked && (
+        <AppSidebar
+          isOpen={isSidebarOpen}
+          setIsOpen={setIsSidebarOpen}
+          isSecondaryOpen={isSecondaryOpen}
+          setIsSecondaryOpen={setIsSecondaryOpen}
+          panelOverlays={!isWide}
+        />
+      )}
 
       {/* On a tablet the open panel covers the page; a tap outside closes it. */}
-      {isSecondaryOpen && !isWide && (
+      {!locked && isSecondaryOpen && !isWide && (
         <div
           data-stay
           aria-hidden
@@ -234,12 +264,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       <div
-        style={{ '--sidebar-offset': panelPushes ? '416px' : '64px' } as React.CSSProperties}
-        className={`${panelPushes ? 'lg:pl-[416px]' : 'lg:pl-16'
+        style={{ '--sidebar-offset': locked ? '0px' : panelPushes ? '416px' : '64px' } as React.CSSProperties}
+        className={`${locked ? 'lg:pl-0' : panelPushes ? 'lg:pl-[416px]' : 'lg:pl-16'
           } flex w-full min-w-0 flex-col min-h-screen transition-[padding] duration-300 ease-in-out`}
       >
-        <MobileTopBar />
-        <Header />
+        {!locked && <MobileTopBar />}
+        {!locked && <Header />}
 
         <main className="flex-1 w-full min-w-0 p-0 pb-[var(--mobile-nav-h)] flex flex-col min-h-0">
           {isProtected ? <RequireAuth>{children}</RequireAuth> : children}
@@ -249,15 +279,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {showTabBar && <MobileTabBar />}
       {showTabBar && <MobileCoachButton />}
 
-      <Suspense fallback={null}>
-        <AITutorDrawer />
-        <GlobalMiniPlayer />
-      </Suspense>
+      {/* No coach or dictionary in the exam room. */}
+      {!locked && (
+        <Suspense fallback={null}>
+          <AITutorDrawer />
+          <GlobalMiniPlayer />
+        </Suspense>
+      )}
     </div>
 
     {/* Outside the click guard above, so tour buttons never end a running practice. */}
-    <AppTour />
-    <DictionaryPopup />
+    {!locked && <AppTour />}
+    {!locked && <DictionaryPopup />}
 
     </>
   );

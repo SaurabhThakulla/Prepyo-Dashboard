@@ -153,45 +153,55 @@ export default function AdminUsersPanel() {
   const to = Math.min(offset + PAGE_SIZE, total);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <button
           type="button"
           onClick={() => pickRole('')}
-          className={`p-3.5 rounded-xl border text-left space-y-1 transition-colors ${
-            roleFilter === '' ? 'border-primary bg-primary/5' : 'border-border bg-background hover:bg-muted/50'
+          aria-pressed={roleFilter === ''}
+          className={`p-4 rounded-xl border text-left space-y-1 transition-all ${
+            roleFilter === ''
+              ? 'border-primary bg-primary text-primary-foreground shadow-md'
+              : 'border-border bg-card hover:border-primary/50 hover:shadow-sm'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-muted-foreground uppercase">All users</span>
-            <Users className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-sm font-bold">All users</span>
+            <Users className="w-4 h-4 opacity-80" />
           </div>
-          <div className="font-display text-2xl font-black text-foreground">{totalUsers.toLocaleString()}</div>
+          <div className="font-display text-3xl font-black">{totalUsers.toLocaleString()}</div>
+          <span className={`text-xs ${roleFilter === '' ? 'text-primary-foreground/75' : 'text-foreground/60'}`}>
+            every account
+          </span>
         </button>
 
-        {counts.map(entry => (
-          <button
-            key={entry.role}
-            type="button"
-            onClick={() => pickRole(entry.role)}
-            className={`p-3.5 rounded-xl border text-left space-y-1 transition-colors ${
-              roleFilter === entry.role ? 'border-primary bg-primary/5' : 'border-border bg-background hover:bg-muted/50'
-            }`}
-          >
-            <span className="text-xs font-bold text-muted-foreground uppercase block">
-              {ROLE_LABELS[entry.role] ?? entry.role}
-            </span>
-            <div className="font-display text-2xl font-black text-foreground">{entry.count.toLocaleString()}</div>
-            <span className="text-xs text-muted-foreground">{entry.plan ?? 'access level'}</span>
-          </button>
-        ))}
+        {counts.map(entry => {
+          const active = roleFilter === entry.role;
+          return (
+            <button
+              key={entry.role}
+              type="button"
+              onClick={() => pickRole(entry.role)}
+              aria-pressed={active}
+              className={`p-4 rounded-xl border text-left space-y-1 transition-all ${
+                ROLE_STYLES[entry.role] ?? ROLE_STYLES.suru
+              } ${active ? 'ring-2 ring-offset-2 ring-offset-background ring-current shadow-md' : 'hover:shadow-sm'}`}
+            >
+              <span className="text-sm font-bold block">{ROLE_LABELS[entry.role] ?? entry.role}</span>
+              <div className="font-display text-3xl font-black">{entry.count.toLocaleString()}</div>
+              <span className="text-xs capitalize opacity-80">{entry.plan ?? 'access level'}</span>
+            </button>
+          );
+        })}
       </div>
 
-      <Card className="p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <CardTitle className="text-base">Users</CardTitle>
-            <CardDescription className="text-xs">
+      <Card className="p-6 space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <CardTitle className="text-lg font-bold text-foreground">
+              {roleFilter ? `${ROLE_LABELS[roleFilter] ?? roleFilter} users` : 'All users'}
+            </CardTitle>
+            <CardDescription className="text-sm text-foreground/60">
               Changing a tier grants that plan for its full length, starting today. Admin is an access level and
               leaves the plan alone.
             </CardDescription>
@@ -199,85 +209,99 @@ export default function AdminUsersPanel() {
 
           <form onSubmit={submitSearch} className="flex items-center gap-2">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-foreground/50" />
               <Input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Name or email"
-                className="pl-8 w-52"
+                placeholder="Search name or email"
+                className="pl-9 w-64"
               />
             </div>
-            <Button type="submit" variant="outline" size="sm" className="font-bold text-xs">
+            <Button type="submit" size="sm" className="font-bold">
               Search
             </Button>
           </form>
         </div>
 
         {error && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-[11px] font-medium text-rose-600 dark:text-rose-400">
+          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-sm font-medium text-rose-600 dark:text-rose-400">
             {error}
           </div>
         )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs min-w-[820px]">
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full text-sm min-w-[960px]">
             <thead>
-              <tr className="text-left text-xs uppercase text-muted-foreground font-bold border-b border-border">
-                <th className="py-2 pr-3">User</th>
-                <th className="py-2 pr-3">Role</th>
-                <th className="py-2 pr-3">Started</th>
-                <th className="py-2 pr-3">Expires</th>
-                <th className="py-2 pr-3 w-32">Exam</th>
-                <th className="py-2 pr-3 text-right">XP</th>
-                <th className="py-2 pr-3">Joined</th>
-                <th className="py-2 w-36">Change role</th>
+              <tr className="text-left text-xs uppercase tracking-wide text-foreground/70 font-bold bg-muted/60 whitespace-nowrap">
+                <th className="py-3 px-4">User</th>
+                <th className="py-3 pr-3">Role</th>
+                <th className="py-3 pr-3">Started</th>
+                <th className="py-3 pr-3">Expires</th>
+                <th className="py-3 pr-3 w-32">Exam</th>
+                <th className="py-3 pr-3 text-right">XP</th>
+                <th className="py-3 pr-3">Joined</th>
+                <th className="py-3 pr-4 w-36">Change role</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border">
               {users.map(user => (
-                <tr key={user.id} className="border-b border-border/60 last:border-0">
-                  <td className="py-2.5 pr-3">
-                    <div className="font-bold text-foreground">{user.name}</div>
-                    <div className="text-[11px] text-muted-foreground">{user.email}</div>
+                <tr key={user.id} className="transition-colors hover:bg-muted/40">
+                  <td className="py-3 px-4 max-w-[280px]">
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-black ${
+                          ROLE_STYLES[user.role] ?? ROLE_STYLES.suru
+                        }`}
+                        aria-hidden
+                      >
+                        {initials(user.name)}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-bold text-foreground truncate">{user.name}</div>
+                        <div className="text-xs text-foreground/60 truncate">{user.email}</div>
+                      </div>
+                    </div>
                   </td>
-                  <td className="py-2.5 pr-3">
+                  <td className="py-3 pr-3">
                     <Badge
                       variant="outline"
-                      className={`text-xs font-bold ${ROLE_STYLES[user.role] ?? ROLE_STYLES.suru}`}
+                      className={`text-xs font-bold whitespace-nowrap ${ROLE_STYLES[user.role] ?? ROLE_STYLES.suru}`}
                     >
                       {ROLE_LABELS[user.role] ?? user.role}
                     </Badge>
                   </td>
-                  <td className="py-2.5 pr-3 text-muted-foreground">
+                  <td className="py-3 pr-3 text-foreground/75 whitespace-nowrap">
                     {formatExamDate(user.planStartedAt)}
                   </td>
-                  <td className="py-2.5 pr-3">
+                  <td className="py-3 pr-3 whitespace-nowrap">
                     <ExpiryCell validUntil={user.planValidUntil} />
                   </td>
-                  <td className="py-2.5 pr-3">
+                  <td className="py-3 pr-3">
                     <select
                       aria-label={`Change ${user.name}'s exam`}
                       value={user.targetExam}
                       disabled={savingId === user.id}
                       onChange={e => changeExam(user, e.target.value as ExamType)}
-                      className="h-8 rounded-lg border border-input bg-card px-2 text-xs font-semibold text-foreground disabled:opacity-50"
+                      className="h-9 rounded-lg border border-input bg-card px-2 text-sm font-semibold text-foreground disabled:opacity-50"
                     >
                       <option value="PTE">PTE</option>
                       <option value="IELTS">IELTS</option>
                       <option value="EPS_TOPIK">EPS-TOPIK</option>
+                      <option value="JLPT">JLPT</option>
                     </select>
                   </td>
-                  <td className="py-2.5 pr-3 text-right font-semibold text-foreground">
+                  <td className="py-3 pr-3 text-right font-bold text-amber-600 dark:text-amber-400 tabular-nums whitespace-nowrap">
                     {user.xp.toLocaleString()}
                   </td>
-                  <td className="py-2.5 pr-3 text-muted-foreground">{formatExamDate(user.createdAt)}</td>
-                  <td className="py-2.5">
+                  <td className="py-3 pr-3 text-foreground/75 whitespace-nowrap">{formatExamDate(user.createdAt)}</td>
+                  <td className="py-3 pr-4">
                     <div className="flex items-center gap-1.5">
                       <select
+                        aria-label={`Change ${user.name}'s role`}
                         value={user.role}
                         disabled={savingId === user.id}
                         onChange={e => changeRole(user, e.target.value as UserRole)}
-                        className="h-8 rounded-lg border border-input bg-card px-2 text-xs disabled:opacity-50"
+                        className="h-9 rounded-lg border border-input bg-card px-2 text-sm font-semibold text-foreground disabled:opacity-50"
                       >
                         {ROLES.map(role => (
                           <option key={role} value={role}>
@@ -295,19 +319,19 @@ export default function AdminUsersPanel() {
         </div>
 
         {loading && (
-          <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
+          <div className="flex items-center justify-center gap-2 py-4 text-sm text-foreground/60">
             <Loader2 className="w-4 h-4 animate-spin" />
             <span>Loading users…</span>
           </div>
         )}
 
         {!loading && users.length === 0 && !error && (
-          <p className="py-6 text-center text-xs text-muted-foreground">No users match that search.</p>
+          <p className="py-6 text-center text-sm text-foreground/60">No users match that search.</p>
         )}
 
         <div className="flex items-center justify-between pt-1">
-          <span className="text-[11px] text-muted-foreground">
-            {from}–{to} of {total.toLocaleString()}
+          <span className="text-sm text-foreground/70">
+            Showing <b className="text-foreground">{from}–{to}</b> of <b className="text-foreground">{total.toLocaleString()}</b>
           </span>
           <div className="flex gap-2">
             <Button
@@ -333,6 +357,15 @@ export default function AdminUsersPanel() {
       </Card>
     </div>
   );
+}
+
+/** "Ram Bahadur Thapa" → "RT", "sita" → "S". */
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  const first = parts[0][0] ?? '';
+  const last = parts.length > 1 ? parts[parts.length - 1][0] ?? '' : '';
+  return (first + last).toUpperCase();
 }
 
 /**

@@ -5,24 +5,26 @@
 // empty list means the learner has not generated that data yet, and the UI says
 // so rather than substituting a number.
 
-export type ExamType = 'PTE' | 'IELTS' | 'EPS_TOPIK';
+export type ExamType = 'PTE' | 'IELTS' | 'EPS_TOPIK' | 'JLPT';
 export type SkillType = 'speaking' | 'writing' | 'reading' | 'listening';
 
 /** Every exam, in the order they are offered. */
-export const EXAM_TYPES: ExamType[] = ['IELTS', 'PTE', 'EPS_TOPIK'];
+export const EXAM_TYPES: ExamType[] = ['IELTS', 'PTE', 'EPS_TOPIK', 'JLPT'];
 
 /** How an exam is named on screen. `EPS_TOPIK` is an identifier, not a name. */
 export const EXAM_LABELS: Record<ExamType, string> = {
   IELTS: 'IELTS',
   PTE: 'PTE',
   EPS_TOPIK: 'EPS-TOPIK',
+  // N5, which NAT-TEST 5Q mirrors: one exam prepares for both.
+  JLPT: 'JLPT N5',
 };
 
 export const isExamType = (value: unknown): value is ExamType =>
   typeof value === 'string' && (EXAM_TYPES as string[]).includes(value);
 
 /** The top of each exam's reporting scale. */
-export const EXAM_MAX_SCORE: Record<ExamType, number> = { IELTS: 9, PTE: 90, EPS_TOPIK: 100 };
+export const EXAM_MAX_SCORE: Record<ExamType, number> = { IELTS: 9, PTE: 90, EPS_TOPIK: 100, JLPT: 180 };
 
 /** How many times a listening item's recording runs per play: EPS-TOPIK plays each one twice. */
 export const listeningPlays = (question: { exam: ExamType; skill: SkillType }): number =>
@@ -51,9 +53,12 @@ export type PaidTier = Exclude<SubscriptionTier, 'free'>;
 
 export const ALL_SKILLS: SkillType[] = ['speaking', 'writing', 'reading', 'listening'];
 
-/** The skills an exam tests. Matches models.SkillsFor: EPS-TOPIK has no speaking or writing. */
+/**
+ * The skills an exam tests. Matches models.SkillsFor: EPS-TOPIK and JLPT have
+ * no speaking or writing; JLPT's vocabulary and grammar count as reading.
+ */
 export const skillsFor = (exam: ExamType): SkillType[] =>
-  exam === 'EPS_TOPIK' ? ['reading', 'listening'] : ALL_SKILLS;
+  exam === 'EPS_TOPIK' || exam === 'JLPT' ? ['reading', 'listening'] : ALL_SKILLS;
 
 /** Width of one level in XP. Levels start at 1. Matches models.XPPerLevel. */
 export const XP_PER_LEVEL = 400;
@@ -116,9 +121,21 @@ export interface SubscriptionState {
   aiGradingsPeriod?: AIGradingsPeriod;
   /** True for a student of an institution on the free plan: reading and listening only. */
   aiBlocked?: boolean;
+  /** Whether the AI coach is open to this user. Free learners do not get it. */
+  tutorAllowed?: boolean;
+  /** An institution's student: full mocks are paid in AI credits, not counted. */
+  fullMocksFromPool?: boolean;
 }
 
 export type AIGradingsPeriod = 'day' | 'plan' | 'month';
+
+export interface InstitutionMembership {
+  name: string;
+  code: string;
+  /** The institution's admin login. */
+  email: string;
+  username: string;
+}
 
 export interface UserProfile {
   id: string;
@@ -164,11 +181,17 @@ export interface UserProfile {
   /** Null until the learner finishes or skips onboarding; absent on servers that predate it. */
   onboardingCompletedAt?: string | null;
   studyGoal?: 'university' | 'migration' | 'work' | 'other';
-  destination?: 'australia' | 'uk' | 'canada' | 'usa' | 'new-zealand' | 'south-korea' | 'other';
+  destination?: 'australia' | 'uk' | 'canada' | 'usa' | 'new-zealand' | 'south-korea' | 'japan' | 'other';
   priorAttempt?: 'first' | 'retake';
   previousScore?: number | null;
   focusSkill?: SkillType;
   dailyMinutes?: number | null;
+
+  /** When the app tour was first shown, kept on the account; null until then, absent on servers that predate it. */
+  tourSeenAt?: string | null;
+
+  /** Set for a student an institution added: they sign in with a username and have no email. */
+  institution?: InstitutionMembership;
 
   // Only present on endpoints that ask for them.
   estimate?: ScoreEstimate;
@@ -177,9 +200,12 @@ export interface UserProfile {
 
 export type IELTSModule = 'academic' | 'general_training';
 
-/** The learner's IELTS module, Academic unless they chose General Training. */
-export function ieltsModuleOf(user: Pick<UserProfile, 'targetModule'> | null | undefined): IELTSModule {
-  return user?.targetModule === 'general_training' ? 'general_training' : 'academic';
+/**
+ * The learner's IELTS module. Only IELTS Academic is offered (the test Nepali
+ * students take for study visas), so this is always Academic.
+ */
+export function ieltsModuleOf(_user?: Pick<UserProfile, 'targetModule'> | null): IELTSModule {
+  return 'academic';
 }
 
 export const IELTS_MODULE_LABEL: Record<IELTSModule, string> = {
@@ -196,6 +222,15 @@ export function isPremiumUser(user: UserProfile | null | undefined): boolean {
   if (user.role === 'admin') return true;
   const sub = user.subscription;
   return Boolean(sub?.isActive && sub.planId && sub.planId !== 'free');
+}
+
+/**
+ * Whether the user may use the AI coach: a paid plan, or an institution's
+ * plan. Falls back to the premium check for a server that does not say.
+ */
+export function canUseTutor(user: UserProfile | null | undefined): boolean {
+  if (!user) return false;
+  return user.subscription?.tutorAllowed ?? isPremiumUser(user);
 }
 
 export function roleLabel(user: UserProfile | null): string {
@@ -229,6 +264,8 @@ export interface Blank {
   options?: string[];
   /** Only present on review responses, never while answering. */
   correctAnswer?: string;
+  /** Other forms the key accepts ("15" for "fifteen"); review responses only. */
+  acceptedAnswers?: string[];
 }
 
 export interface Question {
@@ -363,6 +400,8 @@ export interface ReadingGroup {
    */
   passageDisplay?: 'full' | 'hidden';
   timeLimitSeconds?: number;
+  /** The diagram a diagram-label set is completed on. */
+  imageUrl?: string;
   questions: Question[];
 }
 
@@ -543,6 +582,9 @@ export interface EvaluationCriterion {
   score: number;
   maxScore: number;
   feedback: string;
+  /** The trait on Pearson's own points (PTE); score is it on 10-90. */
+  points?: number;
+  maxPoints?: number;
 }
 
 export interface SentenceFeedback {
@@ -568,6 +610,8 @@ export interface Evaluation {
   sentenceFeedback: SentenceFeedback[];
   modelRewrite?: string;
   transcript?: string;
+  /** What the learner wrote, on writing tasks rated since answers were kept. */
+  answer?: string;
   /** Read Aloud / Repeat Sentence: the given text marked word by word. */
   words?: WordMark[];
   createdAt: string;
