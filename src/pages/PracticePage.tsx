@@ -1007,7 +1007,8 @@ function PracticePageContent() {
                   // The recording plays on its own after the test's lead-in; speaking recording follows it.
                   autoPlayAfter={result === null ? audioDelayFor(currentQuestion) : undefined}
                   title={currentQuestion.title}
-                  allowTranscript={true}
+                  // IELTS speaking shows its question on screen; the recording only reads it aloud.
+                  allowTranscript={!(currentQuestion.exam === 'IELTS' && currentQuestion.skill === 'speaking')}
                   // A matching key is a letter, not words said in the recording.
                   highlights={isListeningLetterTask(currentQuestion) ? undefined : result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
                   onFinished={() => setHeardPromptFor(currentQuestion.id)}
