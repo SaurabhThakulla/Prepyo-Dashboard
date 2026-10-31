@@ -929,7 +929,7 @@ function PracticePageContent() {
                   <span className="inline-flex h-12 min-w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 px-2 text-sm font-bold text-primary-foreground shadow-md sm:h-14 sm:min-w-14">
                     {taskCode}
                   </span>
-                  <div data-dictionary className="min-w-0 space-y-1 pt-0.5">
+                  <div className="min-w-0 space-y-1 pt-0.5">
                     <h2 className="text-xl sm:text-2xl font-bold text-primary leading-tight">{currentQuestion.typeName}</h2>
                     {currentQuestion.timeLimitSeconds > 0 && (
                       <p className="flex items-center gap-1.5 text-xs font-semibold text-primary sm:hidden">
@@ -937,13 +937,18 @@ function PracticePageContent() {
                       </p>
                     )}
                     {/* Plain sentences flow across the full width; prompts with lists keep their lines. */}
-                    {!promptInCard && currentQuestion.prompt && (/\S\r?\n\S/.test(currentQuestion.prompt.trim())
-                      ? currentQuestion.prompt.split(/\n\s*\n/).map((paragraph, i) => (
-                        <p key={i} className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                          {paragraph.trim()}
-                        </p>
-                      ))
-                      : <p className="text-sm text-muted-foreground leading-relaxed">{currentQuestion.prompt.trim().split(/\s*\n\s*\n\s*/).join(' ')}</p>)}
+                    {!promptInCard && currentQuestion.prompt && (
+                      // Only the question's own text opens the dictionary (and says the word aloud).
+                      <div data-dictionary className="space-y-1">
+                        {/\S\r?\n\S/.test(currentQuestion.prompt.trim())
+                          ? currentQuestion.prompt.split(/\n\s*\n/).map((paragraph, i) => (
+                            <p key={i} className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                              {paragraph.trim()}
+                            </p>
+                          ))
+                          : <p className="text-sm text-muted-foreground leading-relaxed">{currentQuestion.prompt.trim().split(/\s*\n\s*\n\s*/).join(' ')}</p>}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2 self-start">
@@ -970,19 +975,20 @@ function PracticePageContent() {
               </div>
 
               {/* The question: blue bar with its number and title, then its content */}
-              <div data-dictionary className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+              {/* Only the heading, prompt and passage open the dictionary: not the audio player or help boxes. */}
+              <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
               {(questionHeading || (!isPteListening && currentIndex >= 0)) && (
                 <div className="flex items-center gap-3 bg-gradient-to-r from-primary to-primary/75 px-4 py-3 text-primary-foreground dark:!bg-muted dark:!text-foreground sm:px-5">
                   {!isPteListening && currentIndex >= 0 && <span className="rounded-lg bg-white/15 px-2.5 py-0.5 font-bold tabular-nums">#{currentIndex + 1}</span>}
                   {!isPteListening && currentIndex >= 0 && questionHeading && <span className="h-5 w-px bg-white/40" aria-hidden />}
-                  {questionHeading && <h3 className="text-sm sm:text-base font-semibold leading-snug">{questionHeading}</h3>}
+                  {questionHeading && <h3 data-dictionary className="text-sm sm:text-base font-semibold leading-snug">{questionHeading}</h3>}
                 </div>
               )}
 
               <div className="p-3 sm:p-4 space-y-3 empty:hidden">
 
                 {promptInCard && currentQuestion.prompt && (
-                  <p className={`leading-relaxed whitespace-pre-line ${promptIsQuestion ? 'text-base text-foreground' : 'text-sm text-muted-foreground'}`}>
+                  <p data-dictionary className={`leading-relaxed whitespace-pre-line ${promptIsQuestion ? 'text-base text-foreground' : 'text-sm text-muted-foreground'}`}>
                     {currentQuestion.prompt.trim()}
                   </p>
                 )}
@@ -1039,6 +1045,7 @@ function PracticePageContent() {
                 )}
 
                 {/* IELTS Listening matching and lettered diagrams: letters dragged from a box. */}
+                <div data-dictionary className="empty:hidden">
                 {isListeningLetterTask(currentQuestion) ? (
                   <ListeningLetterPractice
                     question={currentQuestion}
@@ -1082,6 +1089,7 @@ function PracticePageContent() {
                     </div>
                   )
                 )}
+                </div>
 
               </div>
               </div>
