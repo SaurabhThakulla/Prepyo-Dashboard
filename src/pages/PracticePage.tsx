@@ -26,6 +26,7 @@ import AudioRecorder, { type RecorderStatus } from '@/components/practice/AudioR
 import { audioDelayFor, prepSecondsFor } from '@/components/practice/prepTime';
 import QuestionFigure from '@/components/practice/QuestionFigure';
 import PromptAudio from '@/components/practice/PromptAudio';
+import CueCard, { parseCueCard } from '@/components/practice/CueCard';
 import KoreanHelp from '@/components/practice/KoreanHelp';
 import PracticeResultDialog from '@/components/practice/PracticeResultDialog';
 import { answerMark, OPTION_MARK_CLASS, OPTION_MARK_LABEL } from '@/lib/answerMarks';
@@ -40,7 +41,7 @@ import { isAiRatedListening, isReadAloudTask, isRepeatSentenceTask, isWordHighli
 import { allowsMultipleChoices } from '@/lib/choices';
 import { minimumWritingWords, writingLengthNote, writingWordCount, writingWordTarget } from '@/lib/writing';
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
-import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isPremiumUser, listeningPlays, PracticeAttempt, Question, SkillType, ieltsModuleOf } from '@/lib/types';
+import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isInstitutionStudent, isPremiumUser, listeningPlays, PracticeAttempt, Question, SkillType, ieltsModuleOf } from '@/lib/types';
 import FreePlanNotice from '@/institution/FreePlanNotice';
 import PracticeActionBar, { CostChip, gradingUnits, notesFor, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
 import MyScore from '@/components/practice/flow/MyScore';
@@ -678,6 +679,7 @@ function PracticePageContent() {
   const promptInCard = !!currentQuestion && currentQuestion.skill !== 'reading';
   // An IELTS speaking prompt is the question itself, so it reads larger.
   const promptIsQuestion = currentQuestion?.exam === 'IELTS' && currentQuestion?.skill === 'speaking';
+  const cueCard = currentQuestion?.typeId === 'ielts-speaking-part2' && currentQuestion.prompt ? parseCueCard(currentQuestion.prompt) : null;
 
   const currentIndex = currentQuestion ? questions.findIndex(q => q.id === currentQuestion.id) : -1;
   const isLast = currentIndex === questions.length - 1;
@@ -775,7 +777,7 @@ function PracticePageContent() {
         <Navigate to={pteMockHref(selectedSkill)} replace />
       ) : isReading && searchParams.get('mock') && !isPremiumUser(user) ? (
         <Suspense fallback={<PracticePageSkeleton />}>
-          <PracticeMockPaywall skill={selectedSkill} exam={activeExam} />
+          <PracticeMockPaywall skill={selectedSkill} exam={activeExam} institution={isInstitutionStudent(user)} />
         </Suspense>
       ) : isReading && searchParams.get('mock') ? (
         <Suspense fallback={<ReadingPracticeSkeleton />}>
@@ -837,6 +839,7 @@ function PracticePageContent() {
         <PracticeUnavailable
           onRetry={subTestsRemaining > 0 ? () => void handleStart() : undefined}
           isStarting={isStarting}
+          institution={isInstitutionStudent(user)}
         />
       ) : !currentQuestion ? (
         loading ? (
@@ -987,11 +990,12 @@ function PracticePageContent() {
 
               <div className="p-3 sm:p-4 space-y-3 empty:hidden">
 
-                {promptInCard && currentQuestion.prompt && (
+                {/* IELTS Speaking Part 2 shows its task card as the test does; other prompts as text. */}
+                {promptInCard && currentQuestion.prompt && (cueCard ? <CueCard card={cueCard} /> : (
                   <p data-dictionary className={`leading-relaxed whitespace-pre-line ${promptIsQuestion ? 'text-base text-foreground' : 'text-sm text-muted-foreground'}`}>
                     {currentQuestion.prompt.trim()}
                   </p>
-                )}
+                ))}
 
                 {currentQuestion.imageUrl && (
                   // On a phone the figure runs edge to edge across the card, for a larger table.
@@ -1036,6 +1040,7 @@ function PracticePageContent() {
                     questionId={currentQuestion.id}
                     language={currentQuestion.exam === 'JLPT' ? 'Japanese' : 'Korean'}
                     premium={isPremiumUser(user)}
+                    institution={isInstitutionStudent(user)}
                     initial={
                       result?.review?.audioTranslation
                         ? { text: result.review.audioTranslation, audioUrl: result.review.translationAudioUrl }
