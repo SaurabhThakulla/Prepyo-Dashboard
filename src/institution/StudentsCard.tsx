@@ -36,6 +36,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast';
 import { errorMessage } from '@/lib/api';
+import { formatExamDate } from '@/lib/dates';
 import {
   addPayment,
   addStudent,
@@ -47,6 +48,7 @@ import {
   fetchStudents,
   fetchTargets,
   InstitutionAccount,
+  nextGradingReset,
   PAYMENT_METHODS,
   PaymentMethod,
   Readiness,
@@ -88,12 +90,8 @@ interface Credentials {
 
 type StatusFilter = 'all' | 'active' | 'ready' | 'idle' | 'off';
 
-const PERIODS = [
-  [7, '7 days'],
-  [30, '30 days'],
-  [90, '90 days'],
-  [0, 'All time'],
-] as const;
+// Activity in the list and the KPIs covers the last 30 days; there is no period picker.
+const PERIOD_DAYS = 30;
 
 // A student with nothing for this long needs a nudge.
 const IDLE_DAYS = 7;
@@ -138,7 +136,7 @@ const STATUS_TEXT = {
 export default function StudentsPage({ account, exams }: Props) {
   const { institution } = account;
   const [confirm, confirmDialog] = useConfirm();
-  const [days, setDays] = useState(30);
+  const days = PERIOD_DAYS;
   const [students, setStudents] = useState<Student[] | null>(null);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [fees, setFees] = useState<Map<string, StudentFee> | null>(null);
@@ -320,7 +318,7 @@ export default function StudentsPage({ account, exams }: Props) {
   const openStudent = everyone.find(s => s.id === openId) ?? null;
   const seatsUsed = everyone.length;
   const full = seatsUsed >= institution.seatLimit;
-  const period = PERIODS.find(([value]) => value === days)?.[1].toLowerCase() ?? '';
+  const period = `${PERIOD_DAYS} days`;
   const idleCount = inBatch.filter(s => isIdle(s, now)).length;
   const batchFees = fees ? inBatch.map(s => fees.get(s.id)).filter((f): f is StudentFee => !!f) : [];
   const toCollect = batchFees.reduce((n, f) => n + Math.max(0, f.balanceNpr), 0);
@@ -452,18 +450,6 @@ export default function StudentsPage({ account, exams }: Props) {
           {batches.length > 0 && (
             <BatchSelect label="Show batch" value={filterKnown ? batchFilter : ''} batches={batches} onChange={filterBy} disabled={false} allLabel="All batches" withNone />
           )}
-          <select
-            aria-label="Period"
-            value={days}
-            onChange={event => setDays(Number(event.target.value))}
-            className="h-9 rounded-lg border border-input bg-card px-2.5 text-sm text-foreground"
-          >
-            {PERIODS.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
         </div>
 
         {students === null && !error && (
@@ -944,7 +930,10 @@ function StudentSheet({
                     <MiniStat label={`Full mocks · ${period}`} value={student.usage.mocksCompleted} />
                     <MiniStat label={`AI evaluations · ${period}`} value={student.usage.aiEvaluations} />
                     <MiniStat label={`Tutor messages · ${period}`} value={student.usage.tutorMessages} />
-                    <MiniStat label="AI gradings this month" value={`${Math.round(student.usage.aiGradingsThisMonth * 10) / 10} / ${AI_GRADINGS_PER_MONTH}`} />
+                    <MiniStat
+                      label={`AI gradings this month · reset ${formatExamDate(nextGradingReset())}`}
+                      value={`${Math.round(student.usage.aiGradingsThisMonth * 10) / 10} / ${AI_GRADINGS_PER_MONTH}`}
+                    />
                   </div>
                   <StudentActivityPanel id={student.id} days={days} period={period} />
                 </TabsContent>

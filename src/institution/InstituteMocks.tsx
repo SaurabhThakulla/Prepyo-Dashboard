@@ -1,6 +1,6 @@
 import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Check, ClipboardCheck, Loader2, Lock, Pencil, Play, Plus, Search, Sparkles, Square, Trash2, Users, X } from 'lucide-react';
+import { ArrowLeft, Check, ClipboardCheck, Loader2, Lock, Pencil, Play, Plus, Search, Shuffle, Sparkles, Square, Trash2, Users, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -20,6 +20,10 @@ import {
   fetchQuestionBank,
   fetchStudents,
   fillInstituteMock,
+  shuffleInstituteMock,
+  fetchReadyPapers,
+  putReadyPaper,
+  ReadyPaper,
   IELTSModule,
   InstituteMockDetail,
   InstituteMockExam,
@@ -404,6 +408,38 @@ function MockEditor({
       return fillInstituteMock(mockId);
     }, mock?.exam === 'IELTS' ? 'The empty sections are filled with Prepyo tests.' : 'The empty places are filled from our question bank.');
 
+  // A whole new paper, picked at random; asks first when it would replace chosen questions.
+  const shuffle = async () => {
+    if (items.length > 0) {
+      const ok = await confirm({
+        title: 'Shuffle all questions?',
+        description: 'Every section gets a new random set, different from the questions on the paper now. Questions you picked by hand are replaced too.',
+        confirmLabel: 'Shuffle questions',
+      });
+      if (!ok) return;
+    }
+    await run(async () => {
+      if (dirty) await saveInstituteMock(mockId, form());
+      return shuffleInstituteMock(mockId);
+    }, 'New questions picked. Shuffle again for another set.');
+  };
+
+  // Puts one of Prepyo's numbered tests on the mock; asks first when it would replace a paper.
+  const takeReadyPaper = async (number: number) => {
+    if (items.length > 0) {
+      const ok = await confirm({
+        title: `Use Test ${number}?`,
+        description: 'It replaces every question on the paper now, including ones you picked by hand.',
+        confirmLabel: `Use Test ${number}`,
+      });
+      if (!ok) return;
+    }
+    await run(async () => {
+      if (dirty) await saveInstituteMock(mockId, form());
+      return putReadyPaper(mockId, number);
+    }, `Test ${number} is on the paper.`);
+  };
+
   const publish = async () => {
     const ok = await confirm({
       title: `Publish "${name}"?`,
@@ -556,6 +592,8 @@ function MockEditor({
           busy={busy}
           onChange={next => (setItems(next), setDirty(true))}
           onFill={() => void fill()}
+          onShuffle={() => void shuffle()}
+          onUseReadyPaper={number => void takeReadyPaper(number)}
         />
       )}
       {tab === 'students' && (
@@ -586,6 +624,8 @@ function PaperBuilder({
   busy,
   onChange,
   onFill,
+  onShuffle,
+  onUseReadyPaper,
 }: {
   mock: InstituteMockDetail;
   items: PaperItem[];
@@ -593,10 +633,20 @@ function PaperBuilder({
   busy: boolean;
   onChange: (items: PaperItem[]) => void;
   onFill: () => void;
+  /** Replaces the whole paper with a new random set. */
+  onShuffle: () => void;
+  /** Puts one of Prepyo's numbered tests on the mock. */
+  onUseReadyPaper: (number: number) => void;
 }) {
   const [task, setTask] = useState(mock.slots[0]?.task ?? '');
   const [search, setSearch] = useState('');
   const [hideSeen, setHideSeen] = useState(false);
+  // Which list is shown: the bank to choose from, or what is selected for this task.
+  const [view, setView] = useState<'bank' | 'selected'>('bank');
+  // Prebuilt: take one of Prepyo's numbered tests whole. Custom: build it task by task.
+  const [mode, setMode] = useState<'prebuilt' | 'custom'>(items.length > 0 ? 'custom' : 'prebuilt');
+  const [papers, setPapers] = useState<ReadyPaper[] | null>(null);
+  const [papersError, setPapersError] = useState<string | null>(null);
   const [bank, setBank] = useState<BankQuestion[] | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -631,6 +681,22 @@ function PaperBuilder({
     return () => window.clearTimeout(timer);
   }, [load]);
 
+  useEffect(() => {
+    fetchReadyPapers(mock.id)
+      .then(data => {
+        setPapers(data.papers);
+        // A mock that is exactly one of the ready tests opens on Prebuilt.
+        const ids = new Set(mock.items.map(i => i.questionId));
+        if (data.papers.some(p => p.itemIds.length === ids.size && p.itemIds.every(id => ids.has(id)))) setMode('prebuilt');
+      })
+      .catch(err => setPapersError(errorMessage(err)));
+    // Once per mock: the tab chosen on opening is not changed by later edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mock.id]);
+  // The ready test the paper is now, if it is exactly one.
+  const onPaper = new Set(items.map(i => i.questionId));
+  const current = papers?.find(p => p.itemIds.length === items.length && p.itemIds.every(id => onPaper.has(id))) ?? null;
+
   const toggle = (q: BankQuestion) => {
     if (locked) return;
     if (items.some(i => i.questionId === q.id)) onChange(items.filter(i => i.questionId !== q.id));
@@ -657,7 +723,34 @@ function PaperBuilder({
       <div className="grid md:grid-cols-[17rem_1fr]">
         <nav aria-label={ielts ? 'Sections' : 'Tasks'} className="border-b border-border bg-muted/30 p-3 md:border-b-0 md:border-r">
           <div className="space-y-4 md:sticky md:top-4">
-            {groups.map(g => (
+            <div role="tablist" aria-label="How to build the paper" className="grid grid-cols-2 rounded-xl border border-border bg-background p-1">
+              {(
+                [
+                  ['prebuilt', 'Prebuilt'],
+                  ['custom', 'Custom'],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === id}
+                  onClick={() => setMode(id)}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                    mode === id ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {mode === 'prebuilt' && (
+              <p className="px-1 text-xs leading-relaxed text-muted-foreground">
+                Ready-made tests, the same ones as in the Mock Test section. Switch to Custom to choose{' '}
+                {ielts ? 'each section yourself' : 'questions task by task'}.
+              </p>
+            )}
+            {mode === 'custom' && groups.map(g => (
               <div key={g.part} className="space-y-0.5">
                 {showParts && (
                   <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -699,6 +792,18 @@ function PaperBuilder({
           </div>
         </nav>
 
+        {mode === 'prebuilt' && (
+          <ReadyPapersList
+            title={mock.title}
+            papers={papers}
+            error={papersError}
+            current={current?.number ?? null}
+            locked={locked}
+            busy={busy}
+            onUse={onUseReadyPaper}
+          />
+        )}
+        {mode === 'custom' && (
         <div className="min-w-0 space-y-6 p-4 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
@@ -720,6 +825,16 @@ function PaperBuilder({
                 <Button variant="outline" size="sm" className="h-9" onClick={onFill} disabled={busy}>
                   <Sparkles className="mr-1.5 h-4 w-4 text-primary" /> Fill the rest for me
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9"
+                  onClick={onShuffle}
+                  disabled={busy}
+                  title="Replace every section with a new random set of questions"
+                >
+                  <Shuffle className="mr-1.5 h-4 w-4 text-primary" /> Shuffle questions
+                </Button>
               </div>
             )}
           </div>
@@ -730,13 +845,47 @@ function PaperBuilder({
             </p>
           )}
 
-          {/* On the paper */}
+          {/* Two lists, one shown at a time: the bank to choose from, and what is selected. A locked paper shows only what is selected. */}
+          {!locked && (
+            <div role="tablist" aria-label="Show" className="inline-flex rounded-xl border border-border bg-muted/50 p-1">
+              {(
+                [
+                  ['bank', ielts ? 'Tests' : 'Questions', bank !== null ? total : null],
+                  ['selected', ielts ? 'Selected test' : 'Selected questions', chosenHere.length],
+                ] as const
+              ).map(([id, label, count]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === id}
+                  onClick={() => setView(id)}
+                  className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    view === id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {label}
+                  {count !== null && (
+                    <span className={`rounded-full px-1.5 text-xs tabular-nums ${view === id ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {(locked || view === 'selected') && (
           <section className="space-y-2">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">On the paper</h4>
             {chosenHere.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-                Nothing chosen yet. Pick from the list below, or let us fill it.
-              </p>
+              <div className="space-y-2 rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                <p>Nothing selected yet.</p>
+                {!locked && (
+                  <Button variant="outline" size="sm" onClick={() => setView('bank')}>
+                    Choose from {ielts ? 'tests' : 'questions'}
+                  </Button>
+                )}
+              </div>
             ) : (
               <ol className="space-y-2.5">
                 {chosenHere.map((i, n) => {
@@ -764,14 +913,11 @@ function PaperBuilder({
               </ol>
             )}
           </section>
+          )}
 
-          {!locked && (
+          {!locked && view === 'bank' && (
             <section className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {ielts ? 'Tests' : 'Question bank'}
-                  {bank !== null && <span className="ml-1.5 font-normal normal-case tracking-normal">({total})</span>}
-                </h4>
+              <div className="flex flex-wrap items-center justify-end gap-3">
                 <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
                   <input type="checkbox" checked={hideSeen} onChange={e => setHideSeen(e.target.checked)} className="h-4 w-4 accent-primary" />
                   {ielts ? 'Hide tests my students have sat' : 'Hide ones my students have practised'}
@@ -788,7 +934,13 @@ function PaperBuilder({
                 />
               </div>
               {full && (
-                <p className="text-xs text-muted-foreground">This task is full. Take one off the paper to choose another.</p>
+                <p className="text-xs text-muted-foreground">
+                  This task is full. Untick one, or remove it under{' '}
+                  <button type="button" className="font-medium text-primary underline-offset-2 hover:underline" onClick={() => setView('selected')}>
+                    {ielts ? 'Selected test' : 'Selected questions'}
+                  </button>
+                  , to choose another.
+                </p>
               )}
               <FormError message={error} />
               {bank === null && !error && (
@@ -847,8 +999,86 @@ function PaperBuilder({
             </section>
           )}
         </div>
+        )}
       </div>
     </Card>
+  );
+}
+
+/** Prepyo's numbered tests for this kind of mock, to take one whole. */
+function ReadyPapersList({
+  title,
+  papers,
+  error,
+  current,
+  locked,
+  busy,
+  onUse,
+}: {
+  title: string;
+  papers: ReadyPaper[] | null;
+  error: string | null;
+  current: number | null;
+  locked: boolean;
+  busy: boolean;
+  onUse: (number: number) => void;
+}) {
+  return (
+    <div className="min-w-0 space-y-4 p-4 sm:p-6">
+      <div className="space-y-1">
+        <h3 className="font-display text-lg font-bold text-foreground">Prebuilt tests</h3>
+        <p className="text-sm text-muted-foreground">
+          Choose a complete {title}. {current ? `Test ${current} is on the paper now.` : 'It replaces whatever is on the paper.'}
+        </p>
+      </div>
+      {locked && (
+        <p className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+          <Lock className="h-4 w-4 shrink-0" aria-hidden /> The paper is locked because students have started.
+        </p>
+      )}
+      <FormError message={error} />
+      {papers === null && !error && (
+        <div className="flex justify-center py-6">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      )}
+      {papers !== null && papers.length === 0 && (
+        <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+          There are no prebuilt tests for this kind of mock yet. Use Custom to build one.
+        </p>
+      )}
+      {papers !== null && papers.length > 0 && (
+        <ul className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+          {papers.map(p => {
+            const on = p.number === current;
+            return (
+              <li
+                key={p.number}
+                className={`flex items-center justify-between gap-3 rounded-xl border p-4 ${on ? 'border-primary/40 bg-primary/5' : 'border-border bg-background'}`}
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground">{p.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {p.itemIds.length} {p.itemIds.length === 1 ? 'part' : 'parts'}
+                  </p>
+                </div>
+                {on ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                    <Check className="h-3.5 w-3.5" /> On the paper
+                  </span>
+                ) : (
+                  !locked && (
+                    <Button size="sm" variant="outline" className="shrink-0" disabled={busy} onClick={() => onUse(p.number)}>
+                      Use this test
+                    </Button>
+                  )
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 

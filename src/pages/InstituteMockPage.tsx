@@ -152,7 +152,8 @@ function MockList({ institution }: { institution: string }) {
             <div>
               <h1 className="font-display text-2xl font-black tracking-tight sm:text-3xl">Institute Mock</h1>
               <p className="mt-1.5 max-w-xl text-sm font-medium text-white/80">
-                Tests set by {institution}. Your teacher reviews each one before you see the score.
+                Tests set by {institution}. IELTS Reading and Listening tests are marked as soon as you hand them in; your
+                teacher reviews the others before you see the score.
               </p>
             </div>
           </div>

@@ -20,6 +20,10 @@ export const STUDENT_ALLOWANCE =
 
 export const AI_GRADINGS_PER_MONTH = 1100;
 
+/** When AI gradings next reset: the 1st of next month (UTC), as the server counts them. YYYY-MM-DD. */
+export const nextGradingReset = (now = new Date()) =>
+  new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
+
 // What Prepyo charges per student seat a month, in rupees. Keep in step with
 // PricePerTenSeatsNPR (Prepyo-Backend/internal/institution/institution.go), which is 10 seats.
 export const PRICE_PER_STUDENT_NPR = 300;
@@ -438,6 +442,19 @@ export interface EvaluationCriterion {
   feedback: string;
 }
 
+/** One question of a Listening or Reading paper: what was asked, the student's answer and the key. */
+export interface IeltsAnswer {
+  /** The paper's question numbers it covers: one, or more for a gap fill or "Choose TWO". */
+  from: number;
+  to: number;
+  question: string;
+  /** Empty when the student left it blank. */
+  response: string;
+  correct: string;
+  marks: number;
+  outOf: number;
+}
+
 /** One thing the teacher looks at in an IELTS section: a writing task, the speaking test, or a paper's score. */
 export interface IeltsPart {
   key: 'task1' | 'task2' | 'speaking' | 'listening' | 'reading';
@@ -450,6 +467,8 @@ export interface IeltsPart {
   turns?: IeltsTurn[];
   correct?: number;
   total?: number;
+  /** A Listening or Reading paper, question by question; absent once the answers are cleaned up. */
+  answers?: IeltsAnswer[];
   aiBand: number | null;
   summary?: string;
   criteria?: EvaluationCriterion[];
@@ -508,6 +527,17 @@ export const createInstituteMock = (form: { name: string; exam: InstituteMockExa
 export const fetchInstituteMock = (id: string) => api.get<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}`);
 export const saveInstituteMock = (id: string, form: MockForm) => api.put<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}`, form);
 export const fillInstituteMock = (id: string) => api.post<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}/fill`);
+/** One of Prepyo's numbered tests a mock can take whole; itemIds are what it puts on the paper. */
+export interface ReadyPaper {
+  number: number;
+  title: string;
+  itemIds: string[];
+}
+export const fetchReadyPapers = (id: string) => api.get<{ papers: ReadyPaper[] }>(`/institution/mocks/${id}/papers`);
+export const putReadyPaper = (id: string, number: number) =>
+  api.post<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}/papers/${number}`);
+/** Replaces the whole paper with a new random set, leaving out the questions on it now. */
+export const shuffleInstituteMock = (id: string) => api.post<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}/shuffle`);
 export const publishInstituteMock = (id: string) => api.post<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}/publish`);
 export const deleteInstituteMock = (id: string) => api.delete(`/institution/mocks/${id}`);
 export const fetchQuestionBank = (task: string, search: string, difficulty: string, offset = 0, module = '') =>

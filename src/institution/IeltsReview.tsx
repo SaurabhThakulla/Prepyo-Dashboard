@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { errorMessage } from '@/lib/api';
 import {
   BandMark,
+  IeltsAnswer,
   IeltsPart,
   IeltsResult,
   IeltsSection,
@@ -250,6 +251,67 @@ function SectionCard({
   );
 }
 
+/** A Listening or Reading paper question by question: what the student answered against the key. */
+export function AnswerSheet({ answers }: { answers?: IeltsAnswer[] }) {
+  const [wrongOnly, setWrongOnly] = useState(false);
+  if (!answers || answers.length === 0) {
+    return <p className="text-sm text-muted-foreground">The student's answers are no longer kept, or none were saved.</p>;
+  }
+  const wrong = answers.filter(a => a.marks < a.outOf).length;
+  const shown = wrongOnly ? answers.filter(a => a.marks < a.outOf) : answers;
+  const numbers = (a: IeltsAnswer) => (a.from === a.to ? `${a.from}` : `${a.from}–${a.to}`);
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Answer sheet · {wrong === 0 ? 'all right' : `${wrong} wrong or blank`}
+        </p>
+        {wrong > 0 && (
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+            <input type="checkbox" checked={wrongOnly} onChange={e => setWrongOnly(e.target.checked)} className="h-3.5 w-3.5" />
+            Show only wrong answers
+          </label>
+        )}
+      </div>
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full min-w-[640px] text-sm">
+          <caption className="sr-only">Each question with the student's answer and the answer key</caption>
+          <thead>
+            <tr className="bg-muted/60 text-left text-xs font-medium text-muted-foreground">
+              <th className="w-14 px-3 py-2">Q</th>
+              <th className="px-3 py-2">Question</th>
+              <th className="px-3 py-2">Student's answer</th>
+              <th className="px-3 py-2">Answer key</th>
+              <th className="w-16 px-3 py-2 text-right">Mark</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {shown.map(a => {
+              const right = a.marks === a.outOf;
+              return (
+                <tr key={a.from} className={right ? '' : 'bg-rose-500/[0.04]'}>
+                  <td className="px-3 py-2 align-top font-medium tabular-nums text-foreground">{numbers(a)}</td>
+                  <td className="px-3 py-2 align-top text-foreground/80">{a.question}</td>
+                  <td className={`px-3 py-2 align-top ${right ? 'text-foreground' : TONES.rose.text}`}>
+                    {a.response || <span className="italic text-muted-foreground">Left blank</span>}
+                  </td>
+                  <td className="px-3 py-2 align-top text-foreground">{a.correct}</td>
+                  <td className="px-3 py-2 text-right align-top tabular-nums">
+                    <span className={right ? TONES.green.text : TONES.rose.text} aria-label={right ? 'Right' : 'Wrong'}>
+                      {right ? '✓' : '✗'}
+                    </span>{' '}
+                    {a.outOf > 1 && <span className="text-xs text-muted-foreground">{a.marks}/{a.outOf}</span>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function PartBlock({
   part,
   bands,
@@ -291,6 +353,7 @@ function PartBlock({
           <span className="font-medium">{bandText(part.aiBand)}</span>
         </p>
       )}
+      {keyed && <AnswerSheet answers={part.answers} />}
 
       {(part.key === 'task1' || part.key === 'task2') && (
         <>
