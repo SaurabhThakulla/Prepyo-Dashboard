@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Evaluation, MockAttempt, isPremiumUser } from '@/lib/types';
+import { Evaluation, MockAttempt, isInstitutionStudent, isPremiumUser } from '@/lib/types';
 import { subTestsLeft } from '@/lib/subscriptions';
 import { encodeForUpload, beep } from '@/lib/audio';
 import { AnswerRecorder } from '@/lib/answerRecorder';
@@ -111,7 +111,7 @@ export default function SpeakingMockPanel() {
     }
   };
 
-  if (!isPremiumUser(user)) return <PracticeMockPaywall skill="speaking" exam={activeExam} />;
+  if (!isPremiumUser(user)) return <PracticeMockPaywall skill="speaking" exam={activeExam} institution={isInstitutionStudent(user)} />;
   if (outcome) return <SpeakingResult outcome={outcome} onBack={() => navigate('/practice?skill=speaking')} onRedo={() => { setOutcome(null); void start(); }} />;
   if (session) {
     return (
@@ -133,6 +133,7 @@ export default function SpeakingMockPanel() {
   }
   return (
     <SectionMockIntro
+      institution={isInstitutionStudent(user)}
       exam="IELTS"
       skill="speaking"
       title="Speaking Sectional Test"

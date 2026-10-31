@@ -13,7 +13,7 @@ import { useReadingPractice, useReadingTypes } from '@/lib/hooks/useReading';
 import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
 import { READING_TYPES, typeIdsFor, needsParagraphLabels, familyOf } from '@/lib/readingTypes';
-import { ExamType, ReadingGroup, ReadingTaskType } from '@/lib/types';
+import { ExamType, isInstitutionStudent, ReadingGroup, ReadingTaskType } from '@/lib/types';
 import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
 import { ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -286,7 +286,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
     return <div className="w-full min-h-[calc(100dvh-4rem)] bg-background" />;
   }
   if (!set && subTestsRemaining <= 0 && !mistakeId) {
-    return <PracticeUnavailable />;
+    return <PracticeUnavailable institution={isInstitutionStudent(user)} />;
   }
 
   if (!set) {

@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Evaluation, IELTS_MODULE_LABEL, IELTSModule, MockAttempt, Question, isPremiumUser } from '@/lib/types';
+import { Evaluation, IELTS_MODULE_LABEL, IELTSModule, MockAttempt, Question, isInstitutionStudent, isPremiumUser } from '@/lib/types';
 import { subTestsLeft } from '@/lib/subscriptions';
 import { writingWordCount, writingWordTarget } from '@/lib/writing';
 import { FullMockSection } from '@/lib/fullMock';
@@ -149,7 +149,7 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
   };
 
   if (!section && !isPremiumUser(user)) {
-    return <PracticeMockPaywall skill="writing" exam={activeExam} />;
+    return <PracticeMockPaywall skill="writing" exam={activeExam} institution={isInstitutionStudent(user)} />;
   }
 
   if (outcome) {
@@ -176,6 +176,7 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
 
   return (
     <SectionMockIntro
+      institution={isInstitutionStudent(user)}
       exam="IELTS"
       skill="writing"
       title="Writing Sectional Test"

@@ -9,7 +9,7 @@ import { ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
 import { READING_PRACTICE_HREF } from '@/components/layout/sidebar/navigation';
 import ReadingMockRunner from '@/components/reading/ReadingMockRunner';
-import { isPremiumUser, ReadingMockSession } from '@/lib/types';
+import { isInstitutionStudent, isPremiumUser, ReadingMockSession } from '@/lib/types';
 import { FullMockSection } from '@/lib/fullMock';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import SectionMockIntro from '@/components/mocks/SectionMockIntro';
@@ -26,7 +26,7 @@ export default function ReadingMockPanel({ section }: { section?: FullMockSectio
   const { user, activeExam, refreshUser } = useApp();
 
   if (!section && !isPremiumUser(user)) {
-    return <PracticeMockPaywall skill="reading" exam={activeExam} />;
+    return <PracticeMockPaywall skill="reading" exam={activeExam} institution={isInstitutionStudent(user)} />;
   }
 
   const mock = useReadingMock(activeExam, () => {
@@ -90,6 +90,7 @@ export default function ReadingMockPanel({ section }: { section?: FullMockSectio
 
   return (
     <SectionMockIntro
+      institution={isInstitutionStudent(user)}
       exam={activeExam}
       skill="reading"
       title="Reading Sectional Test"

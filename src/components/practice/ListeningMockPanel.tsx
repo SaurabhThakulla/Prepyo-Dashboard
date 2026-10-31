@@ -9,7 +9,7 @@ import { useToast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { AnswerSubmission, MockAttempt, Question, isPremiumUser } from '@/lib/types';
+import { AnswerSubmission, MockAttempt, Question, isInstitutionStudent, isPremiumUser } from '@/lib/types';
 import { subTestsLeft } from '@/lib/subscriptions';
 import { Playback, playClips, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
@@ -101,7 +101,7 @@ export default function ListeningMockPanel() {
     }
   };
 
-  if (!isPremiumUser(user)) return <PracticeMockPaywall skill="listening" exam={activeExam} />;
+  if (!isPremiumUser(user)) return <PracticeMockPaywall skill="listening" exam={activeExam} institution={isInstitutionStudent(user)} />;
   if (outcome) return <ListeningResult outcome={outcome} onBack={() => navigate('/practice?skill=listening')} onRedo={() => { setOutcome(null); void start(); }} />;
   if (session) {
     return (
@@ -123,6 +123,7 @@ export default function ListeningMockPanel() {
   }
   return (
     <SectionMockIntro
+      institution={isInstitutionStudent(user)}
       exam="IELTS"
       skill="listening"
       title="Listening Sectional Test"
