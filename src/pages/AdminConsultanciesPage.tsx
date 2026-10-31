@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/toast';
 import { api, errorMessage } from '@/lib/api';
 import { PLANS, type ExamCode, type InstitutionPlan, type InstitutionProfile } from '@/institution/api';
 import { branchesLabel, EXAM_CHOICES, examName, STUDENT_RANGES, studentRangeLabel } from '@/institution/profile';
@@ -115,6 +116,7 @@ export default function AdminConsultanciesPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -160,6 +162,7 @@ export default function AdminConsultanciesPage() {
         onCreated={message => {
           setCreating(false);
           setCreated(message);
+          toast.success('Consultancy created', 'The consultancy has been created successfully.');
           load();
         }}
       />
@@ -564,7 +567,7 @@ function CreateConsultancyDialog({
   const [plan, setPlan] = useState<PlanValue>(newPlan);
   const [aiGradings, setAIGradings] = useState(DEFAULT_GRADINGS);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   // Each time it opens it starts empty.
   useEffect(() => {
@@ -573,14 +576,13 @@ function CreateConsultancyDialog({
       setExams([]);
       setPlan(newPlan());
       setAIGradings(DEFAULT_GRADINGS);
-      setError(null);
     }
   }, [open]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (exams.length === 0) {
-      setError('Choose at least one exam the consultancy teaches.');
+      toast.error('Consultancy not created', 'Choose at least one exam the consultancy teaches.');
       return;
     }
     setSaving(true);
@@ -594,8 +596,8 @@ function CreateConsultancyDialog({
         aiGradings: gradingsBody(aiGradings.perStudent, aiGradings.total),
       });
       onCreated(`${made.name} created at /${made.code}. The admin signs in with ${form.email.trim().toLowerCase()}.`);
-    } catch (err) {
-      setError(errorMessage(err));
+    } catch {
+      toast.error('Consultancy not created', 'Something went wrong. Please check the details and try again.');
     } finally {
       setSaving(false);
     }
@@ -646,7 +648,6 @@ function CreateConsultancyDialog({
               />
             </div>
           </Section>
-          {error && <p className="text-[11px] font-medium text-rose-600 dark:text-rose-400">{error}</p>}
           <div className="flex justify-end gap-2">
             <Button type="button" size="sm" variant="outline" onClick={() => onOpenChange(false)} className="font-bold text-xs">
               Cancel
@@ -788,15 +789,14 @@ function GradingsFields({
   );
 }
 
-/** A form's save button with what happened after the last save. */
-function SaveRow({ saving, label, message }: { saving: boolean; label: string; message: string | null }) {
+/** A form's save button; what happened is shown as a toast. */
+function SaveRow({ saving, label }: { saving: boolean; label: string }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Button type="submit" size="sm" disabled={saving} className="font-bold text-xs">
         {saving && <Loader2 className="w-4 h-4 animate-spin" />}
         {label}
       </Button>
-      {message && <p className="text-[11px] font-medium text-muted-foreground">{message}</p>}
     </div>
   );
 }
@@ -810,21 +810,21 @@ function PlanForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved:
   });
   const [planExams, setPlanExams] = useState<ExamCode[]>(consultancy.planExams ?? []);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (planExams.length === 0) {
-      setMessage('Choose at least one exam the plan includes.');
+      toast.error('Plan not saved', 'Choose at least one exam the plan includes.');
       return;
     }
     setSaving(true);
     try {
       await api.put(`/admin/consultancies/${consultancy.id}/plan`, { ...planBody(plan), planExams });
-      setMessage('Plan saved.');
+      toast.success('Plan saved', 'The plan has been updated successfully.');
       onSaved();
-    } catch (err) {
-      setMessage(errorMessage(err));
+    } catch {
+      toast.error('Plan not saved', 'Something went wrong. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -841,7 +841,7 @@ function PlanForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved:
         <ExamPicker value={planExams} onChange={setPlanExams} compact />
         <p className="text-[11px] text-muted-foreground">The consultancy can give its students only these exams.</p>
       </div>
-      <SaveRow saving={saving} label="Save plan" message={message} />
+      <SaveRow saving={saving} label="Save plan" />
     </form>
   );
 }
@@ -850,21 +850,21 @@ function PlanForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved:
 function MonthlyStudentsForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved: () => void }) {
   const [value, setValue] = useState(consultancy.profile.monthlyStudents ?? '');
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!value) {
-      setMessage('Choose a range.');
+      toast.error('Students a month not saved', 'Choose a range.');
       return;
     }
     setSaving(true);
     try {
       await api.put(`/admin/consultancies/${consultancy.id}/monthly-students`, { monthlyStudents: value });
-      setMessage('Students a month saved.');
+      toast.success('Students a month saved', 'The change has been saved successfully.');
       onSaved();
-    } catch (err) {
-      setMessage(errorMessage(err));
+    } catch {
+      toast.error('Students a month not saved', 'Something went wrong. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -887,7 +887,7 @@ function MonthlyStudentsForm({ consultancy, onSaved }: { consultancy: Consultanc
           </option>
         ))}
       </select>
-      <SaveRow saving={saving} label="Save" message={message} />
+      <SaveRow saving={saving} label="Save" />
     </form>
   );
 }
@@ -897,17 +897,17 @@ function GradingsForm({ consultancy, onSaved }: { consultancy: Consultancy; onSa
   const [perStudent, setPerStudent] = useState(String(consultancy.aiGradingsPerStudent));
   const [total, setTotal] = useState(consultancy.aiGradingsTotal === null ? '' : String(consultancy.aiGradingsTotal));
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useToast();
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
       await api.put(`/admin/consultancies/${consultancy.id}/ai-gradings`, gradingsBody(perStudent, total));
-      setMessage('AI gradings saved.');
+      toast.success('AI gradings saved', 'The AI gradings have been updated successfully.');
       onSaved();
-    } catch (err) {
-      setMessage(errorMessage(err));
+    } catch {
+      toast.error('AI gradings not saved', 'Something went wrong. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -929,7 +929,7 @@ function GradingsForm({ consultancy, onSaved }: { consultancy: Consultancy; onSa
       <div className="grid gap-3 sm:grid-cols-2">
         <GradingsFields perStudent={perStudent} total={total} onChange={(p, t) => (setPerStudent(p), setTotal(t))} />
       </div>
-      <SaveRow saving={saving} label="Save AI gradings" message={message} />
+      <SaveRow saving={saving} label="Save AI gradings" />
     </form>
   );
 }
