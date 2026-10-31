@@ -31,7 +31,8 @@ import { useToast } from '@/components/ui/toast';
 import { useMistakes, useMistakeAnalytics, usePracticeAttempts, useEvaluationHistory } from '@/lib/hooks/useResources';
 import { SCALE } from '@/components/practice/PracticeResultCard';
 import { matchesTypeKey, SYLLABUS, typeKey } from '@/lib/syllabus';
-import { SkillType, ExamType, Evaluation, Mistake, MistakeAnalytics, PracticeAttempt, isAdmin } from '@/lib/types';
+import { SkillType, ExamType, Evaluation, Mistake, MistakeAnalytics, PracticeAttempt, isInstitutionStudent, isPremiumUser } from '@/lib/types';
+import AskInstitution from '@/components/common/AskInstitution';
 import PracticeResultDialog from '@/components/practice/PracticeResultDialog';
 
 const PAGE = 10;
@@ -255,15 +256,13 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
     period
   );
 
-  // Check if forbidden (freemium user) or on free 'suru' tier
+  // Check if forbidden by the server, or not premium. Premium includes a
+  // consultancy's students, whose own plan may be free.
   const isForbidden =
     (error && 'status' in error && (error as { status: number }).status === 403) ||
     (analyticsError && 'status' in analyticsError && (analyticsError as { status: number }).status === 403);
 
-  const isSuru = Boolean(
-    isForbidden ||
-    (user && !isAdmin(user) && (user.role === 'suru' || !user.paidPlanActive))
-  );
+  const isSuru = Boolean(isForbidden || (user && !isPremiumUser(user)));
 
   const rawMistakes = isSuru
     ? (DUMMY_MISTAKES[activeExam] ?? DUMMY_MISTAKES.PTE ?? [])
@@ -567,6 +566,9 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
               </div>
 
               {/* Primary Upgrade CTA Button - Positioned Higher Up ("upside") */}
+              {isInstitutionStudent(user) ? (
+                <AskInstitution className="justify-center" />
+              ) : (
               <div className="pt-1 space-y-1.5">
                 <Button
                   onClick={() => navigate('/subscription')}
@@ -580,6 +582,7 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
                   Plans start at NPR 99 · Instant access to all premium features
                 </p>
               </div>
+              )}
 
               {/* Value Highlights */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-left pt-3 sm:pt-2 border-t border-border/60">

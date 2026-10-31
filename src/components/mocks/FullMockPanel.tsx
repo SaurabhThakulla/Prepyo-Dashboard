@@ -9,7 +9,7 @@ import { useToast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
-import { ReadingMockSession } from '@/lib/types';
+import { isInstitutionStudent, ReadingMockSession } from '@/lib/types';
 import { limitLabel } from '@/lib/subscriptions';
 import {
   FULL_MOCK_SECTIONS,
@@ -287,7 +287,7 @@ export default function FullMockPanel({ header }: { header: React.ReactNode }) {
                 : left > 0
                 ? `Uses one of your full mock tests (${limitLabel(left, !Number.isFinite(left))} left). The sections do not use your daily sub-tests.`
                 : 'You have used the full mock tests in your plan.'}{' '}
-              {left <= 0 && (
+              {left <= 0 && !isInstitutionStudent(user) && (
                 <button type="button" className="underline font-semibold" onClick={() => navigate('/subscription')}>
                   See plans
                 </button>
