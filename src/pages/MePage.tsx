@@ -28,7 +28,7 @@ import ReportIssueDialog from '@/components/support/ReportIssueDialog';
 import { ExamSwitcher } from '@/components/layout/sidebar/SecondaryPanel';
 import { profileImageUrl } from '@/lib/api';
 import { accountLines } from '@/lib/account';
-import { EXAM_LABELS, isAdmin, isPremiumUser } from '@/lib/types';
+import { EXAM_LABELS, isAdmin, isInstitutionStudent, isPremiumUser } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface Row {
@@ -73,17 +73,22 @@ export default function MePage() {
     }
   };
 
-  const account: Row[] = [
-    { label: 'Profile & goals', sublabel: 'Target score, exam date, photo', icon: UserRound, tint: 'text-sky-600 bg-sky-500/10', href: '/profile' },
-    admin
-      ? { label: 'Plan management', sublabel: 'Approve payments and grant plans', icon: CreditCard, tint: 'text-violet-600 bg-violet-500/10', href: '/admin/payments' }
+  // A consultancy's student is on its plan: no plan page and no upgrade offer.
+  const institutionStudent = isInstitutionStudent(user);
+  const planRow: Row | null = admin
+    ? { label: 'Plan management', sublabel: 'Approve payments and grant plans', icon: CreditCard, tint: 'text-violet-600 bg-violet-500/10', href: '/admin/payments' }
+    : institutionStudent
+      ? null
       : {
           label: 'Your plan',
           sublabel: plan?.planName ? `${plan.planName} · ${plan.isActive ? 'Active' : 'Expired'}` : 'Plans, quotas and billing',
           icon: CreditCard,
           tint: 'text-violet-600 bg-violet-500/10',
           href: '/subscription',
-        },
+        };
+  const account: Row[] = [
+    { label: 'Profile & goals', sublabel: 'Target score, exam date, photo', icon: UserRound, tint: 'text-sky-600 bg-sky-500/10', href: '/profile' },
+    ...(planRow ? [planRow] : []),
     { label: 'Earn rewards', sublabel: 'Invite friends, get free days', icon: Gift, tint: 'text-rose-600 bg-rose-500/10', href: '/referrals' },
     admin
       ? { label: 'Issue reports', sublabel: 'What learners have reported', icon: MessageSquareWarning, tint: 'text-amber-600 bg-amber-500/10', href: '/admin/reports' }
@@ -156,7 +161,7 @@ export default function MePage() {
           <ExamSwitcher activeExam={activeExam} onChange={setActiveExam} />
         </section>
       ) : (
-        !premium && (
+        !premium && !institutionStudent && (
           <Link
             to="/subscription"
             className="relative flex items-center gap-4 overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-indigo-600 p-4 text-primary-foreground shadow-lg shadow-primary/25 transition-transform active:scale-[0.99]"

@@ -4,7 +4,7 @@ import { Flame, ChevronRight, Gem, Crown } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import SecondaryNavList from './SecondaryNavList';
 import { PrimarySectionConfig, SecondaryNavItem } from './navigation';
-import { EXAM_LABELS, ExamType, UserProfile, isAdmin, isPremiumUser } from '@/lib/types';
+import { EXAM_LABELS, ExamType, UserProfile, isAdmin, isInstitutionStudent, isPremiumUser } from '@/lib/types';
 import { useApp } from '@/context/AppContext';
 import { PteExamVariant } from '@/lib/pteExamConfig';
 
@@ -68,7 +68,8 @@ export default function SecondaryPanel({
         />
 
         <div className="p-4">
-          {isPremiumUser(user) ? (
+          {/* A consultancy's student is never offered an upgrade: their plan is the consultancy's. */}
+          {isPremiumUser(user) || isInstitutionStudent(user) ? (
             <Link
               to="/profile"
               onClick={onNavigate}

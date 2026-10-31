@@ -28,7 +28,7 @@ import {
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import AnimatedLogo from '../AnimatedLogo';
 import { PrimarySectionConfig, PrimarySectionId } from './navigation';
-import { isAdmin, UserProfile } from '@/lib/types';
+import { isAdmin, isInstitutionStudent, UserProfile } from '@/lib/types';
 import { accountLines } from '@/lib/account';
 import { useApp } from '@/context/AppContext';
 
@@ -294,7 +294,7 @@ export default function PrimaryIconRail({
                 <span className="flex-1">Profile</span>
               </Link>
             </DropdownMenuItem>
-            {!isAdmin(user) && (
+            {!isAdmin(user) && !isInstitutionStudent(user) && (
               <DropdownMenuItem asChild>
                 <Link
                   to="/subscription"

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
-import { isAdmin } from '@/lib/types';
+import { isAdmin, isPremiumUser } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { backStep, TOUR_STEPS, TourContext } from './steps';
 import { bindTourUser, endTour, goToStep, startTour, tourSeen, useTour } from './tourStore';
@@ -144,7 +144,7 @@ export default function AppTour() {
       pathname: location.pathname,
       params: new URLSearchParams(location.search),
       exam: activeExam,
-      paid: !!user && user.role !== 'suru' && user.paidPlanActive,
+      paid: isPremiumUser(user),
       touch,
       visible: selector => findVisible(selector) !== null,
     }),
