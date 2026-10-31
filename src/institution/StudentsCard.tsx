@@ -4,6 +4,7 @@ import * as SheetPrimitive from '@radix-ui/react-dialog';
 import {
   Activity,
   AlertTriangle,
+  ArrowRightLeft,
   Ban,
   BadgeCheck,
   Clock,
@@ -33,6 +34,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, Di
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/components/ui/toast';
 import { errorMessage } from '@/lib/api';
 import {
   addPayment,
@@ -147,6 +149,11 @@ export default function StudentsPage({ account, exams }: Props) {
   const [adding, setAdding] = useState(false);
   const [settingTargets, setSettingTargets] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  // Students ticked in the list, to move to another batch together.
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  // The students the "Move to batch" dialog is open for.
+  const [moving, setMoving] = useState<Student[] | null>(null);
+  const toast = useToast();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
   // ?batch=<id> shows one batch, ?batch=none the students without one.
@@ -221,6 +228,7 @@ export default function StudentsPage({ account, exams }: Props) {
     changeBatch: (student, batchId) => {
       if (batchId !== (student.batchId ?? '')) void run(() => setStudentBatch(student.id, batchId).then(() => undefined));
     },
+    move: student => setMoving([student]),
     toggleDisabled: async student => {
       if (!student.disabled) {
         const ok = await confirm({
@@ -248,6 +256,34 @@ export default function StudentsPage({ account, exams }: Props) {
     },
   };
 
+  // Moves students to a batch ('' takes them out of any), one request each, then reloads.
+  const moveStudents = async (group: Student[], batchId: string) => {
+    if (busy) return;
+    const toMove = group.filter(s => (s.batchId ?? '') !== batchId);
+    const where = batchId ? `to ${batches.find(b => b.id === batchId)?.name ?? 'the batch'}` : 'out of their batch';
+    const who = (n: number) => (n === 1 ? '1 student' : `${n} students`);
+    setBusy(true);
+    let failed = 0;
+    for (const student of toMove) {
+      try {
+        await setStudentBatch(student.id, batchId);
+      } catch {
+        failed++;
+      }
+    }
+    await load();
+    setBusy(false);
+    setMoving(null);
+    setSelected(new Set());
+    if (failed > 0) {
+      toast.error('Some students were not moved', `${who(failed)} could not be moved. Please try again.`);
+    } else if (toMove.length === 0) {
+      toast.success('Nothing to move', 'These students are already in that batch.');
+    } else {
+      toast.success('Students moved', `${who(toMove.length)} moved ${where}.`);
+    }
+  };
+
   const filterBy = (value: string) => {
     const next = new URLSearchParams(searchParams);
     if (value) next.set('batch', value);
@@ -270,6 +306,17 @@ export default function StudentsPage({ account, exams }: Props) {
     return true;
   });
 
+  // Only ticked students still in view count, so a filter change never moves hidden ones.
+  const picked = list.filter(s => selected.has(s.id));
+  const allPicked = list.length > 0 && picked.length === list.length;
+  const toggle = (id: string) =>
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const toggleAll = () => setSelected(allPicked ? new Set() : new Set(list.map(s => s.id)));
   const openStudent = everyone.find(s => s.id === openId) ?? null;
   const seatsUsed = everyone.length;
   const full = seatsUsed >= institution.seatLimit;
@@ -436,12 +483,37 @@ export default function StudentsPage({ account, exams }: Props) {
         )}
         {everyone.length > 0 && list.length === 0 && <p className="text-sm text-muted-foreground">No students match these filters.</p>}
 
+        {batches.length > 0 && picked.length > 0 && (
+          <div role="region" aria-label="Selected students" className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
+            <span className="mr-auto text-sm font-medium text-foreground">
+              {picked.length === 1 ? '1 student selected' : `${picked.length} students selected`}
+            </span>
+            <Button size="sm" className="h-8" disabled={busy} onClick={() => setMoving(picked)}>
+              <ArrowRightLeft className="mr-1.5 h-4 w-4" /> Move to batch
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8" onClick={() => setSelected(new Set())}>
+              Clear
+            </Button>
+          </div>
+        )}
+
         {list.length > 0 && (
           <div className="overflow-x-auto rounded-xl border border-border">
             <table className="w-full min-w-[860px] text-sm">
               <caption className="sr-only">Students and their activity over {period}</caption>
               <thead>
                 <tr className="whitespace-nowrap bg-muted/60 text-left text-xs font-medium text-muted-foreground">
+                  {batches.length > 0 && (
+                    <th className="w-10 py-3 pl-4">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all students shown"
+                        checked={allPicked}
+                        onChange={toggleAll}
+                        className="h-4 w-4 cursor-pointer accent-primary"
+                      />
+                    </th>
+                  )}
                   <th className="w-full px-4 py-3">Student</th>
                   <th className="px-5 py-3">Exam</th>
                   {batches.length > 0 && <th className="px-5 py-3">Batch</th>}
@@ -465,6 +537,17 @@ export default function StudentsPage({ account, exams }: Props) {
                       onClick={() => setOpenId(student.id)}
                       className={`cursor-pointer transition-colors hover:bg-muted/40 ${student.disabled ? 'opacity-60' : ''}`}
                     >
+                      {batches.length > 0 && (
+                        <td className="py-3 pl-4" onClick={event => event.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${student.name}`}
+                            checked={selected.has(student.id)}
+                            onChange={() => toggle(student.id)}
+                            className="h-4 w-4 cursor-pointer accent-primary"
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <button type="button" className="flex items-center gap-3 text-left" aria-haspopup="dialog">
                           <Avatar name={student.name} exam={student.exam} />
@@ -474,8 +557,8 @@ export default function StudentsPage({ account, exams }: Props) {
                           </span>
                         </button>
                       </td>
-                      <td className="whitespace-nowrap px-5 py-3">
-                        <ExamPill exam={student.exam} />
+                      <td className="whitespace-nowrap px-5 py-3" onClick={event => event.stopPropagation()}>
+                        <ExamMenu student={student} exams={exams} actions={actions} />
                       </td>
                       {batches.length > 0 && <td className="whitespace-nowrap px-5 py-3 text-foreground/75">{batchName(student.batchId) || '—'}</td>}
                       <td className="whitespace-nowrap px-5 py-3 tabular-nums">
@@ -508,7 +591,7 @@ export default function StudentsPage({ account, exams }: Props) {
                         </td>
                       )}
                       <td className="py-3 pr-4 text-right" onClick={event => event.stopPropagation()}>
-                        <RowMenu student={student} actions={actions} onOpen={() => setOpenId(student.id)} />
+                        <RowMenu student={student} actions={actions} onOpen={() => setOpenId(student.id)} canMove={batches.length > 0} />
                       </td>
                     </tr>
                   );
@@ -567,6 +650,10 @@ export default function StudentsPage({ account, exams }: Props) {
         )}
       </Dialog>
 
+      <Dialog open={!!moving} onOpenChange={open => !open && !busy && setMoving(null)}>
+        {moving && <MoveBatchDialog students={moving} batches={batches} busy={busy} onMove={batchId => void moveStudents(moving, batchId)} />}
+      </Dialog>
+
       {confirmDialog}
 
       <Dialog open={!!credentials} onOpenChange={open => !open && setCredentials(null)}>
@@ -581,6 +668,8 @@ interface StudentActions {
   reset: (student: Student) => Promise<void>;
   changeExam: (student: Student, exam: ExamCode) => void;
   changeBatch: (student: Student, batchId: string) => void;
+  // Opens the "Move to batch" dialog for one student.
+  move: (student: Student) => void;
   toggleDisabled: (student: Student) => void;
   remove: (student: Student) => void;
 }
@@ -678,7 +767,30 @@ function FeeBalance({ fee }: { fee: StudentFee | undefined }) {
   );
 }
 
-function RowMenu({ student, actions, onOpen }: { student: Student; actions: StudentActions; onOpen: () => void }) {
+/** The student's exam in the list; click it to switch them to another exam the plan includes. */
+function ExamMenu({ student, exams, actions }: { student: Student; exams: ExamCode[]; actions: StudentActions }) {
+  const others = exams.filter(exam => exam !== student.exam);
+  if (others.length === 0) return <ExamPill exam={student.exam} />;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild disabled={actions.busy}>
+        <button type="button" aria-label={`Change exam for ${student.name}`} className="inline-flex items-center gap-0.5 rounded-full">
+          <ExamPill exam={student.exam} />
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-48">
+        {others.map(exam => (
+          <DropdownMenuItem key={exam} onSelect={() => actions.changeExam(student, exam)}>
+            Switch to {examLabel(exam)}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function RowMenu({ student, actions, onOpen, canMove }: { student: Student; actions: StudentActions; onOpen: () => void; canMove: boolean }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild disabled={actions.busy}>
@@ -690,6 +802,11 @@ function RowMenu({ student, actions, onOpen }: { student: Student; actions: Stud
         <DropdownMenuItem onSelect={onOpen}>
           <Users className="mr-2 h-3.5 w-3.5" /> Open profile
         </DropdownMenuItem>
+        {canMove && (
+          <DropdownMenuItem onSelect={() => actions.move(student)}>
+            <ArrowRightLeft className="mr-2 h-3.5 w-3.5" /> Move to batch
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onSelect={() => void actions.reset(student)}>
           <KeyRound className="mr-2 h-3.5 w-3.5" /> New password
         </DropdownMenuItem>
@@ -1322,6 +1439,54 @@ function ExamSelect({
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** Picks the batch to move one or more students to. */
+function MoveBatchDialog({
+  students,
+  batches,
+  busy,
+  onMove,
+}: {
+  students: Student[];
+  batches: Batch[];
+  busy: boolean;
+  onMove: (batchId: string) => void;
+}) {
+  // Starts on the batch they share, if they are all in one.
+  const first = students[0]?.batchId ?? '';
+  const [batch, setBatch] = useState(students.every(s => (s.batchId ?? '') === first) ? first : '');
+  const single = students.length === 1 ? students[0] : null;
+  return (
+    <DialogContent className="max-w-md">
+      <DialogHeader>
+        <DialogTitle>{single ? `Move ${single.name}` : `Move ${students.length} students`}</DialogTitle>
+        <DialogDescription>
+          Choose the batch to move {single ? 'them' : 'these students'} to. Their practice, progress and fees stay as they are.
+        </DialogDescription>
+      </DialogHeader>
+      <form
+        className="space-y-4"
+        onSubmit={event => {
+          event.preventDefault();
+          onMove(batch);
+        }}
+      >
+        <BatchSelect label="Move to batch" value={batch} batches={batches} disabled={busy} onChange={setBatch} allLabel="No batch" size="md" />
+        <div className="flex justify-end gap-2">
+          <DialogClose asChild>
+            <Button type="button" variant="outline" disabled={busy}>
+              Cancel
+            </Button>
+          </DialogClose>
+          <Button type="submit" disabled={busy}>
+            {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+            Move
+          </Button>
+        </div>
+      </form>
+    </DialogContent>
   );
 }
 
