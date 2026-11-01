@@ -163,7 +163,11 @@ export function buildSections(
           : syllabusFor(activeExam, skill, ieltsModuleOf(user));
         const isRepeatedEssay = (n: string) => /repeated\s*essay/i.test(n);
         // Writing and speaking answers are marked by AI; reading and listening are marked in code.
-        const aiBadge = skill === 'writing' || skill === 'speaking' ? 'AI' : undefined;
+        // Summarize Spoken Text is the listening task written and rated by AI.
+        const aiBadgeFor = (name: string) =>
+          skill === 'writing' || skill === 'speaking' || (skill === 'listening' && /summari[sz]e spoken text/i.test(name))
+            ? 'AI'
+            : undefined;
         const names = rawNames.filter(name => {
           if (isRepeatedEssay(name)) {
             return hasMistake;
@@ -182,7 +186,7 @@ export function buildSections(
               icon,
               sublabel: pteLockedReason ?? `Author questions for ${name}`,
               description: taskSummary(activeExam, skill, name),
-              badge: !pteAvailable ? (pteVariant === 'core' ? 'PTEA' : 'CORE') : aiBadge,
+              badge: !pteAvailable ? (pteVariant === 'core' ? 'PTEA' : 'CORE') : aiBadgeFor(name),
               group: label,
               groupHref: `/practice?skill=${skill}`,
               weight: pteWeight,
@@ -216,7 +220,7 @@ export function buildSections(
             icon,
             sublabel: pteLockedReason ?? sublabel,
             description: taskSummary(activeExam, skill, name),
-            badge: !pteAvailable ? (pteVariant === 'core' ? 'PTEA' : 'CORE') : aiBadge,
+            badge: !pteAvailable ? (pteVariant === 'core' ? 'PTEA' : 'CORE') : aiBadgeFor(name),
             group: label,
             groupHref: `/practice?skill=${skill}`,
             weight: pteWeight,
