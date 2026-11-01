@@ -357,3 +357,18 @@ html[data-dictionary-hover] [data-dictionary],
 html[data-dictionary-hover] [data-dictionary] * {
   cursor: pointer;
 }
+
+/* Score report download: while body has .print-report, printing (Save as PDF)
+   shows only the #score-report sheet, in colour, on A4. */
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body.print-report * { visibility: hidden !important; }
+  body.print-report #score-report,
+  body.print-report #score-report * { visibility: visible !important; }
+  body.print-report #score-report {
+    position: absolute; left: 0; top: 0; width: 100%;
+    box-shadow: none !important; border: none !important;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  body.print-report #score-report .no-print { display: none !important; }
+}

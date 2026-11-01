@@ -1,4 +1,5 @@
 import { canRecord, pickRecorderMimeType } from '@/lib/audio';
+import { announceRecording } from '@/lib/audioFocus';
 import { startTranscribing, TranscriptSession } from '@/lib/speech';
 
 /**
@@ -39,6 +40,11 @@ export class AnswerRecorder {
     }
   }
 
+  /** Whether the microphone is open and still live (not closed or unplugged). */
+  get isOpen(): boolean {
+    return Boolean(this.stream?.getAudioTracks().some(track => track.readyState === 'live'));
+  }
+
   /** The current input level, 0 to 1, for a meter that shows the mic works. */
   level(): number {
     if (!this.analyser) return 0;
@@ -54,6 +60,7 @@ export class AnswerRecorder {
 
   start(): void {
     if (!this.stream) throw new Error('microphone is not open');
+    announceRecording();
     const mimeType = pickRecorderMimeType();
     const recorder = new MediaRecorder(this.stream, mimeType ? { mimeType } : undefined);
     this.chunks = [];

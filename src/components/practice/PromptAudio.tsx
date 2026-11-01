@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { onRecordingStarted } from '@/lib/audioFocus';
 import { Volume2, Play, Square, Pause, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
@@ -217,6 +218,7 @@ export default function PromptAudio({
     setSpeaking(false);
     setProgress(0);
   }, [cancelPlayback]);
+  useEffect(() => onRecordingStarted(stop), [stop]);
 
   const speak = useCallback(async () => {
     if (!window.speechSynthesis || oncePlayed) return;
@@ -580,6 +582,9 @@ function ServerSpokenAudio({
     playbackRef.current?.stop();
     setPlaying(false);
   };
+  const stopRef = useRef(stop);
+  stopRef.current = stop;
+  useEffect(() => onRecordingStarted(() => stopRef.current()), []);
 
   const play = async () => {
     if (playing || loading || (singlePlay && finished)) return;
@@ -709,6 +714,8 @@ function RecordedAudio({
     setFinished(false);
     setError(null);
   }, [src, questionId]);
+
+  useEffect(() => onRecordingStarted(() => audioRef.current?.pause()), []);
 
   const started = progress > 0 || playing || finished;
   const toggle = () => {
@@ -1070,27 +1077,74 @@ function formatTranscriptText(raw: string): string {
     .join('\n\n');
 }
 
-/** The transcript with each answer marked, so the learner sees where it was said. */
-function ScriptText({ text, highlights = [] }: { text: string; highlights?: string[] }) {
-  const normalized = formatTranscriptText(text);
-  const words = highlights.map(word => word.trim()).filter(Boolean);
-  if (!words.length) return <>{normalized}</>;
+/** Colours for speakers, in the order they first speak. */
+const SPEAKER_COLOURS = [
+  'bg-blue-500/10 text-blue-700 ring-blue-500/25 dark:text-blue-300',
+  'bg-emerald-500/10 text-emerald-700 ring-emerald-500/25 dark:text-emerald-300',
+  'bg-violet-500/10 text-violet-700 ring-violet-500/25 dark:text-violet-300',
+  'bg-amber-500/10 text-amber-800 ring-amber-500/25 dark:text-amber-300',
+  'bg-rose-500/10 text-rose-700 ring-rose-500/25 dark:text-rose-300',
+  'bg-cyan-500/10 text-cyan-700 ring-cyan-500/25 dark:text-cyan-300',
+];
+
+// A speaker label: "Alex:", "Speaker 2:", "Man:", "남:", "男:" at the start of
+// a line or after the end of a sentence.
+const SPEAKER_LABEL =
+  /(?<=^|\n\s*|[.!?。？！"”)]\s+)((?:[A-Z][a-zA-Z]{1,15}(?: [A-Z0-9][a-zA-Z0-9]{0,10})?)|남자|여자|남|여|男|女):[ \t]*/gu;
+
+type Turn = { speaker: string; text: string };
+
+/** A script read by several people, split into turns; null when it is one voice. */
+export function dialogueTurns(text: string): Turn[] | null {
+  const matches = Array.from(text.matchAll(SPEAKER_LABEL));
+  if (matches.length < 2 || matches[0].index !== text.search(/\S/)) return null;
+  const speakers = new Set(matches.map(m => m[1]));
+  if (speakers.size < 2 || speakers.size > SPEAKER_COLOURS.length) return null;
+  return matches.map((m, i) => {
+    const from = (m.index ?? 0) + m[0].length;
+    const to = i + 1 < matches.length ? matches[i + 1].index ?? text.length : text.length;
+    return { speaker: m[1], text: text.slice(from, to).replace(/\s+/g, ' ').trim() };
+  }).filter(turn => turn.text);
+}
+
+/** Text with each answer marked, so the learner sees where it was said. */
+function highlighted(text: string, words: string[]): ReactNode {
+  if (!words.length) return text;
   const alternatives = words
     .map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .sort((a, b) => b.length - a.length)
     .join('|');
-  const parts = normalized.split(new RegExp(`(?<![\\p{L}\\p{N}])(${alternatives})(?![\\p{L}\\p{N}])`, 'giu'));
+  const parts = text.split(new RegExp(`(?<![\\p{L}\\p{N}])(${alternatives})(?![\\p{L}\\p{N}])`, 'giu'));
+  return parts.map((part, i) =>
+    i % 2 ? (
+      <mark key={i} className="rounded px-1.5 py-0.5 not-italic font-semibold bg-primary/15 text-primary border border-primary/20 dark:bg-primary/25 dark:text-primary-300">
+        {part}
+      </mark>
+    ) : (
+      part
+    ),
+  );
+}
+
+/** The transcript: a conversation as one turn a row with each speaker named, otherwise paragraphs. */
+function ScriptText({ text, highlights = [] }: { text: string; highlights?: string[] }) {
+  const words = highlights.map(word => word.trim()).filter(Boolean);
+  const turns = dialogueTurns(text);
+  if (!turns) return <>{highlighted(formatTranscriptText(text), words)}</>;
+  const order: string[] = [];
+  for (const turn of turns) if (!order.includes(turn.speaker)) order.push(turn.speaker);
   return (
-    <>
-      {parts.map((part, i) =>
-        i % 2 ? (
-          <mark key={i} className="rounded px-1.5 py-0.5 not-italic font-semibold bg-primary/15 text-primary border border-primary/20 dark:bg-primary/25 dark:text-primary-300">
-            {part}
-          </mark>
-        ) : (
-          part
-        ),
-      )}
-    </>
+    <ol className="space-y-3 whitespace-normal" data-testid="dialogue-transcript">
+      {turns.map((turn, i) => (
+        <li key={i} className="flex items-start gap-3">
+          <span
+            className={`mt-0.5 inline-flex min-w-[4.5rem] shrink-0 justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ${SPEAKER_COLOURS[order.indexOf(turn.speaker)]}`}
+          >
+            {turn.speaker}
+          </span>
+          <p className="min-w-0 flex-1 leading-7">{highlighted(turn.text, words)}</p>
+        </li>
+      ))}
+    </ol>
   );
 }

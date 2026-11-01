@@ -446,8 +446,12 @@ function PracticePageContent() {
   const waitingForPrompt =
     grading === 'speech' && promptHasAudio && result === null && heardPromptFor !== currentQuestion?.id;
 
+  // Each new attempt gets a new round: the question's audio and recorder start afresh.
+  const [answerRound, setAnswerRound] = useState(0);
   const resetAnswer = useCallback(() => {
     setStartedTask(null);
+    setAnswerRound(n => n + 1);
+    setHeardPromptFor(null);
     setResult(null);
     setTextAnswer('');
     setBlankResponses({});
@@ -459,7 +463,6 @@ function PracticePageContent() {
   }, []);
 
   // Redo before submitting: a clean answer to the same question, with no new credit spent.
-  const [answerRound, setAnswerRound] = useState(0);
   const clearAnswer = () => {
     setTextAnswer('');
     setBlankResponses({});
@@ -468,6 +471,8 @@ function PracticePageContent() {
     setSpokenTranscript('');
     setDelivery(undefined);
     setAnswerRound(n => n + 1);
+    // The recording plays again, and the recorder waits for it as before.
+    setHeardPromptFor(null);
   };
 
   // A marked answer shows up in My Score at once.
@@ -710,8 +715,8 @@ function PracticePageContent() {
     // Shown in place straight away, as before submitting; a refused start falls back to the start screen.
     const nextKey = `${activeExam}:${selectedSkill}:${next.id}`;
     setStartedTask(nextKey);
-    // The answer was read at the bottom; the new attempt starts at the top.
-    document.querySelector('[data-practice-workspace]')?.scrollIntoView?.({ block: 'start' });
+    // A new question starts at the top; Redo keeps the learner where they are.
+    if (next.id !== currentQuestion?.id) document.querySelector('[data-practice-workspace]')?.scrollIntoView?.({ block: 'start' });
     try {
       await api.post('/practice/start', {
         exam: activeExam,
@@ -1003,7 +1008,7 @@ function PracticePageContent() {
                 )}
 
                 {!isReadAloudTask(currentQuestion) && <PromptAudio
-                  key={currentQuestion.id}
+                  key={`${currentQuestion.id}-${answerRound}`}
                   questionId={currentQuestion.id}
                   audioUrl={currentQuestion.audioUrl}
                   audioTranscript={result?.review?.audioTranscript ?? currentQuestion.audioTranscript}
@@ -1119,18 +1124,20 @@ function PracticePageContent() {
                     {waitingForPrompt && (
                       <p role="status" className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                         <Volume2 className="w-3.5 h-3.5" aria-hidden />
-                        Play the audio above. Recording starts on its own when it ends.
+                        Listen to the audio, and recording starts on its own when it ends. Or click below to answer now.
                       </p>
                     )}
                     <AudioRecorder
                       key={`${currentQuestion.id}-${answerRound}`}
                       prepSeconds={prepSecondsFor(currentQuestion.typeId, currentQuestion.prepTimeSeconds)}
                       // Prep counts down in the recorder as soon as the task (or its audio) is done, then recording starts.
-                      autoStart
+                      autoStart={!waitingForPrompt}
+                      // While the audio plays, a click answers at once and stops it.
+                      answerNow={waitingForPrompt}
                       maxSeconds={currentQuestion.timeLimitSeconds}
                       // PTE's microphone closes after 3 seconds of silence; an IELTS examiner waits.
                       stopAfterSilence={currentQuestion.exam === 'PTE'}
-                      disabled={submitting || result !== null || waitingForPrompt}
+                      disabled={submitting || result !== null}
                       controlRef={recorderControl}
                       onStatus={setRecorderStatus}
                       onRecorded={(blob, transcript, measured) => {
@@ -1285,7 +1292,7 @@ function PracticePageContent() {
                   status={recorderStatus}
                   maxSeconds={currentQuestion.timeLimitSeconds}
                   onControl={() => recorderControl.current?.()}
-                  disabled={submitting || result !== null || waitingForPrompt}
+                  disabled={submitting || result !== null}
                 />
               ) : undefined}
               actions={
