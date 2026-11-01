@@ -136,7 +136,7 @@ function SkillCard({ skill, score }: { skill: SkillType; score: number }) {
 const PANEL = 'mt-3 max-h-44 overflow-y-auto rounded-xl border border-border px-4 py-3';
 
 /** The learner's sentence with only the changed words marked: the wrong ones struck through, the correction after them. */
-function CorrectedSentence({ original, correction }: { original: string; correction: string }) {
+export function CorrectedSentence({ original, correction }: { original: string; correction: string }) {
   const parts = wordDiff(original, correction);
   return (
     <p className="leading-relaxed text-foreground">

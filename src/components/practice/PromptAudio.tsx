@@ -830,13 +830,15 @@ interface VoicePanelProps {
   speed?: number;
   onSpeedChange?: (speed: number) => void;
   footer?: React.ReactNode;
+  /** The heading beside the speaker icon. */
+  label?: string;
 }
 
 /**
  * The listening panel: a glowing play orb and a voice waveform that comes alive
  * while the audio plays and fills in as it goes.
  */
-function VoicePanel({
+export function VoicePanel({
   disabled = false,
   playing,
   progress,
@@ -847,6 +849,7 @@ function VoicePanel({
   speed = 1,
   onSpeedChange,
   footer,
+  label = 'Listen',
 }: VoicePanelProps) {
   const played = Math.round(Math.min(1, Math.max(0, progress)) * BAR_COUNT);
   const Icon = toggleIcon === 'play' ? Play : toggleIcon === 'pause' ? Pause : Square;
@@ -889,7 +892,7 @@ function VoicePanel({
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
             <span className="flex shrink-0 items-center gap-1.5 text-sm font-bold text-foreground">
               <Volume2 className={`h-4 w-4 ${playing ? 'text-primary' : 'text-muted-foreground'}`} />
-              Listen
+              {label}
             </span>
             {status && (
               <span className="min-w-0 text-xs font-semibold text-muted-foreground" aria-live="polite">

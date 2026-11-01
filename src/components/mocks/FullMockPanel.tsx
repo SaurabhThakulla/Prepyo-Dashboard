@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { isInstitutionStudent, ReadingMockSession } from '@/lib/types';
 import { limitLabel } from '@/lib/subscriptions';
 import {
@@ -20,14 +21,26 @@ import {
   IELTS_FULL_MOCK_CREDITS,
   sectionLabel,
 } from '@/lib/fullMock';
-import { ListeningMockRunner, ListeningSession } from '@/components/practice/ListeningMockPanel';
-import { SpeakingMockRunner, SpeakingSession } from '@/components/practice/SpeakingMockPanel';
-import WritingMockPanel, { WritingMockSession } from '@/components/practice/WritingMockPanel';
+import { ListeningMockRunner, ListeningOutcome, ListeningResult, ListeningSession } from '@/components/practice/ListeningMockPanel';
+import { SpeakingMockRunner, SpeakingOutcome, SpeakingSession } from '@/components/practice/SpeakingMockPanel';
+import WritingMockPanel, { WritingMockOutcome, WritingMockSession } from '@/components/practice/WritingMockPanel';
+import TestFeedback from '@/components/mocks/TestFeedback';
 import ReadingMockPanel from '@/components/reading/ReadingMockPanel';
 
 interface ActiveSection {
   skill: FullMockSkill;
   paper: unknown;
+}
+
+/**
+ * What each section came back with, kept in the page so the end of the test
+ * can show the feedback and not only the bands. A section finished before the
+ * page was reloaded has none here.
+ */
+interface SectionResults {
+  listening?: ListeningOutcome;
+  writing?: WritingMockOutcome;
+  speaking?: SpeakingOutcome;
 }
 
 /**
@@ -46,6 +59,7 @@ export default function FullMockPanel({ header }: { header: React.ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [active, setActive] = useState<ActiveSection | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [results, setResults] = useState<SectionResults>({});
 
   // Reads where the test stands; once all four sections are done, finishes it.
   const refresh = useCallback(
@@ -139,7 +153,9 @@ export default function FullMockPanel({ header }: { header: React.ReactNode }) {
     }
   };
 
-  const backToLobby = () => {
+  const backToLobby = (outcome?: unknown) => {
+    // Only a section's own result object is kept, never a closing message.
+    if (active && outcome && typeof outcome === 'object') setResults(previous => ({ ...previous, [active.skill]: outcome }));
     setActive(null);
     if (full) void refresh(full.id);
   };
@@ -157,20 +173,20 @@ export default function FullMockPanel({ header }: { header: React.ReactNode }) {
             session={active.paper as ListeningSession}
             title="Full mock: Listening"
             onDone={backToLobby}
-            onClosed={backToLobby}
-            onLeave={backToLobby}
+            onClosed={() => backToLobby()}
+            onLeave={() => backToLobby()}
           />
         )}
         {active.skill === 'reading' && (
           <ReadingMockPanel
             key={full.id + active.skill}
-            section={{ session: active.paper as ReadingMockSession, onSubmitted: backToLobby, onLeave: backToLobby }}
+            section={{ session: active.paper as ReadingMockSession, onSubmitted: () => backToLobby(), onLeave: () => backToLobby() }}
           />
         )}
         {active.skill === 'writing' && (
           <WritingMockPanel
             key={full.id + active.skill}
-            section={{ session: active.paper as WritingMockSession, onSubmitted: backToLobby, onLeave: backToLobby }}
+            section={{ session: active.paper as WritingMockSession, onSubmitted: backToLobby, onLeave: () => backToLobby() }}
           />
         )}
         {active.skill === 'speaking' && (
@@ -178,8 +194,8 @@ export default function FullMockPanel({ header }: { header: React.ReactNode }) {
             key={full.id + active.skill}
             session={active.paper as SpeakingSession}
             onDone={backToLobby}
-            onClosed={backToLobby}
-            onLeave={backToLobby}
+            onClosed={() => backToLobby()}
+            onLeave={() => backToLobby()}
           />
         )}
       </div>
@@ -196,9 +212,16 @@ export default function FullMockPanel({ header }: { header: React.ReactNode }) {
       ) : full?.status === 'completed' ? (
         <FullMockResult
           session={full}
+          results={results}
           onReports={() => navigate('/mocks?tab=reports')}
-          onDone={() => setFull(null)}
-          onRedo={() => void start()}
+          onDone={() => {
+            setFull(null);
+            setResults({});
+          }}
+          onRedo={() => {
+            setResults({});
+            void start();
+          }}
           busy={busy}
         />
       ) : full ? (
@@ -328,20 +351,24 @@ function SectionRow({ index, section, current }: { index: number; section: FullM
 
 function FullMockResult({
   session,
+  results,
   onReports,
   onDone,
   onRedo,
   busy,
 }: {
   session: FullMockSession;
+  results: SectionResults;
   onReports: () => void;
   onDone: () => void;
   // A new full mock goes through the normal start, so the plan's allowance applies.
   onRedo: () => void;
   busy: boolean;
 }) {
+  // The sections whose feedback came back while this page was open, in the order of the test.
+  const feedback = (['listening', 'writing', 'speaking'] as const).filter(skill => results[skill]);
   return (
-    <div className="w-full flex justify-center">
+    <div className="w-full flex flex-col items-center gap-5">
       <Card className="w-full max-w-2xl p-6 sm:p-8 space-y-6">
         <div className="flex items-center gap-2">
           <Award className="w-6 h-6 text-amber-400" />
@@ -369,7 +396,9 @@ function FullMockResult({
           ))}
         </div>
         <p className="text-xs text-muted-foreground">
-          Each section's marked answers and feedback are in your score reports.
+          {feedback.length > 0
+            ? 'The feedback for each section is below.'
+            : 'Each section has its own score report.'}
         </p>
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="outline" onClick={onDone}>
@@ -382,6 +411,40 @@ function FullMockResult({
           </Button>
         </div>
       </Card>
+
+      {feedback.length > 0 && (
+        <Tabs defaultValue={feedback[0]} className="w-full max-w-4xl space-y-4">
+          <TabsList className="min-h-0 justify-start">
+            {feedback.map(skill => (
+              <TabsTrigger key={skill} value={skill}>
+                {sectionLabel(skill)} feedback
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {results.listening && (
+            <TabsContent value="listening">
+              <ListeningResult outcome={results.listening} embedded />
+            </TabsContent>
+          )}
+          {results.writing && (
+            <TabsContent value="writing" className="space-y-5">
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold text-primary">Task 1</h3>
+                <TestFeedback evaluation={results.writing.task1Evaluation} />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold text-primary">Task 2</h3>
+                <TestFeedback evaluation={results.writing.task2Evaluation} />
+              </div>
+            </TabsContent>
+          )}
+          {results.speaking && (
+            <TabsContent value="speaking">
+              <TestFeedback evaluation={results.speaking.evaluation} />
+            </TabsContent>
+          )}
+        </Tabs>
+      )}
     </div>
   );
 }

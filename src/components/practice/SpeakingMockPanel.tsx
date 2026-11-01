@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Mic, Square, Send, LogOut, RefreshCw, RotateCcw, User } from 'lucide-react';
+import { Mic, Square, Send, RefreshCw, RotateCcw, User } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
@@ -17,7 +17,8 @@ import { AnswerRecorder } from '@/lib/answerRecorder';
 import { Playback, playClips, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import SectionMockIntro from '@/components/mocks/SectionMockIntro';
-import PracticeResultCard from '@/components/practice/PracticeResultCard';
+import TestFeedback from '@/components/mocks/TestFeedback';
+import MockHeader from '@/components/mocks/MockHeader';
 
 /** Mirrors billing.SectionMockSubTests on the server, which is what enforces it. */
 const SECTION_MOCK_SUB_TESTS = 5;
@@ -408,18 +409,13 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
 
   const partLabel = step ? `Part ${step.part}` : 'Finished';
   return (
-    <div className="w-full min-h-[calc(100dvh-4rem)] px-3 sm:px-6 lg:px-8 py-3 space-y-3 bg-background">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-border pb-2.5">
-        <div>
-          <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">IELTS Speaking Mock: {session.title}</h1>
-          <p className="text-xs text-muted-foreground">
-            {partLabel} • question {Math.min(index + 1, session.steps.length)} of {session.steps.length}
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={onLeave} className="gap-1.5 font-bold">
-          <LogOut className="w-3.5 h-3.5" /> <span>Leave</span>
-        </Button>
-      </div>
+    <div className="w-full min-h-[calc(100dvh-4rem)] px-4 sm:px-6 lg:px-8 py-5 space-y-3.5 bg-background">
+      <MockHeader
+        code={step ? `P${step.part}` : 'S'}
+        title={`IELTS Speaking Mock: ${session.title}`}
+        subtitle={`${partLabel} • question ${Math.min(index + 1, session.steps.length)} of ${session.steps.length}`}
+        onLeave={onLeave}
+      />
 
       {phase === 'intro' && (
         <Card className="p-5 space-y-3">
@@ -533,7 +529,7 @@ export function SpeakingResult({ outcome, onBack, onRedo }: { outcome: SpeakingO
         </p>
         {outcome.xpAwarded > 0 && <Badge variant="default">+{outcome.xpAwarded} XP</Badge>}
       </Card>
-      <PracticeResultCard result={{ evaluation: outcome.evaluation, xpAwarded: 0 }} />
+      <TestFeedback evaluation={outcome.evaluation} />
       <div className="flex flex-wrap justify-end gap-2">
         <Button variant="outline" onClick={onBack}>Back to speaking practice</Button>
         {onRedo && (

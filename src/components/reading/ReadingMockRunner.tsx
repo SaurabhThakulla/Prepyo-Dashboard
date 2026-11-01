@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Clock, LogOut, RefreshCw, Send } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ReadingMockSession } from '@/lib/types';
 import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
 import { useReadingMock } from '@/lib/hooks/useReading';
+import MockHeader from '@/components/mocks/MockHeader';
 import { useTestLock } from '@/lib/hooks/useTestLock';
 import { needsParagraphLabels } from '@/lib/readingTypes';
 
@@ -85,35 +85,18 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
   };
 
   const activeSet = sets[activeIndex];
-  const minutes = Math.max(0, Math.floor(secondsLeft / 60));
-  const seconds = Math.max(0, secondsLeft % 60);
-  const lowOnTime = secondsLeft <= 300;
 
   return (
     <div className="w-full min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] p-0 m-0 flex flex-col bg-background lg:overflow-hidden px-3 sm:px-6 lg:px-8 py-2.5 space-y-2.5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-border pb-2.5 shrink-0">
-        <div>
-          <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">
-            {session.mockTitle ?? 'Reading Mock'}
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            {sets.length} passages • {session.totalQuestions} questions • marked automatically
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Badge variant={lowOnTime ? 'warning' : 'outline'} className="gap-1 font-mono">
-            <Clock className="w-3 h-3" />
-            {minutes}:{String(seconds).padStart(2, '0')}
-          </Badge>
-          <Badge variant={mock.answeredCount === session.totalQuestions ? 'success' : 'outline'}>
-            {mock.answeredCount}/{session.totalQuestions}
-          </Badge>
-          <Button variant="outline" size="sm" onClick={mock.exit} className="gap-1.5 font-bold">
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Leave</span>
-          </Button>
-        </div>
+      <div className="shrink-0">
+        <MockHeader
+          code={`R${activeIndex + 1}`}
+          title={session.mockTitle ?? 'Reading Mock'}
+          subtitle={`Passage ${activeIndex + 1} of ${sets.length} • ${session.totalQuestions} questions • marked automatically`}
+          secondsLeft={secondsLeft}
+          answered={{ done: mock.answeredCount, total: session.totalQuestions }}
+          onLeave={mock.exit}
+        />
       </div>
 
       {session.reusedPassages && (
