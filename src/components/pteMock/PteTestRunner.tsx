@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowRight, Clock, Flag, LogOut, Loader2 } from 'lucide-react';
+import { ArrowRight, Clock, Flag, LogOut, Loader2, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -50,6 +50,34 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
   const expiredFor = useRef<string | null>(null);
   const item = session.item;
 
+  // The microphone checked before the test is missing when a test is resumed
+  // (after a reload, or Continue on an institute mock). A speaking item then
+  // asks for it here instead of letting the answer go unrecorded.
+  const [ownMic, setOwnMic] = useState<TestMicrophone | null>(null);
+  const [micError, setMicError] = useState<string | null>(null);
+  const [openingMic, setOpeningMic] = useState(false);
+  useEffect(() => () => ownMic?.close(), [ownMic]);
+  const liveMic = mic?.isOpen ? mic : ownMic?.isOpen ? ownMic : null;
+  const needsMic = item?.task.skill === 'speaking' && !liveMic;
+
+  const turnOnMic = async () => {
+    setMicError(null);
+    if (!TestMicrophone.supported()) {
+      setMicError('This browser cannot record audio. Use Chrome or Edge on a computer.');
+      return;
+    }
+    setOpeningMic(true);
+    const m = new TestMicrophone();
+    try {
+      await m.open();
+      setOwnMic(m);
+    } catch {
+      setMicError('Microphone access was refused. Allow the microphone for this site (the icon in the address bar) and try again.');
+    } finally {
+      setOpeningMic(false);
+    }
+  };
+
   // The test holds the screen: no menu or header, and the app will not navigate
   // away. Save and Exit (the paper stays open) and End test are the ways out.
   useTestLock(session.title, onLeave);
@@ -68,9 +96,10 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
   }, [session.status, session.id, onFinished]);
 
   const advance = useCallback(async () => {
-    if (!itemRef.current || submitting) return;
+    if (submitting) return;
     // A paper with nothing left goes to scoring; the effect above sees it.
-    await submit(await itemRef.current.collect());
+    // With no item on screen (waiting for the microphone) it goes unanswered.
+    await submit(itemRef.current ? await itemRef.current.collect() : {});
   }, [submit, submitting]);
 
   const onNext = () => {
@@ -192,7 +221,24 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
                 <h3 className="text-sm font-semibold leading-snug sm:text-base">{item.task.name}</h3>
               </div>
               <div className="p-4 sm:p-5">
-                <PteItem key={item.position} ref={itemRef} item={item} sessionId={session.id} mic={mic} onDraft={saveDraft} />
+                {needsMic ? (
+                  <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-muted/40 px-4 py-8 text-center">
+                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Mic className="h-6 w-6" />
+                    </span>
+                    <p className="font-semibold text-foreground">Turn on your microphone to answer</p>
+                    <p className="max-w-md text-sm text-muted-foreground">
+                      This item is spoken. The item starts once the microphone is on.
+                    </p>
+                    <Button onClick={() => void turnOnMic()} disabled={openingMic} className="gap-2">
+                      {openingMic ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
+                      Turn on the microphone
+                    </Button>
+                    {micError && <p className="text-sm text-destructive" role="alert">{micError}</p>}
+                  </div>
+                ) : (
+                  <PteItem key={item.position} ref={itemRef} item={item} sessionId={session.id} mic={liveMic} onDraft={saveDraft} />
+                )}
               </div>
             </div>
             {error && <p className="text-sm text-destructive" role="alert">{error} Press Next to try again.</p>}

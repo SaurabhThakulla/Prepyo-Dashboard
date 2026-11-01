@@ -86,7 +86,7 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       <div className="flex items-center justify-between gap-2">
         <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5">
           <ArrowLeft className="h-4 w-4" /> Mock tests
@@ -101,45 +101,45 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
       {/* Score summary */}
       <Card className="overflow-hidden">
         <div className="grid grid-cols-1 md:grid-cols-3">
-          <div className={`bg-gradient-to-br ${meta.accent} p-6 text-white flex flex-col items-center justify-center gap-2`}>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-white/80">{headlineLabel}</p>
+          <div className={`bg-gradient-to-br ${meta.accent} p-8 text-white flex flex-col items-center justify-center gap-2`}>
+            <p className="text-sm font-bold uppercase tracking-widest text-white/80">{headlineLabel}</p>
             <ScoreRing score={headline ?? null} />
-            <p className="text-xs text-white/85 text-center">{report.title}</p>
-            <p className="text-[11px] text-white/70">
+            <p className="text-base font-semibold text-white/90 text-center">{report.title}</p>
+            <p className="text-sm text-white/75">
               {new Date(report.completedAt ?? report.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
             </p>
           </div>
-          <div className="md:col-span-2 p-6 space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Communicative Skills</h2>
-            <div className="space-y-3.5">
+          <div className="md:col-span-2 p-6 sm:p-8 space-y-5">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Communicative Skills</h2>
+            <div className="space-y-5">
               {skills.map(skill => {
                 const score = result.skills[skill]!;
                 return (
-                  <div key={skill} className="grid grid-cols-[80px_1fr_36px] items-center gap-3">
-                    <span className="text-sm font-semibold text-foreground">{SKILL_LABELS[skill]}</span>
-                    <div className="relative h-3 rounded-full bg-muted">
+                  <div key={skill} className="grid grid-cols-[100px_1fr_48px] items-center gap-4">
+                    <span className="text-base font-semibold text-foreground">{SKILL_LABELS[skill]}</span>
+                    <div className="relative h-4 rounded-full bg-muted">
                       <div className={`absolute inset-y-0 left-0 rounded-full ${SKILL_COLORS[skill]}`} style={{ width: `${onScale(score)}%` }} />
                       {headline != null && result.overall != null && (
                         <div className="absolute -top-1 -bottom-1 w-0.5 bg-foreground/70" style={{ left: `${onScale(result.overall)}%` }} title="Overall" />
                       )}
                     </div>
-                    <span className="text-sm font-bold tabular-nums text-foreground text-right">{score}</span>
+                    <span className="text-xl font-bold tabular-nums text-foreground text-right">{score}</span>
                   </div>
                 );
               })}
-              <div className="grid grid-cols-[80px_1fr_36px] gap-3 text-xs text-muted-foreground">
+              <div className="grid grid-cols-[100px_1fr_48px] gap-4 text-sm text-muted-foreground">
                 <span />
                 <div className="flex justify-between"><span>10</span><span>30</span><span>50</span><span>70</span><span>90</span></div>
                 <span />
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 text-[11px]">
+            <div className="flex flex-wrap gap-2 text-sm">
               <Badge variant="outline">{result.answered} of {result.items} answered</Badge>
               {result.unscored > 0 && <Badge variant="warning">{result.unscored} not rated</Badge>}
               {report.missing.length > 0 && <Badge variant="warning">{report.missing.length} task type(s) not in bank</Badge>}
             </div>
-            <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground leading-relaxed">
-              <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <p className="flex items-start gap-1.5 text-sm text-muted-foreground leading-relaxed">
+              <Info className="h-4 w-4 shrink-0 mt-0.5" />
               A practice estimate on the PTE 10–90 scale, not an official score. Items count towards more than one skill,
               as in the real test.
               {hadSpeaking && ' Speaking is judged from what your device transcribed, so pronunciation is not assessed.'}
@@ -150,30 +150,30 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
       </Card>
 
       {/* Task breakdown */}
-      <Card className="p-5 space-y-4">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">How you did on each task</h2>
+      <Card className="p-6 sm:p-8 space-y-5">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">How you did on each task</h2>
         {tasksByPart.map(([part, tasks]) => (
           <div key={part} className="space-y-2">
-            <p className="text-[11px] font-bold text-foreground">{PART_LABELS[part]}</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <p className="text-base font-bold text-foreground">{PART_LABELS[part]}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
               {tasks.map(t => (
-                <div key={t.code} className="rounded-lg border border-border p-3 space-y-1.5">
-                  <div className="flex items-center justify-between gap-2 text-xs">
+                <div key={t.code} className="rounded-xl border border-border p-4 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2 text-base">
                     <span className="flex items-center gap-1.5 min-w-0">
                       <Badge variant="outline" className="font-mono text-xs shrink-0">{t.code}</Badge>
                       <span className="truncate font-medium text-foreground">{t.name}</span>
                     </span>
-                    <span className="font-bold tabular-nums text-foreground">{t.scored ? `${t.percent}%` : '—'}</span>
+                    <span className="text-lg font-bold tabular-nums text-foreground">{t.scored ? `${t.percent}%` : '—'}</span>
                   </div>
-                  <Progress value={t.scored ? t.percent : 0} className="h-1.5" indicatorClassName={barColor(t.percent)} />
+                  <Progress value={t.scored ? t.percent : 0} className="h-2" indicatorClassName={barColor(t.percent)} />
                   <div className="flex flex-wrap gap-1">
                     {SKILL_ORDER.filter(s => t.weights[s]).map(s => (
-                      <span key={s} className="text-xs text-muted-foreground">
+                      <span key={s} className="text-sm text-muted-foreground">
                         <span className={`inline-block h-1.5 w-1.5 rounded-full mr-1 ${SKILL_COLORS[s]}`} />
                         {SKILL_LABELS[s]}
                       </span>
                     ))}
-                    <span className="text-xs text-muted-foreground ml-auto">{t.items} item{t.items === 1 ? '' : 's'}</span>
+                    <span className="text-sm text-muted-foreground ml-auto">{t.items} item{t.items === 1 ? '' : 's'}</span>
                   </div>
                 </div>
               ))}
@@ -183,8 +183,8 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
       </Card>
 
       {/* Item review */}
-      <Card className="p-5 space-y-3">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Review every item</h2>
+      <Card className="p-6 sm:p-8 space-y-4">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Review every item</h2>
         <div className="space-y-2">
           {report.review.map(r => <ReviewRow key={r.position} item={r} />)}
         </div>
@@ -204,7 +204,7 @@ function ScoreRing({ score }: { score: number | null }) {
   const c = 2 * Math.PI * r;
   const fill = score == null ? 0 : onScale(score) / 100;
   return (
-    <div className="relative h-36 w-36">
+    <div className="relative h-44 w-44">
       <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
         <circle cx="60" cy="60" r={r} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="10" />
         <circle
@@ -213,8 +213,8 @@ function ScoreRing({ score }: { score: number | null }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-display text-4xl font-extrabold tabular-nums">{score ?? '—'}</span>
-        <span className="text-xs text-white/75">out of 90</span>
+        <span className="font-display text-5xl font-extrabold tabular-nums">{score ?? '—'}</span>
+        <span className="text-sm text-white/75">out of 90</span>
       </div>
     </div>
   );
@@ -241,10 +241,10 @@ function ReviewRow({ item }: { item: PteReviewItem }) {
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/40"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40"
         aria-expanded={open}
       >
-        <span className="w-7 text-xs font-bold text-muted-foreground tabular-nums">{item.position}</span>
+        <span className="w-8 text-sm font-bold text-muted-foreground tabular-nums">{item.position}</span>
         {item.percent == null ? (
           <Info className="h-4 w-4 text-muted-foreground shrink-0" />
         ) : good ? (
@@ -253,13 +253,13 @@ function ReviewRow({ item }: { item: PteReviewItem }) {
           <XCircle className="h-4 w-4 text-rose-500 shrink-0" />
         )}
         <Badge variant="outline" className="font-mono text-xs shrink-0">{item.task}</Badge>
-        <span className="text-xs text-foreground truncate flex-1">{item.question.title || item.taskName}</span>
-        <span className="text-[11px] text-muted-foreground hidden sm:inline">{STATUS_LABELS[item.status]}</span>
-        <span className="text-xs font-bold tabular-nums w-10 text-right">{item.percent != null ? `${item.percent}%` : '—'}</span>
+        <span className="text-sm text-foreground truncate flex-1">{item.question.title || item.taskName}</span>
+        <span className="text-sm text-muted-foreground hidden sm:inline">{STATUS_LABELS[item.status]}</span>
+        <span className="text-sm font-bold tabular-nums w-12 text-right">{item.percent != null ? `${item.percent}%` : '—'}</span>
         <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="border-t border-border px-4 py-3 space-y-3 text-xs">
+        <div className="border-t border-border px-5 py-4 space-y-3 text-sm">
           {item.question.prompt && <p className="text-foreground font-medium whitespace-pre-line">{item.question.prompt}</p>}
           {item.question.audioTranscript && (
             <Field label="Recording script">{item.question.audioTranscript}</Field>

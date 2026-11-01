@@ -84,6 +84,10 @@ export class TestMicrophone {
     return this.recorder.level();
   }
 
+  get isOpen(): boolean {
+    return this.recorder.isOpen;
+  }
+
   get recording(): boolean {
     return this.recorder.recording;
   }

@@ -27,7 +27,9 @@ export default function EnablingSkills({ criteria, exam }: { criteria: Evaluatio
           const { score, max } = scaled && c.maxScore === scaled.max
             ? { score: c.score, max: c.maxScore }
             : scaled ?? { score: points, max: outOf };
-          const tone = TONE[toneFor(part)];
+          // Colour and length follow the number shown, so 90/90 is a full green bar.
+          const shown = max > 0 ? Math.min(1, Math.max(0, score / max)) : part;
+          const tone = TONE[toneFor(shown)];
           return (
             <Trait key={c.name} reason={c.feedback} name={c.name} score={score} max={max}>
               <p className="flex items-baseline justify-between gap-3">
@@ -41,7 +43,7 @@ export default function EnablingSkills({ criteria, exam }: { criteria: Evaluatio
                 </span>
               </p>
               <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
-                <span className={cn('block h-full rounded-full transition-[width] duration-700', tone.bar)} style={{ width: `${Math.round(part * 100)}%` }} />
+                <span className={cn('block h-full rounded-full transition-[width] duration-700', tone.bar)} style={{ width: `${Math.round(shown * 100)}%` }} />
               </span>
             </Trait>
           );
