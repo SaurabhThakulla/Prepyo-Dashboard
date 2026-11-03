@@ -1,5 +1,5 @@
 import { subTestsLeft } from '@/lib/subscriptions';
-import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import PracticeUnavailable from '@/components/practice/PracticeUnavailable';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
@@ -72,7 +72,7 @@ import { useAICapabilities } from '@/lib/hooks/useAICapabilities';
 import type { Delivery } from '@/lib/delivery';
 import { useProgressStage } from '@/lib/hooks/useProgressStage';
 import { loadCompleted, saveCompleted } from '@/lib/practiceProgress';
-import QuestionDrawer from '@/components/practice/QuestionDrawer';
+import QuestionDrawer, { BackToQuestions } from '@/components/practice/QuestionDrawer';
 import { useExclusivePanel } from '@/components/layout/sidePanels';
 import ScoringProgress from '@/components/practice/ScoringProgress';
 import { recordQuestionAttempt } from '@/lib/questionStorage';
@@ -167,8 +167,10 @@ function PracticePageContent() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const isMockMode = Boolean(searchParams.get('mock'));
-  // Task links add drawer=open: the question list opens so the learner picks one (no credit until then).
+  // Task links add drawer=open: the task opens on its question list, a page of its own,
+  // and the learner picks one (no credit until then).
   const drawerParam = searchParams.get('drawer');
+  const listInUrl = drawerParam === 'open' || drawerParam === '1';
   // EPS-TOPIK reading items stand alone rather than sitting on a passage, so
   // they are dealt one at a time like listening, not from the passage list.
   const readingList =
@@ -201,13 +203,30 @@ function PracticePageContent() {
   const readingPassages = readingPassagesQuery.data?.passages ?? [];
   const passageParam = searchParams.get('passage');
 
+  // The practice list is a page: these learners get it (mocks, mistakes and admins do not).
+  const drawerShown = readingList || (!isAdmin(user) && !mistakeId && !isMockMode);
+
   // Every click on a task link opens its list, even the task already on screen.
+  // The URL holds the list, so the browser's back button moves between list and question.
   const { key: locationKey } = useLocation();
   useEffect(() => {
-    if (drawerParam === 'open' || drawerParam === '1') {
-      setIsDrawerOpen(true);
-    }
-  }, [drawerParam, locationKey]);
+    if (listInUrl) setIsDrawerOpen(true);
+    else if (drawerShown) setIsDrawerOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listInUrl, locationKey]);
+
+  const showList = () => {
+    const next = new URLSearchParams(searchParams);
+    next.set('drawer', 'open');
+    setSearchParams(next);
+  };
+  const hideList = () => {
+    setIsDrawerOpen(false);
+    if (!listInUrl) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('drawer');
+    setSearchParams(next);
+  };
 
   // Moving to another task or mock without leaving the page opens its list too.
   const listKey = `${activeExam}:${selectedSkill}:${typeParam ?? ''}:${isMockMode ? 'mock' : 'practice'}`;
@@ -276,7 +295,9 @@ function PracticePageContent() {
 
   const handleSelectQuestionFromDrawer = async (question: Question) => {
     closeTutorialVideo?.();
-    setIsDrawerOpen(false);
+    hideList();
+    // The question already open: back to it with the answer kept, no new start.
+    if (question.id === currentQuestion?.id && hasStarted) return;
     setCurrentQuestion(question);
     resetAnswer();
 
@@ -484,9 +505,25 @@ function PracticePageContent() {
   // so they are practised and authored like any other single question.
   const isReading = selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK' && activeExam !== 'JLPT';
   const isAdminUser = isAdmin(user);
-  // The list (rendered at the bottom) only shows for these; while it shows, the left menu stays shut.
-  const drawerShown = readingList || (!isAdminUser && !mistakeId && !isMockMode);
-  useExclusivePanel('right', isDrawerOpen && drawerShown, () => setIsDrawerOpen(false));
+  const listPage = drawerShown && isDrawerOpen;
+  // A question on screen gets the room: the left menu shuts when it opens (its button still reopens it).
+  useExclusivePanel('right', !isAdminUser && !isMockMode && !listPage, () => {});
+
+  // List and question share one window scroll: a question opens at its top,
+  // and going back to the list returns to where the learner was in it.
+  const listScrollY = useRef(0);
+  const shownListPage = useRef(listPage);
+  useEffect(() => {
+    // The ref, not listPage: it turns false before the page shrinks and scrolls on its own.
+    const remember = () => { if (shownListPage.current) listScrollY.current = window.scrollY; };
+    window.addEventListener('scroll', remember, { passive: true });
+    return () => window.removeEventListener('scroll', remember);
+  }, []);
+  useLayoutEffect(() => {
+    if (shownListPage.current === listPage) return;
+    shownListPage.current = listPage;
+    window.scrollTo(0, listPage ? listScrollY.current : 0);
+  }, [listPage]);
 
   // When switching exam, skill, subtask, or mistake, reset state cleanly without querying backend/database.
   useEffect(() => {
@@ -761,7 +798,7 @@ function PracticePageContent() {
   return (
     <div
       data-practice-workspace
-      className={`w-full ${isReading && !isAdminUser
+      className={`w-full ${isReading && !isAdminUser && !listPage
           ? 'min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] lg:overflow-hidden'
           : 'min-h-[calc(100vh-4rem)]'
         } p-0 m-0 max-sm:pb-20 flex flex-col bg-background`}
@@ -804,6 +841,54 @@ function PracticePageContent() {
         <Suspense fallback={<PracticePageSkeleton />}>
           <SkillMockPanel key={`${activeExam}-${selectedSkill}`} skill={selectedSkill} exam={activeExam} />
         </Suspense>
+      ) : readingList ? (
+        <>
+          {listPage && (
+            <QuestionDrawer
+              exam={activeExam}
+              skill={selectedSkill}
+              typeKey={typeParam}
+              isMock={false}
+              questions={readingPassages.map(passage => ({
+                id: passage.id,
+                title: passage.title,
+                prompt: passage.topic,
+                difficulty: passage.difficulty,
+              }))}
+              currentQuestionId={passageParam}
+              completedIds={readingPassages.filter(passage => passage.practisedAt).map(passage => passage.id)}
+              isLoading={
+                readingPassagesQuery.isLoading ||
+                readingPassagesQuery.isPending ||
+                (readingPassagesQuery.isFetching && readingPassages.length === 0) ||
+                (readingFamily.length === 0 && Boolean(typeParam))
+              }
+              onClose={passageParam ? hideList : undefined}
+              onSelectQuestion={passage => {
+                const next = new URLSearchParams(searchParams);
+                next.set('passage', passage.id);
+                next.delete('drawer');
+                // The URL change shuts the list, so the panel gets the passage before it may start.
+                setSearchParams(next);
+              }}
+            />
+          )}
+          {/* Stays mounted behind the list, so a passage in progress keeps its answers. */}
+          <div className={listPage ? 'hidden' : 'contents'}>
+            <Suspense fallback={<ReadingPracticeSkeleton />}>
+              <ReadingPracticePanel
+                key={`${activeExam}-${selectedSkill}-${typeParam || 'default'}`}
+                initialTypeKey={typeParam ?? undefined}
+                mistakeId={mistakeId}
+                exam={activeExam}
+                passageId={passageParam ?? undefined}
+                passageIds={readingPassages.map(passage => passage.id)}
+                listOpen={isDrawerOpen}
+                onBackToList={showList}
+              />
+            </Suspense>
+          </div>
+        </>
       ) : isReading ? (
         <Suspense fallback={<ReadingPracticeSkeleton />}>
           <ReadingPracticePanel
@@ -816,6 +901,24 @@ function PracticePageContent() {
             listOpen={isDrawerOpen}
           />
         </Suspense>
+      ) : listPage ? (
+        <QuestionDrawer
+          exam={activeExam}
+          skill={selectedSkill}
+          typeKey={typeParam}
+          isMock={false}
+          questions={questions}
+          currentQuestionId={hasStarted ? currentQuestion?.id : undefined}
+          completedIds={completedIds}
+          isLoading={loading || (questions.length === 0 && Boolean(typeParam) && !mistakeId && !loadFailed)}
+          onRetry={loadFailed ? () => void loadQuestionsForSubtask() : undefined}
+          onClose={hasStarted ? hideList : undefined}
+          onSelectQuestion={question => void handleSelectQuestionFromDrawer(question)}
+          onResetCompleted={() => {
+            setCompletedIds([]);
+            saveCompleted(activeExam, selectedSkill, typeParam, []);
+          }}
+        />
       ) : isAdminUser ? (
         <Suspense fallback={<AdminPageSkeleton />}>
           <AdminQuestionAuthoring
@@ -875,7 +978,7 @@ function PracticePageContent() {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
                 <Button
                   type="button"
-                  onClick={() => setIsDrawerOpen(true)}
+                  onClick={showList}
                   className="w-full sm:w-auto px-6 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <PanelRight className="w-4 h-4" />
@@ -906,6 +1009,7 @@ function PracticePageContent() {
         <div className="w-full flex flex-col flex-1">
           {/* Unified Full-Width Workspace matching Reading layout */}
           <div className="w-full px-4 sm:px-6 lg:px-8 py-5 space-y-4 flex-1 flex flex-col">
+            {drawerShown && <BackToQuestions onClick={showList} />}
             {/* Warning banner when practicing a task locked in current PTE variant */}
             {activeExam === 'PTE' && typeParam && !isPteTaskAvailable(pteVariant, typeParam) && (
               <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/90 dark:bg-amber-950/40 p-4 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
@@ -997,9 +1101,12 @@ function PracticePageContent() {
 
                 {/* IELTS Speaking Part 2 shows its task card as the test does; other prompts as text. */}
                 {promptInCard && currentQuestion.prompt && (cueCard ? <CueCard card={cueCard} /> : (
-                  <p data-dictionary className={`leading-relaxed whitespace-pre-line ${promptIsQuestion ? 'text-base text-foreground' : 'text-sm text-muted-foreground'}`}>
-                    {currentQuestion.prompt.trim()}
-                  </p>
+                  // Blank lines between paragraphs become a small gap, not a whole empty line.
+                  <div data-dictionary className={`space-y-1.5 leading-relaxed ${promptIsQuestion ? 'text-base text-foreground' : 'text-sm text-muted-foreground'}`}>
+                    {currentQuestion.prompt.trim().split(/\n\s*\n/).map((paragraph, i) => (
+                      <p key={i} className="whitespace-pre-line">{paragraph.trim()}</p>
+                    ))}
+                  </div>
                 ))}
 
                 {currentQuestion.imageUrl && (
@@ -1372,60 +1479,6 @@ function PracticePageContent() {
         </div>
       )}
 
-      {readingList && (
-        <QuestionDrawer
-          isOpen={isDrawerOpen}
-          onToggle={() => setIsDrawerOpen(prev => !prev)}
-          onClose={() => setIsDrawerOpen(false)}
-          exam={activeExam}
-          skill={selectedSkill}
-          typeKey={typeParam}
-          isMock={false}
-          questions={readingPassages.map(passage => ({
-            id: passage.id,
-            title: passage.title,
-            prompt: passage.topic,
-            difficulty: passage.difficulty,
-          }))}
-          currentQuestionId={passageParam}
-          completedIds={readingPassages.filter(passage => passage.practisedAt).map(passage => passage.id)}
-          isLoading={
-            readingPassagesQuery.isLoading ||
-            readingPassagesQuery.isPending ||
-            (readingPassagesQuery.isFetching && readingPassages.length === 0) ||
-            (readingFamily.length === 0 && Boolean(typeParam))
-          }
-          onSelectQuestion={passage => {
-            const next = new URLSearchParams(searchParams);
-            next.set('passage', passage.id);
-            next.delete('drawer');
-            setSearchParams(next);
-            setIsDrawerOpen(false);
-          }}
-        />
-      )}
-
-      {!isAdminUser && !mistakeId && !isMockMode && !readingList && (
-        <QuestionDrawer
-          isOpen={isDrawerOpen}
-          onToggle={() => setIsDrawerOpen(prev => !prev)}
-          onClose={() => setIsDrawerOpen(false)}
-          exam={activeExam}
-          skill={selectedSkill}
-          typeKey={typeParam}
-          isMock={false}
-          questions={questions}
-          currentQuestionId={currentQuestion?.id}
-          completedIds={completedIds}
-          isLoading={loading || (questions.length === 0 && Boolean(typeParam) && !mistakeId && !loadFailed)}
-          onRetry={loadFailed ? () => void loadQuestionsForSubtask() : undefined}
-          onSelectQuestion={question => void handleSelectQuestionFromDrawer(question)}
-          onResetCompleted={() => {
-            setCompletedIds([]);
-            saveCompleted(activeExam, selectedSkill, typeParam, []);
-          }}
-        />
-      )}
 
     </div>
   );

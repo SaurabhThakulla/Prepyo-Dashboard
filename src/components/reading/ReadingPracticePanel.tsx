@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useQueryClient } from '@tanstack/react-query';
 import PracticeActionBar, { notesFor, ON_BAR, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
 import MyScore from '@/components/practice/flow/MyScore';
+import { BackToQuestions } from '@/components/practice/QuestionDrawer';
 
 const PILL = 'h-9 gap-1.5 rounded-full px-3 text-xs font-bold sm:px-4';
 
@@ -34,6 +35,8 @@ interface ReadingPracticePanelProps {
   passageIds?: string[];
   /** The practice list is open: the first passage waits until it closes (or one is picked from it). */
   listOpen?: boolean;
+  /** Shows a button back to the practice list. */
+  onBackToList?: () => void;
 }
 
 /**
@@ -95,7 +98,7 @@ function EmptyState({
  * Left pane: Reading passage with centered title and continuous natural paragraphs.
  * Right pane: Question notes completion card with inline inputs and circled numbers.
  */
-export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, passageId, passageIds = [], listOpen = false }: ReadingPracticePanelProps) {
+export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, passageId, passageIds = [], listOpen = false, onBackToList }: ReadingPracticePanelProps) {
   const { user, activeExam: contextExam, refreshUser, setIsTutorOpen, setTutorContextPrompt, activeTestSession, setActiveTestSession } = useApp();
   const activeExam = exam ?? contextExam;
   const resolution = useMistakeResolution(mistakeId);
@@ -330,6 +333,11 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
           {/* Right Pane: Questions & Answer Cards (Independent scroll only) */}
           <div className={`w-full ${hasPassage ? 'lg:w-1/2' : 'lg:w-full'} lg:h-full min-h-0 flex flex-col lg:overflow-hidden`}>
             <div className="flex-1 min-h-0 lg:overflow-y-auto px-3 lg:pl-1 lg:pr-2 space-y-2 scrollbar-thin">
+              {onBackToList && !mistakeId && (
+                <div className="flex pt-1">
+                  <BackToQuestions onClick={onBackToList} label="All passages" />
+                </div>
+              )}
               {loadingNext ? <PaneSkeleton lines={4} tall /> : <>
               {displayedGroups.map((group: ReadingGroup, index: number) => (
                 <ReadingGroupCard

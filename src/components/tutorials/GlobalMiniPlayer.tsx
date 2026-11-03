@@ -52,7 +52,7 @@ export default function GlobalMiniPlayer() {
   // video plays costs battery on every screen, most on cheap phones.
   const showing = Boolean(activeTutorialVideo) && !isTestActive;
 
-  // Detect ANY right-side slide-over drawer (AI Tutor, QuestionDrawer, MockPaperDrawer, NotificationDrawer, etc.)
+  // Detect ANY right-side slide-over drawer (AI Tutor, MockPaperDrawer, NotificationDrawer, etc.)
   useEffect(() => {
     if (typeof document === 'undefined' || !showing) return;
 
@@ -61,14 +61,6 @@ export default function GlobalMiniPlayer() {
       if (isTutorOpen) {
         setIsRightDrawerOpen(true);
         setRightDrawerWidth(530);
-        return;
-      }
-
-      // 2. Question Drawer Panel
-      const questionDrawer = document.getElementById('question-drawer-panel');
-      if (questionDrawer && !questionDrawer.classList.contains('translate-x-full')) {
-        setIsRightDrawerOpen(true);
-        setRightDrawerWidth(questionDrawer.offsetWidth || 560);
         return;
       }
 

@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { rememberInstitution } from '@/lib/signOutPath';
 import { api, ApiError } from '@/lib/api';
 import '@/lib/google';
 import { ExamType, isExamType, NotificationItem, UserProfile } from '@/lib/types';
@@ -214,6 +215,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const applyUser = useCallback((next: UserProfile) => {
     setUser(next);
+    rememberInstitution(next);
     if (isExamType(next.targetExam)) {
       setActiveExamState(next.targetExam);
       try {

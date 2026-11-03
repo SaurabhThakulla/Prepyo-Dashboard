@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Mic, Square, Send, RefreshCw, RotateCcw, User } from 'lucide-react';
+import { CheckCircle2, Headphones, Lightbulb, MessageCircle, Mic, NotebookPen, Square, Send, RefreshCw, RotateCcw, Volume2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
@@ -14,11 +14,15 @@ import { Evaluation, MockAttempt, isInstitutionStudent, isPremiumUser } from '@/
 import { subTestsLeft } from '@/lib/subscriptions';
 import { encodeForUpload, beep } from '@/lib/audio';
 import { AnswerRecorder } from '@/lib/answerRecorder';
-import { Playback, playClips, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
+import { Playback, playClips, playRecording, replayClip, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import SectionMockIntro from '@/components/mocks/SectionMockIntro';
 import TestFeedback from '@/components/mocks/TestFeedback';
 import MockHeader from '@/components/mocks/MockHeader';
+import { CueCardPaper, ExaminerAvatar, ExaminerWave, MicOrb, PART_PHRASES, PART_TIPS, PartProgress, SPEAKING_PARTS, SpeakingDots, TestOverview, TimerRing, VoiceMeter } from '@/components/practice/SpeakingMockStage';
+
+/** How many recent microphone readings the meter shows. */
+const METER_BARS = 28;
 
 /** Mirrors billing.SectionMockSubTests on the server, which is what enforces it. */
 const SECTION_MOCK_SUB_TESTS = 5;
@@ -196,7 +200,12 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
     index >= session.steps.length || session.secondsRemaining <= 0 ? 'finished' : 'intro',
   );
   const [countdown, setCountdown] = useState(0);
+  // What the countdown started from, so the dial can show how much is left.
+  const [countdownTotal, setCountdownTotal] = useState(0);
   const [level, setLevel] = useState(0);
+  const [levels, setLevels] = useState<number[]>(() => Array(METER_BARS).fill(0));
+  // Part 2: whether the minute to prepare has begun for the current card.
+  const [prepared, setPrepared] = useState(false);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<SpokenAnswer[]>(session.answers);
@@ -206,6 +215,12 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
   const run = useRef(0);
 
   const step = session.steps[index];
+  // The whole test's time left, as the server set it when the test opened.
+  const [secondsLeft, setSecondsLeft] = useState(session.secondsRemaining);
+  useEffect(() => {
+    const timer = setInterval(() => setSecondsLeft(value => Math.max(0, value - 1)), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(
     () => () => {
@@ -219,8 +234,16 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
   // A live input meter while recording, so a silent microphone is obvious.
   useEffect(() => {
     if (phase !== 'recording') return;
-    const timer = setInterval(() => setLevel(recorder.current?.level() ?? 0), 120);
-    return () => clearInterval(timer);
+    const timer = setInterval(() => {
+      const value = recorder.current?.level() ?? 0;
+      setLevel(value);
+      setLevels(previous => [...previous.slice(1), value]);
+    }, 120);
+    return () => {
+      clearInterval(timer);
+      setLevel(0);
+      setLevels(Array(METER_BARS).fill(0));
+    };
   }, [phase]);
 
   useEffect(() => {
@@ -269,6 +292,7 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
       return;
     }
     setCountdown(seconds);
+    setCountdownTotal(seconds);
     setPhase('recording');
   }, []);
 
@@ -280,10 +304,13 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
       try {
         if (target.cueCard) {
           // The introduction, then a minute to prepare, then "start speaking".
+          setPrepared(false);
           await speak(target, 'lead', target.lead ?? '');
           if (current !== run.current) return;
+          setPrepared(true);
           setNotes('');
           setCountdown(target.prepSeconds ?? 60);
+          setCountdownTotal(target.prepSeconds ?? 60);
           setPhase('prep');
           return;
         }
@@ -392,6 +419,22 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
     if (step) void ask(step);
   };
 
+  // Plays the first examiner line (or a tone) so the learner can set the volume.
+  const [checkingSound, setCheckingSound] = useState(false);
+  const testSound = async () => {
+    unlockAudio();
+    setCheckingSound(true);
+    try {
+      const first = session.steps.map(s => storedLines(s, 'all')?.[0]).find(Boolean);
+      if (first) await playClips([{ url: first }]).done;
+      else await beep();
+    } catch {
+      setError("No sound played. Check your speaker or headphone volume, then try again.");
+    } finally {
+      setCheckingSound(false);
+    }
+  };
+
   const submit = async () => {
     setPhase('submitting');
     try {
@@ -407,112 +450,271 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
     }
   };
 
+  const parts = session.steps.map(s => s.part);
   const partLabel = step ? `Part ${step.part}` : 'Finished';
+  const active = step && phase !== 'intro' && phase !== 'finished' && phase !== 'submitting';
+  const showQuestion = Boolean(step && (!step.cueCard || phase === 'recording' || phase === 'saving' || phase === 'failed'));
+  const status: Partial<Record<Phase, { icon: React.ReactNode; text: string; className: string }>> = {
+    examiner: { icon: <Volume2 className="h-3.5 w-3.5" />, text: 'Listen to the examiner', className: 'bg-primary/10 text-primary' },
+    prep: { icon: <NotebookPen className="h-3.5 w-3.5" />, text: 'Prepare your talk', className: 'bg-amber-500/10 text-amber-700 dark:text-amber-300' },
+    recording: {
+      icon: <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />,
+      text: 'Recording',
+      className: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+    },
+    saving: { icon: <RefreshCw className="h-3.5 w-3.5 animate-spin" />, text: 'Saving your answer', className: 'bg-muted text-muted-foreground' },
+    failed: { icon: <RefreshCw className="h-3.5 w-3.5" />, text: 'Answer not saved', className: 'bg-destructive/10 text-destructive' },
+  };
+  const pill = status[phase];
+  const earlier = step ? session.steps.slice(0, index).filter(s => s.part === step.part && !s.cueCard) : [];
+  const timerTone = phase === 'recording' ? 'recording' : phase === 'prep' ? 'primary' : 'idle';
+  const timerLabel = phase === 'prep' ? 'Prepare' : phase === 'recording' ? 'Speak' : phase === 'examiner' ? 'Listen' : 'Wait';
   return (
-    <div className="w-full min-h-[calc(100dvh-4rem)] px-4 sm:px-6 lg:px-8 py-5 space-y-3.5 bg-background">
-      <MockHeader
-        code={step ? `P${step.part}` : 'S'}
-        title={`IELTS Speaking Mock: ${session.title}`}
-        subtitle={`${partLabel} • question ${Math.min(index + 1, session.steps.length)} of ${session.steps.length}`}
-        onLeave={onLeave}
-      />
+    <div className="w-full min-h-[calc(100dvh-4rem)] bg-background">
+      <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6 lg:px-8">
+        <MockHeader
+          code={step ? `P${step.part}` : 'S'}
+          title={`IELTS Speaking Mock: ${session.title}`}
+          subtitle={`${partLabel} • question ${Math.min(index + 1, session.steps.length)} of ${session.steps.length}`}
+          secondsLeft={phase === 'finished' || phase === 'submitting' ? undefined : secondsLeft}
+          onLeave={onLeave}
+        />
 
-      {phase === 'intro' && (
-        <Card className="p-5 space-y-3">
-          <p className="text-sm text-foreground">
-            {index === 0
-              ? 'The examiner will ask you questions in three parts. Answer each one aloud; your answer is recorded until you press Finish answer or its time runs out.'
-              : 'Continue your test from the next question.'}
-          </p>
-          <Button onClick={() => void begin()} className="font-bold gap-1.5">
-            <Mic className="w-4 h-4" /> {index === 0 ? 'Start the test' : 'Continue the test'}
-          </Button>
-        </Card>
-      )}
+        <div className="lg:hidden">
+          <PartProgress parts={parts} index={index} />
+        </div>
 
-      {step && phase !== 'intro' && phase !== 'finished' && phase !== 'submitting' && (
-        <Card className="p-5 space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="h-9 w-9 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="h-4 w-4 text-primary" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs font-bold text-muted-foreground">Examiner</p>
-              {step.lead && <p className="text-sm text-foreground">{step.lead}</p>}
-              {(!step.cueCard || phase === 'recording' || phase === 'saving') && (
-                <p className="text-sm font-semibold text-foreground">{step.question}</p>
-              )}
-            </div>
-          </div>
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-4">
 
-          {step.cueCard && (
-            <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-1.5">
-              <p className="text-sm font-semibold text-foreground">{step.cueCard.task}</p>
-              <p className="text-xs text-muted-foreground">You should say:</p>
-              <ul className="list-disc pl-5 text-sm text-foreground">
-                {step.cueCard.points.map(point => <li key={point}>{point}</li>)}
-              </ul>
-              <p className="text-sm text-foreground">{step.cueCard.explain}</p>
-            </div>
-          )}
-
-          {phase === 'prep' && (
-            <div className="space-y-2">
-              <Badge variant="outline">Preparation: {countdown}s</Badge>
-              <Textarea rows={4} value={notes} onChange={event => setNotes(event.target.value)} placeholder="Make notes if you wish. They are not marked." />
-            </div>
-          )}
-
-          {phase === 'examiner' && <p className="text-xs text-muted-foreground" aria-live="polite">The examiner is speaking…</p>}
-
-          {phase === 'recording' && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Badge variant={countdown <= 10 ? 'warning' : 'outline'} className="gap-1">
-                  <Mic className="w-3 h-3 text-rose-500" /> Recording · {countdown}s left
-                </Badge>
-                <Button onClick={() => void finishAnswer()} className="font-bold gap-1.5">
-                  <Square className="w-3.5 h-3.5" /> Finish answer
-                </Button>
+        {phase === 'intro' && (
+          <Card className="overflow-hidden p-0">
+            <div className="grid gap-6 p-6 sm:p-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+              <div className="space-y-4">
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <Headphones className="h-5 w-5" />
+                </span>
+                <div className="space-y-1.5">
+                  <h2 className="text-xl font-bold text-foreground">{index === 0 ? 'Ready when you are' : 'Welcome back'}</h2>
+                  <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+                    {index === 0
+                      ? 'The examiner will ask you questions in three parts. Answer each one aloud; your answer is recorded until you press Finish answer or its time runs out.'
+                      : 'Continue your test from the next question.'}
+                  </p>
+                </div>
+                {index === 0 && (
+                  <ul className="grid gap-2 text-sm text-foreground sm:grid-cols-3">
+                    {['Sit somewhere quiet', 'Allow the microphone', 'Answer in full sentences'].map(tip => (
+                      <li key={tip} className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" /> {tip}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="lg" onClick={() => void begin()} disabled={checkingSound} className="h-11 gap-2 rounded-full px-6 font-bold">
+                    <Mic className="h-4 w-4" /> {index === 0 ? 'Start the test' : 'Continue the test'}
+                  </Button>
+                  <Button size="lg" variant="outline" onClick={() => void testSound()} disabled={checkingSound} className="h-11 gap-2 rounded-full px-5">
+                    <Volume2 className="h-4 w-4" /> {checkingSound ? 'Playing…' : 'Test your sound'}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Turn your volume up. You should hear the examiner's voice when you test your sound.</p>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
-                <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-100" style={{ width: `${Math.round(level * 100)}%` }} />
+              <div className="hidden h-40 w-40 items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-primary/5 md:flex" aria-hidden>
+                <span className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg">
+                  <Mic className="h-9 w-9" />
+                </span>
               </div>
             </div>
-          )}
+          </Card>
+        )}
 
-          {phase === 'failed' && pending && (
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={() => void upload(pending)} className="font-bold gap-1.5">
-                <RefreshCw className="w-3.5 h-3.5" /> Try saving again
-              </Button>
-              <Button variant="outline" onClick={() => record(step.answerSeconds)}>
-                Record the answer again
-              </Button>
+        {active && step && (
+          <Card className="overflow-hidden p-0">
+            <div className="grid lg:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="space-y-5 p-5 sm:p-6">
+                <div className="flex items-center gap-4">
+                  <ExaminerAvatar speaking={phase === 'examiner'} />
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-sm font-bold text-foreground">
+                      Examiner {phase === 'examiner' && <SpeakingDots />}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Part {step.part} · {SPEAKING_PARTS[step.part] ?? 'Speaking'}
+                    </p>
+                  </div>
+                </div>
+
+                {(step.lead || showQuestion) && (
+                  <div className="space-y-2 rounded-2xl rounded-tl-sm border border-border bg-muted/40 p-4 sm:p-5" aria-live="polite">
+                    {step.lead && <p className="text-sm leading-relaxed text-muted-foreground">{step.lead}</p>}
+                    {showQuestion && <p className="text-lg font-semibold leading-snug text-foreground sm:text-xl">{step.question}</p>}
+                  </div>
+                )}
+
+                {step.cueCard && <CueCardPaper {...step.cueCard} />}
+
+                {!step.cueCard && earlier.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-muted-foreground">Earlier in Part {step.part}</p>
+                    <ul className="space-y-1.5">
+                      {earlier.map(previous => (
+                        <li key={previous.key} className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                          <span>{previous.question}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {phase === 'prep' && (
+                  <div className="space-y-2">
+                    <label htmlFor="speaking-notes" className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
+                      <NotebookPen className="h-3.5 w-3.5" /> Your notes
+                    </label>
+                    <Textarea
+                      id="speaking-notes"
+                      rows={5}
+                      value={notes}
+                      onChange={event => setNotes(event.target.value)}
+                      placeholder="Make notes if you wish. They are not marked."
+                      className="rounded-xl bg-background"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="order-first flex items-center gap-4 border-b border-border bg-muted/25 p-4 lg:order-none lg:flex-col lg:justify-center lg:border-b-0 lg:border-l lg:p-6 lg:text-center">
+                <TimerRing seconds={countdown} total={countdownTotal} tone={timerTone} label={timerLabel} />
+
+                <div className="flex min-w-0 flex-1 flex-col items-start gap-3 lg:w-full lg:flex-none lg:items-center">
+                  {pill && (
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${pill.className}`}>
+                      {pill.icon} {pill.text}
+                    </span>
+                  )}
+
+                  {phase === 'examiner' && (
+                    <>
+                      <ExaminerWave />
+                      <p className="text-xs text-muted-foreground lg:max-w-[16rem]">
+                        {step.cueCard && !prepared
+                          ? 'Read the task card. Your minute to prepare starts next.'
+                          : 'Recording starts after the beep.'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => replayClip()}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" /> Can't hear it? Play again
+                      </button>
+                    </>
+                  )}
+
+                  {phase === 'prep' && (
+                    <p className="text-xs text-muted-foreground lg:max-w-[16rem]">
+                      When the time is up, the examiner asks you to start and your talk is recorded.
+                    </p>
+                  )}
+
+                  {phase === 'recording' && (
+                    <div className="flex w-full flex-col items-stretch gap-3 lg:items-center">
+                      <div className="hidden lg:block">
+                        <MicOrb recording level={level} />
+                      </div>
+                      <VoiceMeter levels={levels} active />
+                      <Button size="lg" onClick={() => void finishAnswer()} className="h-11 w-full gap-2 rounded-full font-bold">
+                        <Square className="h-3.5 w-3.5 fill-current" /> Finish answer
+                      </Button>
+                    </div>
+                  )}
+
+                  {phase === 'failed' && pending && (
+                    <div className="flex w-full flex-col gap-2">
+                      <Button onClick={() => void upload(pending)} className="w-full gap-1.5 rounded-full font-bold">
+                        <RefreshCw className="h-3.5 w-3.5" /> Try saving again
+                      </Button>
+                      <Button variant="outline" onClick={() => record(step.answerSeconds)} className="w-full rounded-full">
+                        Record the answer again
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
+          </Card>
+        )}
 
-          {phase === 'saving' && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Saving your answer…
+        {active && step && PART_PHRASES[step.part] && (
+          <Card className="p-4 sm:p-5">
+            <p className="flex items-center gap-2 text-sm font-bold text-foreground">
+              <MessageCircle className="h-4 w-4 text-primary" /> Useful ways to begin
             </p>
-          )}
-        </Card>
-      )}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {PART_PHRASES[step.part].map(phrase => (
+                <span key={phrase} className="rounded-full border border-primary/20 bg-primary/[0.05] px-3 py-1.5 text-sm text-foreground">
+                  {phrase}
+                </span>
+              ))}
+            </div>
+          </Card>
+        )}
 
-      {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+        {active && step && PART_TIPS[step.part] && (
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+            {PART_TIPS[step.part].map(tip => (
+              <div key={tip.title} className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  <Lightbulb className="h-4 w-4" />
+                </span>
+                <div className="space-y-0.5">
+                  <p className="text-sm font-bold text-foreground">{tip.title}</p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">{tip.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
-      {(phase === 'finished' || phase === 'submitting') && (
-        <Card className="p-5 space-y-3">
-          <p className="text-sm text-foreground">
-            That is the end of the speaking test. {saved.length} of {session.steps.length} answers were recorded.
+        {error && (
+          <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            {error}
           </p>
-          <Button onClick={() => void submit()} disabled={phase === 'submitting'} className="font-bold gap-1.5">
-            {phase === 'submitting' ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-            {phase === 'submitting' ? 'Rating your test…' : 'Get my rating'}
-          </Button>
-        </Card>
-      )}
+        )}
+
+        {(phase === 'finished' || phase === 'submitting') && (
+          <Card className="p-6 sm:p-8">
+            <div className="mx-auto flex max-w-md flex-col items-center gap-4 text-center">
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
+                <CheckCircle2 className="h-9 w-9 text-emerald-500" />
+              </span>
+              <div className="space-y-1">
+                <h2 className="text-xl font-bold text-foreground">That is the end of the speaking test</h2>
+                <p className="text-sm text-muted-foreground">
+                  {saved.length} of {session.steps.length} answers were recorded.
+                </p>
+              </div>
+              <Button size="lg" onClick={() => void submit()} disabled={phase === 'submitting'} className="h-11 gap-2 rounded-full px-6 font-bold">
+                {phase === 'submitting' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {phase === 'submitting' ? 'Rating your test…' : 'Get my rating'}
+              </Button>
+            </div>
+          </Card>
+        )}
+        </div>
+
+        <aside className="lg:sticky lg:top-4">
+          <TestOverview
+            steps={session.steps}
+            index={index}
+            spoken={Object.fromEntries(saved.map(answer => [answer.key, answer.durationSeconds]))}
+          />
+        </aside>
+        </div>
+      </div>
     </div>
   );
 }
@@ -521,13 +723,35 @@ export function SpeakingResult({ outcome, onBack, onRedo }: { outcome: SpeakingO
   const band = outcome.evaluation.estimatedScore;
   return (
     <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 space-y-4">
-      <Card className="p-5 text-center space-y-1.5">
-        <span className="text-xs font-bold text-muted-foreground uppercase">Speaking estimate</span>
-        <div className="font-display text-4xl font-black text-foreground">{band != null ? band.toFixed(1) : '—'}</div>
-        <p className="text-xs text-muted-foreground">
-          Rated across all three parts from transcripts of your answers. Pronunciation could not be assessed, so this uses three of the four Speaking criteria. A practice estimate, not an official result.
-        </p>
-        {outcome.xpAwarded > 0 && <Badge variant="default">+{outcome.xpAwarded} XP</Badge>}
+      <Card className="overflow-hidden p-0">
+        <div className="flex flex-col items-center gap-5 bg-gradient-to-br from-primary/[0.08] via-transparent to-transparent p-6 text-center sm:flex-row sm:text-left">
+          <div className="relative flex h-28 w-28 shrink-0 items-center justify-center">
+            <svg viewBox="0 0 120 120" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden>
+              <circle cx="60" cy="60" r="52" className="fill-none stroke-muted" strokeWidth="8" />
+              <circle
+                cx="60"
+                cy="60"
+                r="52"
+                className="fill-none stroke-primary"
+                strokeWidth="8"
+                strokeLinecap="round"
+                strokeDasharray={2 * Math.PI * 52}
+                strokeDashoffset={2 * Math.PI * 52 * (1 - Math.min(1, (band ?? 0) / 9))}
+              />
+            </svg>
+            <div className="leading-none">
+              <div className="font-display text-4xl font-black text-foreground">{band != null ? band.toFixed(1) : '—'}</div>
+              <div className="mt-1 text-xs font-semibold text-muted-foreground">/ 9</div>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <span className="text-xs font-bold uppercase tracking-wide text-primary">Speaking estimate</span>
+            <p className="text-sm text-muted-foreground">
+              Rated across all three parts from transcripts of your answers. Pronunciation could not be assessed, so this uses three of the four Speaking criteria. A practice estimate, not an official result.
+            </p>
+            {outcome.xpAwarded > 0 && <Badge variant="default">+{outcome.xpAwarded} XP</Badge>}
+          </div>
+        </div>
       </Card>
       <TestFeedback evaluation={outcome.evaluation} />
       <div className="flex flex-wrap justify-end gap-2">

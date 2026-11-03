@@ -3,7 +3,7 @@ import {
   Search,
   X,
   ChevronRight,
-  ChevronLeft,
+  ArrowLeft,
   ArrowUpDown,
   Sparkles,
   CheckCircle2,
@@ -14,7 +14,6 @@ import {
   Play,
   RefreshCw,
   WifiOff,
-  ListOrdered,
 } from 'lucide-react';
 import { EXAM_LABELS, EXAM_MAX_SCORE, ExamType, SkillType } from '@/lib/types';
 import { taskInstruction } from '@/lib/syllabus';
@@ -36,9 +35,8 @@ export interface DrawerItem {
 }
 
 interface QuestionDrawerProps<T extends DrawerItem> {
-  isOpen: boolean;
-  onToggle: () => void;
-  onClose: () => void;
+  /** Shown as "Back to question" when a question is already open behind the list. */
+  onClose?: () => void;
   exam: ExamType;
   skill: SkillType;
   typeKey?: string | null;
@@ -57,9 +55,8 @@ type FilterTab = 'all' | 'done' | 'remaining';
 
 const PAGE_SIZE = 20;
 
+/** The task's question list, shown as a page of its own. Picking a question opens it. */
 export default function QuestionDrawer<T extends DrawerItem>({
-  isOpen,
-  onToggle,
   onClose,
   exam,
   skill,
@@ -82,12 +79,10 @@ export default function QuestionDrawer<T extends DrawerItem>({
   const [loadingMore, setLoadingMore] = useState(false);
   const observerSentinelRef = useRef<HTMLDivElement | null>(null);
 
-  // Re-read local storage records when drawer opens or questions change
+  // Re-read local storage records when the list shows or questions change
   useEffect(() => {
-    if (isOpen) {
-      setScoresMap(getExamQuestionRecords(exam));
-    }
-  }, [isOpen, exam, completedIds]);
+    setScoresMap(getExamQuestionRecords(exam));
+  }, [exam, completedIds]);
 
   // Reset pagination when filters change
   useEffect(() => {
@@ -174,47 +169,12 @@ export default function QuestionDrawer<T extends DrawerItem>({
 
 
   return (
-    <>
-      {/* Floating Sideway Toggle Button (visible always, matches coral pill in APEUni screenshot) */}
-      {/* Floating Sideway Toggle Button (uses brand color, hidden when drawer is open) */}
-      <button
-        type="button"
-        id="question-drawer-toggle"
-        data-stay
-        onClick={onToggle}
-        title={isOpen ? 'Collapse Questions List' : 'Browse Questions List'}
-        aria-label={isOpen ? 'Collapse Questions List' : 'Browse Questions List'}
-        className={`fixed top-1/2 -translate-y-1/2 z-50 transition-all duration-300 flex items-center justify-center shadow-xl active:scale-95 group ${isOpen
-          ? 'hidden'
-          : 'max-sm:top-auto max-sm:translate-y-0 max-sm:bottom-[calc(var(--mobile-nav-h,0px)+1rem)] max-sm:left-3 sm:right-3 bg-primary hover:bg-primary/90 text-white w-12 h-12 sm:w-11 sm:h-11 rounded-full hover:scale-105 shadow-primary/30'
-          }`}
-      >
-        <ChevronLeft className="hidden sm:block w-5 h-5 transition-transform group-hover:-translate-x-0.5" />
-        <ListOrdered className="sm:hidden w-5 h-5" aria-hidden />
-        {questions.length > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 sm:right-auto sm:-left-1.5 whitespace-nowrap leading-4 bg-blue-600 text-white font-mono text-xs font-bold px-1.5 py-0.2 rounded-full border-2 border-white dark:border-slate-900 shadow-xs">
-            {questions.length}
-          </span>
-        )}
-      </button>
-
-      {/* Clicking anywhere outside the drawer closes it; the page dims so the list stands out. */}
-      {isOpen && (
-        <div
-          role="presentation"
-          onClick={onClose}
-          className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40 transition-opacity duration-300"
-        />
-      )}
-
-      {/* Sliding Sideways Drawer Panel (inset-y-0 full height, no top gap) */}
-      <aside
-        id="question-drawer-panel"
-        data-stay
-        aria-label="Practice Questions Drawer"
-        className={`fixed inset-y-0 right-0 w-full sm:w-[837px] md:w-[927px] lg:w-[1017px] xl:w-[1076px] max-w-full bg-slate-50 dark:bg-[#0c111b] border-l border-slate-200 dark:border-white/10 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
-          }`}
-      >
+    <section
+      id="question-list-page"
+      aria-label="Practice questions"
+      className="w-full flex-1 flex flex-col sm:px-6 lg:px-8 sm:py-5"
+    >
+      <div className="flex flex-col bg-slate-50 dark:bg-[#0c111b] sm:border border-slate-200 dark:border-white/10 sm:rounded-2xl overflow-hidden shadow-sm">
         {/* 1. Header: the sidebar's blue, with the search box on it */}
         <div className="relative overflow-hidden p-4 sm:p-5 space-y-4 bg-gradient-to-br from-[#2a56cf] via-primary to-[#132e7d] dark:from-blue-900 dark:via-blue-950 dark:to-slate-950 text-white shrink-0">
           <span aria-hidden className="pointer-events-none absolute -right-14 -top-20 h-52 w-52 rounded-full border-[24px] border-white/10" />
@@ -239,14 +199,18 @@ export default function QuestionDrawer<T extends DrawerItem>({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 rounded-xl text-white/70 hover:text-white hover:bg-white/15 transition-colors shrink-0 cursor-pointer"
-              title="Close drawer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Back to question"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-white bg-white/15 hover:bg-white/25 transition-colors shrink-0 cursor-pointer"
+              >
+                <span className="sm:hidden">Back</span>
+                <span className="hidden sm:inline">Back to question</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Search Box */}
@@ -323,7 +287,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
         </div>
 
         {/* 3. Infinite Scroll Questions List, one card per question */}
-        <div data-question-list className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 bg-slate-50 dark:bg-[#0c111b]">
+        <div data-question-list className="p-3 sm:p-4 space-y-2 bg-slate-50 dark:bg-[#0c111b]">
           {isLoading ? (
             <div className="space-y-2" role="status" aria-label="Loading questions">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -498,7 +462,21 @@ export default function QuestionDrawer<T extends DrawerItem>({
             </div>
           )}
         </div>
-      </aside>
-    </>
+      </div>
+    </section>
+  );
+}
+
+/** Takes the learner from an open question back to the task's question list. */
+export function BackToQuestions({ onClick, label = 'All questions' }: { onClick: () => void; label?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 self-start rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors cursor-pointer"
+    >
+      <ArrowLeft className="w-3.5 h-3.5" />
+      <span>{label}</span>
+    </button>
   );
 }
