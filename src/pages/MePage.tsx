@@ -29,6 +29,7 @@ import { ExamSwitcher } from '@/components/layout/sidebar/SecondaryPanel';
 import { profileImageUrl } from '@/lib/api';
 import { accountLines } from '@/lib/account';
 import { EXAM_LABELS, isAdmin, isInstitutionStudent, isPremiumUser } from '@/lib/types';
+import { signedOutPath } from '@/lib/signOutPath';
 import { cn } from '@/lib/utils';
 
 interface Row {
@@ -63,12 +64,14 @@ export default function MePage() {
 
   const signOut = async () => {
     setSigningOut(true);
+    // Read before logout clears the user: a consultancy's student goes back to its page.
+    const home = signedOutPath(user);
     try {
       await logout();
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
-      navigate('/login');
+      navigate(home);
       setSigningOut(false);
     }
   };

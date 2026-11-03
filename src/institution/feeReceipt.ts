@@ -503,13 +503,18 @@ export function jpegToPdf(jpeg: Uint8Array, widthPx: number, heightPx: number): 
   return out;
 }
 
-/** Draws the receipt and saves it as a PDF named after the student. */
-export async function downloadFeeReceipt(data: ReceiptData): Promise<void> {
+/** Draws the receipt as a one-page PDF. */
+export async function feeReceiptPdf(data: ReceiptData): Promise<Blob> {
   const canvas = await drawReceipt(data);
   const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
   if (!blob) throw new Error('The receipt could not be made.');
   const pdf = jpegToPdf(new Uint8Array(await blob.arrayBuffer()), W, H);
-  const url = URL.createObjectURL(new Blob([pdf.buffer as ArrayBuffer], { type: 'application/pdf' }));
+  return new Blob([pdf.buffer as ArrayBuffer], { type: 'application/pdf' });
+}
+
+/** Draws the receipt and saves it as a PDF named after the student. */
+export async function downloadFeeReceipt(data: ReceiptData): Promise<void> {
+  const url = URL.createObjectURL(await feeReceiptPdf(data));
   const link = document.createElement('a');
   link.href = url;
   link.download = `fee-receipt-${data.student.username}-${todayIso()}.pdf`;

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
+import { signedOutPath } from '@/lib/signOutPath';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import ReportIssueDialog from '@/components/support/ReportIssueDialog';
@@ -81,6 +82,8 @@ export default function AppSidebar({
   };
 
   const handleSignOut = async () => {
+    // Read before logout clears the user: a consultancy's student goes back to its page.
+    const home = signedOutPath(user);
     try {
       setIsSigningOut(true);
       await logout();
@@ -89,7 +92,7 @@ export default function AppSidebar({
     } finally {
       setIsOpen(false);
       setIsSecondaryOpen(false);
-      navigate('/login');
+      navigate(home);
       setIsSigningOut(false);
     }
   };

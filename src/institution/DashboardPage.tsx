@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Navigate, useLocation, useParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ExamCode, InstitutionAccount, logOut } from './api';
 import { useInstitutionAccount } from './account';
-import { dashboardPath, LOGIN_PATH, sectionPath } from './paths';
+import { dashboardPath, sectionPath } from './paths';
 import { InstitutionLoading } from './InstitutionPage';
 import InstitutionLayout, { InstitutionSection } from './InstitutionLayout';
 import BatchesSection from './BatchesSection';
@@ -31,11 +31,12 @@ export default function DashboardPage() {
   const { search } = useLocation();
   const { account, setAccount } = useInstitutionAccount();
   const [signingOut, setSigningOut] = useState(false);
+  const navigate = useNavigate();
 
   if (account === undefined) return <InstitutionLoading />;
-  // An admin who just signed out goes to the admin login; to anyone else this address is the student sign-in.
+  // Signed out (an admin who just left, or anyone else), this address is the
+  // institution's own sign-in page; other sections lead back to it.
   if (account === null) {
-    if (signingOut) return <Navigate to={LOGIN_PATH} replace />;
     return section === 'overview' ? <StudentLoginPage /> : <Navigate to={dashboardPath(code)} replace />;
   }
 
@@ -47,12 +48,15 @@ export default function DashboardPage() {
   if (!(section in TITLES)) return <Navigate to={dashboardPath(institution.code)} replace />;
   const page = section as InstitutionSection;
 
+  // The admin stays on the institution's own page, not Prepyo's admin login.
   const signOut = async () => {
     setSigningOut(true);
     try {
       await logOut();
     } finally {
+      navigate(dashboardPath(institution.code), { replace: true });
       setAccount(null);
+      setSigningOut(false);
     }
   };
 
