@@ -80,6 +80,8 @@ export interface Student {
   latestMock: MockScore | null;
   // Missing from an older API; read it through readinessOf.
   readiness?: Readiness;
+  // They already had a Prepyo account, which joined with its history.
+  movedIn?: boolean;
 }
 
 // Whether the student can book the real exam: ready once their last 2 full mocks

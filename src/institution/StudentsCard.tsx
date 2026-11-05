@@ -86,6 +86,8 @@ interface Credentials {
   password: string;
   // Set when the student was added but their fee or payment could not be saved.
   warning?: string;
+  // The email already had a Prepyo account, which joined instead of a new one.
+  movedIn?: boolean;
 }
 
 type StatusFilter = 'all' | 'active' | 'ready' | 'idle' | 'off';
@@ -242,7 +244,9 @@ export default function StudentsPage({ account, exams }: Props) {
     remove: async student => {
       const ok = await confirm({
         title: `Remove ${student.name}?`,
-        description: 'Their account, practice history and fee records are deleted. This cannot be undone.',
+        description: student.movedIn
+          ? 'They get their own Prepyo account back on the free plan. What they did with you and their fee records are deleted. This cannot be undone.'
+          : 'Their account, practice history and fee records are deleted. This cannot be undone.',
         confirmLabel: 'Remove student',
         tone: 'danger',
       });
@@ -1074,7 +1078,13 @@ function AddStudentDialog({
     } catch (err) {
       warning = `The fee was not saved (${errorMessage(err)}). Set it on the Fees page.`;
     }
-    onAdded({ name: created.student.name, username: created.student.username, password: created.password, warning });
+    onAdded({
+      name: created.student.name,
+      username: created.student.username,
+      password: created.password,
+      warning,
+      movedIn: created.student.movedIn,
+    });
   };
 
   return (
@@ -1341,6 +1351,12 @@ function CredentialsDialog({ credentials, loginAddress }: { credentials: Credent
         <dt className="text-muted-foreground">Password</dt>
         <dd className="font-mono font-semibold text-foreground">{credentials.password}</dd>
       </dl>
+      {credentials.movedIn && (
+        <p className="rounded-lg border border-sky-500/30 bg-sky-500/10 p-3 text-sm text-sky-800 dark:text-sky-300">
+          This email already had a Prepyo account. It is now part of your consultancy, with its practice history. From now on
+          they sign in with this username, not Google.
+        </p>
+      )}
       {credentials.warning && (
         <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
           {credentials.warning}
