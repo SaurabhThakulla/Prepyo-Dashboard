@@ -10,6 +10,12 @@ export default {
   theme: {
     extend: {
       colors: {
+        // The IELTS practice Test Report Form: paper, ink and its red headings.
+        trf: {
+          paper: "hsl(var(--trf-paper) / <alpha-value>)",
+          ink: "hsl(var(--trf-ink) / <alpha-value>)",
+          accent: "hsl(var(--trf-accent) / <alpha-value>)",
+        },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
@@ -73,6 +79,8 @@ export default {
       fontFamily: {
         sans: ["Inter", "'Noto Sans KR'", "system-ui", "sans-serif"],
         display: ["Outfit", "Inter", "'Noto Sans KR'", "system-ui", "sans-serif"],
+        // Score cards and answer reviews: plain, like a printed test report.
+        report: ["Arial", "Helvetica", "'Noto Sans KR'", "sans-serif"],
         reading: ["Lora", "Georgia", "Cambria", "'Times New Roman'", "'Noto Sans KR'", "serif"],
       },
       boxShadow: {

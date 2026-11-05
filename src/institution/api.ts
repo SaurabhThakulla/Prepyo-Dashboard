@@ -379,11 +379,24 @@ export interface MockAttemptRow {
   finalScore: number | null;
 }
 
+/** A student the mock is given to, with their sitting once they start. */
+export interface MockRosterRow {
+  userId: string;
+  name: string;
+  username: string;
+  attemptId?: string;
+  status: 'not_started' | MockAttemptRow['status'];
+  submittedAt: string | null;
+  finalScore: number | null;
+}
+
 export interface InstituteMockDetail extends InstituteMockSummary {
   slots: MockSlot[];
   items: (PaperItem & { question: BankQuestion | null })[];
   studentIds: string[];
   attempts: MockAttemptRow[];
+  /** Every student given the mock, started or not. Older servers leave it out. */
+  roster?: MockRosterRow[];
 }
 
 export interface MockForm {
