@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import {
   Check,
@@ -8,7 +9,7 @@ import {
 import { SubscriptionPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
-import { SubscriptionPlan } from '@/lib/types';
+import { isInstitutionStudent, SubscriptionPlan } from '@/lib/types';
 import { errorMessage } from '@/lib/api';
 import { formatExamDate } from '@/lib/dates';
 import { useSubscriptionPlans } from '@/lib/hooks/useResources';
@@ -25,7 +26,14 @@ interface ComparisonRow {
   elite: string | React.ReactNode;
 }
 
+/** A consultancy's students are on its plan: they never see this page. */
 export default function SubscriptionPage() {
+  const { user } = useApp();
+  if (isInstitutionStudent(user)) return <Navigate to="/dashboard" replace />;
+  return <SubscriptionPlans />;
+}
+
+function SubscriptionPlans() {
   const { user } = useApp();
 
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);

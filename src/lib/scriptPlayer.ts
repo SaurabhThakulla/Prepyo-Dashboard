@@ -259,6 +259,18 @@ export function unlockAudio(): void {
   }
 }
 
+/**
+ * Starts the clip that is playing now again from its beginning, from a tap.
+ * A clip the browser refused or stalled on then plays, and when it ends the
+ * recording carries on as before. False when no clip is playing.
+ */
+export function replayClip(): boolean {
+  if (!activeClips || !clipAudio?.src) return false;
+  clipAudio.currentTime = 0;
+  void clipAudio.play()?.catch(() => {});
+  return true;
+}
+
 /** Plays server clips one after another, fetching the next while one plays. */
 export function playClips(segments: Segment[], onProgress?: (fraction: number) => void, speed = 1): Playback {
   // One recording at a time: a new one stops whatever was playing.

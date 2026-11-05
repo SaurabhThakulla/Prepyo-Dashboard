@@ -16,7 +16,7 @@ import { usePteMockCatalog, usePteMockReport } from '@/lib/hooks/usePteMock';
 import { TestMicrophone } from '@/lib/pteMock/audio';
 import { isPteMockKind, pteMockHref, pteReportHref } from '@/lib/pteMock/catalog';
 import { PteSession } from '@/lib/pteMock/types';
-import { isPremiumUser } from '@/lib/types';
+import { isInstitutionStudent, isPremiumUser } from '@/lib/types';
 
 /**
  * /mocks/pte/:kind — one kind of PTE mock test: the check before it, then the
@@ -124,7 +124,7 @@ function TestScreen({ kind }: { kind: Parameters<typeof pteMockHref>[0] }) {
   // Sectional tests are a paid feature, as the IELTS section mocks are; the
   // full test is governed by the plan's own allowance on the server.
   if (kind !== 'full' && !entry.live && !isPremiumUser(user)) {
-    return <PracticeMockPaywall skill={entry.skills[0]} exam="PTE" />;
+    return <PracticeMockPaywall skill={entry.skills[0]} exam="PTE" institution={isInstitutionStudent(user)} />;
   }
   return (
     <PteMockIntro

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { signedOutPath } from '@/lib/signOutPath';
 import { useApp } from '@/context/AppContext';
 import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
 
@@ -36,7 +37,9 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
     // session request. The redirect does not wait on it: the learner is signed
     // out either way, and a failed cleanup should not strand them here.
     void logout();
-    navigate(`/login?next=${encodeURIComponent(pathname)}`, { replace: true });
+    // A consultancy's student signs in again on the consultancy's own page.
+    const home = signedOutPath(null);
+    navigate(home === '/login' ? `/login?next=${encodeURIComponent(pathname)}` : home, { replace: true });
   }, [loading, user, logout, navigate, pathname]);
 
   // Both branches are genuinely transient: either the session check is still

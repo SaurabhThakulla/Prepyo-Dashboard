@@ -24,9 +24,12 @@ import {
   CheckCircle2,
   Lock,
   PlayCircle,
+  BookCopy,
+  FileDown,
   LucideIcon,
 } from 'lucide-react';
 import { lessonHref } from '@/data/learnKorean';
+import { hasMaterials, providersFor } from '@/data/materials';
 import { courseForExam, hasLearnCourse, LearnCourse, lessonCount } from '@/data/learnCourses';
 import { dueCount, EMPTY_PROGRESS, LearnProgress, learnedWords, lessonState } from '@/lib/learn/progress';
 import { SYLLABUS, syllabusFor, taskSummary, typeKey } from '@/lib/syllabus';
@@ -42,7 +45,7 @@ import { getPteTaskWeight, getPteTaskContributions, isPteTaskAvailable, getPteTa
  * link or change a label without touching any rendering code.
  */
 
-export type PrimarySectionId = 'home' | 'practice' | 'learn' | 'mock' | 'tutorials';
+export type PrimarySectionId = 'home' | 'practice' | 'learn' | 'mock' | 'tutorials' | 'materials';
 
 export interface SecondaryNavItem {
   href?: string;
@@ -119,6 +122,7 @@ export function getSectionFromPathname(path: string, searchParams?: URLSearchPar
   if (path.startsWith('/learn')) return 'learn';
   if (path.startsWith('/mocks') || path.startsWith('/diagnostic') || path.startsWith('/institute-mock')) return 'mock';
   if (path.startsWith('/tutorials') || path.startsWith('/videos')) return 'tutorials';
+  if (path.startsWith('/materials')) return 'materials';
   return 'practice';
 }
 
@@ -163,7 +167,11 @@ export function buildSections(
           : syllabusFor(activeExam, skill, ieltsModuleOf(user));
         const isRepeatedEssay = (n: string) => /repeated\s*essay/i.test(n);
         // Writing and speaking answers are marked by AI; reading and listening are marked in code.
-        const aiBadge = skill === 'writing' || skill === 'speaking' ? 'AI' : undefined;
+        // Summarize Spoken Text is the listening task written and rated by AI.
+        const aiBadgeFor = (name: string) =>
+          skill === 'writing' || skill === 'speaking' || (skill === 'listening' && /summari[sz]e spoken text/i.test(name))
+            ? 'AI'
+            : undefined;
         const names = rawNames.filter(name => {
           if (isRepeatedEssay(name)) {
             return hasMistake;
@@ -182,7 +190,7 @@ export function buildSections(
               icon,
               sublabel: pteLockedReason ?? `Author questions for ${name}`,
               description: taskSummary(activeExam, skill, name),
-              badge: !pteAvailable ? (pteVariant === 'core' ? 'PTEA' : 'CORE') : aiBadge,
+              badge: !pteAvailable ? (pteVariant === 'core' ? 'PTEA' : 'CORE') : aiBadgeFor(name),
               group: label,
               groupHref: `/practice?skill=${skill}`,
               weight: pteWeight,
@@ -216,7 +224,7 @@ export function buildSections(
             icon,
             sublabel: pteLockedReason ?? sublabel,
             description: taskSummary(activeExam, skill, name),
-            badge: !pteAvailable ? (pteVariant === 'core' ? 'PTEA' : 'CORE') : aiBadge,
+            badge: !pteAvailable ? (pteVariant === 'core' ? 'PTEA' : 'CORE') : aiBadgeFor(name),
             group: label,
             groupHref: `/practice?skill=${skill}`,
             weight: pteWeight,
@@ -307,7 +315,29 @@ export function buildSections(
         ].filter(item => skillsFor(activeExam).some(skill => item.href.endsWith(`skill=${skill}`))),
       ],
     },
+    ...(hasMaterials(activeExam) ? [materialsSection(activeExam)] : []),
   ];
+}
+
+/** Official material from the exam owners and publishers, linked, never copied. */
+function materialsSection(activeExam: ExamType): PrimarySectionConfig {
+  return {
+    id: 'materials',
+    label: 'Materials',
+    icon: BookCopy,
+    title: `${EXAM_LABELS[activeExam]} Materials`,
+    description: 'Official sample questions to download',
+    items: [
+      { href: '/materials', label: 'All materials', icon: BookCopy, sublabel: 'Every official resource in one list' },
+      ...providersFor(activeExam).map(provider => ({
+        href: `/materials?provider=${provider.id}`,
+        label: provider.name,
+        icon: FileDown,
+        sublabel: provider.about,
+        group: 'By publisher',
+      })),
+    ],
+  };
 }
 
 /**
@@ -457,6 +487,12 @@ export function isNavItemActive(
   searchParams: URLSearchParams,
 ): boolean {
   if (!item.href) return false;
+
+  if (item.href.startsWith('/materials')) {
+    if (pathname !== '/materials') return false;
+    const itemProvider = item.href.includes('provider=') ? item.href.split('provider=')[1]?.split('&')[0] : null;
+    return (itemProvider ?? null) === searchParams.get('provider');
+  }
 
   if (item.href.startsWith('/tutorials')) {
     if (pathname !== '/tutorials') return false;

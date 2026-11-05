@@ -1,5 +1,5 @@
 import { subTestsLeft } from '@/lib/subscriptions';
-import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import PracticeUnavailable from '@/components/practice/PracticeUnavailable';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
@@ -26,6 +26,7 @@ import AudioRecorder, { type RecorderStatus } from '@/components/practice/AudioR
 import { audioDelayFor, prepSecondsFor } from '@/components/practice/prepTime';
 import QuestionFigure from '@/components/practice/QuestionFigure';
 import PromptAudio from '@/components/practice/PromptAudio';
+import CueCard, { parseCueCard } from '@/components/practice/CueCard';
 import KoreanHelp from '@/components/practice/KoreanHelp';
 import PracticeResultDialog from '@/components/practice/PracticeResultDialog';
 import { answerMark, OPTION_MARK_CLASS, OPTION_MARK_LABEL } from '@/lib/answerMarks';
@@ -40,7 +41,7 @@ import { isAiRatedListening, isReadAloudTask, isRepeatSentenceTask, isWordHighli
 import { allowsMultipleChoices } from '@/lib/choices';
 import { minimumWritingWords, writingLengthNote, writingWordCount, writingWordTarget } from '@/lib/writing';
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
-import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isPremiumUser, listeningPlays, PracticeAttempt, Question, SkillType, ieltsModuleOf } from '@/lib/types';
+import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isInstitutionStudent, isPremiumUser, listeningPlays, PracticeAttempt, Question, SkillType, ieltsModuleOf } from '@/lib/types';
 import FreePlanNotice from '@/institution/FreePlanNotice';
 import PracticeActionBar, { CostChip, gradingUnits, notesFor, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
 import MyScore from '@/components/practice/flow/MyScore';
@@ -71,7 +72,7 @@ import { useAICapabilities } from '@/lib/hooks/useAICapabilities';
 import type { Delivery } from '@/lib/delivery';
 import { useProgressStage } from '@/lib/hooks/useProgressStage';
 import { loadCompleted, saveCompleted } from '@/lib/practiceProgress';
-import QuestionDrawer from '@/components/practice/QuestionDrawer';
+import QuestionDrawer, { BackToQuestions } from '@/components/practice/QuestionDrawer';
 import { useExclusivePanel } from '@/components/layout/sidePanels';
 import ScoringProgress from '@/components/practice/ScoringProgress';
 import { recordQuestionAttempt } from '@/lib/questionStorage';
@@ -166,8 +167,10 @@ function PracticePageContent() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const isMockMode = Boolean(searchParams.get('mock'));
-  // Task links add drawer=open: the question list opens so the learner picks one (no credit until then).
+  // Task links add drawer=open: the task opens on its question list, a page of its own,
+  // and the learner picks one (no credit until then).
   const drawerParam = searchParams.get('drawer');
+  const listInUrl = drawerParam === 'open' || drawerParam === '1';
   // EPS-TOPIK reading items stand alone rather than sitting on a passage, so
   // they are dealt one at a time like listening, not from the passage list.
   const readingList =
@@ -200,13 +203,30 @@ function PracticePageContent() {
   const readingPassages = readingPassagesQuery.data?.passages ?? [];
   const passageParam = searchParams.get('passage');
 
+  // The practice list is a page: these learners get it (mocks, mistakes and admins do not).
+  const drawerShown = readingList || (!isAdmin(user) && !mistakeId && !isMockMode);
+
   // Every click on a task link opens its list, even the task already on screen.
+  // The URL holds the list, so the browser's back button moves between list and question.
   const { key: locationKey } = useLocation();
   useEffect(() => {
-    if (drawerParam === 'open' || drawerParam === '1') {
-      setIsDrawerOpen(true);
-    }
-  }, [drawerParam, locationKey]);
+    if (listInUrl) setIsDrawerOpen(true);
+    else if (drawerShown) setIsDrawerOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listInUrl, locationKey]);
+
+  const showList = () => {
+    const next = new URLSearchParams(searchParams);
+    next.set('drawer', 'open');
+    setSearchParams(next);
+  };
+  const hideList = () => {
+    setIsDrawerOpen(false);
+    if (!listInUrl) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('drawer');
+    setSearchParams(next);
+  };
 
   // Moving to another task or mock without leaving the page opens its list too.
   const listKey = `${activeExam}:${selectedSkill}:${typeParam ?? ''}:${isMockMode ? 'mock' : 'practice'}`;
@@ -275,7 +295,9 @@ function PracticePageContent() {
 
   const handleSelectQuestionFromDrawer = async (question: Question) => {
     closeTutorialVideo?.();
-    setIsDrawerOpen(false);
+    hideList();
+    // The question already open: back to it with the answer kept, no new start.
+    if (question.id === currentQuestion?.id && hasStarted) return;
     setCurrentQuestion(question);
     resetAnswer();
 
@@ -445,8 +467,12 @@ function PracticePageContent() {
   const waitingForPrompt =
     grading === 'speech' && promptHasAudio && result === null && heardPromptFor !== currentQuestion?.id;
 
+  // Each new attempt gets a new round: the question's audio and recorder start afresh.
+  const [answerRound, setAnswerRound] = useState(0);
   const resetAnswer = useCallback(() => {
     setStartedTask(null);
+    setAnswerRound(n => n + 1);
+    setHeardPromptFor(null);
     setResult(null);
     setTextAnswer('');
     setBlankResponses({});
@@ -458,7 +484,6 @@ function PracticePageContent() {
   }, []);
 
   // Redo before submitting: a clean answer to the same question, with no new credit spent.
-  const [answerRound, setAnswerRound] = useState(0);
   const clearAnswer = () => {
     setTextAnswer('');
     setBlankResponses({});
@@ -467,6 +492,8 @@ function PracticePageContent() {
     setSpokenTranscript('');
     setDelivery(undefined);
     setAnswerRound(n => n + 1);
+    // The recording plays again, and the recorder waits for it as before.
+    setHeardPromptFor(null);
   };
 
   // A marked answer shows up in My Score at once.
@@ -478,9 +505,25 @@ function PracticePageContent() {
   // so they are practised and authored like any other single question.
   const isReading = selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK' && activeExam !== 'JLPT';
   const isAdminUser = isAdmin(user);
-  // The list (rendered at the bottom) only shows for these; while it shows, the left menu stays shut.
-  const drawerShown = readingList || (!isAdminUser && !mistakeId && !isMockMode);
-  useExclusivePanel('right', isDrawerOpen && drawerShown, () => setIsDrawerOpen(false));
+  const listPage = drawerShown && isDrawerOpen;
+  // A question on screen gets the room: the left menu shuts when it opens (its button still reopens it).
+  useExclusivePanel('right', !isAdminUser && !isMockMode && !listPage, () => {});
+
+  // List and question share one window scroll: a question opens at its top,
+  // and going back to the list returns to where the learner was in it.
+  const listScrollY = useRef(0);
+  const shownListPage = useRef(listPage);
+  useEffect(() => {
+    // The ref, not listPage: it turns false before the page shrinks and scrolls on its own.
+    const remember = () => { if (shownListPage.current) listScrollY.current = window.scrollY; };
+    window.addEventListener('scroll', remember, { passive: true });
+    return () => window.removeEventListener('scroll', remember);
+  }, []);
+  useLayoutEffect(() => {
+    if (shownListPage.current === listPage) return;
+    shownListPage.current = listPage;
+    window.scrollTo(0, listPage ? listScrollY.current : 0);
+  }, [listPage]);
 
   // When switching exam, skill, subtask, or mistake, reset state cleanly without querying backend/database.
   useEffect(() => {
@@ -678,6 +721,7 @@ function PracticePageContent() {
   const promptInCard = !!currentQuestion && currentQuestion.skill !== 'reading';
   // An IELTS speaking prompt is the question itself, so it reads larger.
   const promptIsQuestion = currentQuestion?.exam === 'IELTS' && currentQuestion?.skill === 'speaking';
+  const cueCard = currentQuestion?.typeId === 'ielts-speaking-part2' && currentQuestion.prompt ? parseCueCard(currentQuestion.prompt) : null;
 
   const currentIndex = currentQuestion ? questions.findIndex(q => q.id === currentQuestion.id) : -1;
   const isLast = currentIndex === questions.length - 1;
@@ -708,8 +752,8 @@ function PracticePageContent() {
     // Shown in place straight away, as before submitting; a refused start falls back to the start screen.
     const nextKey = `${activeExam}:${selectedSkill}:${next.id}`;
     setStartedTask(nextKey);
-    // The answer was read at the bottom; the new attempt starts at the top.
-    document.querySelector('[data-practice-workspace]')?.scrollIntoView?.({ block: 'start' });
+    // A new question starts at the top; Redo keeps the learner where they are.
+    if (next.id !== currentQuestion?.id) document.querySelector('[data-practice-workspace]')?.scrollIntoView?.({ block: 'start' });
     try {
       await api.post('/practice/start', {
         exam: activeExam,
@@ -754,7 +798,7 @@ function PracticePageContent() {
   return (
     <div
       data-practice-workspace
-      className={`w-full ${isReading && !isAdminUser
+      className={`w-full ${isReading && !isAdminUser && !listPage
           ? 'min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] lg:overflow-hidden'
           : 'min-h-[calc(100vh-4rem)]'
         } p-0 m-0 max-sm:pb-20 flex flex-col bg-background`}
@@ -775,7 +819,7 @@ function PracticePageContent() {
         <Navigate to={pteMockHref(selectedSkill)} replace />
       ) : isReading && searchParams.get('mock') && !isPremiumUser(user) ? (
         <Suspense fallback={<PracticePageSkeleton />}>
-          <PracticeMockPaywall skill={selectedSkill} exam={activeExam} />
+          <PracticeMockPaywall skill={selectedSkill} exam={activeExam} institution={isInstitutionStudent(user)} />
         </Suspense>
       ) : isReading && searchParams.get('mock') ? (
         <Suspense fallback={<ReadingPracticeSkeleton />}>
@@ -797,6 +841,54 @@ function PracticePageContent() {
         <Suspense fallback={<PracticePageSkeleton />}>
           <SkillMockPanel key={`${activeExam}-${selectedSkill}`} skill={selectedSkill} exam={activeExam} />
         </Suspense>
+      ) : readingList ? (
+        <>
+          {listPage && (
+            <QuestionDrawer
+              exam={activeExam}
+              skill={selectedSkill}
+              typeKey={typeParam}
+              isMock={false}
+              questions={readingPassages.map(passage => ({
+                id: passage.id,
+                title: passage.title,
+                prompt: passage.topic,
+                difficulty: passage.difficulty,
+              }))}
+              currentQuestionId={passageParam}
+              completedIds={readingPassages.filter(passage => passage.practisedAt).map(passage => passage.id)}
+              isLoading={
+                readingPassagesQuery.isLoading ||
+                readingPassagesQuery.isPending ||
+                (readingPassagesQuery.isFetching && readingPassages.length === 0) ||
+                (readingFamily.length === 0 && Boolean(typeParam))
+              }
+              onClose={passageParam ? hideList : undefined}
+              onSelectQuestion={passage => {
+                const next = new URLSearchParams(searchParams);
+                next.set('passage', passage.id);
+                next.delete('drawer');
+                // The URL change shuts the list, so the panel gets the passage before it may start.
+                setSearchParams(next);
+              }}
+            />
+          )}
+          {/* Stays mounted behind the list, so a passage in progress keeps its answers. */}
+          <div className={listPage ? 'hidden' : 'contents'}>
+            <Suspense fallback={<ReadingPracticeSkeleton />}>
+              <ReadingPracticePanel
+                key={`${activeExam}-${selectedSkill}-${typeParam || 'default'}`}
+                initialTypeKey={typeParam ?? undefined}
+                mistakeId={mistakeId}
+                exam={activeExam}
+                passageId={passageParam ?? undefined}
+                passageIds={readingPassages.map(passage => passage.id)}
+                listOpen={isDrawerOpen}
+                onBackToList={showList}
+              />
+            </Suspense>
+          </div>
+        </>
       ) : isReading ? (
         <Suspense fallback={<ReadingPracticeSkeleton />}>
           <ReadingPracticePanel
@@ -809,6 +901,24 @@ function PracticePageContent() {
             listOpen={isDrawerOpen}
           />
         </Suspense>
+      ) : listPage ? (
+        <QuestionDrawer
+          exam={activeExam}
+          skill={selectedSkill}
+          typeKey={typeParam}
+          isMock={false}
+          questions={questions}
+          currentQuestionId={hasStarted ? currentQuestion?.id : undefined}
+          completedIds={completedIds}
+          isLoading={loading || (questions.length === 0 && Boolean(typeParam) && !mistakeId && !loadFailed)}
+          onRetry={loadFailed ? () => void loadQuestionsForSubtask() : undefined}
+          onClose={hasStarted ? hideList : undefined}
+          onSelectQuestion={question => void handleSelectQuestionFromDrawer(question)}
+          onResetCompleted={() => {
+            setCompletedIds([]);
+            saveCompleted(activeExam, selectedSkill, typeParam, []);
+          }}
+        />
       ) : isAdminUser ? (
         <Suspense fallback={<AdminPageSkeleton />}>
           <AdminQuestionAuthoring
@@ -837,6 +947,7 @@ function PracticePageContent() {
         <PracticeUnavailable
           onRetry={subTestsRemaining > 0 ? () => void handleStart() : undefined}
           isStarting={isStarting}
+          institution={isInstitutionStudent(user)}
         />
       ) : !currentQuestion ? (
         loading ? (
@@ -867,7 +978,7 @@ function PracticePageContent() {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
                 <Button
                   type="button"
-                  onClick={() => setIsDrawerOpen(true)}
+                  onClick={showList}
                   className="w-full sm:w-auto px-6 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <PanelRight className="w-4 h-4" />
@@ -898,6 +1009,7 @@ function PracticePageContent() {
         <div className="w-full flex flex-col flex-1">
           {/* Unified Full-Width Workspace matching Reading layout */}
           <div className="w-full px-4 sm:px-6 lg:px-8 py-5 space-y-4 flex-1 flex flex-col">
+            {drawerShown && <BackToQuestions onClick={showList} />}
             {/* Warning banner when practicing a task locked in current PTE variant */}
             {activeExam === 'PTE' && typeParam && !isPteTaskAvailable(pteVariant, typeParam) && (
               <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/90 dark:bg-amber-950/40 p-4 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
@@ -929,7 +1041,7 @@ function PracticePageContent() {
                   <span className="inline-flex h-12 min-w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 px-2 text-sm font-bold text-primary-foreground shadow-md sm:h-14 sm:min-w-14">
                     {taskCode}
                   </span>
-                  <div data-dictionary className="min-w-0 space-y-1 pt-0.5">
+                  <div className="min-w-0 space-y-1 pt-0.5">
                     <h2 className="text-xl sm:text-2xl font-bold text-primary leading-tight">{currentQuestion.typeName}</h2>
                     {currentQuestion.timeLimitSeconds > 0 && (
                       <p className="flex items-center gap-1.5 text-xs font-semibold text-primary sm:hidden">
@@ -937,13 +1049,18 @@ function PracticePageContent() {
                       </p>
                     )}
                     {/* Plain sentences flow across the full width; prompts with lists keep their lines. */}
-                    {!promptInCard && currentQuestion.prompt && (/\S\r?\n\S/.test(currentQuestion.prompt.trim())
-                      ? currentQuestion.prompt.split(/\n\s*\n/).map((paragraph, i) => (
-                        <p key={i} className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                          {paragraph.trim()}
-                        </p>
-                      ))
-                      : <p className="text-sm text-muted-foreground leading-relaxed">{currentQuestion.prompt.trim().split(/\s*\n\s*\n\s*/).join(' ')}</p>)}
+                    {!promptInCard && currentQuestion.prompt && (
+                      // Only the question's own text opens the dictionary (and says the word aloud).
+                      <div data-dictionary className="space-y-1">
+                        {/\S\r?\n\S/.test(currentQuestion.prompt.trim())
+                          ? currentQuestion.prompt.split(/\n\s*\n/).map((paragraph, i) => (
+                            <p key={i} className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                              {paragraph.trim()}
+                            </p>
+                          ))
+                          : <p className="text-sm text-muted-foreground leading-relaxed">{currentQuestion.prompt.trim().split(/\s*\n\s*\n\s*/).join(' ')}</p>}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2 self-start">
@@ -970,22 +1087,27 @@ function PracticePageContent() {
               </div>
 
               {/* The question: blue bar with its number and title, then its content */}
-              <div data-dictionary className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+              {/* Only the heading, prompt and passage open the dictionary: not the audio player or help boxes. */}
+              <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
               {(questionHeading || (!isPteListening && currentIndex >= 0)) && (
                 <div className="flex items-center gap-3 bg-gradient-to-r from-primary to-primary/75 px-4 py-3 text-primary-foreground dark:!bg-muted dark:!text-foreground sm:px-5">
                   {!isPteListening && currentIndex >= 0 && <span className="rounded-lg bg-white/15 px-2.5 py-0.5 font-bold tabular-nums">#{currentIndex + 1}</span>}
                   {!isPteListening && currentIndex >= 0 && questionHeading && <span className="h-5 w-px bg-white/40" aria-hidden />}
-                  {questionHeading && <h3 className="text-sm sm:text-base font-semibold leading-snug">{questionHeading}</h3>}
+                  {questionHeading && <h3 data-dictionary className="text-sm sm:text-base font-semibold leading-snug">{questionHeading}</h3>}
                 </div>
               )}
 
               <div className="p-3 sm:p-4 space-y-3 empty:hidden">
 
-                {promptInCard && currentQuestion.prompt && (
-                  <p className={`leading-relaxed whitespace-pre-line ${promptIsQuestion ? 'text-base text-foreground' : 'text-sm text-muted-foreground'}`}>
-                    {currentQuestion.prompt.trim()}
-                  </p>
-                )}
+                {/* IELTS Speaking Part 2 shows its task card as the test does; other prompts as text. */}
+                {promptInCard && currentQuestion.prompt && (cueCard ? <CueCard card={cueCard} /> : (
+                  // Blank lines between paragraphs become a small gap, not a whole empty line.
+                  <div data-dictionary className={`space-y-1.5 leading-relaxed ${promptIsQuestion ? 'text-base text-foreground' : 'text-sm text-muted-foreground'}`}>
+                    {currentQuestion.prompt.trim().split(/\n\s*\n/).map((paragraph, i) => (
+                      <p key={i} className="whitespace-pre-line">{paragraph.trim()}</p>
+                    ))}
+                  </div>
+                ))}
 
                 {currentQuestion.imageUrl && (
                   // On a phone the figure runs edge to edge across the card, for a larger table.
@@ -993,7 +1115,7 @@ function PracticePageContent() {
                 )}
 
                 {!isReadAloudTask(currentQuestion) && <PromptAudio
-                  key={currentQuestion.id}
+                  key={`${currentQuestion.id}-${answerRound}`}
                   questionId={currentQuestion.id}
                   audioUrl={currentQuestion.audioUrl}
                   audioTranscript={result?.review?.audioTranscript ?? currentQuestion.audioTranscript}
@@ -1007,7 +1129,8 @@ function PracticePageContent() {
                   // The recording plays on its own after the test's lead-in; speaking recording follows it.
                   autoPlayAfter={result === null ? audioDelayFor(currentQuestion) : undefined}
                   title={currentQuestion.title}
-                  allowTranscript={true}
+                  // IELTS speaking shows its question on screen; the recording only reads it aloud.
+                  allowTranscript={!(currentQuestion.exam === 'IELTS' && currentQuestion.skill === 'speaking')}
                   // A matching key is a letter, not words said in the recording.
                   highlights={isListeningLetterTask(currentQuestion) ? undefined : result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
                   onFinished={() => setHeardPromptFor(currentQuestion.id)}
@@ -1029,6 +1152,7 @@ function PracticePageContent() {
                     questionId={currentQuestion.id}
                     language={currentQuestion.exam === 'JLPT' ? 'Japanese' : 'Korean'}
                     premium={isPremiumUser(user)}
+                    institution={isInstitutionStudent(user)}
                     initial={
                       result?.review?.audioTranslation
                         ? { text: result.review.audioTranslation, audioUrl: result.review.translationAudioUrl }
@@ -1038,6 +1162,7 @@ function PracticePageContent() {
                 )}
 
                 {/* IELTS Listening matching and lettered diagrams: letters dragged from a box. */}
+                <div data-dictionary className="empty:hidden">
                 {isListeningLetterTask(currentQuestion) ? (
                   <ListeningLetterPractice
                     question={currentQuestion}
@@ -1081,6 +1206,7 @@ function PracticePageContent() {
                     </div>
                   )
                 )}
+                </div>
 
               </div>
               </div>
@@ -1105,18 +1231,20 @@ function PracticePageContent() {
                     {waitingForPrompt && (
                       <p role="status" className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
                         <Volume2 className="w-3.5 h-3.5" aria-hidden />
-                        Play the audio above. Recording starts on its own when it ends.
+                        Listen to the audio, and recording starts on its own when it ends. Or click below to answer now.
                       </p>
                     )}
                     <AudioRecorder
                       key={`${currentQuestion.id}-${answerRound}`}
                       prepSeconds={prepSecondsFor(currentQuestion.typeId, currentQuestion.prepTimeSeconds)}
                       // Prep counts down in the recorder as soon as the task (or its audio) is done, then recording starts.
-                      autoStart
+                      autoStart={!waitingForPrompt}
+                      // While the audio plays, a click answers at once and stops it.
+                      answerNow={waitingForPrompt}
                       maxSeconds={currentQuestion.timeLimitSeconds}
                       // PTE's microphone closes after 3 seconds of silence; an IELTS examiner waits.
                       stopAfterSilence={currentQuestion.exam === 'PTE'}
-                      disabled={submitting || result !== null || waitingForPrompt}
+                      disabled={submitting || result !== null}
                       controlRef={recorderControl}
                       onStatus={setRecorderStatus}
                       onRecorded={(blob, transcript, measured) => {
@@ -1271,7 +1399,7 @@ function PracticePageContent() {
                   status={recorderStatus}
                   maxSeconds={currentQuestion.timeLimitSeconds}
                   onControl={() => recorderControl.current?.()}
-                  disabled={submitting || result !== null || waitingForPrompt}
+                  disabled={submitting || result !== null}
                 />
               ) : undefined}
               actions={
@@ -1351,60 +1479,6 @@ function PracticePageContent() {
         </div>
       )}
 
-      {readingList && (
-        <QuestionDrawer
-          isOpen={isDrawerOpen}
-          onToggle={() => setIsDrawerOpen(prev => !prev)}
-          onClose={() => setIsDrawerOpen(false)}
-          exam={activeExam}
-          skill={selectedSkill}
-          typeKey={typeParam}
-          isMock={false}
-          questions={readingPassages.map(passage => ({
-            id: passage.id,
-            title: passage.title,
-            prompt: passage.topic,
-            difficulty: passage.difficulty,
-          }))}
-          currentQuestionId={passageParam}
-          completedIds={readingPassages.filter(passage => passage.practisedAt).map(passage => passage.id)}
-          isLoading={
-            readingPassagesQuery.isLoading ||
-            readingPassagesQuery.isPending ||
-            (readingPassagesQuery.isFetching && readingPassages.length === 0) ||
-            (readingFamily.length === 0 && Boolean(typeParam))
-          }
-          onSelectQuestion={passage => {
-            const next = new URLSearchParams(searchParams);
-            next.set('passage', passage.id);
-            next.delete('drawer');
-            setSearchParams(next);
-            setIsDrawerOpen(false);
-          }}
-        />
-      )}
-
-      {!isAdminUser && !mistakeId && !isMockMode && !readingList && (
-        <QuestionDrawer
-          isOpen={isDrawerOpen}
-          onToggle={() => setIsDrawerOpen(prev => !prev)}
-          onClose={() => setIsDrawerOpen(false)}
-          exam={activeExam}
-          skill={selectedSkill}
-          typeKey={typeParam}
-          isMock={false}
-          questions={questions}
-          currentQuestionId={currentQuestion?.id}
-          completedIds={completedIds}
-          isLoading={loading || (questions.length === 0 && Boolean(typeParam) && !mistakeId && !loadFailed)}
-          onRetry={loadFailed ? () => void loadQuestionsForSubtask() : undefined}
-          onSelectQuestion={question => void handleSelectQuestionFromDrawer(question)}
-          onResetCompleted={() => {
-            setCompletedIds([]);
-            saveCompleted(activeExam, selectedSkill, typeParam, []);
-          }}
-        />
-      )}
 
     </div>
   );

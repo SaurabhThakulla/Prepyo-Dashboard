@@ -135,7 +135,7 @@ export const TOUR_STEPS: TourStep[] = [
     stage: 'practice',
     path: '/practice',
     home: READING,
-    target: '#question-drawer-panel',
+    target: '#question-list-page',
     title: 'Start a question',
     body: ctx =>
       ctx.exam === 'EPS_TOPIK' || ctx.exam === 'JLPT'

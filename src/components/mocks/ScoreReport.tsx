@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { MockAttempt, MockSubmitOutcome } from '@/lib/types';
+import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
 
 interface ScoreReportProps {
   attempt: MockAttempt;
@@ -20,6 +21,10 @@ interface ScoreReportProps {
 
 /** The scorecard shown after finishing a mock, and when reviewing an old one. */
 export default function ScoreReport({ attempt, outcome, onBack, onRedo }: ScoreReportProps) {
+  // IELTS gets its Test Report Form and the question-by-question review.
+  if (attempt.exam === 'IELTS') {
+    return <IeltsTestReport attemptId={attempt.id} xpAwarded={outcome?.xpAwarded} onBack={onBack} onRedo={onRedo} />;
+  }
   const skillScores = Object.entries(attempt.skillScores ?? {});
 
   return (
@@ -51,16 +56,10 @@ export default function ScoreReport({ attempt, outcome, onBack, onRedo }: ScoreR
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-background p-5 text-center space-y-1">
           <span className="text-xs font-bold text-muted-foreground uppercase">
-            {attempt.exam === 'IELTS'
-              ? skillScores.length === 1
-                ? `Estimated ${skillScores[0][0]} band`
-                : skillScores.length === 4
-                  ? 'Estimated overall band'
-                  : 'Estimated band (sections taken)'
-              : 'Estimated Overall'}
+            Estimated Overall
           </span>
           <div className="font-display text-4xl font-black text-foreground">
-            {attempt.exam === 'IELTS' ? attempt.userScore.toFixed(1) : Math.round(attempt.userScore)}
+            {Math.round(attempt.userScore)}
           </div>
           <Badge variant="default">Practice estimate</Badge>
         </Card>
@@ -108,7 +107,7 @@ export default function ScoreReport({ attempt, outcome, onBack, onRedo }: ScoreR
               <div key={skill} className="p-3.5 rounded-xl bg-card border border-border text-center space-y-1">
                 <span className="text-xs font-bold text-muted-foreground uppercase capitalize">{skill}</span>
                 <div className="font-display text-xl font-black text-foreground">
-                  {attempt.exam === 'IELTS' ? score.toFixed(1) : Math.round(score)}
+                  {Math.round(score)}
                 </div>
               </div>
             ))}

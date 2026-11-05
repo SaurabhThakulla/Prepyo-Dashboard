@@ -5,13 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ExamType, SkillType } from '@/lib/types';
+import AskInstitution from '@/components/common/AskInstitution';
 
 interface PracticeMockPaywallProps {
   skill: SkillType;
   exam: ExamType;
+  /** A consultancy's student: no upgrade to offer. */
+  institution?: boolean;
 }
 
-export default function PracticeMockPaywall({ skill, exam }: PracticeMockPaywallProps) {
+export default function PracticeMockPaywall({ skill, exam, institution = false }: PracticeMockPaywallProps) {
   const navigate = useNavigate();
   const skillLabel = skill.charAt(0).toUpperCase() + skill.slice(1);
   const skillTitle = `${skillLabel} Mock Test`;
@@ -80,13 +83,17 @@ export default function PracticeMockPaywall({ skill, exam }: PracticeMockPaywall
 
           {/* Action CTAs */}
           <div className="pt-2 space-y-2.5">
-            <Button
-              onClick={() => navigate('/subscription')}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-            >
-              <span>Upgrade to Unlock All Practice Mocks</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
+            {institution ? (
+              <AskInstitution className="w-full justify-center" />
+            ) : (
+              <Button
+                onClick={() => navigate('/subscription')}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                <span>Upgrade to Unlock All Practice Mocks</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            )}
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
               <Button

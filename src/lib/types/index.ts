@@ -225,6 +225,14 @@ export function isPremiumUser(user: UserProfile | null | undefined): boolean {
 }
 
 /**
+ * A student a consultancy added. Their plan is the consultancy's, so they never
+ * see the subscription page or an "upgrade" button.
+ */
+export function isInstitutionStudent(user: UserProfile | null | undefined): boolean {
+  return Boolean(user?.institution);
+}
+
+/**
  * Whether the user may use the AI coach: a paid plan, or an institution's
  * plan. Falls back to the premium check for a server that does not say.
  */

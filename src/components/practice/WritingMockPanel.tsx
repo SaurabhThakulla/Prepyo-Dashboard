@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Clock, LogOut, RefreshCw, RotateCcw, Send } from 'lucide-react';
+import { RefreshCw, RotateCcw, Send } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
@@ -10,13 +10,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Evaluation, IELTS_MODULE_LABEL, IELTSModule, MockAttempt, Question, isPremiumUser } from '@/lib/types';
+import { Evaluation, IELTS_MODULE_LABEL, IELTSModule, MockAttempt, Question, isInstitutionStudent, isPremiumUser } from '@/lib/types';
 import { subTestsLeft } from '@/lib/subscriptions';
 import { writingWordCount, writingWordTarget } from '@/lib/writing';
 import { FullMockSection } from '@/lib/fullMock';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import SectionMockIntro from '@/components/mocks/SectionMockIntro';
-import PracticeResultCard from '@/components/practice/PracticeResultCard';
+import TestFeedback from '@/components/mocks/TestFeedback';
+import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
+import MockHeader from '@/components/mocks/MockHeader';
 
 /** Mirrors billing.SectionMockSubTests on the server, which is what enforces it. */
 const SECTION_MOCK_SUB_TESTS = 5;
@@ -33,7 +35,7 @@ export interface WritingMockSession {
   task2Draft: string;
 }
 
-interface WritingMockOutcome {
+export interface WritingMockOutcome {
   attempt: MockAttempt | null;
   writingBand: number | null;
   task1Evaluation: Evaluation;
@@ -128,7 +130,7 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
       void refreshUser();
       refreshPapers();
       // In a full mock the results come at the end, as in the test.
-      if (section) section.onSubmitted();
+      if (section) section.onSubmitted(data);
       else setOutcome(data);
     } catch (err) {
       if (section && err instanceof ApiError && err.status === 409) {
@@ -149,7 +151,7 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
   };
 
   if (!section && !isPremiumUser(user)) {
-    return <PracticeMockPaywall skill="writing" exam={activeExam} />;
+    return <PracticeMockPaywall skill="writing" exam={activeExam} institution={isInstitutionStudent(user)} />;
   }
 
   if (outcome) {
@@ -176,6 +178,7 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
 
   return (
     <SectionMockIntro
+      institution={isInstitutionStudent(user)}
       exam="IELTS"
       skill="writing"
       title="Writing Sectional Test"
@@ -238,8 +241,6 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
   const text = drafts[active];
   const words = writingWordCount(text);
   const target = writingWordTarget(task) ?? 0;
-  const minutes = Math.floor(secondsLeft / 60);
-  const seconds = secondsLeft % 60;
 
   const tabs: { key: TaskKey; label: string; hint: string }[] = [
     { key: 'task1', label: 'Task 1', hint: 'about 20 minutes · 150+ words' },
@@ -247,25 +248,14 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
   ];
 
   return (
-    <div className="w-full min-h-[calc(100dvh-4rem)] px-3 sm:px-6 lg:px-8 py-3 space-y-3 bg-background">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-border pb-2.5">
-        <div>
-          <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">
-            IELTS {IELTS_MODULE_LABEL[session.module]} Writing Mock
-          </h1>
-          <p className="text-xs text-muted-foreground">2 tasks • 60 minutes • Task 2 counts twice as much as Task 1</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={secondsLeft <= 300 ? 'warning' : 'outline'} className="gap-1 font-mono">
-            <Clock className="w-3 h-3" />
-            {minutes}:{String(seconds).padStart(2, '0')}
-          </Badge>
-          <Button variant="outline" size="sm" onClick={onLeave} className="gap-1.5 font-bold">
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Leave</span>
-          </Button>
-        </div>
-      </div>
+    <div className="w-full min-h-[calc(100dvh-4rem)] px-4 sm:px-6 lg:px-8 py-5 space-y-3.5 bg-background">
+      <MockHeader
+        code={active === 'task1' ? 'T1' : 'T2'}
+        title={`IELTS ${IELTS_MODULE_LABEL[session.module]} Writing Mock`}
+        subtitle="2 tasks • 60 minutes • Task 2 counts twice as much as Task 1"
+        secondsLeft={secondsLeft}
+        onLeave={onLeave}
+      />
 
       <div className="flex gap-2" role="tablist">
         {tabs.map(tab => (
@@ -342,6 +332,17 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
 }
 
 function WritingMockResult({ outcome, onBack, onRedo }: { outcome: WritingMockOutcome; onBack: () => void; onRedo?: () => void }) {
+  if (outcome.attempt?.id) {
+    return (
+      <IeltsTestReport
+        attemptId={outcome.attempt.id}
+        xpAwarded={outcome.xpAwarded}
+        backLabel="Back to writing practice"
+        onBack={onBack}
+        onRedo={onRedo}
+      />
+    );
+  }
   const t1 = outcome.task1Evaluation.estimatedScore;
   const t2 = outcome.task2Evaluation.estimatedScore;
   return (
@@ -360,12 +361,12 @@ function WritingMockResult({ outcome, onBack, onRedo }: { outcome: WritingMockOu
       </Card>
 
       <div className="space-y-2">
-        <h2 className="font-display text-sm font-bold text-foreground">Task 1</h2>
-        <PracticeResultCard result={{ evaluation: outcome.task1Evaluation, xpAwarded: 0 }} />
+        <h2 className="text-lg font-bold text-primary">Task 1</h2>
+        <TestFeedback evaluation={outcome.task1Evaluation} />
       </div>
       <div className="space-y-2">
-        <h2 className="font-display text-sm font-bold text-foreground">Task 2</h2>
-        <PracticeResultCard result={{ evaluation: outcome.task2Evaluation, xpAwarded: 0 }} />
+        <h2 className="text-lg font-bold text-primary">Task 2</h2>
+        <TestFeedback evaluation={outcome.task2Evaluation} />
       </div>
 
       <div className="flex flex-wrap justify-end gap-2">

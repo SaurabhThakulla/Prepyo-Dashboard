@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Crown, LifeBuoy, Loader2 } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
+import AskInstitution from '@/components/common/AskInstitution';
 import EnglishVersion from './EnglishVersion';
 
 interface Translation {
@@ -12,6 +13,8 @@ interface Translation {
 interface KoreanHelpProps {
   questionId: string;
   premium: boolean;
+  /** A consultancy's student: no upgrade to offer. */
+  institution?: boolean;
   /** The English already in the review after answering; opens the panel. */
   initial?: Translation;
   /** The language the question is in: Korean (EPS-TOPIK) or Japanese (JLPT). */
@@ -24,7 +27,7 @@ interface KoreanHelpProps {
  * how to unlock it. The server decides too: the English is only served to
  * premium accounts.
  */
-export default function KoreanHelp({ questionId, premium, initial, language = 'Korean' }: KoreanHelpProps) {
+export default function KoreanHelp({ questionId, premium, institution = false, initial, language = 'Korean' }: KoreanHelpProps) {
   const [state, setState] = useState<'closed' | 'loading' | 'open' | 'upgrade' | 'error'>(initial ? 'open' : 'closed');
   const [translation, setTranslation] = useState<Translation | undefined>(initial);
 
@@ -78,12 +81,16 @@ export default function KoreanHelp({ questionId, premium, initial, language = 'K
             Stuck on a question? Premium shows every {language} question in English, with its choices, and reads it
             aloud, so you can check your understanding as you practise.
           </p>
-          <Link
-            to="/subscription"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-          >
-            Upgrade to use it <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          {institution ? (
+            <AskInstitution />
+          ) : (
+            <Link
+              to="/subscription"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              Upgrade to use it <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          )}
         </div>
       )}
     </div>

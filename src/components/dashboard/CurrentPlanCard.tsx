@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, ChevronRight, Gift } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { UserProfile } from '@/lib/types';
+import { isInstitutionStudent, UserProfile } from '@/lib/types';
 import { formatExamDate } from '@/lib/dates';
 import { formatPlanName, usagePercent } from '@/lib/subscriptions';
 
@@ -42,6 +42,8 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
   const isActive = sub.isActive;
   const isFree = sub.planId === 'free';
   const validity = describeValidUntil(sub.validUntil);
+  // A consultancy's student is on its plan: no plan page to open, nothing to upgrade.
+  const institution = isInstitutionStudent(user);
 
   // Usage is shown as a share of the allowance, never as counts.
   const subTestsPercent = usagePercent(
@@ -57,6 +59,7 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
       planName={planName}
       isActive={isActive}
       isFree={isFree}
+      linked={!institution}
       bonusDays={sub.bonusDays}
       validity={validity}
       quotas={[
@@ -124,6 +127,7 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
             </div>
           </div>
 
+          {!institution && (
           <Button
             asChild
             variant={isFree ? 'nepal' : 'outline'}
@@ -134,6 +138,7 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
               <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform group-hover/btn:translate-x-1 ml-1.5" />
             </Link>
           </Button>
+          )}
         </div>
 
         {/* Quota Gauges Grid */}
@@ -181,6 +186,8 @@ interface CompactPlanCardProps {
   planName: string;
   isActive: boolean;
   isFree: boolean;
+  /** Opens the plan page when tapped; off for a consultancy's student. */
+  linked: boolean;
   bonusDays: number;
   validity: { label: string; daysLeft: number | null } | null;
   quotas: { label: string; percentUsed: number; unlimited?: boolean }[];
@@ -191,7 +198,7 @@ interface CompactPlanCardProps {
  * wrapped onto five lines at this width, so here the plan is one tappable
  * row and the three gauges are one strip of numbers.
  */
-function CompactPlanCard({ planName, isActive, isFree, bonusDays, validity, quotas }: CompactPlanCardProps) {
+function CompactPlanCard({ planName, isActive, isFree, linked, bonusDays, validity, quotas }: CompactPlanCardProps) {
   const when = validity
     ? validity.daysLeft === null
       ? `Until ${validity.label}`
@@ -205,11 +212,10 @@ function CompactPlanCard({ planName, isActive, isFree, bonusDays, validity, quot
       : 'Active subscription';
   const endingSoon = validity?.daysLeft != null && validity.daysLeft <= 5;
 
-  return (
-    <Link
-      to="/subscription"
-      className="block rounded-2xl border border-border/80 bg-card p-4 shadow-xs transition-transform active:scale-[0.99] dark:border-white/10 dark:bg-[#12161c] sm:hidden [-webkit-tap-highlight-color:transparent]"
-    >
+  const className =
+    'block rounded-2xl border border-border/80 bg-card p-4 shadow-xs transition-transform active:scale-[0.99] dark:border-white/10 dark:bg-[#12161c] sm:hidden [-webkit-tap-highlight-color:transparent]';
+  const body = (
+    <>
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-white">
           <PlanBadgeIcon className="h-6 w-6" />
@@ -232,7 +238,7 @@ function CompactPlanCard({ planName, isActive, isFree, bonusDays, validity, quot
             {when}
           </p>
         </div>
-        {isFree ? (
+        {!linked ? null : isFree ? (
           <span className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground">Upgrade</span>
         ) : (
           <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -266,7 +272,14 @@ function CompactPlanCard({ planName, isActive, isFree, bonusDays, validity, quot
           <Gift className="h-3 w-3" /> +{bonusDays} bonus day{bonusDays === 1 ? '' : 's'} included
         </p>
       )}
+    </>
+  );
+  return linked ? (
+    <Link to="/subscription" className={className}>
+      {body}
     </Link>
+  ) : (
+    <div className={className}>{body}</div>
   );
 }
 

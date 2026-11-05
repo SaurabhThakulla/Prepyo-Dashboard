@@ -9,6 +9,7 @@ import {
   addPayment,
   Batch,
   deletePayment,
+  emailReceipt,
   fetchBatches,
   fetchFees,
   fetchPayments,
@@ -24,7 +25,7 @@ import {
 } from './api';
 import FormField, { FormError } from './FormField';
 import { examName } from './profile';
-import { downloadFeeReceipt } from './feeReceipt';
+import { downloadFeeReceipt, feeReceiptPdf, ReceiptData } from './feeReceipt';
 import { FilterTabs, Kpi, TONES, useConfirm } from './ui';
 
 /** Rupees with Nepali grouping: Rs 1,25,000. */
@@ -35,6 +36,38 @@ export function today(): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+/** Everything a student's fee receipt shows: their fee, every payment, and the signature. */
+async function receiptData(account: InstitutionAccount, f: StudentFee, batch: string): Promise<ReceiptData> {
+  const [{ payments }, signature] = await Promise.all([
+    fetchPayments(f.studentId),
+    // A receipt without a signature is still a receipt.
+    fetchSignature()
+      .then(data => data.signature)
+      .catch(() => null),
+  ]);
+  return {
+    institution: {
+      name: account.institution.name,
+      code: account.institution.code,
+      logoUrl: account.institution.logoUrl,
+      brandColor: account.institution.profile.brandColor,
+      city: account.institution.profile.city,
+      email: account.admin.email,
+    },
+    student: { name: f.name, username: f.username, course: f.exam ? examName(f.exam) : '', batch },
+    fee: f,
+    signature: signature
+      ? {
+          imageUrl: signature.hasImage ? `${SIGNATURE_IMAGE_URL}?v=${encodeURIComponent(signature.updatedAt ?? '')}` : null,
+          name: signature.signerName,
+          title: signature.signerTitle,
+        }
+      : undefined,
+    payments: payments.map(p => ({ receiptNo: p.receiptNo, paidOn: p.paidOn, method: methodName(p.method), amountNpr: p.amountNpr })),
+    rupees,
+  };
 }
 
 const day = (value: string) => new Date(value + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -86,34 +119,7 @@ export default function FeesSection({ account }: { account: InstitutionAccount }
     setDownloadingId(f.studentId);
     setError(null);
     try {
-      const [{ payments }, signature] = await Promise.all([
-        fetchPayments(f.studentId),
-        // A receipt without a signature is still a receipt.
-        fetchSignature()
-          .then(data => data.signature)
-          .catch(() => null),
-      ]);
-      await downloadFeeReceipt({
-        institution: {
-          name: account.institution.name,
-          code: account.institution.code,
-          logoUrl: account.institution.logoUrl,
-          brandColor: account.institution.profile.brandColor,
-          city: account.institution.profile.city,
-          email: account.admin.email,
-        },
-        student: { name: f.name, username: f.username, course: f.exam ? examName(f.exam) : '', batch: batchName(f.batchId) },
-        fee: f,
-        signature: signature
-          ? {
-              imageUrl: signature.hasImage ? `${SIGNATURE_IMAGE_URL}?v=${encodeURIComponent(signature.updatedAt ?? '')}` : null,
-              name: signature.signerName,
-              title: signature.signerTitle,
-            }
-          : undefined,
-        payments: payments.map(p => ({ receiptNo: p.receiptNo, paidOn: p.paidOn, method: methodName(p.method), amountNpr: p.amountNpr })),
-        rupees,
-      });
+      await downloadFeeReceipt(await receiptData(account, f, batchName(f.batchId)));
     } catch (err) {
       setError(`The receipt for ${f.name} could not be made: ${errorMessage(err)}`);
     } finally {
@@ -280,7 +286,7 @@ export default function FeesSection({ account }: { account: InstitutionAccount }
       <FormError message={error} />
 
       <Dialog open={!!open} onOpenChange={isOpen => !isOpen && setOpenId(null)}>
-        {open && <StudentFeeDialog key={open.studentId} fee={open} account={account} onChanged={load} />}
+        {open && <StudentFeeDialog key={open.studentId} fee={open} account={account} batch={batchName(open.batchId)} onChanged={load} />}
       </Dialog>
     </Card>
     </div>
@@ -301,7 +307,7 @@ function BalanceText({ fee }: { fee: StudentFee }) {
 }
 
 /** One student's fee, a form to record a payment, and their payments with receipts. */
-function StudentFeeDialog({ fee, account, onChanged }: { fee: StudentFee; account: InstitutionAccount; onChanged: () => Promise<void> }) {
+function StudentFeeDialog({ fee, account, batch, onChanged }: { fee: StudentFee; account: InstitutionAccount; batch: string; onChanged: () => Promise<void> }) {
   const [total, setTotal] = useState(fee.set ? String(fee.totalNpr) : '');
   const [discount, setDiscount] = useState(fee.discountNpr ? String(fee.discountNpr) : '');
   const [dueOn, setDueOn] = useState(fee.dueOn ?? '');
@@ -371,7 +377,19 @@ function StudentFeeDialog({ fee, account, onChanged }: { fee: StudentFee; accoun
       const { payment } = await addPayment(fee.studentId, { amountNpr, paidOn, method, note });
       setAmount('');
       setNote('');
-      return `Payment recorded. Receipt no. ${payment.receiptNo}.`;
+      const recorded = `Payment recorded. Receipt no. ${payment.receiptNo}.`;
+      // The student gets the same PDF the Download button makes. A failure here
+      // never undoes the payment; the receipt can still be downloaded and sent by hand.
+      try {
+        const { students } = await fetchFees();
+        const latest = students.find(s => s.studentId === fee.studentId) ?? fee;
+        const sent = await emailReceipt(payment.id, await feeReceiptPdf(await receiptData(account, latest, batch)));
+        if (sent.emailed) return `${recorded} Receipt emailed to ${sent.to}.`;
+        if (sent.reason === 'no_email') return `${recorded} Add the student's email to send receipts automatically.`;
+        return recorded;
+      } catch (err) {
+        return `${recorded} The receipt could not be emailed: ${errorMessage(err)}`;
+      }
     });
   };
 

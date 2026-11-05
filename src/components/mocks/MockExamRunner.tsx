@@ -1,6 +1,7 @@
 import React from 'react';
-import { Clock, Flag, AlertCircle } from 'lucide-react';
+import { Flag, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import MockHeader from '@/components/mocks/MockHeader';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import MockAnswerInput from '@/components/mocks/MockAnswerInput';
@@ -8,14 +9,6 @@ import PromptAudio from '@/components/practice/PromptAudio';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
 import { AnswerSubmission, Mock, Question } from '@/lib/types';
 import { isReadAloudTask, isRepeatSentenceTask, isWordHighlightTask, passageText } from '@/lib/listening';
-
-/** Seconds as mm:ss, zero-padded, for the exam countdown. */
-function formatCountdown(totalSeconds: number): string {
-  const safe = Math.max(0, totalSeconds);
-  const minutes = Math.floor(safe / 60);
-  const seconds = safe % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
 
 interface MockExamRunnerProps {
   mock: Mock;
@@ -57,27 +50,19 @@ export default function MockExamRunner({
 
   return (
     <div data-practice-workspace className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
-      <div className="bg-card border border-border p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4 sticky top-20 z-30 shadow-xl backdrop-blur-xl">
-        <div className="flex items-center gap-3">
-          <Badge variant="default">{mock.exam}</Badge>
-          <div>
-            <h3 className="font-display text-sm font-bold text-foreground">{mock.title}</h3>
-            <p className="text-[11px] text-muted-foreground">
-              Question {currentIndex + 1} of {questions.length}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-background px-4 py-2 rounded-xl border border-border text-amber-400 font-mono font-bold text-sm">
-            <Clock className="w-4 h-4" />
-            <span>{formatCountdown(secondsLeft)}</span>
-          </div>
-          <Button onClick={onFinish} disabled={isSubmitting} variant="destructive" size="sm" className="font-bold">
+      {/* Scrolls with the page: a floating bar would sit over the question. */}
+      <MockHeader
+        code={`${currentIndex + 1}`}
+        title={mock.title}
+        subtitle={`${mock.exam.replace('_', '-')} • question ${currentIndex + 1} of ${questions.length}`}
+        secondsLeft={secondsLeft}
+        answered={{ done: questions.filter(question => answers[question.id]).length, total: questions.length }}
+        actions={
+          <Button onClick={onFinish} disabled={isSubmitting} className="h-9 rounded-full px-4 text-xs font-bold">
             {isSubmitting ? 'Scoring…' : 'Finish & Submit'}
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {!currentQuestion ? (
         <Card className="p-12 text-center space-y-3">

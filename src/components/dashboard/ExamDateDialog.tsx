@@ -11,6 +11,7 @@ import {
   toIsoDate,
 } from '@/components/onboarding/onboarding';
 import { EXAM_LABELS, ExamType } from '@/lib/types';
+import { errorMessage } from '@/lib/api';
 import {
   Dialog,
   DialogContent,
@@ -68,6 +69,26 @@ const formatTime = (time: string) => {
   return new Date(2000, 0, 1, hh, mm || 0).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 };
 
+// The start time lives in this browser only: the account stores the exam day.
+const examTimeKey = (userId?: string) => `prepyo.examTime.${userId ?? 'anon'}`;
+
+const readExamTime = (userId?: string): string | null => {
+  try {
+    const value = localStorage.getItem(examTimeKey(userId));
+    return value && /^\d{2}:\d{2}$/.test(value) ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeExamTime = (userId: string | undefined, time: string) => {
+  try {
+    localStorage.setItem(examTimeKey(userId), time);
+  } catch {
+    // Storage blocked: the time falls back to the default next time.
+  }
+};
+
 const formatLongDate = (isoDate: string) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
   if (!match) return '';
@@ -96,16 +117,9 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user?.examDate) {
-      const d = String(user.examDate);
-      setDate(d.split('T')[0]);
-      const t = d.split('T')[1];
-      if (t) {
-        // extract HH:MM from possible HH:MM:SSZ
-        const parts = t.split(':');
-        if (parts.length >= 2) setTime(`${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`);
-      }
-    }
+    if (user?.examDate) setDate(String(user.examDate).split('T')[0]);
+    const savedTime = readExamTime(user?.id);
+    if (savedTime) setTime(savedTime);
     if (user?.targetScore) setTargetScore(user.targetScore as number);
     setSaveError(null);
   }, [user, activeExam, open]);
@@ -117,40 +131,29 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
   const stepScore = (direction: 1 | -1) =>
     setTargetScore(score => clampScore(activeExam, score + direction * scale.step));
 
-  // Combine local date + time into an ISO string (keeps local timezone, then toISOString for storage)
-  const buildExamIso = (dateStr: string, timeStr: string) => {
-    if (!dateStr) return null;
-    try {
-      const [yyyy, mm, dd] = dateStr.split('-').map(p => parseInt(p, 10));
-      const [hh = '09', min = '00'] = (timeStr || '09:00').split(':');
-      const local = new Date(yyyy, (mm || 1) - 1, dd, parseInt(hh as string, 10) || 9, parseInt(min as string, 10) || 0, 0);
-      return local.toISOString();
-    } catch {
-      return null;
-    }
-  };
-
   const handleSave = async () => {
     setSaving(true);
     setSavedSuccess(false);
     setSaveError(null);
     try {
-      const examIso = buildExamIso(date, time);
-      const payload: any = {
-        targetExam: activeExam,
+      // The server keeps the exam day only, as YYYY-MM-DD; a full timestamp
+      // is refused. The start time is kept on this device.
+      const payload: Parameters<typeof updateProfile>[0] = {
         targetScore: clampScore(activeExam, targetScore),
       };
-      if (examIso) payload.examDate = examIso;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) payload.examDate = date;
+      // Sent only when it changes: a learner's exam is fixed once chosen.
+      if (activeExam !== user?.targetExam) payload.targetExam = activeExam;
 
       await updateProfile(payload);
+      writeExamTime(user?.id, time);
       setSavedSuccess(true);
       setTimeout(() => {
         setSavedSuccess(false);
         onOpenChange(false);
       }, 900);
     } catch (err) {
-      console.error('Failed to save exam date and time:', err);
-      setSaveError('Could not save your exam date. Check your connection and try again.');
+      setSaveError(errorMessage(err, 'Could not save your exam date. Check your connection and try again.'));
     } finally {
       setSaving(false);
     }
@@ -165,7 +168,7 @@ export default function ExamDateDialog({ open, onOpenChange }: ExamDateDialogPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[92dvh] overflow-y-auto gap-0 bg-card dark:bg-[#12161c] border border-border dark:border-white/10 text-foreground dark:text-white p-0 sm:p-0 rounded-2xl shadow-2xl">
+      <DialogContent className="max-w-lg max-h-[92dvh] overflow-y-auto gap-0 bg-card dark:bg-[#12161c] border border-border dark:border-white/10 text-foreground dark:text-white p-0 sm:p-0 rounded-2xl shadow-2xl">
         <DialogHeader className="space-y-1 px-6 pr-14 pt-6 pb-4 text-left">
           <DialogTitle className="flex items-center gap-2.5 text-lg font-bold text-foreground">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">

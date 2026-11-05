@@ -7,6 +7,9 @@
     --background: 240 20% 98%;
     --foreground: 224 71% 10%;
     --card: 0 0% 100%;
+    --trf-paper: 40 33% 99%;
+    --trf-ink: 222 47% 14%;
+    --trf-accent: 224 72% 38%;
     --card-foreground: 224 71% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 224 71% 10%;
@@ -40,6 +43,9 @@
     --background: 228 45% 3%;
     --foreground: 220 30% 96%;
     --card: 226 38% 6.5%;
+    --trf-paper: 226 30% 9%;
+    --trf-ink: 220 20% 90%;
+    --trf-accent: 220 90% 72%;
     --card-foreground: 220 30% 96%;
     --popover: 226 38% 7%;
     --popover-foreground: 220 30% 96%;
@@ -356,4 +362,19 @@ html.theme-switching *::after {
 html[data-dictionary-hover] [data-dictionary],
 html[data-dictionary-hover] [data-dictionary] * {
   cursor: pointer;
+}
+
+/* Score report download: while body has .print-report, printing (Save as PDF)
+   shows only the #score-report sheet, in colour, on A4. */
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body.print-report * { visibility: hidden !important; }
+  body.print-report #score-report,
+  body.print-report #score-report * { visibility: visible !important; }
+  body.print-report #score-report {
+    position: absolute; left: 0; top: 0; width: 100%;
+    box-shadow: none !important; border: none !important;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  body.print-report #score-report .no-print { display: none !important; }
 }

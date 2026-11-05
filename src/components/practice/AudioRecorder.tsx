@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { announceRecording } from '@/lib/audioFocus';
 import { Mic, MicOff, Square, Loader2, AlertCircle, Check, Info } from 'lucide-react';
 import { canRecord, formatDuration, pickRecorderMimeType, beep } from '@/lib/audio';
 import { startTranscribing, type TranscriptSession } from '@/lib/speech';
@@ -47,6 +48,12 @@ interface AudioRecorderProps {
    * anything or after they stop, as PTE's microphone does.
    */
   stopAfterSilence?: boolean;
+  /**
+   * The question's audio is still playing (or has not been played). A click
+   * then answers at once: the audio stops and recording starts, with no
+   * think time. Left alone, the recorder waits for `autoStart` as before.
+   */
+  answerNow?: boolean;
 }
 
 export default function AudioRecorder({
@@ -58,6 +65,7 @@ export default function AudioRecorder({
   controlRef,
   onStatus,
   stopAfterSilence = false,
+  answerNow = false,
 }: AudioRecorderProps) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [remaining, setRemaining] = useState(0);
@@ -276,6 +284,7 @@ export default function AudioRecorder({
       void transcriber.stop().then(transcript => onRecorded(recording, transcript, delivery));
     };
 
+    announceRecording();
     recorder.start();
     isStartingRecordingRef.current = false;
     // Listening runs alongside the recording rather than over it: the learner
@@ -303,8 +312,17 @@ export default function AudioRecorder({
     });
   }, [beginRecording, prepSeconds, runCountdown]);
 
+  // Read inside handleStart: a second start (the prompt finishing just after a
+  // click) must not open the microphone again.
+  const phaseNow = useRef<Phase>('idle');
+  phaseNow.current = phase;
   const handleStart = useCallback(async () => {
-    if (starting || disabled) return;
+    if (starting || disabled || phaseNow.current !== 'idle') return;
+    // Started by hand: the automatic start must not follow it.
+    autoStartedRef.current = true;
+    const skipPrep = answerNow;
+    // The question's audio stops the moment the learner chooses to answer.
+    if (skipPrep) announceRecording();
     setError(null);
     setStarting(true);
 
@@ -323,7 +341,7 @@ export default function AudioRecorder({
       streamRef.current = stream;
       watchLevel(streamRef.current);
 
-      if (prepSeconds > 0) startPrep();
+      if (prepSeconds > 0 && !skipPrep) startPrep();
       else void beginRecording();
     } catch (err) {
       releaseMic();
@@ -336,7 +354,7 @@ export default function AudioRecorder({
     } finally {
       setStarting(false);
     }
-  }, [beginRecording, disabled, prepSeconds, releaseMic, starting, startPrep, watchLevel]);
+  }, [answerNow, beginRecording, disabled, prepSeconds, releaseMic, starting, startPrep, watchLevel]);
 
   // Deferred a tick so React's development double-mount cancels the first
   // attempt instead of opening the microphone twice.
@@ -394,7 +412,9 @@ export default function AudioRecorder({
 
   const status =
     phase === 'idle'
-      ? prepSeconds > 0
+      ? answerNow
+        ? `Listen first, or click to answer now: the audio stops and recording starts at once, for up to ${formatDuration(maxSeconds)}.`
+        : prepSeconds > 0
         ? `You get ${formatDuration(prepSeconds)} to prepare, then recording starts on its own and stops after ${formatDuration(maxSeconds)}, the same as the exam.`
         : `Recording starts as soon as you press the button and stops after ${formatDuration(maxSeconds)}, the same as the exam.`
       : phase === 'prep'

@@ -21,6 +21,9 @@ export default function SpeakingResult({ evaluation, xpAwarded, recording, taskT
   // Free speech has no script: colour what the grader corrected and the fillers instead.
   const transcript = words.length === 0 ? evaluation.transcript?.trim() ?? '' : '';
   const score = evaluation.estimatedScore;
+  // Answer Short Question is right or wrong: the answer shows green or red, not word by word.
+  const shortAnswer = Boolean(taskType?.includes('answer-short-question')) && transcript !== '' && score !== null;
+  const correct = shortAnswer && evaluation.criteria.some(c => c.maxScore > 0 && c.score >= c.maxScore);
 
   return (
     <EvaluationCard
@@ -29,7 +32,12 @@ export default function SpeakingResult({ evaluation, xpAwarded, recording, taskT
       taskType={taskType}
       answerTitle="Your answer"
       answerLegend={
-        words.length > 0 ? (
+        shortAnswer ? (
+          <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <Legend dot="bg-emerald-500">Correct</Legend>
+            <Legend dot="bg-rose-500">Wrong</Legend>
+          </span>
+        ) : words.length > 0 ? (
           <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             <Legend dot="bg-emerald-500">Good</Legend>
             {words.some(w => w.unclear) && <Legend dot="bg-amber-500">Unclear</Legend>}
@@ -51,6 +59,13 @@ export default function SpeakingResult({ evaluation, xpAwarded, recording, taskT
                   {w.pauseAfter && <span className="font-semibold text-muted-foreground"> /</span>}{' '}
                 </span>
               ))}
+            </p>
+          ) : shortAnswer ? (
+            <p
+              data-testid="short-answer"
+              className={cn('text-[15px] font-semibold leading-8', correct ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400')}
+            >
+              {transcript} <span className="font-normal text-muted-foreground">· {correct ? 'Correct' : 'Wrong'}</span>
             </p>
           ) : transcript ? (
             <MarkedAnswer text={transcript} fixes={evaluation.sentenceFeedback ?? []} rated={score !== null} />

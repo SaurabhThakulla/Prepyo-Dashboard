@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CalendarClock, Check, CheckCircle2, ChevronRight, ClipboardCheck, Clock, Hourglass, Loader2, Mic } from 'lucide-react';
+import { ArrowLeft, CalendarClock, Check, CheckCircle2, ChevronRight, ClipboardCheck, Clock, Download, Hourglass, Loader2, Mic } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
@@ -152,7 +152,8 @@ function MockList({ institution }: { institution: string }) {
             <div>
               <h1 className="font-display text-2xl font-black tracking-tight sm:text-3xl">Institute Mock</h1>
               <p className="mt-1.5 max-w-xl text-sm font-medium text-white/80">
-                Tests set by {institution}. Your teacher reviews each one before you see the score.
+                Tests set by {institution}. IELTS Reading and Listening tests are marked as soon as you hand them in; your
+                teacher reviews the others before you see the score.
               </p>
             </div>
           </div>
@@ -322,7 +323,7 @@ function MockScreen({ id }: { id: string }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 sm:px-6">
+    <div className={`mx-auto w-full space-y-5 px-4 py-6 sm:px-6 ${mock?.status === 'released' ? 'max-w-5xl' : 'max-w-3xl'}`}>
       <Link to="/institute-mock" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" /> Institute Mock
       </Link>
@@ -377,7 +378,9 @@ function StartCard({
   const [mic, setMic] = useState<TestMicrophone | null>(null);
   const [peak, setPeak] = useState(0);
   const [micError, setMicError] = useState<string | null>(null);
-  const [handedOver, setHandedOver] = useState(false);
+  // A ref, not state: as state, setting it re-ran the cleanup below with the
+  // old value and closed the microphone just as it was handed to the test.
+  const handedOver = useRef(false);
 
   useEffect(() => {
     if (!mic) return;
@@ -385,8 +388,8 @@ function StartCard({
     return () => clearInterval(timer);
   }, [mic]);
   useEffect(() => () => {
-    if (!handedOver) mic?.close();
-  }, [mic, handedOver]);
+    if (!handedOver.current) mic?.close();
+  }, [mic]);
 
   const openMic = async () => {
     unlockAudio();
@@ -450,7 +453,7 @@ function StartCard({
         className="h-10 w-full sm:w-auto"
         disabled={starting || !(canStart || (mock.status === 'in_progress' && ready))}
         onClick={() => {
-          setHandedOver(true);
+          handedOver.current = true;
           onStart(mic);
         }}
       >
@@ -461,7 +464,17 @@ function StartCard({
   );
 }
 
+function ReportField({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs font-bold uppercase tracking-widest text-slate-500">{label}</p>
+      <p className={`mt-0.5 break-words ${strong ? 'text-lg font-bold' : 'text-base'}`}>{value}</p>
+    </div>
+  );
+}
+
 function ResultCard({ id, mock }: { id: string; mock: StudentMock }) {
+  const { user } = useApp();
   const [result, setResult] = useState<StudentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -473,47 +486,111 @@ function ResultCard({ id, mock }: { id: string; mock: StudentMock }) {
 
   if (error) return <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>;
   if (!result) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
-  const skills = Object.entries(result.result?.skills ?? {});
+  const order = ['listening', 'reading', 'speaking', 'writing'];
+  const skills = Object.entries(result.result?.skills ?? {}).sort(([a], [b]) => order.indexOf(a) - order.indexOf(b));
+  const overall = result.result?.overall ?? (mock.finalScore != null ? Math.round(mock.finalScore) : null);
+  const candidate = user?.name || 'Candidate';
+  const issued = mock.releasedAt ?? result.releasedAt;
+  const reportNo = mock.id.replace(/-/g, '').slice(0, 10).toUpperCase();
+  const onScale = (score: number) => ((Math.min(90, Math.max(10, score)) - 10) / 80) * 100;
+
+  // Save as PDF through the browser's print dialog; the print styles show only
+  // the report, and the title becomes the file name.
+  const download = () => {
+    const title = document.title;
+    document.title = `Score Report - ${candidate} - ${mock.name}`;
+    document.body.classList.add('print-report');
+    const done = () => {
+      document.body.classList.remove('print-report');
+      document.title = title;
+      window.removeEventListener('afterprint', done);
+    };
+    window.addEventListener('afterprint', done);
+    window.print();
+  };
 
   return (
-    <div className="space-y-4">
-      <Card className="space-y-4 bg-gradient-to-br from-primary/10 via-transparent to-transparent p-5">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button onClick={download} className="gap-2">
+          <Download className="h-4 w-4" /> Download PDF
+        </Button>
+      </div>
+
+      <div id="score-report" className="overflow-hidden rounded-2xl border border-border bg-white text-slate-900 shadow-lg">
+        {/* Letterhead */}
+        <div className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-[#13307f] to-[#2b4fd1] px-6 py-5 text-white sm:px-8">
           <div>
-            <p className="text-sm text-muted-foreground">Your score</p>
-            <p className="font-display text-4xl font-semibold text-foreground">
-              {result.result?.overall != null ? result.result.overall : mock.finalScore != null ? Math.round(mock.finalScore) : '—'}
-              <span className="text-lg font-normal text-muted-foreground"> / 90</span>
-            </p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/75">{mock.institution}</p>
+            <h2 className="font-display text-2xl font-bold sm:text-3xl">Score Report</h2>
+            <p className="text-sm text-white/85">PTE Academic practice mock test</p>
           </div>
-          <p className="text-sm text-muted-foreground">Reviewed by {result.reviewerName || mock.institution}</p>
+          <div className="text-right text-sm leading-relaxed text-white/90">
+            <p>
+              Report no. <span className="font-mono font-semibold">{reportNo}</span>
+            </p>
+            {issued && <p>Issued {new Date(issued).toLocaleDateString(undefined, { dateStyle: 'long' })}</p>}
+          </div>
         </div>
-        {skills.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+
+        {/* Candidate and test */}
+        <div className="grid grid-cols-1 gap-x-8 gap-y-4 border-b border-slate-200 px-6 py-6 sm:grid-cols-2 sm:px-8 lg:grid-cols-4">
+          <ReportField label="Candidate name" value={candidate} strong />
+          <ReportField label="Email" value={user?.email || '—'} />
+          <ReportField label="Test" value={mock.name} strong />
+          <ReportField label="Paper" value={mock.title} />
+          <ReportField label="Institution" value={mock.institution} />
+          <ReportField label="Reviewed by" value={result.reviewerName || mock.institution} />
+        </div>
+
+        {/* Scores */}
+        <div className="grid grid-cols-1 gap-8 px-6 py-7 sm:px-8 md:grid-cols-[220px_1fr]">
+          <div className="flex flex-col items-center justify-center rounded-2xl bg-slate-50 px-4 py-6 text-center ring-1 ring-slate-200">
+            <p className="text-sm font-bold uppercase tracking-widest text-slate-500">Overall score</p>
+            <p className="mt-2 font-display text-7xl font-extrabold leading-none text-[#13307f] tabular-nums">{overall ?? '—'}</p>
+            <p className="mt-2 text-base text-slate-500">out of 90</p>
+          </div>
+          <div className="space-y-4">
+            <p className="text-sm font-bold uppercase tracking-widest text-slate-500">Communicative skills</p>
             {skills.map(([skill, score]) => (
-              <div key={skill} className="rounded-lg border border-border bg-card px-3 py-2">
-                <p className="text-xs text-muted-foreground">{SKILL_NAMES[skill] ?? skill}</p>
-                <p className="font-display text-lg font-semibold text-foreground">{score} / 90</p>
+              <div key={skill} className="grid grid-cols-[100px_1fr_48px] items-center gap-4">
+                <span className="text-base font-semibold">{SKILL_NAMES[skill] ?? skill}</span>
+                <div className="relative h-4 rounded-full bg-slate-100">
+                  <div className="absolute inset-y-0 left-0 rounded-full bg-[#2b4fd1]" style={{ width: `${onScale(score)}%` }} />
+                </div>
+                <span className="text-right text-xl font-bold tabular-nums">{score}</span>
+              </div>
+            ))}
+            {skills.length > 0 && (
+              <div className="grid grid-cols-[100px_1fr_48px] gap-4 text-sm text-slate-500">
+                <span />
+                <div className="flex justify-between"><span>10</span><span>30</span><span>50</span><span>70</span><span>90</span></div>
+                <span />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {(result.comment || result.comments.length > 0) && (
+          <div className="space-y-3 border-t border-slate-200 px-6 py-6 sm:px-8">
+            <p className="text-sm font-bold uppercase tracking-widest text-slate-500">Teacher's comments</p>
+            {result.comment && <p className="whitespace-pre-wrap text-base leading-relaxed">{result.comment}</p>}
+            {result.comments.map(c => (
+              <div key={c.position} className="rounded-lg bg-slate-50 px-4 py-3 ring-1 ring-slate-200">
+                <p className="text-sm text-slate-500">
+                  {c.taskName} · question {c.position}
+                </p>
+                <p className="whitespace-pre-wrap text-base">{c.comment}</p>
               </div>
             ))}
           </div>
         )}
-      </Card>
 
-      {(result.comment || result.comments.length > 0) && (
-        <Card className="space-y-3 p-5">
-          <p className="font-display text-base font-semibold text-foreground">Your teacher's comments</p>
-          {result.comment && <p className="whitespace-pre-wrap text-sm text-foreground">{result.comment}</p>}
-          {result.comments.map(c => (
-            <div key={c.position} className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
-              <p className="text-xs text-muted-foreground">
-                {c.taskName} · question {c.position}
-              </p>
-              <p className="whitespace-pre-wrap text-foreground">{c.comment}</p>
-            </div>
-          ))}
-        </Card>
-      )}
+        <p className="border-t border-slate-200 bg-slate-50 px-6 py-4 text-xs leading-relaxed text-slate-500 sm:px-8">
+          A practice result from a mock test set by {mock.institution} on Prepyo, on the PTE Academic 10–90 scale. It is
+          not an official PTE Academic score and is not issued by Pearson.
+        </p>
+      </div>
 
       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
         {mock.sessionId && (

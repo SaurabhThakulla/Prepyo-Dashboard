@@ -122,6 +122,8 @@ export interface PteReviewItem {
   correctDisplay?: string;
   userDisplay?: string;
   evaluationId?: string;
+  /** The spoken answer can be replayed (kept for 30 days). */
+  hasRecording?: boolean;
 }
 
 export interface PteReport extends PteSession {

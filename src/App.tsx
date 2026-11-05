@@ -21,6 +21,7 @@ const ReferralsPage = lazy(() => import('@/pages/ReferralsPage'));
 const SubscriptionPage = lazy(() => import('@/pages/SubscriptionPage'));
 const DiagnosticPage = lazy(() => import('@/pages/DiagnosticPage'));
 const TutorialsPage = lazy(() => import('@/pages/TutorialsPage'));
+const MaterialsPage = lazy(() => import('@/pages/MaterialsPage'));
 const LearnPage = lazy(() => import('@/pages/LearnPage'));
 const ReviewPage = lazy(() => import('@/pages/ReviewPage'));
 const LessonPage = lazy(() => import('@/pages/LessonPage'));
@@ -90,6 +91,7 @@ export default function App() {
         <Route path="/diagnostic" element={<Suspense fallback={<AppPageSkeleton />}><DiagnosticPage /></Suspense>} />
         <Route path="/tutorials" element={<Suspense fallback={<AppPageSkeleton />}><TutorialsPage /></Suspense>} />
         <Route path="/videos" element={<Navigate to="/tutorials" replace />} />
+        <Route path="/materials" element={<Suspense fallback={<AppPageSkeleton />}><MaterialsPage /></Suspense>} />
         <Route path="/learn" element={<Suspense fallback={<AppPageSkeleton />}><LearnPage /></Suspense>} />
         <Route path="/learn/review" element={<Suspense fallback={<AppPageSkeleton />}><ReviewPage /></Suspense>} />
         <Route path="/learn/:unitId/:lessonId" element={<Suspense fallback={<AppPageSkeleton />}><LessonPage /></Suspense>} />

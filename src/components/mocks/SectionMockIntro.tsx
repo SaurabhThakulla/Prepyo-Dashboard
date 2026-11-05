@@ -6,6 +6,7 @@ import MockPaperList from '@/components/mocks/MockPaperList';
 import { useMockPapers } from '@/lib/hooks/useMockPapers';
 import { pteMockMeta } from '@/lib/pteMock/catalog';
 import { ExamType } from '@/lib/types';
+import AskInstitution from '@/components/common/AskInstitution';
 
 type Skill = 'speaking' | 'writing' | 'reading' | 'listening';
 
@@ -25,6 +26,8 @@ interface Props {
   isStarting: boolean;
   /** Starts the test: a numbered one when picked, otherwise the next one dealt. */
   onStart: (paperId?: string) => void;
+  /** A consultancy's student: no upgrade to offer. */
+  institution?: boolean;
 }
 
 const SECTION_TITLE = 'text-xs font-bold uppercase tracking-wide text-muted-foreground';
@@ -36,7 +39,7 @@ const SECTION_TITLE = 'text-xs font-bold uppercase tracking-wide text-muted-fore
  */
 export default function SectionMockIntro({
   exam, skill, title, description, duration, items, parts, rules, equipment,
-  credits, subTestsRemaining, isStarting, onStart,
+  credits, subTestsRemaining, isStarting, onStart, institution = false,
 }: Props) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -116,6 +119,8 @@ export default function SectionMockIntro({
                     ? `${selectedPaper.status === 'completed' ? 'Retake' : 'Start'} Test ${selectedPaper.number}`
                     : 'Start the test'}
               </Button>
+            ) : institution ? (
+              <AskInstitution className="w-full justify-center" />
             ) : (
               <Button asChild className="w-full h-12 font-bold gap-2 bg-amber-600 hover:bg-amber-700 text-white">
                 <Link to="/subscription">

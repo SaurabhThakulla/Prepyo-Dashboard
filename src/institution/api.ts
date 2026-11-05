@@ -20,6 +20,10 @@ export const STUDENT_ALLOWANCE =
 
 export const AI_GRADINGS_PER_MONTH = 1100;
 
+/** When AI gradings next reset: the 1st of next month (UTC), as the server counts them. YYYY-MM-DD. */
+export const nextGradingReset = (now = new Date()) =>
+  new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
+
 // What Prepyo charges per student seat a month, in rupees. Keep in step with
 // PricePerTenSeatsNPR (Prepyo-Backend/internal/institution/institution.go), which is 10 seats.
 export const PRICE_PER_STUDENT_NPR = 300;
@@ -76,6 +80,8 @@ export interface Student {
   latestMock: MockScore | null;
   // Missing from an older API; read it through readinessOf.
   readiness?: Readiness;
+  // They already had a Prepyo account, which joined with its history.
+  movedIn?: boolean;
 }
 
 // Whether the student can book the real exam: ready once their last 2 full mocks
@@ -260,6 +266,10 @@ export const addPayment = (id: string, payment: { amountNpr: number; paidOn: str
 
 export const deletePayment = (id: string) => api.delete(`/institution/payments/${id}`);
 
+/** Emails the student the receipt PDF for one payment. emailed is false when they have no email on file or email is off. */
+export const emailReceipt = (paymentId: string, pdf: Blob) =>
+  api.upload<{ emailed: boolean; to?: string; reason?: 'no_email' | 'email_off' }>(`/institution/payments/${paymentId}/receipt-email`, pdf);
+
 // Exams the institution can set one booking target for, applied to all their students.
 export type TargetExam = 'PTE' | 'IELTS';
 export const TARGET_EXAMS: TargetExam[] = ['PTE', 'IELTS'];
@@ -369,11 +379,24 @@ export interface MockAttemptRow {
   finalScore: number | null;
 }
 
+/** A student the mock is given to, with their sitting once they start. */
+export interface MockRosterRow {
+  userId: string;
+  name: string;
+  username: string;
+  attemptId?: string;
+  status: 'not_started' | MockAttemptRow['status'];
+  submittedAt: string | null;
+  finalScore: number | null;
+}
+
 export interface InstituteMockDetail extends InstituteMockSummary {
   slots: MockSlot[];
   items: (PaperItem & { question: BankQuestion | null })[];
   studentIds: string[];
   attempts: MockAttemptRow[];
+  /** Every student given the mock, started or not. Older servers leave it out. */
+  roster?: MockRosterRow[];
 }
 
 export interface MockForm {
@@ -438,6 +461,19 @@ export interface EvaluationCriterion {
   feedback: string;
 }
 
+/** One question of a Listening or Reading paper: what was asked, the student's answer and the key. */
+export interface IeltsAnswer {
+  /** The paper's question numbers it covers: one, or more for a gap fill or "Choose TWO". */
+  from: number;
+  to: number;
+  question: string;
+  /** Empty when the student left it blank. */
+  response: string;
+  correct: string;
+  marks: number;
+  outOf: number;
+}
+
 /** One thing the teacher looks at in an IELTS section: a writing task, the speaking test, or a paper's score. */
 export interface IeltsPart {
   key: 'task1' | 'task2' | 'speaking' | 'listening' | 'reading';
@@ -450,6 +486,8 @@ export interface IeltsPart {
   turns?: IeltsTurn[];
   correct?: number;
   total?: number;
+  /** A Listening or Reading paper, question by question; absent once the answers are cleaned up. */
+  answers?: IeltsAnswer[];
   aiBand: number | null;
   summary?: string;
   criteria?: EvaluationCriterion[];
@@ -508,6 +546,17 @@ export const createInstituteMock = (form: { name: string; exam: InstituteMockExa
 export const fetchInstituteMock = (id: string) => api.get<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}`);
 export const saveInstituteMock = (id: string, form: MockForm) => api.put<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}`, form);
 export const fillInstituteMock = (id: string) => api.post<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}/fill`);
+/** One of Prepyo's numbered tests a mock can take whole; itemIds are what it puts on the paper. */
+export interface ReadyPaper {
+  number: number;
+  title: string;
+  itemIds: string[];
+}
+export const fetchReadyPapers = (id: string) => api.get<{ papers: ReadyPaper[] }>(`/institution/mocks/${id}/papers`);
+export const putReadyPaper = (id: string, number: number) =>
+  api.post<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}/papers/${number}`);
+/** Replaces the whole paper with a new random set, leaving out the questions on it now. */
+export const shuffleInstituteMock = (id: string) => api.post<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}/shuffle`);
 export const publishInstituteMock = (id: string) => api.post<{ mock: InstituteMockDetail }>(`/institution/mocks/${id}/publish`);
 export const deleteInstituteMock = (id: string) => api.delete(`/institution/mocks/${id}`);
 export const fetchQuestionBank = (task: string, search: string, difficulty: string, offset = 0, module = '') =>

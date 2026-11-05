@@ -1,6 +1,6 @@
 import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Check, ClipboardCheck, Loader2, Lock, Pencil, Play, Plus, Search, Sparkles, Square, Trash2, Users, X } from 'lucide-react';
+import { ArrowLeft, Check, ClipboardCheck, Loader2, Lock, Mic, Pencil, PenTool, Play, Plus, Search, Shuffle, Sparkles, Square, Trash2, Users, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -20,6 +20,10 @@ import {
   fetchQuestionBank,
   fetchStudents,
   fillInstituteMock,
+  shuffleInstituteMock,
+  fetchReadyPapers,
+  putReadyPaper,
+  ReadyPaper,
   IELTSModule,
   InstituteMockDetail,
   InstituteMockExam,
@@ -28,12 +32,12 @@ import {
   InstituteMockSummary,
   InstitutionAccount,
   MockAttemptRow,
+  MockRosterRow,
   MockReview,
   MockSlot,
   MockState,
   mockRecordingUrl,
   PaperItem,
-  PteResult,
   publishInstituteMock,
   releaseMockResult,
   ReviewItem,
@@ -43,6 +47,7 @@ import {
 } from './api';
 import { FormError } from './FormField';
 import IeltsReviewScreen, { bandText } from './IeltsReview';
+import PteReportForm from '@/components/pteMock/PteReportForm';
 import { TONES, useConfirm } from './ui';
 
 // ---------------------------------------------------------------- shared bits
@@ -78,16 +83,6 @@ const levelName = (share: number | null) => {
 
 const day = (value: string | null) =>
   value ? new Date(value).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—';
-
-const SKILL_NAMES: Record<string, string> = { speaking: 'Speaking', writing: 'Writing', reading: 'Reading', listening: 'Listening' };
-
-/** A PTE result on its own scale: overall out of 90, or each skill's. */
-function scoreText(result: PteResult | null, finalScore?: number | null): string {
-  if (result?.overall != null) return `${result.overall} / 90`;
-  const skills = Object.entries(result?.skills ?? {});
-  if (skills.length) return skills.map(([skill, score]) => `${SKILL_NAMES[skill] ?? skill} ${score} / 90`).join(' · ');
-  return finalScore != null ? `${Math.round(finalScore)} / 90` : '—';
-}
 
 /** A released score on its exam's scale: PTE out of 90, an IELTS band. */
 const finalScoreText = (exam: InstituteMockExam, score: number | null) =>
@@ -404,6 +399,38 @@ function MockEditor({
       return fillInstituteMock(mockId);
     }, mock?.exam === 'IELTS' ? 'The empty sections are filled with Prepyo tests.' : 'The empty places are filled from our question bank.');
 
+  // A whole new paper, picked at random; asks first when it would replace chosen questions.
+  const shuffle = async () => {
+    if (items.length > 0) {
+      const ok = await confirm({
+        title: 'Shuffle all questions?',
+        description: 'Every section gets a new random set, different from the questions on the paper now. Questions you picked by hand are replaced too.',
+        confirmLabel: 'Shuffle questions',
+      });
+      if (!ok) return;
+    }
+    await run(async () => {
+      if (dirty) await saveInstituteMock(mockId, form());
+      return shuffleInstituteMock(mockId);
+    }, 'New questions picked. Shuffle again for another set.');
+  };
+
+  // Puts one of Prepyo's numbered tests on the mock; asks first when it would replace a paper.
+  const takeReadyPaper = async (number: number) => {
+    if (items.length > 0) {
+      const ok = await confirm({
+        title: `Use Test ${number}?`,
+        description: 'It replaces every question on the paper now, including ones you picked by hand.',
+        confirmLabel: `Use Test ${number}`,
+      });
+      if (!ok) return;
+    }
+    await run(async () => {
+      if (dirty) await saveInstituteMock(mockId, form());
+      return putReadyPaper(mockId, number);
+    }, `Test ${number} is on the paper.`);
+  };
+
   const publish = async () => {
     const ok = await confirm({
       title: `Publish "${name}"?`,
@@ -556,6 +583,8 @@ function MockEditor({
           busy={busy}
           onChange={next => (setItems(next), setDirty(true))}
           onFill={() => void fill()}
+          onShuffle={() => void shuffle()}
+          onUseReadyPaper={number => void takeReadyPaper(number)}
         />
       )}
       {tab === 'students' && (
@@ -586,6 +615,8 @@ function PaperBuilder({
   busy,
   onChange,
   onFill,
+  onShuffle,
+  onUseReadyPaper,
 }: {
   mock: InstituteMockDetail;
   items: PaperItem[];
@@ -593,10 +624,20 @@ function PaperBuilder({
   busy: boolean;
   onChange: (items: PaperItem[]) => void;
   onFill: () => void;
+  /** Replaces the whole paper with a new random set. */
+  onShuffle: () => void;
+  /** Puts one of Prepyo's numbered tests on the mock. */
+  onUseReadyPaper: (number: number) => void;
 }) {
   const [task, setTask] = useState(mock.slots[0]?.task ?? '');
   const [search, setSearch] = useState('');
   const [hideSeen, setHideSeen] = useState(false);
+  // Which list is shown: the bank to choose from, or what is selected for this task.
+  const [view, setView] = useState<'bank' | 'selected'>('bank');
+  // Prebuilt: take one of Prepyo's numbered tests whole. Custom: build it task by task.
+  const [mode, setMode] = useState<'prebuilt' | 'custom'>(items.length > 0 ? 'custom' : 'prebuilt');
+  const [papers, setPapers] = useState<ReadyPaper[] | null>(null);
+  const [papersError, setPapersError] = useState<string | null>(null);
   const [bank, setBank] = useState<BankQuestion[] | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -631,6 +672,22 @@ function PaperBuilder({
     return () => window.clearTimeout(timer);
   }, [load]);
 
+  useEffect(() => {
+    fetchReadyPapers(mock.id)
+      .then(data => {
+        setPapers(data.papers);
+        // A mock that is exactly one of the ready tests opens on Prebuilt.
+        const ids = new Set(mock.items.map(i => i.questionId));
+        if (data.papers.some(p => p.itemIds.length === ids.size && p.itemIds.every(id => ids.has(id)))) setMode('prebuilt');
+      })
+      .catch(err => setPapersError(errorMessage(err)));
+    // Once per mock: the tab chosen on opening is not changed by later edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mock.id]);
+  // The ready test the paper is now, if it is exactly one.
+  const onPaper = new Set(items.map(i => i.questionId));
+  const current = papers?.find(p => p.itemIds.length === items.length && p.itemIds.every(id => onPaper.has(id))) ?? null;
+
   const toggle = (q: BankQuestion) => {
     if (locked) return;
     if (items.some(i => i.questionId === q.id)) onChange(items.filter(i => i.questionId !== q.id));
@@ -657,7 +714,34 @@ function PaperBuilder({
       <div className="grid md:grid-cols-[17rem_1fr]">
         <nav aria-label={ielts ? 'Sections' : 'Tasks'} className="border-b border-border bg-muted/30 p-3 md:border-b-0 md:border-r">
           <div className="space-y-4 md:sticky md:top-4">
-            {groups.map(g => (
+            <div role="tablist" aria-label="How to build the paper" className="grid grid-cols-2 rounded-xl border border-border bg-background p-1">
+              {(
+                [
+                  ['prebuilt', 'Prebuilt'],
+                  ['custom', 'Custom'],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === id}
+                  onClick={() => setMode(id)}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                    mode === id ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {mode === 'prebuilt' && (
+              <p className="px-1 text-xs leading-relaxed text-muted-foreground">
+                Ready-made tests, the same ones as in the Mock Test section. Switch to Custom to choose{' '}
+                {ielts ? 'each section yourself' : 'questions task by task'}.
+              </p>
+            )}
+            {mode === 'custom' && groups.map(g => (
               <div key={g.part} className="space-y-0.5">
                 {showParts && (
                   <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -699,6 +783,18 @@ function PaperBuilder({
           </div>
         </nav>
 
+        {mode === 'prebuilt' && (
+          <ReadyPapersList
+            title={mock.title}
+            papers={papers}
+            error={papersError}
+            current={current?.number ?? null}
+            locked={locked}
+            busy={busy}
+            onUse={onUseReadyPaper}
+          />
+        )}
+        {mode === 'custom' && (
         <div className="min-w-0 space-y-6 p-4 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
@@ -720,6 +816,16 @@ function PaperBuilder({
                 <Button variant="outline" size="sm" className="h-9" onClick={onFill} disabled={busy}>
                   <Sparkles className="mr-1.5 h-4 w-4 text-primary" /> Fill the rest for me
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9"
+                  onClick={onShuffle}
+                  disabled={busy}
+                  title="Replace every section with a new random set of questions"
+                >
+                  <Shuffle className="mr-1.5 h-4 w-4 text-primary" /> Shuffle questions
+                </Button>
               </div>
             )}
           </div>
@@ -730,13 +836,47 @@ function PaperBuilder({
             </p>
           )}
 
-          {/* On the paper */}
+          {/* Two lists, one shown at a time: the bank to choose from, and what is selected. A locked paper shows only what is selected. */}
+          {!locked && (
+            <div role="tablist" aria-label="Show" className="inline-flex rounded-xl border border-border bg-muted/50 p-1">
+              {(
+                [
+                  ['bank', ielts ? 'Tests' : 'Questions', bank !== null ? total : null],
+                  ['selected', ielts ? 'Selected test' : 'Selected questions', chosenHere.length],
+                ] as const
+              ).map(([id, label, count]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === id}
+                  onClick={() => setView(id)}
+                  className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    view === id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {label}
+                  {count !== null && (
+                    <span className={`rounded-full px-1.5 text-xs tabular-nums ${view === id ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {(locked || view === 'selected') && (
           <section className="space-y-2">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">On the paper</h4>
             {chosenHere.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-                Nothing chosen yet. Pick from the list below, or let us fill it.
-              </p>
+              <div className="space-y-2 rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                <p>Nothing selected yet.</p>
+                {!locked && (
+                  <Button variant="outline" size="sm" onClick={() => setView('bank')}>
+                    Choose from {ielts ? 'tests' : 'questions'}
+                  </Button>
+                )}
+              </div>
             ) : (
               <ol className="space-y-2.5">
                 {chosenHere.map((i, n) => {
@@ -764,14 +904,11 @@ function PaperBuilder({
               </ol>
             )}
           </section>
+          )}
 
-          {!locked && (
+          {!locked && view === 'bank' && (
             <section className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {ielts ? 'Tests' : 'Question bank'}
-                  {bank !== null && <span className="ml-1.5 font-normal normal-case tracking-normal">({total})</span>}
-                </h4>
+              <div className="flex flex-wrap items-center justify-end gap-3">
                 <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
                   <input type="checkbox" checked={hideSeen} onChange={e => setHideSeen(e.target.checked)} className="h-4 w-4 accent-primary" />
                   {ielts ? 'Hide tests my students have sat' : 'Hide ones my students have practised'}
@@ -788,7 +925,13 @@ function PaperBuilder({
                 />
               </div>
               {full && (
-                <p className="text-xs text-muted-foreground">This task is full. Take one off the paper to choose another.</p>
+                <p className="text-xs text-muted-foreground">
+                  This task is full. Untick one, or remove it under{' '}
+                  <button type="button" className="font-medium text-primary underline-offset-2 hover:underline" onClick={() => setView('selected')}>
+                    {ielts ? 'Selected test' : 'Selected questions'}
+                  </button>
+                  , to choose another.
+                </p>
               )}
               <FormError message={error} />
               {bank === null && !error && (
@@ -847,8 +990,86 @@ function PaperBuilder({
             </section>
           )}
         </div>
+        )}
       </div>
     </Card>
+  );
+}
+
+/** Prepyo's numbered tests for this kind of mock, to take one whole. */
+function ReadyPapersList({
+  title,
+  papers,
+  error,
+  current,
+  locked,
+  busy,
+  onUse,
+}: {
+  title: string;
+  papers: ReadyPaper[] | null;
+  error: string | null;
+  current: number | null;
+  locked: boolean;
+  busy: boolean;
+  onUse: (number: number) => void;
+}) {
+  return (
+    <div className="min-w-0 space-y-4 p-4 sm:p-6">
+      <div className="space-y-1">
+        <h3 className="font-display text-lg font-bold text-foreground">Prebuilt tests</h3>
+        <p className="text-sm text-muted-foreground">
+          Choose a complete {title}. {current ? `Test ${current} is on the paper now.` : 'It replaces whatever is on the paper.'}
+        </p>
+      </div>
+      {locked && (
+        <p className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+          <Lock className="h-4 w-4 shrink-0" aria-hidden /> The paper is locked because students have started.
+        </p>
+      )}
+      <FormError message={error} />
+      {papers === null && !error && (
+        <div className="flex justify-center py-6">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      )}
+      {papers !== null && papers.length === 0 && (
+        <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+          There are no prebuilt tests for this kind of mock yet. Use Custom to build one.
+        </p>
+      )}
+      {papers !== null && papers.length > 0 && (
+        <ul className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+          {papers.map(p => {
+            const on = p.number === current;
+            return (
+              <li
+                key={p.number}
+                className={`flex items-center justify-between gap-3 rounded-xl border p-4 ${on ? 'border-primary/40 bg-primary/5' : 'border-border bg-background'}`}
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground">{p.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {p.itemIds.length} {p.itemIds.length === 1 ? 'part' : 'parts'}
+                  </p>
+                </div>
+                {on ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                    <Check className="h-3.5 w-3.5" /> On the paper
+                  </span>
+                ) : (
+                  !locked && (
+                    <Button size="sm" variant="outline" className="shrink-0" disabled={busy} onClick={() => onUse(p.number)}>
+                      Use this test
+                    </Button>
+                  )
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -1019,61 +1240,112 @@ function StudentsPicker({
 // ---------------------------------------------------------------- results
 
 function ResultsTable({ mock, onReview }: { mock: InstituteMockDetail; onReview: (attemptId: string) => void }) {
-  const notStarted = mock.students - mock.attempts.length;
+  const [filter, setFilter] = useState<RosterFilter>('all');
+  // Older servers send only the sittings; the roster then is those.
+  const roster: MockRosterRow[] =
+    mock.roster ??
+    mock.attempts.map(a => ({ userId: a.userId, name: a.name, username: a.username, attemptId: a.id, status: a.status, submittedAt: a.submittedAt, finalScore: a.finalScore }));
+  const count = (f: RosterFilter) => roster.filter(r => ROSTER_FILTERS[f].match(r.status)).length;
+  const shown = roster.filter(r => ROSTER_FILTERS[filter].match(r.status));
+
   return (
     <Card className="space-y-4 p-4 sm:p-6">
-      <p className="text-sm text-muted-foreground">
-        {mock.attempts.length} started · {mock.waiting} to review · {mock.released} released
-        {notStarted > 0 && ` · ${notStarted} not started yet`}
-      </p>
-      {mock.attempts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No one has started it yet.</p>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[640px] text-sm">
-            <thead>
-              <tr className="whitespace-nowrap bg-muted/60 text-left text-xs font-medium text-muted-foreground">
-                <th className="w-full px-4 py-3">Student</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">Handed in</th>
-                <th className="px-5 py-3">Score</th>
-                <th className="px-4 py-3">
-                  <span className="sr-only">Review</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {mock.attempts.map(a => (
-                <tr key={a.id}>
-                  <td className="px-4 py-3">
-                    <span className="block text-foreground">{a.name}</span>
-                    <span className="block font-mono text-xs text-muted-foreground">{a.username}</span>
-                  </td>
-                  <td className="whitespace-nowrap px-5 py-3">
-                    <Badge variant="outline" className={`normal-case tracking-normal text-xs font-medium ${ATTEMPT_LABEL[a.status].tone}`}>
-                      {ATTEMPT_LABEL[a.status].label}
-                    </Badge>
-                  </td>
-                  <td className="whitespace-nowrap px-5 py-3 text-muted-foreground">{day(a.submittedAt)}</td>
-                  <td className="whitespace-nowrap px-5 py-3 tabular-nums">{finalScoreText(mock.exam, a.finalScore)}</td>
-                  <td className="px-4 py-3 text-right">
-                    {a.status !== 'in_progress' && (
-                      <Button size="sm" variant={a.status === 'submitted' ? 'default' : 'outline'} onClick={() => onReview(a.id)}>
-                        {a.status === 'submitted' ? 'Review' : 'View'}
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          {roster.length} student{roster.length === 1 ? '' : 's'} · {mock.attempts.length} started · {mock.waiting} to review · {mock.released} released
+        </p>
+        <div className="flex flex-wrap gap-1 rounded-lg bg-muted p-1 text-xs font-semibold" role="group" aria-label="Show">
+          {(Object.keys(ROSTER_FILTERS) as RosterFilter[]).map(f => (
+            <button
+              key={f}
+              type="button"
+              aria-pressed={filter === f}
+              onClick={() => setFilter(f)}
+              className={`rounded-md px-2.5 py-1 ${filter === f ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
+            >
+              {ROSTER_FILTERS[f].label} <span className="tabular-nums opacity-70">{count(f)}</span>
+            </button>
+          ))}
         </div>
+      </div>
+
+      {roster.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No students are given this mock yet.</p>
+      ) : shown.length === 0 ? (
+        <p className="py-4 text-center text-sm text-muted-foreground">No students here.</p>
+      ) : (
+        <ul className="space-y-2" data-testid="mock-roster">
+          {shown.map(r => {
+            const label = r.status === 'not_started' ? NOT_STARTED : ATTEMPT_LABEL[r.status];
+            const canOpen = Boolean(r.attemptId) && (r.status === 'submitted' || r.status === 'released');
+            const open = () => r.attemptId && onReview(r.attemptId);
+            return (
+              <li
+                key={r.userId}
+                {...(canOpen
+                  ? {
+                      role: 'button',
+                      tabIndex: 0,
+                      onClick: open,
+                      onKeyDown: (e: React.KeyboardEvent) => {
+                        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                          e.preventDefault();
+                          open();
+                        }
+                      },
+                    }
+                  : {})}
+                className={`group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm transition-all duration-150 ${
+                  canOpen
+                    ? 'cursor-pointer hover:-translate-y-px hover:border-primary hover:bg-primary/[0.03] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary'
+                    : ''
+                }`}
+                data-testid="roster-row"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  {(r.name.trim()[0] ?? '?').toUpperCase()}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-foreground">{r.name}</p>
+                  <p className="truncate font-mono text-xs text-muted-foreground">@{r.username}</p>
+                </div>
+                <div className="hidden text-right text-xs text-muted-foreground sm:block">
+                  {r.submittedAt && <p>Handed in {day(r.submittedAt)}</p>}
+                  {r.finalScore != null && <p className="font-semibold tabular-nums text-foreground">{finalScoreText(mock.exam, r.finalScore)}</p>}
+                </div>
+                <Badge variant="outline" className={`shrink-0 normal-case tracking-normal text-xs font-medium ${label.tone}`}>
+                  {label.label}
+                </Badge>
+                {canOpen && (
+                  <Button
+                    size="sm"
+                    variant={r.status === 'submitted' ? 'default' : 'outline'}
+                    tabIndex={-1}
+                    className="h-8 shrink-0 text-xs group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground"
+                  >
+                    {r.status === 'submitted' ? 'Review' : 'View'}
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       )}
     </Card>
   );
 }
 
-// ---------------------------------------------------------------- the review
+type RosterFilter = 'all' | 'review' | 'released' | 'waiting';
+
+/** The Results tab's filters, by what a student's sitting is at. */
+const ROSTER_FILTERS: Record<RosterFilter, { label: string; match: (status: MockRosterRow['status']) => boolean }> = {
+  all: { label: 'All', match: () => true },
+  review: { label: 'To review', match: status => status === 'submitted' },
+  released: { label: 'Released', match: status => status === 'released' },
+  waiting: { label: 'Not handed in', match: status => status === 'not_started' || status === 'in_progress' },
+};
+
+const NOT_STARTED = { label: 'Not started', tone: 'border-border bg-muted text-muted-foreground' };
 
 function ReviewScreen({
   account,
@@ -1122,6 +1394,8 @@ function ReviewScreen({
   const keyed = review.items.filter(i => i.marking === 'key');
   const keyRight = keyed.filter(i => i.aiScore !== null && i.aiScore >= 1).length;
   const needs = marked.filter(i => i.status === 'answered' && i.aiScore === null && marks[i.position]?.level == null).length;
+  // The score card shows the released result, or the AI's first marking until then.
+  const shown = released ? review.finalResult : review.aiResult;
 
   const formMarks = () => marked.map(i => ({ position: i.position, level: marks[i.position]?.level ?? null, comment: marks[i.position]?.comment ?? '' }));
 
@@ -1165,45 +1439,42 @@ function ReviewScreen({
   };
 
   return (
-    <div className="space-y-4">
-      <Card className="space-y-3 p-4 sm:p-6">
+    <div className="space-y-4 font-report">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <button type="button" onClick={onBack} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> {review.mockName}
         </button>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="font-display text-xl font-semibold text-foreground">{review.studentName}</h2>
-            <p className="text-sm text-muted-foreground">
-              <span className="font-mono">@{review.username}</span> · handed in {day(review.submittedAt)}
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="rounded-lg border border-border px-3 py-2">
-              <p className="text-xs text-muted-foreground">AI's first marking</p>
-              <p className="font-display font-semibold text-foreground">{scoreText(review.aiResult)}</p>
-            </div>
-            <div className={`rounded-lg border px-3 py-2 ${released ? TONES.green.card : 'border-border'}`}>
-              <p className="text-xs text-muted-foreground">Released score</p>
-              <p className="font-display font-semibold text-foreground">{released ? scoreText(review.finalResult, review.finalScore) : 'Not yet'}</p>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span>
+            <span className="font-mono">@{review.username}</span> · handed in {day(review.submittedAt)}
+          </span>
+          <Badge variant="outline" className={`normal-case tracking-normal text-xs font-medium ${released ? TONES.green.soft : TONES.amber.soft}`}>
+            {released ? 'Released' : 'To review'}
+          </Badge>
         </div>
-        {released && (
-          <p className="rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
+      </div>
+
+      <PteReportForm
+        candidateName={review.studentName}
+        testDate={review.submittedAt ?? ''}
+        reportId={attemptId}
+        testType={pteTestType(review.kind)}
+        overall={shown?.overall ?? (released ? review.finalScore : null)}
+        skills={pteSkills(review.kind, shown?.skills)}
+      />
+
+      <p className={`rounded-lg px-3 py-2 text-sm ${released ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300' : 'bg-primary/[0.06] text-foreground'}`}>
+        {released ? (
+          <>
             Released by {review.reviewerName || 'your institution'} on {day(review.releasedAt)}.{' '}
             {review.purgedAt ? `Answers were deleted on ${day(review.purgedAt)}.` : `Answers are kept until ${day(review.purgeAfter)}.`}
-          </p>
+          </>
+        ) : (
+          <>This is the AI's first marking. Release works the score out again from your marks below, and that is what {review.studentName} sees.</>
         )}
-      </Card>
+      </p>
 
-      {keyed.length > 0 && (
-        <Card className="p-4 sm:p-6">
-          <p className="text-sm font-medium text-foreground">Marked by the answer key</p>
-          <p className="text-sm text-muted-foreground">
-            {keyRight} of {keyed.length} fully right. These need no review.
-          </p>
-        </Card>
-      )}
+      {keyed.length > 0 && <KeyedAnswers items={keyed} right={keyRight} />}
 
       {marked.map(item => (
         <ReviewCard
@@ -1217,7 +1488,8 @@ function ReviewScreen({
         />
       ))}
 
-      <Card className="sticky bottom-3 space-y-3 p-4 shadow-lg sm:p-5">
+      {/* The comment and the name sit with the review; only the actions follow the page. */}
+      <Card className="space-y-3 p-4 sm:p-6">
         <div className="grid gap-3 md:grid-cols-[1fr_16rem]">
           <div className="space-y-1.5">
             <label htmlFor="review-comment" className="text-sm font-medium text-foreground">
@@ -1239,11 +1511,20 @@ function ReviewScreen({
             <Input id="review-name" value={reviewer} onChange={e => setReviewer(e.target.value)} readOnly={released} className="h-10" />
           </div>
         </div>
-        <FormError message={error} />
-        {notice && <p className="text-sm text-emerald-700 dark:text-emerald-300">{notice}</p>}
+      </Card>
+
+      <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card/95 px-4 py-2.5 shadow-lg backdrop-blur">
+        <div className="mr-auto min-w-0 text-sm">
+          <FormError message={error} />
+          {notice && <p className="text-emerald-700 dark:text-emerald-300">{notice}</p>}
+          {!released && !notice && !error && (
+            <p className={needs > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-muted-foreground'}>
+              {needs > 0 ? `${needs} answer${needs === 1 ? '' : 's'} need${needs === 1 ? 's' : ''} your mark before you release.` : 'Every answer has a mark. Release when you are happy with it.'}
+            </p>
+          )}
+        </div>
         {!released && (
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {needs > 0 && <p className="mr-auto text-sm text-amber-700 dark:text-amber-300">{needs} answer(s) need your mark before you release.</p>}
+          <>
             <Button variant="outline" className="h-9" onClick={() => void save()} disabled={busy || !dirty}>
               Save
             </Button>
@@ -1251,9 +1532,9 @@ function ReviewScreen({
               {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
               Release result
             </Button>
-          </div>
+          </>
         )}
-      </Card>
+      </div>
       {confirmDialog}
     </div>
   );
@@ -1276,10 +1557,19 @@ function ReviewCard({
 }) {
   const skipped = item.status !== 'answered';
   const needs = item.status === 'answered' && item.aiScore === null && mark.level === null;
+  const Icon = item.marking === 'spoken' ? Mic : PenTool;
   return (
-    <Card className={`space-y-4 p-4 sm:p-6 ${needs ? 'border-amber-500/50 ring-1 ring-amber-500/30' : ''}`}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-display font-semibold text-foreground">
+    <section
+      className={`space-y-4 rounded-xl border bg-card p-4 shadow-sm transition-colors sm:p-5 ${
+        needs ? 'border-amber-500/60 ring-1 ring-amber-500/30' : 'border-border hover:border-primary'
+      }`}
+      data-testid="pte-marked-item"
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="h-4 w-4" />
+        </span>
+        <p className="min-w-0 flex-1 font-semibold text-foreground">
           {item.taskName} <span className="text-sm font-normal text-muted-foreground">· question {item.position}</span>
         </p>
         {skipped && (
@@ -1294,29 +1584,31 @@ function ReviewCard({
         )}
       </div>
 
-      <details className="rounded-lg bg-muted/40 px-3 py-2 text-sm">
-        <summary className="cursor-pointer text-muted-foreground">The question</summary>
-        <div className="mt-2 space-y-2 text-foreground">
-          {item.title && <p className="font-medium">{item.title}</p>}
-          {item.prompt && <p className="whitespace-pre-wrap">{item.prompt}</p>}
-          {item.passage && <p className="whitespace-pre-wrap text-muted-foreground">{item.passage}</p>}
-          {item.imageUrl && <img src={item.imageUrl} alt="" className="max-h-56 rounded border border-border" />}
-          {item.audioUrl && <audio controls preload="none" src={item.audioUrl} className="h-9 max-w-full" />}
+      <details className="group/q rounded-xl border border-border bg-muted/30">
+        <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-semibold text-foreground hover:text-primary">The question</summary>
+        <div className="space-y-3 border-t border-border px-4 py-4">
+          {item.title && <p className="text-base font-semibold text-foreground">{item.title}</p>}
+          {item.prompt && <p className="whitespace-pre-wrap text-[15px] font-medium leading-7 text-foreground">{item.prompt}</p>}
+          {item.passage && (
+            <p className="max-w-[72ch] whitespace-pre-wrap rounded-lg bg-card px-4 py-3 text-[15px] leading-8 text-foreground">{item.passage}</p>
+          )}
+          {item.imageUrl && <img src={item.imageUrl} alt="" className="max-h-72 rounded border border-border bg-white" />}
+          {item.audioUrl && <audio controls preload="none" src={item.audioUrl} className="h-9 w-full max-w-md" />}
         </div>
       </details>
 
       <div className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Student's answer</p>
+        <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Student's answer</p>
         {item.marking === 'spoken' && item.hasRecording && (
           <audio controls preload="none" src={mockRecordingUrl(mockId, attemptId, item.position)} className="h-9 w-full max-w-md" />
         )}
         {item.marking === 'spoken' && (
-          <p className="whitespace-pre-wrap rounded-lg border border-border px-3 py-2 text-sm text-foreground">
+          <p className="max-w-[72ch] whitespace-pre-wrap rounded-lg border border-primary/20 bg-primary/[0.03] px-4 py-3 text-[15px] leading-8 text-foreground">
             {item.transcript || <span className="text-muted-foreground">Nothing was heard.</span>}
           </p>
         )}
         {item.marking === 'written' && (
-          <p className="whitespace-pre-wrap rounded-lg border border-border px-3 py-2 text-sm text-foreground">
+          <p className="max-w-[72ch] whitespace-pre-wrap rounded-lg border border-primary/20 bg-primary/[0.03] px-4 py-3 text-[15px] leading-8 text-foreground">
             {item.response || <span className="text-muted-foreground">Nothing was written.</span>}
           </p>
         )}
@@ -1324,12 +1616,12 @@ function ReviewCard({
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-1">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">AI's mark</p>
-          <p className="text-sm font-medium text-foreground">{levelName(item.aiScore)}</p>
-          {item.feedback && <p className="text-sm text-muted-foreground">{item.feedback}</p>}
+          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">AI's mark</p>
+          <p className="text-base font-semibold text-foreground">{levelName(item.aiScore)}</p>
+          {item.feedback && <p className="text-sm leading-6 text-foreground/80">{item.feedback}</p>}
         </div>
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Your mark</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Your mark</p>
           <div className="flex flex-wrap gap-1.5">
             <LevelButton active={mark.level === null} disabled={readOnly} onClick={() => onChange({ level: null })}>
               Keep AI's
@@ -1350,7 +1642,79 @@ function ReviewCard({
         rows={2}
         placeholder="A comment for the student on this answer (optional)"
       />
-    </Card>
+    </section>
+  );
+}
+
+/**
+ * The skills a PTE paper scores, with the scores so far: every skill for a
+ * full test, the section's own for a sectional one, even before it has a score.
+ */
+function pteSkills(kind: string, scores: Record<string, number> | undefined): Record<string, number | null> {
+  const skills = kind === 'full' ? ['listening', 'reading', 'speaking', 'writing'] : [kind];
+  const out: Record<string, number | null> = {};
+  for (const skill of [...skills, ...Object.keys(scores ?? {})]) out[skill] = scores?.[skill] ?? null;
+  return out;
+}
+
+/** The kind of PTE paper, as the score card's test type. */
+function pteTestType(kind: string): string {
+  if (kind === 'full') return 'Full mock test';
+  return `${kind.charAt(0).toUpperCase()}${kind.slice(1)} sectional`;
+}
+
+/** Reading and listening items marked by the answer key: a count, and each answer on request. */
+function KeyedAnswers({ items, right }: { items: ReviewItem[]; right: number }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Marked by the answer key</p>
+          <p className="text-sm text-muted-foreground">
+            {right} of {items.length} fully right. These need no review.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setOpen(o => !o)}>
+          {open ? 'Hide answers' : 'Show answers'}
+        </Button>
+      </div>
+      {open && (
+        <ul className="space-y-2">
+          {items.map(item => {
+            const full = item.aiScore != null && item.aiScore >= 1;
+            const none = !item.response?.trim();
+            return (
+              <li
+                key={item.position}
+                className={`flex items-start gap-3 rounded-xl border border-l-4 border-border bg-background px-3 py-2.5 text-sm transition-colors hover:border-primary ${
+                  full ? 'border-l-emerald-500' : none ? 'border-l-muted-foreground/40' : 'border-l-rose-500'
+                }`}
+                data-testid="pte-keyed-item"
+              >
+                <span className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-md bg-muted px-1 text-xs font-bold tabular-nums">{item.position}</span>
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <p className="truncate font-medium text-foreground">{item.title || item.taskName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Answer:{' '}
+                    <strong className={full ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>{item.response || '—'}</strong>
+                    {!full && item.correct && (
+                      <>
+                        {' '}
+                        · Key: <strong className="text-emerald-700 dark:text-emerald-400">{item.correct}</strong>
+                      </>
+                    )}
+                  </p>
+                </div>
+                <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
+                  {item.aiScore == null ? '—' : `${Math.round(item.aiScore * 100)}%`}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 

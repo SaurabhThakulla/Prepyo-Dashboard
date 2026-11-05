@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   MessageSquareWarning,
   Building2,
-  Sparkles,
+  ChevronRight,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -28,9 +28,36 @@ import {
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import AnimatedLogo from '../AnimatedLogo';
 import { PrimarySectionConfig, PrimarySectionId } from './navigation';
-import { isAdmin, UserProfile } from '@/lib/types';
+import { isAdmin, isInstitutionStudent, UserProfile } from '@/lib/types';
 import { accountLines } from '@/lib/account';
 import { useApp } from '@/context/AppContext';
+
+const MENU_ITEM =
+  'group flex cursor-pointer items-center gap-3 rounded-xl px-2 py-1.5 text-sm text-foreground outline-none transition-colors hover:bg-muted focus:bg-muted';
+
+type MenuLink = { to: string; label: string; icon: React.ComponentType<{ className?: string }> };
+
+/** The account menu's links, in order; 'separator' draws a line. */
+function menuLinks(user: UserProfile | null): (MenuLink | 'separator')[] {
+  if (isAdmin(user)) {
+    return [
+      { to: '/admin', label: 'Admin dashboard', icon: ShieldCheck },
+      { to: '/admin/payments', label: 'Plan management', icon: CreditCard },
+      { to: '/admin/reports', label: 'Issue reports', icon: MessageSquareWarning },
+      { to: '/admin/consultancies', label: 'Consultancies', icon: Building2 },
+      'separator',
+      { to: '/profile', label: 'Profile', icon: User },
+      { to: '/reports', label: 'My reports', icon: MessageSquare },
+    ];
+  }
+  return [
+    { to: '/dashboard', label: 'Home', icon: Home },
+    { to: '/profile', label: 'Profile', icon: User },
+    ...(isInstitutionStudent(user) ? [] : [{ to: '/subscription', label: 'Subscription', icon: CreditCard }]),
+    { to: '/reports', label: 'My reports', icon: MessageSquare },
+    { to: '/referrals', label: 'Earn rewards', icon: Gift },
+  ];
+}
 
 interface PrimaryIconRailProps {
   sections: PrimarySectionConfig[];
@@ -102,7 +129,7 @@ export default function PrimaryIconRail({
                       <Icon className="w-[18px] h-[18px]" />
                     </span>
                     <span
-                      className={`w-full line-clamp-2 break-words text-center text-xs leading-tight transition-colors ${
+                      className={`w-full line-clamp-2 break-normal text-center text-xs leading-tight tracking-tight transition-colors ${
                         isSelected ? 'font-bold text-white' : 'font-medium text-white/65 group-hover:text-white'
                       }`}
                     >
@@ -182,175 +209,81 @@ export default function PrimaryIconRail({
             side="right"
             align="end"
             sideOffset={14}
-            className="w-72 p-2 shadow-2xl rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#0f1422] backdrop-blur-2xl ring-1 ring-black/5 dark:ring-white/5 space-y-0.5 animate-in fade-in-50 zoom-in-95 duration-150"
+            className="w-72 overflow-hidden rounded-2xl border border-border bg-popover p-0 text-popover-foreground shadow-xl animate-in fade-in-50 zoom-in-95 duration-150"
           >
-            <DropdownMenuLabel className="font-normal p-0 pb-1">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/60 dark:from-white/[0.04] dark:to-white/[0.01] border border-slate-100 dark:border-white/5 flex items-center gap-3">
-                <Avatar className="h-10 w-10 ring-2 ring-primary/20 dark:ring-primary/40 shadow-xs shrink-0">
-                  <AvatarFallback className="bg-primary/10 text-primary dark:bg-primary/20 dark:text-blue-300 text-sm font-bold">
-                    {user?.name?.charAt(0) || 'P'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <div className="flex items-center justify-between gap-1.5">
-                    <p className="text-xs font-bold leading-tight text-slate-900 dark:text-white truncate">
-                      {user?.name || 'Learner'}
-                    </p>
-                    <span className="inline-flex items-center gap-1 text-xs font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/15 to-yellow-500/20 text-amber-700 dark:text-amber-300 border border-amber-400/30 shadow-2xs shrink-0">
-                      <Sparkles className="w-2.5 h-2.5 fill-amber-500/40 text-amber-500" />
-                      {user?.subscription?.planId || 'Free'}
-                    </span>
+            <DropdownMenuLabel className="p-0 font-normal">
+              <div className="relative overflow-hidden bg-gradient-to-br from-[#2a56cf] via-primary to-[#132e7d] px-4 pb-4 pt-4 text-white dark:from-blue-900 dark:via-blue-950 dark:to-slate-950">
+                <span className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-white/10" aria-hidden />
+                <span className="pointer-events-none absolute -bottom-12 right-10 h-20 w-20 rounded-full bg-white/5" aria-hidden />
+                <div className="relative flex items-center gap-3">
+                  <Avatar className="h-11 w-11 shrink-0 ring-2 ring-white/40">
+                    <AvatarFallback className="bg-white text-base font-bold text-primary">
+                      {user?.name?.charAt(0)?.toUpperCase() || 'P'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold leading-tight">{user?.name || 'Learner'}</p>
+                    {accountLines(user).map(line => (
+                      <p key={line} className="truncate text-xs leading-snug text-white/75">
+                        {line}
+                      </p>
+                    ))}
                   </div>
-                  {accountLines(user).map(line => (
-                    <p key={line} className="text-[11px] leading-tight text-slate-500 dark:text-slate-400 truncate">
-                      {line}
-                    </p>
-                  ))}
                 </div>
+                {!isAdmin(user) && (
+                  <div className="relative mt-3 flex items-center justify-between rounded-xl bg-white/15 px-3 py-2 ring-1 ring-white/15 backdrop-blur-sm">
+                    <div className="leading-tight">
+                      <p className="text-[10px] font-medium uppercase tracking-wider text-white/60">Your plan</p>
+                      <p className="text-sm font-bold capitalize">{user?.subscription?.planId || 'Free'}</p>
+                    </div>
+                    {user?.subscription?.isActive ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Active
+                      </span>
+                    ) : (
+                      !isInstitutionStudent(user) && (
+                        <Link
+                          to="/subscription"
+                          onClick={onCloseMobile}
+                          className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-primary transition hover:bg-white/90"
+                        >
+                          Upgrade
+                        </Link>
+                      )
+                    )}
+                  </div>
+                )}
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator className="my-1.5 bg-slate-100 dark:bg-white/5" />
 
-            {/* Hub links implemented from Home */}
-            {isAdmin(user) ? (
-              <>
-                <DropdownMenuItem asChild>
-                  <Link
-                    to="/admin"
-                    onClick={onCloseMobile}
-                    className="group cursor-pointer flex items-center gap-3 py-2 px-2.5 rounded-xl text-xs sm:text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/90 dark:hover:bg-white/[0.06] focus:bg-slate-100/90 dark:focus:bg-white/[0.06] transition-all"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                      <ShieldCheck className="w-4 h-4" />
-                    </div>
-                    <span className="flex-1">Admin Dashboard</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    to="/admin/payments"
-                    onClick={onCloseMobile}
-                    className="group cursor-pointer flex items-center gap-3 py-2 px-2.5 rounded-xl text-xs sm:text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/90 dark:hover:bg-white/[0.06] focus:bg-slate-100/90 dark:focus:bg-white/[0.06] transition-all"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                      <CreditCard className="w-4 h-4" />
-                    </div>
-                    <span className="flex-1">Plan Management</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    to="/admin/reports"
-                    onClick={onCloseMobile}
-                    className="group cursor-pointer flex items-center gap-3 py-2 px-2.5 rounded-xl text-xs sm:text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/90 dark:hover:bg-white/[0.06] focus:bg-slate-100/90 dark:focus:bg-white/[0.06] transition-all"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                      <MessageSquareWarning className="w-4 h-4" />
-                    </div>
-                    <span className="flex-1">Issue reports</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    to="/admin/consultancies"
-                    onClick={onCloseMobile}
-                    className="group cursor-pointer flex items-center gap-3 py-2 px-2.5 rounded-xl text-xs sm:text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/90 dark:hover:bg-white/[0.06] focus:bg-slate-100/90 dark:focus:bg-white/[0.06] transition-all"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                      <Building2 className="w-4 h-4" />
-                    </div>
-                    <span className="flex-1">Consultancies</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="my-1.5 bg-slate-100 dark:bg-white/5" />
-              </>
-            ) : (
-              <>
-                <DropdownMenuItem asChild>
-                  <Link
-                    to="/dashboard"
-                    onClick={onCloseMobile}
-                    className="group cursor-pointer flex items-center gap-3 py-2 px-2.5 rounded-xl text-xs sm:text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/90 dark:hover:bg-white/[0.06] focus:bg-slate-100/90 dark:focus:bg-white/[0.06] transition-all"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                      <Home className="w-4 h-4" />
-                    </div>
-                    <span className="flex-1">Home Overview</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="my-1.5 bg-slate-100 dark:bg-white/5" />
-              </>
-            )}
+            <div className="p-1.5">
+              {menuLinks(user).map((item, i) =>
+                item === 'separator' ? (
+                  <DropdownMenuSeparator key={`sep-${i}`} className="mx-2 my-1" />
+                ) : (
+                  <DropdownMenuItem key={item.to} asChild>
+                    <Link to={item.to} onClick={onCloseMobile} className={MENU_ITEM}>
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/[0.08] text-primary transition group-hover:bg-primary group-hover:text-primary-foreground dark:bg-white/[0.06] dark:text-blue-300">
+                        <item.icon className="h-4 w-4" />
+                      </span>
+                      <span className="flex-1 font-medium">{item.label}</span>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground/50 transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                    </Link>
+                  </DropdownMenuItem>
+                ),
+              )}
+            </div>
 
-            <DropdownMenuItem asChild>
-              <Link
-                to="/profile"
-                onClick={onCloseMobile}
-                className="group cursor-pointer flex items-center gap-3 py-2 px-2.5 rounded-xl text-xs sm:text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/90 dark:hover:bg-white/[0.06] focus:bg-slate-100/90 dark:focus:bg-white/[0.06] transition-all"
+            <div className="border-t border-border bg-muted/40 p-2">
+              <DropdownMenuItem
+                onClick={onSignOut}
+                disabled={isSigningOut}
+                className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground outline-none transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 focus:border-rose-300 focus:bg-rose-50 focus:text-rose-600 dark:hover:border-rose-500/40 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 dark:focus:bg-rose-500/10 dark:focus:text-rose-400"
               >
-                <div className="w-7 h-7 rounded-lg bg-slate-500/10 text-slate-600 dark:text-slate-400 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                  <User className="w-4 h-4" />
-                </div>
-                <span className="flex-1">Profile</span>
-              </Link>
-            </DropdownMenuItem>
-            {!isAdmin(user) && (
-              <DropdownMenuItem asChild>
-                <Link
-                  to="/subscription"
-                  onClick={onCloseMobile}
-                  className="group cursor-pointer flex items-center gap-3 py-2 px-2.5 rounded-xl text-xs sm:text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/90 dark:hover:bg-white/[0.06] focus:bg-slate-100/90 dark:focus:bg-white/[0.06] transition-all"
-                >
-                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                    <CreditCard className="w-4 h-4" />
-                  </div>
-                  <span className="flex-1">Subscription</span>
-                  {user?.subscription?.isActive && (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      Active
-                    </span>
-                  )}
-                </Link>
+                <LogOut className="h-4 w-4" />
+                {isSigningOut ? 'Signing out…' : 'Sign out'}
               </DropdownMenuItem>
-            )}
-            <DropdownMenuItem asChild>
-              <Link
-                to="/reports"
-                onClick={onCloseMobile}
-                className="group cursor-pointer flex items-center gap-3 py-2 px-2.5 rounded-xl text-xs sm:text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/90 dark:hover:bg-white/[0.06] focus:bg-slate-100/90 dark:focus:bg-white/[0.06] transition-all"
-              >
-                <div className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                  <MessageSquare className="w-4 h-4" />
-                </div>
-                <span className="flex-1">My reports</span>
-              </Link>
-            </DropdownMenuItem>
-            {!isAdmin(user) && (
-              <DropdownMenuItem asChild>
-                <Link
-                  to="/referrals"
-                  onClick={onCloseMobile}
-                  className="group cursor-pointer flex items-center gap-3 py-2 px-2.5 rounded-xl text-xs sm:text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/90 dark:hover:bg-white/[0.06] focus:bg-slate-100/90 dark:focus:bg-white/[0.06] transition-all"
-                >
-                  <div className="w-7 h-7 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                    <Gift className="w-4 h-4" />
-                  </div>
-                  <span className="flex-1">Earn rewards</span>
-                </Link>
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator className="my-1.5 bg-slate-100 dark:bg-white/5" />
-            <DropdownMenuItem
-              onClick={onSignOut}
-              disabled={isSigningOut}
-              className="group cursor-pointer flex items-center gap-3 py-2 px-2.5 rounded-xl text-xs sm:text-[13px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 focus:bg-rose-50 dark:focus:bg-rose-950/30 transition-all"
-            >
-              <div className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                <LogOut className="w-4 h-4" />
-              </div>
-              <span>{isSigningOut ? 'Signing out…' : 'Sign out'}</span>
-            </DropdownMenuItem>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

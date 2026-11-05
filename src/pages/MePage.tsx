@@ -21,6 +21,7 @@ import {
   Sparkles,
   UserRound,
   Video,
+  BookCopy,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -28,7 +29,9 @@ import ReportIssueDialog from '@/components/support/ReportIssueDialog';
 import { ExamSwitcher } from '@/components/layout/sidebar/SecondaryPanel';
 import { profileImageUrl } from '@/lib/api';
 import { accountLines } from '@/lib/account';
-import { EXAM_LABELS, isAdmin, isPremiumUser } from '@/lib/types';
+import { EXAM_LABELS, isAdmin, isInstitutionStudent, isPremiumUser } from '@/lib/types';
+import { hasMaterials } from '@/data/materials';
+import { signedOutPath } from '@/lib/signOutPath';
 import { cn } from '@/lib/utils';
 
 interface Row {
@@ -63,27 +66,34 @@ export default function MePage() {
 
   const signOut = async () => {
     setSigningOut(true);
+    // Read before logout clears the user: a consultancy's student goes back to its page.
+    const home = signedOutPath(user);
     try {
       await logout();
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
-      navigate('/login');
+      navigate(home);
       setSigningOut(false);
     }
   };
 
-  const account: Row[] = [
-    { label: 'Profile & goals', sublabel: 'Target score, exam date, photo', icon: UserRound, tint: 'text-sky-600 bg-sky-500/10', href: '/profile' },
-    admin
-      ? { label: 'Plan management', sublabel: 'Approve payments and grant plans', icon: CreditCard, tint: 'text-violet-600 bg-violet-500/10', href: '/admin/payments' }
+  // A consultancy's student is on its plan: no plan page and no upgrade offer.
+  const institutionStudent = isInstitutionStudent(user);
+  const planRow: Row | null = admin
+    ? { label: 'Plan management', sublabel: 'Approve payments and grant plans', icon: CreditCard, tint: 'text-violet-600 bg-violet-500/10', href: '/admin/payments' }
+    : institutionStudent
+      ? null
       : {
           label: 'Your plan',
           sublabel: plan?.planName ? `${plan.planName} · ${plan.isActive ? 'Active' : 'Expired'}` : 'Plans, quotas and billing',
           icon: CreditCard,
           tint: 'text-violet-600 bg-violet-500/10',
           href: '/subscription',
-        },
+        };
+  const account: Row[] = [
+    { label: 'Profile & goals', sublabel: 'Target score, exam date, photo', icon: UserRound, tint: 'text-sky-600 bg-sky-500/10', href: '/profile' },
+    ...(planRow ? [planRow] : []),
     { label: 'Earn rewards', sublabel: 'Invite friends, get free days', icon: Gift, tint: 'text-rose-600 bg-rose-500/10', href: '/referrals' },
     admin
       ? { label: 'Issue reports', sublabel: 'What learners have reported', icon: MessageSquareWarning, tint: 'text-amber-600 bg-amber-500/10', href: '/admin/reports' }
@@ -97,6 +107,9 @@ export default function MePage() {
     // holds the Korean course instead.
     ...(activeExam === 'EPS_TOPIK'
       ? [{ label: 'Video lessons', sublabel: `${EXAM_LABELS[activeExam]} masterclasses`, icon: Video, tint: 'text-red-600 bg-red-500/10', href: '/tutorials' }]
+      : []),
+    ...(hasMaterials(activeExam)
+      ? [{ label: 'Materials', sublabel: 'Official sample questions to download', icon: BookCopy, tint: 'text-indigo-600 bg-indigo-500/10', href: '/materials' }]
       : []),
     { label: 'Diagnostic test', sublabel: '15-minute baseline', icon: Gauge, tint: 'text-cyan-600 bg-cyan-500/10', href: '/diagnostic' },
   ];
@@ -156,7 +169,7 @@ export default function MePage() {
           <ExamSwitcher activeExam={activeExam} onChange={setActiveExam} />
         </section>
       ) : (
-        !premium && (
+        !premium && !institutionStudent && (
           <Link
             to="/subscription"
             className="relative flex items-center gap-4 overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-indigo-600 p-4 text-primary-foreground shadow-lg shadow-primary/25 transition-transform active:scale-[0.99]"

@@ -1,6 +1,8 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { beep, TestMicrophone } from '@/lib/pteMock/audio';
 import { encodeForUpload } from '@/lib/audio';
+import { Mic, Square } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { PteAnswer } from '@/lib/pteMock/types';
 import { AudioStatusPanel, RecorderPhase, RecorderStatusPanel } from './StatusPanels';
 import { usePromptPlayback } from './usePromptPlayback';
@@ -158,10 +160,33 @@ const SpeakingItem = forwardRef<ItemHandle, ItemProps>(function SpeakingItem({ i
 
       <RecorderStatusPanel phase={phase} countdown={countdown} total={response} prepTotal={prep} level={level} note={note} />
 
+      {mic && (phase === 'waiting' || phase === 'prep') && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+          <p className="text-sm text-foreground">
+            Ready already? Answer now: {isAudioTask ? 'the recording stops and ' : ''}your microphone opens straight away.
+          </p>
+          <Button
+            size="sm"
+            className="gap-1.5"
+            onClick={() => {
+              playback.stop();
+              void startRecording();
+            }}
+          >
+            <Mic className="h-3.5 w-3.5" /> Answer now
+          </Button>
+        </div>
+      )}
+
       {phase === 'recording' && (
-        <p className="text-xs text-muted-foreground">
-          Speak clearly. Recording stops by itself when the time is up or after {TestMicrophone.SILENCE_SECONDS} seconds of silence.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            Speak clearly. Recording stops by itself when the time is up or after {TestMicrophone.SILENCE_SECONDS} seconds of silence.
+          </p>
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => void stopRecording('You ended the recording. Your answer is saved.')}>
+            <Square className="h-3.5 w-3.5 fill-current" /> Done
+          </Button>
+        </div>
       )}
     </div>
   );

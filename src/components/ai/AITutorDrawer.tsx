@@ -5,7 +5,8 @@ import { Send, X, Sparkles, RefreshCw, Zap, MessageSquare, Lock } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import TutorText from './TutorText';
-import { canUseTutor } from '@/lib/types';
+import { canUseTutor, isInstitutionStudent } from '@/lib/types';
+import AskInstitution from '@/components/common/AskInstitution';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -287,9 +288,13 @@ export default function AITutorDrawer() {
             <p className="max-w-xs text-xs text-muted-foreground">
               Upgrade to ask the coach about any question, get your mistakes explained and get tips for {activeExam}.
             </p>
-            <Button asChild size="sm" className="mt-1">
-              <Link to="/subscription" onClick={() => setIsTutorOpen(false)}>See plans</Link>
-            </Button>
+            {isInstitutionStudent(user) ? (
+              <AskInstitution className="mt-1" />
+            ) : (
+              <Button asChild size="sm" className="mt-1">
+                <Link to="/subscription" onClick={() => setIsTutorOpen(false)}>See plans</Link>
+              </Button>
+            )}
           </div>
         )}
       </div>

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { BadgeCheck, BookOpen, Building, Building2, CalendarClock, ClipboardList, Home, Layers, LucideIcon, Mail, Palette, SlidersHorizontal, SpellCheck, Users } from 'lucide-react';
+import { BadgeCheck, BookOpen, Building, Building2, CalendarClock, ClipboardList, Home, Layers, LucideIcon, Mail, Palette, RotateCcw, SlidersHorizontal, SpellCheck, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { formatExamDate } from '@/lib/dates';
-import { AI_GRADINGS_PER_MONTH, fetchStudents, InstitutionAccount, InstitutionPlan, PLANS, PRICE_PER_STUDENT_NPR } from './api';
+import { AI_GRADINGS_PER_MONTH, fetchStudents, InstitutionAccount, InstitutionPlan, nextGradingReset, PLANS, PRICE_PER_STUDENT_NPR } from './api';
 import { rupees } from './FeesSection';
 import { examName } from './profile';
 
@@ -116,7 +116,7 @@ export default function SubscriptionSection({ account }: { account: InstitutionA
         </div>
 
         {current && (
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-lg border border-border p-3">
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Users className="h-3.5 w-3.5" /> Seats used
@@ -140,6 +140,17 @@ export default function SubscriptionSection({ account }: { account: InstitutionA
                 </p>
               )}
             </div>
+            {institution.status === 'active' && (
+              <div className="rounded-lg border border-border p-3">
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <RotateCcw className="h-3.5 w-3.5" /> AI gradings reset
+                </p>
+                <p className="mt-1 text-base font-semibold text-foreground">{formatExamDate(nextGradingReset())}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {AI_GRADINGS_PER_MONTH.toLocaleString()} per student, renewed on the 1st of every month until the plan ends
+                </p>
+              </div>
+            )}
           </div>
         )}
       </Card>

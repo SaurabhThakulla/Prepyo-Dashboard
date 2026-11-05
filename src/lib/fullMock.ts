@@ -32,8 +32,11 @@ export interface FullMockSession {
 export interface FullMockSection<S> {
   /** The paper the full mock dealt for this section. */
   session: S;
-  /** The section is over: submitted, or closed without a result. */
-  onSubmitted: () => void;
+  /**
+   * The section is over: submitted, with its result where the section has
+   * one to show, or closed without a result.
+   */
+  onSubmitted: (outcome?: unknown) => void;
   /** Leaves the full mock; the section stays open to resume. */
   onLeave: () => void;
 }
