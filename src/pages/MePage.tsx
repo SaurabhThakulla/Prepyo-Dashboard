@@ -21,6 +21,7 @@ import {
   Sparkles,
   UserRound,
   Video,
+  BookCopy,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -29,6 +30,7 @@ import { ExamSwitcher } from '@/components/layout/sidebar/SecondaryPanel';
 import { profileImageUrl } from '@/lib/api';
 import { accountLines } from '@/lib/account';
 import { EXAM_LABELS, isAdmin, isInstitutionStudent, isPremiumUser } from '@/lib/types';
+import { hasMaterials } from '@/data/materials';
 import { signedOutPath } from '@/lib/signOutPath';
 import { cn } from '@/lib/utils';
 
@@ -105,6 +107,9 @@ export default function MePage() {
     // holds the Korean course instead.
     ...(activeExam === 'EPS_TOPIK'
       ? [{ label: 'Video lessons', sublabel: `${EXAM_LABELS[activeExam]} masterclasses`, icon: Video, tint: 'text-red-600 bg-red-500/10', href: '/tutorials' }]
+      : []),
+    ...(hasMaterials(activeExam)
+      ? [{ label: 'Materials', sublabel: 'Official sample questions to download', icon: BookCopy, tint: 'text-indigo-600 bg-indigo-500/10', href: '/materials' }]
       : []),
     { label: 'Diagnostic test', sublabel: '15-minute baseline', icon: Gauge, tint: 'text-cyan-600 bg-cyan-500/10', href: '/diagnostic' },
   ];
