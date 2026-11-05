@@ -488,44 +488,61 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
         <div className="min-w-0 space-y-4">
 
         {phase === 'intro' && (
-          <Card className="overflow-hidden p-0">
-            <div className="grid gap-6 p-6 sm:p-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-              <div className="space-y-4">
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                  <Headphones className="h-5 w-5" />
-                </span>
-                <div className="space-y-1.5">
-                  <h2 className="text-xl font-bold text-foreground">{index === 0 ? 'Ready when you are' : 'Welcome back'}</h2>
-                  <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-                    {index === 0
-                      ? 'The examiner will ask you questions in three parts. Answer each one aloud; your answer is recorded until you press Finish answer or its time runs out.'
-                      : 'Continue your test from the next question.'}
-                  </p>
-                </div>
-                {index === 0 && (
-                  <ul className="grid gap-2 text-sm text-foreground sm:grid-cols-3">
-                    {['Sit somewhere quiet', 'Allow the microphone', 'Answer in full sentences'].map(tip => (
-                      <li key={tip} className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2">
-                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" /> {tip}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button size="lg" onClick={() => void begin()} disabled={checkingSound} className="h-11 gap-2 rounded-full px-6 font-bold">
-                    <Mic className="h-4 w-4" /> {index === 0 ? 'Start the test' : 'Continue the test'}
-                  </Button>
-                  <Button size="lg" variant="outline" onClick={() => void testSound()} disabled={checkingSound} className="h-11 gap-2 rounded-full px-5">
-                    <Volume2 className="h-4 w-4" /> {checkingSound ? 'Playing…' : 'Test your sound'}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">Turn your volume up. You should hear the examiner's voice when you test your sound.</p>
-              </div>
-              <div className="hidden h-40 w-40 items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-primary/5 md:flex" aria-hidden>
-                <span className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg">
+          <Card className="relative overflow-hidden p-0">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-gradient-to-b from-primary/10 to-transparent" aria-hidden />
+            <div className="relative mx-auto flex max-w-2xl flex-col items-center gap-6 px-5 py-10 text-center sm:px-8 sm:py-12 lg:min-h-[540px] lg:justify-center">
+              <div className="relative flex h-28 w-28 items-center justify-center" aria-hidden>
+                <span className="absolute inset-0 rounded-full bg-primary/10 motion-safe:animate-ping [animation-duration:2.5s]" />
+                <span className="absolute inset-2 rounded-full bg-primary/15" />
+                <span className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/30">
                   <Mic className="h-9 w-9" />
                 </span>
               </div>
+
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{index === 0 ? 'Ready when you are' : 'Welcome back'}</h2>
+                <p className="mx-auto max-w-lg text-sm leading-relaxed text-muted-foreground sm:text-base">
+                  {index === 0
+                    ? 'The examiner will ask you questions in three parts. Answer each one aloud; your answer is recorded until you press Finish answer or its time runs out.'
+                    : 'Continue your test from the next question.'}
+                </p>
+              </div>
+
+              {index === 0 && (
+                <ol className="grid w-full gap-2 sm:grid-cols-3">
+                  {[1, 2, 3].map(part => (
+                    <li key={part} className="flex items-center gap-3 rounded-2xl border border-border bg-muted/30 px-4 py-3 text-left sm:flex-col sm:items-center sm:gap-1.5 sm:text-center">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">P{part}</span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-foreground">{SPEAKING_PARTS[part]}</span>
+                        <span className="block text-xs text-muted-foreground">{part === 2 ? '3–4 min' : '4–5 min'}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+
+              {index === 0 && (
+                <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                  {['Sit somewhere quiet', 'Allow the microphone', 'Answer in full sentences'].map(tip => (
+                    <li key={tip} className="flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" /> {tip}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="flex w-full flex-col items-stretch justify-center gap-2 sm:w-auto sm:flex-row sm:items-center">
+                <Button size="lg" onClick={() => void begin()} disabled={checkingSound} className="h-12 gap-2 rounded-full px-8 text-base font-bold shadow-md shadow-primary/20">
+                  <Mic className="h-4 w-4" /> {index === 0 ? 'Start the test' : 'Continue the test'}
+                </Button>
+                <Button size="lg" variant="outline" onClick={() => void testSound()} disabled={checkingSound} className="h-12 gap-2 rounded-full px-6">
+                  <Volume2 className="h-4 w-4" /> {checkingSound ? 'Playing…' : 'Test your sound'}
+                </Button>
+              </div>
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Headphones className="h-3.5 w-3.5 shrink-0" /> Turn your volume up. You should hear the examiner's voice when you test your sound.
+              </p>
             </div>
           </Card>
         )}

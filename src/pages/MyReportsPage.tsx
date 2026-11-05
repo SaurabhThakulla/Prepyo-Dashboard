@@ -81,16 +81,16 @@ export default function MyReportsPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 pb-10 sm:px-6">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-foreground">My reports</h1>
-          <p className="text-sm text-muted-foreground">
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 pb-10 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="font-display text-2xl font-semibold text-foreground sm:text-3xl">My reports</h1>
+          <p className="max-w-2xl text-sm text-muted-foreground">
             Problems you have told us about, and our replies. You get a notification whenever we answer.
           </p>
         </div>
-        <Button type="button" size="sm" onClick={() => setReporting(true)}>
-          Report an issue
+        <Button type="button" onClick={() => setReporting(true)} className="shrink-0 gap-2 self-start rounded-full px-5 sm:self-auto">
+          <MessageSquareWarning className="h-4 w-4" /> Report an issue
         </Button>
       </div>
 
@@ -103,12 +103,26 @@ export default function MyReportsPage() {
           <Loader2 className="h-4 w-4 animate-spin" /> Loading your reports…
         </div>
       ) : reports.length === 0 && !error ? (
-        <Card className="flex flex-col items-center gap-3 p-10 text-center">
-          <MessageSquareWarning className="h-8 w-8 text-muted-foreground" aria-hidden />
-          <p className="text-sm text-foreground">You have not reported anything yet</p>
-          <p className="max-w-sm text-xs text-muted-foreground">
-            If something looks wrong — a question, a score, audio that will not play — tell us and we will reply here.
-          </p>
+        <Card className="flex flex-col items-center gap-5 px-6 py-12 text-center sm:py-16">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary" aria-hidden>
+            <MessageSquareWarning className="h-7 w-7" />
+          </span>
+          <div className="space-y-1.5">
+            <p className="text-lg font-semibold text-foreground">You have not reported anything yet</p>
+            <p className="mx-auto max-w-md text-sm text-muted-foreground">
+              If something looks wrong, tell us and we will reply here. For example:
+            </p>
+          </div>
+          <ul className="flex flex-wrap justify-center gap-2">
+            {['A question or answer is wrong', 'A score looks off', 'Audio will not play'].map(example => (
+              <li key={example} className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
+                {example}
+              </li>
+            ))}
+          </ul>
+          <Button type="button" variant="outline" onClick={() => setReporting(true)} className="rounded-full px-5">
+            Report an issue
+          </Button>
         </Card>
       ) : (
         <ul className="space-y-3">
