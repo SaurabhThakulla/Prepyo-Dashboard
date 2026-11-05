@@ -18,6 +18,7 @@ import { Playback, playClips, playRecording, replayClip, StoppedError, unlockAud
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import SectionMockIntro from '@/components/mocks/SectionMockIntro';
 import TestFeedback from '@/components/mocks/TestFeedback';
+import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
 import MockHeader from '@/components/mocks/MockHeader';
 import { CueCardPaper, ExaminerAvatar, ExaminerWave, MicOrb, PART_PHRASES, PART_TIPS, PartProgress, SPEAKING_PARTS, SpeakingDots, TestOverview, TimerRing, VoiceMeter } from '@/components/practice/SpeakingMockStage';
 
@@ -737,6 +738,17 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
 }
 
 export function SpeakingResult({ outcome, onBack, onRedo }: { outcome: SpeakingOutcome; onBack: () => void; onRedo?: () => void }) {
+  if (outcome.attempt?.id) {
+    return (
+      <IeltsTestReport
+        attemptId={outcome.attempt.id}
+        xpAwarded={outcome.xpAwarded}
+        backLabel="Back to speaking practice"
+        onBack={onBack}
+        onRedo={onRedo}
+      />
+    );
+  }
   const band = outcome.evaluation.estimatedScore;
   return (
     <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 space-y-4">

@@ -17,6 +17,7 @@ import { FullMockSection } from '@/lib/fullMock';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import SectionMockIntro from '@/components/mocks/SectionMockIntro';
 import TestFeedback from '@/components/mocks/TestFeedback';
+import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
 import MockHeader from '@/components/mocks/MockHeader';
 
 /** Mirrors billing.SectionMockSubTests on the server, which is what enforces it. */
@@ -331,6 +332,17 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
 }
 
 function WritingMockResult({ outcome, onBack, onRedo }: { outcome: WritingMockOutcome; onBack: () => void; onRedo?: () => void }) {
+  if (outcome.attempt?.id) {
+    return (
+      <IeltsTestReport
+        attemptId={outcome.attempt.id}
+        xpAwarded={outcome.xpAwarded}
+        backLabel="Back to writing practice"
+        onBack={onBack}
+        onRedo={onRedo}
+      />
+    );
+  }
   const t1 = outcome.task1Evaluation.estimatedScore;
   const t2 = outcome.task2Evaluation.estimatedScore;
   return (

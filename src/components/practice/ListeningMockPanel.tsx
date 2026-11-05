@@ -19,6 +19,7 @@ import ListeningGapOutline from '@/components/listening/ListeningGapOutline';
 import { VoicePanel } from '@/components/practice/PromptAudio';
 import MockHeader from '@/components/mocks/MockHeader';
 import { LISTENING_TYPES, lettersMayRepeat } from '@/lib/listeningTypes';
+import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
 
 /** Mirrors billing.SectionMockSubTests on the server, which is what enforces it. */
 const SECTION_MOCK_SUB_TESTS = 5;
@@ -664,6 +665,17 @@ export function ListeningResult({
   embedded?: boolean;
 }) {
   const [showScripts, setShowScripts] = useState(false);
+  if (!embedded && outcome.attempt?.id) {
+    return (
+      <IeltsTestReport
+        attemptId={outcome.attempt.id}
+        xpAwarded={outcome.xpAwarded}
+        backLabel="Back to listening practice"
+        onBack={onBack}
+        onRedo={onRedo}
+      />
+    );
+  }
   const answersById = new Map((outcome.submitted ?? []).map(a => [a.questionId, a]));
   return (
     <div className={embedded ? 'space-y-4' : 'w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 space-y-4'}>

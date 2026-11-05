@@ -26,6 +26,7 @@ import { SpeakingMockRunner, SpeakingOutcome, SpeakingSession } from '@/componen
 import WritingMockPanel, { WritingMockOutcome, WritingMockSession } from '@/components/practice/WritingMockPanel';
 import TestFeedback from '@/components/mocks/TestFeedback';
 import ReadingMockPanel from '@/components/reading/ReadingMockPanel';
+import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
 
 interface ActiveSection {
   skill: FullMockSkill;
@@ -365,6 +366,17 @@ function FullMockResult({
   onRedo: () => void;
   busy: boolean;
 }) {
+  if (session.attemptId) {
+    return (
+      <IeltsTestReport
+        attemptId={session.attemptId}
+        embedded
+        onBack={onDone}
+        onRedo={busy ? undefined : onRedo}
+        actions={<Button variant="outline" onClick={onReports}>See score reports</Button>}
+      />
+    );
+  }
   // The sections whose feedback came back while this page was open, in the order of the test.
   const feedback = (['listening', 'writing', 'speaking'] as const).filter(skill => results[skill]);
   return (
