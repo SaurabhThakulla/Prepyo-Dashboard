@@ -1,38 +1,21 @@
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, Info, Loader2, RotateCcw, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, CircleMinus, ClipboardList, Info, Loader2, Mic, RotateCcw, XCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
-import { SkillType } from '@/lib/types';
 import { PART_LABELS, pteMockMeta } from '@/lib/pteMock/catalog';
 import { PtePart, PteReport, PteReviewItem } from '@/lib/pteMock/types';
-
-const SKILL_LABELS: Record<SkillType, string> = {
-  listening: 'Listening',
-  reading: 'Reading',
-  speaking: 'Speaking',
-  writing: 'Writing',
-};
-
-/** The order a PTE score report lists the communicative skills in. */
-const SKILL_ORDER: SkillType[] = ['listening', 'reading', 'speaking', 'writing'];
-
-const SKILL_COLORS: Record<SkillType, string> = {
-  listening: 'bg-slate-500',
-  reading: 'bg-amber-500',
-  speaking: 'bg-blue-500',
-  writing: 'bg-emerald-500',
-};
+import PteReportForm from './PteReportForm';
 
 interface Props {
   report: PteReport;
   onBack: () => void;
   onRetake?: () => void;
 }
-
-/** A position on the 10-90 scale as a share of the bar. */
-const onScale = (score: number) => ((Math.min(90, Math.max(10, score)) - 10) / 80) * 100;
 
 /** While the paper is scored: how far along, and that it can be left. */
 export function PteScoringProgress({ report, onBack }: { report: PteReport; onBack: () => void }) {
@@ -41,7 +24,7 @@ export function PteScoringProgress({ report, onBack }: { report: PteReport; onBa
     <div className="w-full max-w-xl mx-auto px-4 py-16">
       <Card className="p-8 text-center space-y-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-        <h1 className="font-display text-xl font-bold text-foreground">Scoring your test</h1>
+        <h1 className="text-xl font-bold text-foreground">Scoring your test</h1>
         <p className="text-sm text-muted-foreground">
           Reading and listening items are marked at once; spoken and written answers are rated one by one. This
           usually takes a minute or two.
@@ -60,11 +43,11 @@ export function PteScoringProgress({ report, onBack }: { report: PteReport; onBa
 }
 
 export default function PteScoreReport({ report, onBack, onRetake }: Props) {
+  const { user } = useApp();
+  const [showReview, setShowReview] = useState(false);
+  const [open, setOpen] = useState<number | null>(null);
   const result = report.result;
   const meta = pteMockMeta(report.kind);
-  const skills = SKILL_ORDER.filter(s => result?.skills[s] != null);
-  const headline = result?.overall ?? (report.skills.length === 1 ? result?.skills[report.skills[0]] : undefined);
-  const headlineLabel = result?.overall != null ? 'Overall Score' : `${SKILL_LABELS[report.skills[0]]} Score`;
   const hadSpeaking = report.parts.some(p => p.part === 'speaking_writing') && report.kind !== 'writing';
 
   const tasksByPart = useMemo(() => {
@@ -72,6 +55,11 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
     for (const t of result?.tasks ?? []) groups.set(t.part, [...(groups.get(t.part) ?? []), t]);
     return Array.from(groups.entries());
   }, [result]);
+  const itemsByPart = useMemo(() => {
+    const groups = new Map<PtePart, PteReviewItem[]>();
+    for (const r of report.review) groups.set(r.part, [...(groups.get(r.part) ?? []), r]);
+    return Array.from(groups.entries());
+  }, [report.review]);
 
   if (!result) {
     return (
@@ -85,139 +73,177 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
     );
   }
 
+  const skills: Partial<Record<string, number | null>> = {};
+  for (const skill of report.skills) skills[skill] = result.skills[skill] ?? null;
+  const openIndex = open == null ? -1 : report.review.findIndex(r => r.position === open);
+  const openItem = openIndex >= 0 ? report.review[openIndex] : null;
+
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <div className="flex items-center justify-between gap-2">
-        <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5">
+    <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5 font-report" data-testid="pte-score-report">
+      <PteReportForm
+        candidateName={user?.name ?? ''}
+        testDate={report.completedAt ?? report.createdAt}
+        reportId={report.id}
+        testType={report.kind === 'full' ? 'Full mock test' : `${meta.shortLabel} sectional`}
+        overall={result.overall}
+        skills={skills}
+      />
+
+      <p className="flex items-start gap-1.5 text-xs text-muted-foreground leading-relaxed">
+        <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+        <span>
+          {result.answered} of {result.items} answered.
+          {hadSpeaking && ' Speaking is judged from what was transcribed, so pronunciation is only partly assessed.'}
+          {result.unscored > 0 && ` ${result.unscored} item${result.unscored === 1 ? '' : 's'} could not be rated and ${result.unscored === 1 ? 'is' : 'are'} left out rather than counted as zero.`}
+          {report.missing.length > 0 && ` ${report.missing.length} task type(s) were not in the bank.`}
+        </span>
+      </p>
+
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button variant="outline" onClick={onBack} className="gap-1.5">
           <ArrowLeft className="h-4 w-4" /> Mock tests
         </Button>
         {onRetake && (
-          <Button variant="outline" size="sm" onClick={onRetake} className="gap-1.5">
-            <RotateCcw className="h-3.5 w-3.5" /> Take another {meta.shortLabel.toLowerCase()} test
+          <Button variant="outline" onClick={onRetake} className="gap-1.5">
+            <RotateCcw className="h-4 w-4" /> Redo
           </Button>
         )}
+        <Button onClick={() => setShowReview(v => !v)} className="gap-1.5" data-testid="open-review">
+          <ClipboardList className="h-4 w-4" />
+          {showReview ? 'Hide review' : 'Review answers'}
+        </Button>
       </div>
 
-      {/* Score summary */}
-      <Card className="overflow-hidden">
-        <div className="grid grid-cols-1 md:grid-cols-3">
-          <div className={`bg-gradient-to-br ${meta.accent} p-8 text-white flex flex-col items-center justify-center gap-2`}>
-            <p className="text-sm font-bold uppercase tracking-widest text-white/80">{headlineLabel}</p>
-            <ScoreRing score={headline ?? null} />
-            <p className="text-base font-semibold text-white/90 text-center">{report.title}</p>
-            <p className="text-sm text-white/75">
-              {new Date(report.completedAt ?? report.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
-            </p>
-          </div>
-          <div className="md:col-span-2 p-6 sm:p-8 space-y-5">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Communicative Skills</h2>
-            <div className="space-y-5">
-              {skills.map(skill => {
-                const score = result.skills[skill]!;
-                return (
-                  <div key={skill} className="grid grid-cols-[100px_1fr_48px] items-center gap-4">
-                    <span className="text-base font-semibold text-foreground">{SKILL_LABELS[skill]}</span>
-                    <div className="relative h-4 rounded-full bg-muted">
-                      <div className={`absolute inset-y-0 left-0 rounded-full ${SKILL_COLORS[skill]}`} style={{ width: `${onScale(score)}%` }} />
-                      {headline != null && result.overall != null && (
-                        <div className="absolute -top-1 -bottom-1 w-0.5 bg-foreground/70" style={{ left: `${onScale(result.overall)}%` }} title="Overall" />
-                      )}
-                    </div>
-                    <span className="text-xl font-bold tabular-nums text-foreground text-right">{score}</span>
-                  </div>
-                );
-              })}
-              <div className="grid grid-cols-[100px_1fr_48px] gap-4 text-sm text-muted-foreground">
-                <span />
-                <div className="flex justify-between"><span>10</span><span>30</span><span>50</span><span>70</span><span>90</span></div>
-                <span />
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2 text-sm">
-              <Badge variant="outline">{result.answered} of {result.items} answered</Badge>
-              {result.unscored > 0 && <Badge variant="warning">{result.unscored} not rated</Badge>}
-              {report.missing.length > 0 && <Badge variant="warning">{report.missing.length} task type(s) not in bank</Badge>}
-            </div>
-            <p className="flex items-start gap-1.5 text-sm text-muted-foreground leading-relaxed">
-              <Info className="h-4 w-4 shrink-0 mt-0.5" />
-              A practice estimate on the PTE 10–90 scale, not an official score. Items count towards more than one skill,
-              as in the real test.
-              {hadSpeaking && ' Speaking is judged from what your device transcribed, so pronunciation is not assessed.'}
-              {result.unscored > 0 && ' Items that could not be rated are left out rather than counted as zero.'}
-            </p>
-          </div>
-        </div>
-      </Card>
+      {showReview && (
+        <div className="space-y-5">
+          <h3 className="text-lg font-bold text-foreground">Review</h3>
 
-      {/* Task breakdown */}
-      <Card className="p-6 sm:p-8 space-y-5">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">How you did on each task</h2>
-        {tasksByPart.map(([part, tasks]) => (
-          <div key={part} className="space-y-2">
-            <p className="text-base font-bold text-foreground">{PART_LABELS[part]}</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              {tasks.map(t => (
-                <div key={t.code} className="rounded-xl border border-border p-4 space-y-2.5">
-                  <div className="flex items-center justify-between gap-2 text-base">
+          {/* How each task type went, as cards. */}
+          <div className="space-y-2">
+            <p className={PART_HEADING}>How you did on each task</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {tasksByPart.flatMap(([, tasks]) => tasks).map(t => (
+                <div key={t.code} className="rounded-xl border border-border bg-card p-3 shadow-sm space-y-2">
+                  <div className="flex items-center justify-between gap-2 text-sm">
                     <span className="flex items-center gap-1.5 min-w-0">
                       <Badge variant="outline" className="font-mono text-xs shrink-0">{t.code}</Badge>
                       <span className="truncate font-medium text-foreground">{t.name}</span>
                     </span>
-                    <span className="text-lg font-bold tabular-nums text-foreground">{t.scored ? `${t.percent}%` : '—'}</span>
+                    <span className="font-bold tabular-nums text-foreground">{t.scored ? `${t.percent}%` : 'â€”'}</span>
                   </div>
-                  <Progress value={t.scored ? t.percent : 0} className="h-2" indicatorClassName={barColor(t.percent)} />
-                  <div className="flex flex-wrap gap-1">
-                    {SKILL_ORDER.filter(s => t.weights[s]).map(s => (
-                      <span key={s} className="text-sm text-muted-foreground">
-                        <span className={`inline-block h-1.5 w-1.5 rounded-full mr-1 ${SKILL_COLORS[s]}`} />
-                        {SKILL_LABELS[s]}
-                      </span>
-                    ))}
-                    <span className="text-sm text-muted-foreground ml-auto">{t.items} item{t.items === 1 ? '' : 's'}</span>
-                  </div>
+                  <Progress value={t.scored ? t.percent : 0} className="h-1.5" indicatorClassName={barColor(t.percent)} />
                 </div>
               ))}
             </div>
           </div>
-        ))}
-      </Card>
 
-      {/* Item review */}
-      <Card className="p-6 sm:p-8 space-y-4">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Review every item</h2>
-        <div className="space-y-2">
-          {report.review.map(r => <ReviewRow key={r.position} item={r} />)}
+          {/* Every item, part by part, each opening into its details. */}
+          {itemsByPart.map(([part, items]) => (
+            <div key={part} className="space-y-2">
+              <p className={PART_HEADING}>{PART_LABELS[part]}</p>
+              <ul className="space-y-2">
+                {items.map(item => {
+                  const tone = itemTone(item);
+                  const Icon = tone.icon;
+                  return (
+                    <li
+                      key={item.position}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setOpen(item.position)}
+                      onKeyDown={e => {
+                        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                          e.preventDefault();
+                          setOpen(item.position);
+                        }
+                      }}
+                      className={cn(CARD, 'flex items-center gap-3 border-l-4', tone.edge)}
+                      data-testid="pte-review-item"
+                    >
+                      <span className="flex h-8 min-w-8 shrink-0 items-center justify-center rounded-lg bg-muted px-1.5 text-sm font-bold tabular-nums text-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+                        {item.position}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm text-foreground">{item.question.title || item.taskName}</p>
+                        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0">{item.task}</Badge>
+                          {STATUS_LABELS[item.status]}
+                          {item.hasRecording && <Mic className="h-3 w-3 text-primary" aria-label="has a recording" />}
+                        </p>
+                      </div>
+                      <span className={cn('hidden items-center gap-1 text-xs font-semibold sm:flex', tone.text)}>
+                        <Icon className="h-4 w-4" /> {item.percent != null ? `${item.percent}%` : 'Not rated'}
+                      </span>
+                      <Button size="sm" variant="outline" tabIndex={-1} className={DETAILS}>
+                        View details
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
         </div>
-      </Card>
+      )}
+
+      <Dialog open={openItem != null} onOpenChange={next => !next && setOpen(null)}>
+        {openItem && (
+          <DialogContent className="font-report sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex flex-wrap items-center gap-2">
+                Question {openItem.position}
+                <Badge variant="outline" className="font-mono text-xs">{openItem.task}</Badge>
+              </DialogTitle>
+              <DialogDescription>
+                {openItem.taskName} Â· {STATUS_LABELS[openItem.status]}
+                {openItem.percent != null ? ` Â· ${openItem.percent}%` : ''}
+              </DialogDescription>
+            </DialogHeader>
+            <ItemDetails item={openItem} sessionId={report.id} />
+            <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+              <Button variant="outline" size="sm" disabled={openIndex <= 0} onClick={() => setOpen(report.review[openIndex - 1].position)} className="gap-1">
+                <ChevronLeft className="h-4 w-4" /> Previous
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {openIndex + 1} of {report.review.length}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={openIndex >= report.review.length - 1}
+                onClick={() => setOpen(report.review[openIndex + 1].position)}
+                className="gap-1"
+              >
+                Next <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
+}
+
+/** A review card: lifts and turns brand blue on hover, and opens its details on click. */
+const CARD =
+  'group cursor-pointer rounded-xl border border-border bg-card px-4 py-3 shadow-sm transition-all duration-150 ' +
+  'hover:-translate-y-px hover:border-primary hover:bg-primary/[0.03] hover:shadow-md ' +
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
+const PART_HEADING = 'px-1 pb-1 pt-2 text-xs font-bold uppercase tracking-wide text-muted-foreground';
+const DETAILS = 'h-8 shrink-0 text-xs group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground';
+
+/** How an item went, by its share of the marks. */
+function itemTone(item: PteReviewItem) {
+  if (item.percent == null) return { icon: Info, text: 'text-muted-foreground', edge: 'border-l-muted-foreground/40' };
+  if (item.percent >= 70) return { icon: CheckCircle2, text: 'text-emerald-600 dark:text-emerald-400', edge: 'border-l-emerald-500' };
+  if (item.percent >= 40) return { icon: CircleMinus, text: 'text-amber-600 dark:text-amber-400', edge: 'border-l-amber-500' };
+  return { icon: XCircle, text: 'text-rose-600 dark:text-rose-400', edge: 'border-l-rose-500' };
 }
 
 function barColor(percent: number): string {
   if (percent >= 70) return 'bg-emerald-500';
   if (percent >= 40) return 'bg-amber-500';
   return 'bg-rose-500';
-}
-
-function ScoreRing({ score }: { score: number | null }) {
-  const r = 52;
-  const c = 2 * Math.PI * r;
-  const fill = score == null ? 0 : onScale(score) / 100;
-  return (
-    <div className="relative h-44 w-44">
-      <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
-        <circle cx="60" cy="60" r={r} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="10" />
-        <circle
-          cx="60" cy="60" r={r} fill="none" stroke="white" strokeWidth="10" strokeLinecap="round"
-          strokeDasharray={c} strokeDashoffset={c * (1 - fill)} className="transition-all duration-700"
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-display text-5xl font-extrabold tabular-nums">{score ?? '—'}</span>
-        <span className="text-sm text-white/75">out of 90</span>
-      </div>
-    </div>
-  );
 }
 
 const STATUS_LABELS: Record<PteReviewItem['status'], string> = {
@@ -227,61 +253,57 @@ const STATUS_LABELS: Record<PteReviewItem['status'], string> = {
   pending: 'Not reached',
 };
 
-function ReviewRow({ item }: { item: PteReviewItem }) {
-  const [open, setOpen] = useState(false);
-  const good = item.percent != null && item.percent >= 70;
+/** One item in full: the question, the recording, the answer against the key, and the feedback. */
+function ItemDetails({ item, sessionId }: { item: PteReviewItem; sessionId: string }) {
   const yourAnswer =
     item.userDisplay ||
     item.transcript ||
     item.response?.textResponse ||
     (item.response?.selectedOptions?.length ? item.response.selectedOptions.join(', ') : '');
+  const good = item.percent != null && item.percent >= 70;
 
   return (
-    <div className="rounded-lg border border-border">
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40"
-        aria-expanded={open}
-      >
-        <span className="w-8 text-sm font-bold text-muted-foreground tabular-nums">{item.position}</span>
-        {item.percent == null ? (
-          <Info className="h-4 w-4 text-muted-foreground shrink-0" />
-        ) : good ? (
-          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-        ) : (
-          <XCircle className="h-4 w-4 text-rose-500 shrink-0" />
-        )}
-        <Badge variant="outline" className="font-mono text-xs shrink-0">{item.task}</Badge>
-        <span className="text-sm text-foreground truncate flex-1">{item.question.title || item.taskName}</span>
-        <span className="text-sm text-muted-foreground hidden sm:inline">{STATUS_LABELS[item.status]}</span>
-        <span className="text-sm font-bold tabular-nums w-12 text-right">{item.percent != null ? `${item.percent}%` : '—'}</span>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && (
-        <div className="border-t border-border px-5 py-4 space-y-3 text-sm">
-          {item.question.prompt && <p className="text-foreground font-medium whitespace-pre-line">{item.question.prompt}</p>}
-          {item.question.audioTranscript && (
-            <Field label="Recording script">{item.question.audioTranscript}</Field>
-          )}
-          <Field label={item.transcriptSource === 'browser' ? 'Your answer (as your browser heard it)' : 'Your answer'}>
-            {yourAnswer || <span className="italic text-muted-foreground">No answer</span>}
-          </Field>
-          {item.correctDisplay && <Field label="Correct answer">{item.correctDisplay}</Field>}
-          {item.modelAnswer && <Field label="Model answer">{item.modelAnswer}</Field>}
-          {item.feedback && <Field label="Feedback">{item.feedback}</Field>}
-          {item.unscoredReason && <p className="text-amber-600 dark:text-amber-400">{item.unscoredReason}</p>}
-          {item.explanation && <Field label="Explanation">{item.explanation}</Field>}
+    <div className="space-y-4 text-sm">
+      {item.question.prompt && <p className="whitespace-pre-line font-medium text-foreground">{item.question.prompt}</p>}
+      {item.question.audioTranscript && <Field label="Recording script">{item.question.audioTranscript}</Field>}
+      {item.hasRecording && (
+        <div className="space-y-1">
+          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Your recording</p>
+          <audio controls preload="none" src={pteRecordingUrl(sessionId, item.position)} className="h-9 w-full" data-testid="pte-recording">
+            Your browser cannot play this recording.
+          </audio>
         </div>
       )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className={cn('rounded-xl border p-3', good ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-rose-500/40 bg-rose-500/5')}>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            {item.transcriptSource === 'browser' ? 'Your answer (as your browser heard it)' : 'Your answer'}
+          </p>
+          <p className="whitespace-pre-line text-foreground">{yourAnswer || <span className="italic text-muted-foreground">No answer</span>}</p>
+        </div>
+        {item.correctDisplay && (
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Correct answer</p>
+            <p className="whitespace-pre-line font-semibold text-emerald-700 dark:text-emerald-400">{item.correctDisplay}</p>
+          </div>
+        )}
+      </div>
+      {item.feedback && <Field label="Feedback">{item.feedback}</Field>}
+      {item.modelAnswer && <Field label="Model answer">{item.modelAnswer}</Field>}
+      {item.explanation && <Field label="Why">{item.explanation}</Field>}
+      {item.unscoredReason && <p className="text-amber-600 dark:text-amber-400">{item.unscoredReason}</p>}
     </div>
   );
 }
 
+/** Where a spoken answer is played from (the session cookie signs it). */
+export const pteRecordingUrl = (sessionId: string, position: number) =>
+  `/api/v1/pte/mocks/${encodeURIComponent(sessionId)}/items/${position}/recording`;
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-0.5">
-      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+    <div className="space-y-0.5 rounded-xl bg-muted/50 p-3">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
       <div className="text-foreground leading-relaxed whitespace-pre-line">{children}</div>
     </div>
   );
