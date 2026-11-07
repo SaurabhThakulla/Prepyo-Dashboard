@@ -1,15 +1,17 @@
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, CircleMinus, ClipboardList, Info, Loader2, Mic, RotateCcw, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronRight, CircleMinus, ClipboardList, Info, Loader2, Mic, RotateCcw, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { PART_LABELS, pteMockMeta } from '@/lib/pteMock/catalog';
 import { PtePart, PteReport, PteReviewItem } from '@/lib/pteMock/types';
+import type { Question } from '@/lib/types';
 import PteReportForm from './PteReportForm';
+import PracticeResultDialog from '@/components/practice/PracticeResultDialog';
+import type { PracticeResult } from '@/lib/hooks/usePracticeSession';
 
 interface Props {
   report: PteReport;
@@ -79,7 +81,34 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
   const openItem = openIndex >= 0 ? report.review[openIndex] : null;
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5 font-report" data-testid="pte-score-report">
+    <div className="w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5 font-report" data-testid="pte-score-report">
+      {/* Summary and actions above the card, as on the IELTS report. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="flex min-w-0 flex-1 items-start gap-1.5 text-xs text-muted-foreground leading-relaxed">
+          <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <span>
+            {result.answered} of {result.items} answered.
+            {hadSpeaking && ' Speaking is judged from what was transcribed, so pronunciation is only partly assessed.'}
+            {result.unscored > 0 && ` ${result.unscored} item${result.unscored === 1 ? '' : 's'} could not be rated and ${result.unscored === 1 ? 'is' : 'are'} left out rather than counted as zero.`}
+            {report.missing.length > 0 && ` ${report.missing.length} task type(s) were not in the bank.`}
+          </span>
+        </p>
+        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+          <Button variant="outline" onClick={onBack} className="gap-1.5">
+            <ArrowLeft className="h-4 w-4" /> Mock tests
+          </Button>
+          {onRetake && (
+            <Button variant="outline" onClick={onRetake} className="gap-1.5">
+              <RotateCcw className="h-4 w-4" /> Redo
+            </Button>
+          )}
+          <Button onClick={() => setShowReview(v => !v)} className="gap-1.5" data-testid="open-review">
+            <ClipboardList className="h-4 w-4" />
+            {showReview ? 'Hide review' : 'Review answers'}
+          </Button>
+        </div>
+      </div>
+
       <PteReportForm
         candidateName={user?.name ?? ''}
         testDate={report.completedAt ?? report.createdAt}
@@ -88,31 +117,6 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
         overall={result.overall}
         skills={skills}
       />
-
-      <p className="flex items-start gap-1.5 text-xs text-muted-foreground leading-relaxed">
-        <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-        <span>
-          {result.answered} of {result.items} answered.
-          {hadSpeaking && ' Speaking is judged from what was transcribed, so pronunciation is only partly assessed.'}
-          {result.unscored > 0 && ` ${result.unscored} item${result.unscored === 1 ? '' : 's'} could not be rated and ${result.unscored === 1 ? 'is' : 'are'} left out rather than counted as zero.`}
-          {report.missing.length > 0 && ` ${report.missing.length} task type(s) were not in the bank.`}
-        </span>
-      </p>
-
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button variant="outline" onClick={onBack} className="gap-1.5">
-          <ArrowLeft className="h-4 w-4" /> Mock tests
-        </Button>
-        {onRetake && (
-          <Button variant="outline" onClick={onRetake} className="gap-1.5">
-            <RotateCcw className="h-4 w-4" /> Redo
-          </Button>
-        )}
-        <Button onClick={() => setShowReview(v => !v)} className="gap-1.5" data-testid="open-review">
-          <ClipboardList className="h-4 w-4" />
-          {showReview ? 'Hide review' : 'Review answers'}
-        </Button>
-      </div>
 
       {showReview && (
         <div className="space-y-5">
@@ -129,7 +133,7 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
                       <Badge variant="outline" className="font-mono text-xs shrink-0">{t.code}</Badge>
                       <span className="truncate font-medium text-foreground">{t.name}</span>
                     </span>
-                    <span className="font-bold tabular-nums text-foreground">{t.scored ? `${t.percent}%` : 'â€”'}</span>
+                    <span className="font-bold tabular-nums text-foreground">{t.scored ? `${t.percent}%` : '—'}</span>
                   </div>
                   <Progress value={t.scored ? t.percent : 0} className="h-1.5" indicatorClassName={barColor(t.percent)} />
                 </div>
@@ -157,23 +161,27 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
                           setOpen(item.position);
                         }
                       }}
-                      className={cn(CARD, 'flex items-center gap-3 border-l-4', tone.edge)}
+                      className={cn(CARD, 'flex items-center gap-3')}
                       data-testid="pte-review-item"
                     >
                       <span className="flex h-8 min-w-8 shrink-0 items-center justify-center rounded-lg bg-muted px-1.5 text-sm font-bold tabular-nums text-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
                         {item.position}
                       </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm text-foreground">{item.question.title || item.taskName}</p>
-                        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0">{item.task}</Badge>
-                          {STATUS_LABELS[item.status]}
-                          {item.hasRecording && <Mic className="h-3 w-3 text-primary" aria-label="has a recording" />}
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <p className="line-clamp-2 text-sm text-foreground">{item.question.title || item.taskName}</p>
+                        <p className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1.5">
+                            <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0">{item.task}</Badge>
+                            {item.taskName}
+                            {item.hasRecording && <Mic className="h-3 w-3 text-primary" aria-label="has a recording" />}
+                          </span>
+                          {item.status !== 'answered' && <span>{STATUS_LABELS[item.status]}</span>}
                         </p>
                       </div>
                       <span className={cn('hidden items-center gap-1 text-xs font-semibold sm:flex', tone.text)}>
-                        <Icon className="h-4 w-4" /> {item.percent != null ? `${item.percent}%` : 'Not rated'}
+                        <Icon className="h-4 w-4" /> {tone.label}{item.percent != null && item.percent > 0 && item.percent < 100 ? ` · ${item.percent}%` : ''}
                       </span>
+                      <Icon className={cn('h-4 w-4 shrink-0 sm:hidden', tone.text)} aria-label={tone.label} />
                       <Button size="sm" variant="outline" tabIndex={-1} className={DETAILS}>
                         View details
                       </Button>
@@ -186,58 +194,44 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
         </div>
       )}
 
-      <Dialog open={openItem != null} onOpenChange={next => !next && setOpen(null)}>
-        {openItem && (
-          <DialogContent className="font-report sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="flex flex-wrap items-center gap-2">
-                Question {openItem.position}
-                <Badge variant="outline" className="font-mono text-xs">{openItem.task}</Badge>
-              </DialogTitle>
-              <DialogDescription>
-                {openItem.taskName} Â· {STATUS_LABELS[openItem.status]}
-                {openItem.percent != null ? ` Â· ${openItem.percent}%` : ''}
-              </DialogDescription>
-            </DialogHeader>
-            <ItemDetails item={openItem} sessionId={report.id} />
-            <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
-              <Button variant="outline" size="sm" disabled={openIndex <= 0} onClick={() => setOpen(report.review[openIndex - 1].position)} className="gap-1">
-                <ChevronLeft className="h-4 w-4" /> Previous
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                {openIndex + 1} of {report.review.length}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={openIndex >= report.review.length - 1}
-                onClick={() => setOpen(report.review[openIndex + 1].position)}
-                className="gap-1"
-              >
-                Next <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </DialogContent>
-        )}
-      </Dialog>
+      {/* A marked item opens on the same card as a practice answer's result. */}
+      {openItem && (
+        <PracticeResultDialog
+          open
+          onOpenChange={next => !next && setOpen(null)}
+          title={`Question ${openItem.position} · ${openItem.taskName}`}
+          description={openItem.scored ? STATUS_LABELS[openItem.status]
+            : `Not rated: ${openItem.unscoredReason || 'left out of your score rather than counted as zero.'}`}
+          result={itemResult(openItem)}
+          recording={null}
+          recordingUrl={openItem.hasRecording ? pteRecordingUrl(report.id, openItem.position) : undefined}
+          taskType={openItem.question.typeId}
+          blankAnswers={openItem.response?.blankResponses}
+          onNext={openIndex < report.review.length - 1 ? () => setOpen(report.review[openIndex + 1].position) : undefined}
+        />
+      )}
+
     </div>
   );
 }
 
 /** A review card: lifts and turns brand blue on hover, and opens its details on click. */
+// The same card, heading and button as the IELTS answer review.
 const CARD =
-  'group cursor-pointer rounded-xl border border-border bg-card px-4 py-3 shadow-sm transition-all duration-150 ' +
-  'hover:-translate-y-px hover:border-primary hover:bg-primary/[0.03] hover:shadow-md ' +
+  'group cursor-pointer rounded-xl border border-border bg-card px-4 py-3 shadow-sm transition-all duration-200 ' +
+  'hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 active:translate-y-0 ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
-const PART_HEADING = 'px-1 pb-1 pt-2 text-xs font-bold uppercase tracking-wide text-muted-foreground';
-const DETAILS = 'h-8 shrink-0 text-xs group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground';
+const PART_HEADING = 'px-1 pb-1 pt-2 text-xs font-bold uppercase tracking-wide text-primary';
+const DETAILS =
+  'h-8 shrink-0 border-primary/40 text-xs text-primary group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground';
 
 /** How an item went, by its share of the marks. */
 function itemTone(item: PteReviewItem) {
-  if (item.percent == null) return { icon: Info, text: 'text-muted-foreground', edge: 'border-l-muted-foreground/40' };
-  if (item.percent >= 70) return { icon: CheckCircle2, text: 'text-emerald-600 dark:text-emerald-400', edge: 'border-l-emerald-500' };
-  if (item.percent >= 40) return { icon: CircleMinus, text: 'text-amber-600 dark:text-amber-400', edge: 'border-l-amber-500' };
-  return { icon: XCircle, text: 'text-rose-600 dark:text-rose-400', edge: 'border-l-rose-500' };
+  if (item.percent == null) return { label: 'Not rated', icon: Info, text: 'text-muted-foreground' };
+  const label = item.percent >= 100 ? 'Correct' : item.percent > 0 ? 'Partly right' : 'Wrong';
+  if (item.percent >= 70) return { label, icon: CheckCircle2, text: 'text-emerald-600 dark:text-emerald-400' };
+  if (item.percent >= 40) return { label, icon: CircleMinus, text: 'text-amber-600 dark:text-amber-400' };
+  return { label, icon: XCircle, text: 'text-rose-600 dark:text-rose-400' };
 }
 
 function barColor(percent: number): string {
@@ -253,58 +247,50 @@ const STATUS_LABELS: Record<PteReviewItem['status'], string> = {
   pending: 'Not reached',
 };
 
-/** One item in full: the question, the recording, the answer against the key, and the feedback. */
-function ItemDetails({ item, sessionId }: { item: PteReviewItem; sessionId: string }) {
-  const yourAnswer =
-    item.userDisplay ||
-    item.transcript ||
-    item.response?.textResponse ||
-    (item.response?.selectedOptions?.length ? item.response.selectedOptions.join(', ') : '');
-  const good = item.percent != null && item.percent >= 70;
-
-  return (
-    <div className="space-y-4 text-sm">
-      {item.question.prompt && <p className="whitespace-pre-line font-medium text-foreground">{item.question.prompt}</p>}
-      {item.question.audioTranscript && <Field label="Recording script">{item.question.audioTranscript}</Field>}
-      {item.hasRecording && (
-        <div className="space-y-1">
-          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Your recording</p>
-          <audio controls preload="none" src={pteRecordingUrl(sessionId, item.position)} className="h-9 w-full" data-testid="pte-recording">
-            Your browser cannot play this recording.
-          </audio>
-        </div>
-      )}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className={cn('rounded-xl border p-3', good ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-rose-500/40 bg-rose-500/5')}>
-          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-            {item.transcriptSource === 'browser' ? 'Your answer (as your browser heard it)' : 'Your answer'}
-          </p>
-          <p className="whitespace-pre-line text-foreground">{yourAnswer || <span className="italic text-muted-foreground">No answer</span>}</p>
-        </div>
-        {item.correctDisplay && (
-          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-3">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Correct answer</p>
-            <p className="whitespace-pre-line font-semibold text-emerald-700 dark:text-emerald-400">{item.correctDisplay}</p>
-          </div>
-        )}
-      </div>
-      {item.feedback && <Field label="Feedback">{item.feedback}</Field>}
-      {item.modelAnswer && <Field label="Model answer">{item.modelAnswer}</Field>}
-      {item.explanation && <Field label="Why">{item.explanation}</Field>}
-      {item.unscoredReason && <p className="text-amber-600 dark:text-amber-400">{item.unscoredReason}</p>}
-    </div>
-  );
-}
-
 /** Where a spoken answer is played from (the session cookie signs it). */
 export const pteRecordingUrl = (sessionId: string, position: number) =>
   `/api/v1/pte/mocks/${encodeURIComponent(sessionId)}/items/${position}/recording`;
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-0.5 rounded-xl bg-muted/50 p-3">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <div className="text-foreground leading-relaxed whitespace-pre-line">{children}</div>
-    </div>
-  );
+/** The key the practice card marks against, from what the report shows ("A, B" or "b1: word, b2: word"). */
+function answerKey(item: PteReviewItem): Pick<Question, 'correctAnswers' | 'blanks'> {
+  const shown = item.correctDisplay ?? '';
+  const pairs = shown.split(',').map(p => p.trim().match(/^(\w+):\s*(.*)$/)).filter((m): m is RegExpMatchArray => m != null);
+  if (pairs.length > 0) {
+    const key = new Map(pairs.map(m => [m[1], m[2]]));
+    return { blanks: (item.question.blanks ?? pairs.map(m => ({ id: m[1] }))).map(b => ({ ...b, correctAnswer: key.get(b.id) })) };
+  }
+  return item.question.options?.length ? { correctAnswers: shown.split(',').map(s => s.trim()).filter(Boolean) } : {};
 }
+
+/** An item as a practice result: its rating, its mark with the question as the key, or not rated. */
+function itemResult(item: PteReviewItem): PracticeResult {
+  if (item.evaluation) return { evaluation: item.evaluation, xpAwarded: 0 };
+  if (!item.scored || item.score == null || item.maxScore == null) {
+    // Not rated: the practice card's "Not rated" state, with the answer and the model answer.
+    const typed = item.response?.textResponse || '';
+    // A typed answer (SST sits in the listening part) shows as writing, a spoken one as speaking.
+    const skill = typed ? 'writing' : item.transcript ? 'speaking' : item.part === 'speaking_writing' ? 'writing' : item.part;
+    return {
+      xpAwarded: 0,
+      evaluation: {
+        id: '', exam: 'PTE', skill, evaluationVersion: '', estimatedScore: null, scoreConfidence: 'low',
+        summary: item.unscoredReason || item.feedback || 'This answer could not be rated, so it is left out of your score.',
+        criteria: [], strengths: [], weaknesses: [], sentenceFeedback: [], createdAt: '',
+        transcript: item.transcript, answer: typed, modelRewrite: item.modelAnswer,
+      },
+    };
+  }
+  const percent = item.percent ?? 0;
+  const key = percent < 100 && item.correctDisplay ? `Correct answer: ${item.correctDisplay}.` : '';
+  return {
+    xpAwarded: 0,
+    review: { ...item.question, exam: 'PTE', explanation: item.explanation ?? item.question.explanation, ...answerKey(item) },
+    attempt: {
+      id: String(item.position), questionId: item.question.id, examVersionId: '', createdAt: '', timeSpentSeconds: 0,
+      isCorrect: percent >= 100, score: item.score, maxScore: item.maxScore, accuracyPercentage: percent,
+      feedback: [item.feedback, key].filter(Boolean).join(' '),
+      userResponse: item.userDisplay || item.response?.textResponse || item.response?.selectedOptions?.join(', ') || '',
+    },
+  };
+}
+

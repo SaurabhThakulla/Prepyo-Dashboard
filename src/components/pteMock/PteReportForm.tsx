@@ -53,8 +53,8 @@ export default function PteReportForm({ candidateName, testDate, reportId, testT
         Practice
       </span>
 
-      <header className="relative flex flex-col gap-1 border-b border-trf-ink/10 px-4 py-4 sm:px-6">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-trf-accent">Prepyo · PTE Academic practice</p>
+      <header className="relative flex flex-col gap-1 bg-trf-accent px-4 py-4 text-trf-paper sm:px-6">
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-trf-paper/75">Prepyo · PTE Academic practice</p>
         <h2 className="text-xl font-bold uppercase tracking-wide sm:text-2xl">Score Report</h2>
       </header>
 
@@ -116,7 +116,7 @@ export default function PteReportForm({ candidateName, testDate, reportId, testT
         </div>
       </div>
 
-      <footer className="relative flex flex-col gap-1 border-t border-trf-ink/10 bg-trf-ink/[0.02] px-4 py-2.5 text-[10px] leading-relaxed text-trf-ink/60 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <footer className="relative flex flex-col gap-1 bg-trf-accent px-4 py-2.5 text-[10px] leading-relaxed text-trf-paper/90 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <span>
           {overall != null
             ? 'Items count towards more than one skill, as in the real test. The line marks the overall score.'

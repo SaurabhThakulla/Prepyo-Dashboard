@@ -1,4 +1,4 @@
-import { AnswerSubmission, Question, ReadingParagraph, ReadingPassage, SkillType } from '@/lib/types';
+import { AnswerSubmission, Evaluation, Question, ReadingParagraph, ReadingPassage, SkillType } from '@/lib/types';
 import { Delivery } from '@/lib/delivery';
 
 /**
@@ -122,6 +122,8 @@ export interface PteReviewItem {
   correctDisplay?: string;
   userDisplay?: string;
   evaluationId?: string;
+  /** The rating behind evaluationId, shown on the practice result card. */
+  evaluation?: Evaluation;
   /** The spoken answer can be replayed (kept for 30 days). */
   hasRecording?: boolean;
 }
