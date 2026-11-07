@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApp } from '@/context/AppContext';
 import { queryKeys } from '@/lib/queryKeys';
-import { Award, FileText } from 'lucide-react';
+import { Award, BarChart3, FileText } from 'lucide-react';
 import { MocksPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Card } from '@/components/ui/card';
 import { EXAM_LABELS, Mock, MockAttempt } from '@/lib/types';
@@ -12,7 +12,7 @@ import { useToast } from '@/components/ui/toast';
 import { useMocks, useMockAttempts } from '@/lib/hooks/useResources';
 import { useMockExam } from '@/lib/hooks/useMockExam';
 import MockStartPanel from '@/components/mocks/MockStartPanel';
-import ScoreReportList from '@/components/mocks/ScoreReportList';
+import ScoreReportList, { PTE_MOCK_ATTEMPT_IDS } from '@/components/mocks/ScoreReportList';
 import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
 import { READING_MOCK_HREF } from '@/components/layout/sidebar/navigation';
 
@@ -22,10 +22,6 @@ const FullMockPanel = lazy(() => import('@/components/mocks/FullMockPanel'));
 const IeltsMockCenter = lazy(() => import('@/components/mocks/IeltsMockCenter'));
 const PteMockCenter = lazy(() => import('@/components/pteMock/PteMockCenter'));
 const PteMockHistory = lazy(() => import('@/components/pteMock/PteMockHistory'));
-
-const PTE_MOCK_ATTEMPT_IDS = new Set([
-  'mock-pte-full', 'mock-pte-speaking', 'mock-pte-writing', 'mock-pte-reading', 'mock-pte-listening',
-]);
 
 export default function MocksPage() {
   const navigate = useNavigate();
@@ -164,14 +160,8 @@ export default function MocksPage() {
     );
   }
 
-  const header = (
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">{EXAM_LABELS[activeExam]} Mock Exam Center</h1>
-          <p className="text-xs text-muted-foreground">Timed tests under real exam conditions.</p>
-        </div>
-
-        <div role="tablist" aria-label="Mock exams" className="flex w-full sm:w-auto items-center gap-1 rounded-xl bg-muted p-1 shrink-0">
+  const tabs = (
+        <div role="tablist" aria-label="Mock exams" className="flex w-full sm:w-auto items-center gap-1 rounded-xl border border-border bg-card p-1 shadow-sm shrink-0">
           <TabButton
             isActive={activeTab === 'catalog'}
             onClick={() => navigate('/mocks?tab=catalog')}
@@ -186,6 +176,15 @@ export default function MocksPage() {
             count={pastAttempts.length}
           />
         </div>
+  );
+
+  const header = (
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-foreground">{EXAM_LABELS[activeExam]} Mock Exam Center</h1>
+          <p className="text-xs text-muted-foreground">Timed tests under real exam conditions.</p>
+        </div>
+        {tabs}
       </div>
   );
 
@@ -211,14 +210,30 @@ export default function MocksPage() {
   if (activeExam === 'PTE' && activeTab === 'catalog') {
     return (
       <Suspense fallback={<AppPageSkeleton />}>
-        <PteMockCenter header={header} />
+        <PteMockCenter tabs={tabs} />
       </Suspense>
     );
   }
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
-      {header}
+    <div className="w-full pb-10">
+      {/* Score reports lead with a banner edge to edge, as the PTE catalogue does. */}
+      {activeTab === 'reports' && (
+        <div className="relative flex min-h-48 items-center overflow-hidden bg-gradient-to-r from-primary to-indigo-600 px-4 py-8 text-white sm:px-6 sm:py-10 lg:px-8">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10" aria-hidden />
+          <div className="relative flex w-full items-center gap-4">
+            <span className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 sm:flex">
+              <BarChart3 className="h-6 w-6" />
+            </span>
+            <div className="space-y-1">
+              <h1 className="font-display text-xl font-extrabold leading-tight sm:text-2xl">My mock results</h1>
+              <p className="text-xs text-white/85 sm:text-sm">Every {EXAM_LABELS[activeExam]} mock you have finished, each opening its full score report.</p>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {activeTab === 'reports' || activeExam === 'PTE' ? <div className="flex justify-end">{tabs}</div> : header}
 
       {loading ? (
         <MocksPageSkeleton bare />
@@ -254,6 +269,7 @@ export default function MocksPage() {
           onStart={startMock}
         />
       )}
+      </div>
     </div>
   );
 }
@@ -274,15 +290,15 @@ function TabButton({ isActive, onClick, icon, label, count }: TabButtonProps) {
       aria-selected={isActive}
       onClick={onClick}
       className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all [-webkit-tap-highlight-color:transparent] ${
-        isActive ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+        isActive ? 'bg-primary text-primary-foreground shadow-sm' : 'text-foreground hover:bg-muted'
       }`}
     >
-      <span className={isActive ? 'text-primary' : ''}>{icon}</span>
+      <span className={isActive ? '' : 'text-primary'}>{icon}</span>
       <span className="whitespace-nowrap">{label}</span>
       {count != null && count > 0 && (
         <span
           className={`min-w-5 rounded-full px-1.5 text-center text-[11px] font-semibold leading-5 ${
-            isActive ? 'bg-primary text-primary-foreground' : 'bg-foreground/10 text-muted-foreground'
+            isActive ? 'bg-white/25 text-primary-foreground' : 'bg-primary/10 text-primary'
           }`}
         >
           {count}

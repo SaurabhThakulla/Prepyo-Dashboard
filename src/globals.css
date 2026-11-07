@@ -100,6 +100,11 @@ select {
   color-scheme: light dark;
 }
 
+/* Native players follow color-scheme, not the app's .dark class. */
+.dark audio {
+  color-scheme: dark;
+}
+
 select option {
   background-color: hsl(var(--card));
   color: hsl(var(--card-foreground));

@@ -139,12 +139,12 @@ function MockList({ institution }: { institution: string }) {
   ];
 
   return (
-    <div className="w-full space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8">
-      {/* Header in the sidebar's blue, as on the dashboard */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2a56cf] via-primary to-[#132e7d] p-5 text-white shadow-xl shadow-primary/20 dark:from-blue-900 dark:via-blue-950 dark:to-slate-950 sm:p-7">
+    <div className="w-full">
+      {/* Header in the sidebar's blue, edge to edge: no gap above or at the sides. */}
+      <div className="relative flex min-h-48 items-center overflow-hidden bg-gradient-to-br from-[#2a56cf] via-primary to-[#132e7d] px-4 py-8 text-white dark:from-blue-900 dark:via-blue-950 dark:to-slate-950 sm:px-6 sm:py-10 lg:px-8">
         <span aria-hidden className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full border-[28px] border-white/10" />
         <span aria-hidden className="pointer-events-none absolute -bottom-24 right-1/3 h-48 w-48 rounded-full bg-sky-300/25 blur-3xl" />
-        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative flex w-full flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-4">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25">
               <ClipboardCheck className="h-6 w-6" />
@@ -170,6 +170,7 @@ function MockList({ institution }: { institution: string }) {
         </div>
       </div>
 
+      <div className="space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8">
       {error && <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>}
       {mocks === null && !error && (
         <div className="flex justify-center py-10">
@@ -226,6 +227,7 @@ function MockList({ institution }: { institution: string }) {
           );
         })}
       </ul>
+      </div>
     </div>
   );
 }

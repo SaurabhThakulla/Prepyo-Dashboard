@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
-import ReferralRedeem from './ReferralRedeem';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +13,6 @@ import { localPhone } from '@/lib/phone';
 import {
   Check,
   CheckCircle2,
-  ChevronDown,
   Copy,
   RefreshCw,
   Download,
@@ -65,7 +63,6 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [brokenQr, setBrokenQr] = useState<Record<string, boolean>>({});
-  const [referralOpen, setReferralOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const method = useMemo(
@@ -194,7 +191,6 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
       setPhoneNumber('');
       clearProof();
       setProcessing(false);
-      setReferralOpen(false);
       setCopied(false);
     }
     onOpenChange(open);
@@ -418,31 +414,6 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
                         className="sr-only"
                       />
                     </>
-                  )}
-                </div>
-
-                <div className="rounded-xl border border-border/70">
-                  <button
-                    type="button"
-                    onClick={() => setReferralOpen(value => !value)}
-                    aria-expanded={referralOpen}
-                    aria-controls="referral-panel"
-                    className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left text-xs font-bold text-foreground sm:text-[13px]"
-                  >
-                    <span>
-                      Have a friend&apos;s referral code?{' '}
-                      <span className="font-medium text-muted-foreground">Optional</span>
-                    </span>
-                    <ChevronDown
-                      className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
-                        referralOpen ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </button>
-                  {referralOpen && (
-                    <div id="referral-panel" className="border-t border-border/70 p-3">
-                      <ReferralRedeem compact />
-                    </div>
                   )}
                 </div>
               </section>

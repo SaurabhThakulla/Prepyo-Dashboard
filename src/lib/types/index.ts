@@ -162,9 +162,7 @@ export interface UserProfile {
   xp: number;
   streakDays: number;
   timezone: string;
-  referralCode: string;
   bonusMockTests: number;
-  bonusProDays: number;
   createdAt: string;
 
   // Derived by the server from XP.
@@ -186,9 +184,6 @@ export interface UserProfile {
   previousScore?: number | null;
   focusSkill?: SkillType;
   dailyMinutes?: number | null;
-
-  /** When the app tour was first shown, kept on the account; null until then, absent on servers that predate it. */
-  tourSeenAt?: string | null;
 
   /** Set for a student an institution added: they sign in with a username and have no email. */
   institution?: InstitutionMembership;
@@ -628,6 +623,9 @@ export interface Evaluation {
   /** On the history list only. */
   questionTitle?: string;
   typeName?: string;
+  /** On the history list only: the mock this answer was part of. */
+  mockAttemptId?: string;
+  pteMockSessionId?: string;
 }
 
 export interface WordMark {
@@ -698,7 +696,7 @@ export interface NotificationItem {
 }
 
 // ---------------------------------------------------------------------------
-// Billing and referrals
+// Billing
 // ---------------------------------------------------------------------------
 
 export interface SubscriptionPlan {
@@ -720,44 +718,6 @@ export interface SubscriptionPlan {
   aiGradingsPeriod?: AIGradingsPeriod;
   /** No daily sub-test or tutor limit. Full mocks and AI gradings are counted on every plan. */
   unlimited?: boolean;
-}
-
-export interface ReferralMilestone {
-  required: number;
-  current: number;
-  completed: boolean;
-}
-
-export interface ReferralMilestones {
-  threeReferrals: ReferralMilestone;
-  fiveReferrals: ReferralMilestone;
-}
-
-export interface ReferralStats {
-  totalBonusDaysEarned: number;
-  totalInvited: number;
-  pending: number;
-  completed: number;
-  totalXpEarned: number;
-}
-
-export interface RecentReferralItem {
-  rewardDays: number;
-  paymentStatus?: string;
-  id: string;
-  friendName: string;
-  status: 'pending' | 'completed' | 'cancelled' | string;
-  createdAt: string;
-  completedAt?: string;
-}
-
-export interface ReferralOverview {
-  referralCode: string;
-  shareLink: string;
-  stats: ReferralStats;
-  myReferralStatus: string;
-  canRedeem: boolean;
-  recentReferrals: RecentReferralItem[];
 }
 
 export interface Pagination {
