@@ -326,7 +326,7 @@ function materialsSection(activeExam: ExamType): PrimarySectionConfig {
     label: 'Materials',
     icon: BookCopy,
     title: `${EXAM_LABELS[activeExam]} Materials`,
-    description: 'Official sample questions to download',
+    description: 'Official sample questions and guides to download',
     items: [
       { href: '/materials', label: 'All materials', icon: BookCopy, sublabel: 'Every official resource in one list' },
       ...providersFor(activeExam).map(provider => ({

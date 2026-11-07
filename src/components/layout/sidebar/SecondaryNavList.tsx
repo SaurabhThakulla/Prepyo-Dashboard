@@ -57,6 +57,8 @@ interface SecondaryNavListProps {
   items: SecondaryNavItem[];
   /** Heading shown above the list when the items are not already grouped. */
   fallbackHeading: string;
+  /** Icon for that heading (the section's own icon). */
+  fallbackIcon: LucideIcon;
   isItemActive: (item: SecondaryNavItem) => boolean;
   onNavigate: () => void;
 }
@@ -138,6 +140,7 @@ function getSubtopicIcon(label: string, fallbackIcon: LucideIcon): LucideIcon {
 
 interface NavGroup {
   name?: string;
+  icon?: LucideIcon;
   groupHref?: string;
   items: SecondaryNavItem[];
 }
@@ -146,6 +149,7 @@ interface NavGroup {
 export default function SecondaryNavList({
   items,
   fallbackHeading,
+  fallbackIcon,
   isItemActive,
   onNavigate,
 }: SecondaryNavListProps) {
@@ -185,8 +189,13 @@ export default function SecondaryNavList({
       result.push(currentGroup);
     }
 
+    // Leading links with no group get the section's name as a collapsible heading.
+    if (result[0] && !result[0].name) {
+      result[0] = { ...result[0], name: fallbackHeading, icon: fallbackIcon };
+    }
+
     return result;
-  }, [items]);
+  }, [items, fallbackHeading, fallbackIcon]);
 
   const toggleGroup = (groupName: string) => {
     setCollapsedGroups(prev => ({
@@ -197,12 +206,6 @@ export default function SecondaryNavList({
 
   return (
     <div className="flex-1 overflow-y-auto px-3 pb-2 [&::-webkit-scrollbar-thumb]:bg-white/20 hover:[&::-webkit-scrollbar-thumb]:bg-white/35">
-      {!items[0]?.group && (
-        <h4 className="px-3 pt-1 pb-2 font-display text-[11px] font-semibold uppercase tracking-[0.12em] text-white/50">
-          {fallbackHeading}
-        </h4>
-      )}
-
       <TooltipProvider delayDuration={120}>
         <div>
           {groups.map((group, groupIndex) => {
@@ -231,6 +234,7 @@ export default function SecondaryNavList({
               >
                 <GroupHeading
                   groupName={group.name}
+                  groupIcon={group.icon}
                   groupHref={group.groupHref}
                   isGroupActive={isGroupActive}
                   isCollapsed={isCollapsed}
@@ -262,6 +266,7 @@ export default function SecondaryNavList({
 
 interface GroupHeadingProps {
   groupName: string;
+  groupIcon?: LucideIcon;
   groupHref?: string;
   isGroupActive: boolean;
   isCollapsed: boolean;
@@ -271,13 +276,14 @@ interface GroupHeadingProps {
 
 function GroupHeading({
   groupName,
+  groupIcon,
   groupHref,
   isGroupActive,
   isCollapsed,
   onToggleCollapse,
   onNavigate,
 }: GroupHeadingProps) {
-  const GroupIcon = getGroupIcon(groupName);
+  const GroupIcon = groupIcon ?? getGroupIcon(groupName);
 
   return (
     // Flat full-width strip (bleeds past the list's px-3), square edges.
