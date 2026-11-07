@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { Evaluation, WordMark } from '@/lib/types';
 import EvaluationCard from './EvaluationCard';
-import { MarkedAnswer, MarkedAnswerLegend } from './ResultParts';
+import { AnswerRecording, MarkedAnswer, MarkedAnswerLegend } from './ResultParts';
 
 interface Props {
   evaluation: Evaluation;
@@ -10,12 +10,14 @@ interface Props {
   recording: Blob | null;
   /** A PTE question's type id, for the per-skill scores in the header. */
   taskType?: string;
+  /** A recording kept elsewhere, such as a mock test's. */
+  recordingUrl?: string;
 }
 
 /** A spoken answer's result on the same card as every rated answer, with the recording and the marked words. */
-export default function SpeakingResult({ evaluation, xpAwarded, recording, taskType }: Props) {
+export default function SpeakingResult({ evaluation, xpAwarded, recording, taskType, recordingUrl: keptUrl }: Props) {
   // A past answer replays the copy kept for 30 days; a fresh one plays straight from the device.
-  const recordingUrl = useObjectUrl(recording)
+  const recordingUrl = useObjectUrl(recording) ?? keptUrl
     ?? (evaluation.hasRecording ? `/api/v1/evaluations/${encodeURIComponent(evaluation.id)}/recording` : null);
   const words = evaluation.words ?? [];
   // Free speech has no script: colour what the grader corrected and the fillers instead.
@@ -30,6 +32,7 @@ export default function SpeakingResult({ evaluation, xpAwarded, recording, taskT
       evaluation={evaluation}
       xpAwarded={xpAwarded}
       taskType={taskType}
+      belowScore={recordingUrl ? <AnswerRecording src={recordingUrl} /> : undefined}
       answerTitle="Your answer"
       answerLegend={
         shortAnswer ? (
@@ -50,7 +53,6 @@ export default function SpeakingResult({ evaluation, xpAwarded, recording, taskT
       }
       answer={
         <div className="space-y-3">
-          {recordingUrl && <audio controls src={recordingUrl} className="h-9 w-full" />}
           {words.length > 0 ? (
             <p className="text-[15px] leading-8" data-testid="marked-passage">
               {words.map((w, i) => (
