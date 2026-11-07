@@ -11,7 +11,6 @@ import { isFocusRoute } from './mobile/mobileNav';
 import RequireAuth from '@/components/auth/RequireAuth';
 import { shouldShowOnboarding } from '@/components/onboarding/onboarding';
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
-import AppTour from '@/components/tour/AppTour';
 import { useClipboardGuard } from '@/lib/hooks/useClipboardGuard';
 import { isAdmin } from '@/lib/types';
 import { isInstitutionPath } from '@/institution/paths';
@@ -34,7 +33,6 @@ const PROTECTED_PREFIXES = [
   '/institute-mock',
   '/mistakes',
   '/profile',
-  '/referrals',
   '/subscription',
   '/diagnostic',
   '/reports',
@@ -288,8 +286,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
     </div>
 
-    {/* Outside the click guard above, so tour buttons never end a running practice. */}
-    {!locked && <AppTour />}
     {!locked && <DictionaryPopup />}
 
     </>
