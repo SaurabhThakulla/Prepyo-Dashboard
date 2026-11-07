@@ -41,7 +41,7 @@ interface AppContextType {
   /** Resolved session state: false means the session check ran and found nobody. */
   isAuthenticated: boolean;
 
-  signInWithGoogle: (credential: string, referralCode?: string) => Promise<UserProfile>;
+  signInWithGoogle: (credential: string) => Promise<UserProfile>;
   signInAsAdmin: (email: string, password: string) => Promise<UserProfile>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -64,8 +64,6 @@ interface AppContextType {
   setPteVariant: (variant: PteExamVariant) => void;
   updateProfile: (updates: Partial<Pick<UserProfile, 'name' | 'targetExam' | 'targetModule' | 'targetScore' | 'examDate' | 'nepalRegion'>>) => Promise<void>;
   completeOnboarding: (answers?: OnboardingAnswers) => Promise<void>;
-  /** Records on the account that the app tour has been shown, so it opens by itself only once. */
-  markTourSeen: () => Promise<void>;
 
   isTutorOpen: boolean;
   setIsTutorOpen: (open: boolean) => void;
@@ -294,11 +292,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     refreshUser();
   }, [refreshUser]);
 
-  const signInWithGoogle = useCallback(async (credential: string, referralCode?: string) => {
-    const data = await api.post<{ user: UserProfile }>('/auth/google', {
-      credential,
-      referralCode: referralCode ?? '',
-    });
+  const signInWithGoogle = useCallback(async (credential: string) => {
+    const data = await api.post<{ user: UserProfile }>('/auth/google', { credential });
     applyUser(data.user);
     setLoading(false);
     // Pull the full profile in the background; the caller can navigate now.
@@ -342,11 +337,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     },
     [applyUser],
   );
-
-  const markTourSeen = useCallback(async () => {
-    const data = await api.patch<{ user: UserProfile }>('/profile', { tourSeen: true });
-    applyUser(data.user);
-  }, [applyUser]);
 
   const setActiveExam = useCallback(
     async (exam: ExamType) => {
@@ -471,7 +461,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setPteVariant,
       updateProfile,
       completeOnboarding,
-      markTourSeen,
       isTutorOpen,
       setIsTutorOpen,
       tutorContextPrompt,
@@ -494,7 +483,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       user, loading, signInWithGoogle, signInAsAdmin, logout, refreshUser,
       notifications, unreadCount, hasMoreNotifications, refreshNotifications, loadMoreNotifications,
       markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllNotifications,
-      activeExam, setActiveExam, pteVariant, setPteVariant, updateProfile, completeOnboarding, markTourSeen,
+      activeExam, setActiveExam, pteVariant, setPteVariant, updateProfile, completeOnboarding,
       isTutorOpen, tutorContextPrompt, tutorQuestion, askTutor, clearTutorQuestion,
       theme, setTheme, toggleTheme,
       activeTestSession, activeTutorialVideo, tutorialViewMode, closeTutorialVideo,

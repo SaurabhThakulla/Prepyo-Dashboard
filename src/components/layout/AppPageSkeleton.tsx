@@ -17,7 +17,6 @@ const VARIANT_BY_PATH: Record<string, PageSkeletonVariant> = {
   '/mocks': 'mocks',
   '/mistakes': 'mistakes',
   '/profile': 'profile',
-  '/referrals': 'referrals',
   '/subscription': 'subscription',
   '/diagnostic': 'diagnostic',
   '/admin': 'admin',

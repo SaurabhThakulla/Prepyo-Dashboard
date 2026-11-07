@@ -28,10 +28,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
-import { useMistakes, useMistakeAnalytics, usePracticeAttempts, useEvaluationHistory } from '@/lib/hooks/useResources';
+import { useMistakes, useMistakeAnalytics, usePracticeAttempts, useEvaluationHistory, useMockAttempts, useMocks } from '@/lib/hooks/useResources';
+import { usePteMockHistory } from '@/lib/hooks/usePteMock';
+import { pteReportHref } from '@/lib/pteMock/catalog';
+import { PTE_MOCK_ATTEMPT_IDS, SECTION_MOCK_TITLES } from '@/components/mocks/ScoreReportList';
 import { SCALE } from '@/components/practice/PracticeResultCard';
 import { matchesTypeKey, SYLLABUS, typeKey } from '@/lib/syllabus';
-import { SkillType, ExamType, Evaluation, Mistake, MistakeAnalytics, PracticeAttempt, isInstitutionStudent, isPremiumUser } from '@/lib/types';
+import { SkillType, ExamType, Evaluation, Mistake, MistakeAnalytics, MockAttempt, PracticeAttempt, isInstitutionStudent, isPremiumUser } from '@/lib/types';
+import { PteHistoryEntry } from '@/lib/pteMock/types';
 import AskInstitution from '@/components/common/AskInstitution';
 import PracticeResultDialog from '@/components/practice/PracticeResultDialog';
 
@@ -251,6 +255,10 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
   const { data: attemptsData, isPending: attemptsPending } = usePracticeAttempts(activeExam, selectedSkill);
   // Speaking and writing are AI-scored, so they live in evaluations, not practice attempts.
   const { data: evaluationsData } = useEvaluationHistory(100);
+  // Each mock is one entry that opens its score report.
+  const { data: mockAttemptsData } = useMockAttempts();
+  const { data: mocksData } = useMocks(activeExam);
+  const { data: pteMocksData } = usePteMockHistory(activeExam === 'PTE');
   const { data: analyticsData, error: analyticsError } = useMistakeAnalytics(
     activeExam,
     period
@@ -323,10 +331,20 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
   const historyItems = React.useMemo(() => {
     if (isSuru) return practiceItems;
     const scored = (evaluationsData?.evaluations ?? [])
-      .filter(e => e.exam === activeExam && (selectedSkill === 'all' || e.skill === selectedSkill))
+      // A mock's answers are reached through the mock's own entry.
+      .filter(e => e.exam === activeExam && !e.mockAttemptId && !e.pteMockSessionId && (selectedSkill === 'all' || e.skill === selectedSkill))
       .map(evaluationItem);
-    return [...scored, ...practiceItems].sort((a, b) => (b.lastAttemptedAt ?? '').localeCompare(a.lastAttemptedAt ?? ''));
-  }, [isSuru, practiceItems, evaluationsData, activeExam, selectedSkill]);
+    const titles = new Map((mocksData?.mocks ?? []).map(m => [m.id, m.title]));
+    const mocks = [
+      ...(mockAttemptsData?.attempts ?? [])
+        .filter(a => a.exam === activeExam && !PTE_MOCK_ATTEMPT_IDS.has(a.mockId))
+        .map(a => mockAttemptItem(a, titles.get(a.mockId) ?? SECTION_MOCK_TITLES[a.mockId] ?? 'Mock test')),
+      ...(activeExam === 'PTE' ? pteMocksData?.sessions ?? [] : [])
+        .filter(s => s.status === 'completed')
+        .map(pteMockItem),
+    ].filter(m => selectedSkill === 'all' || m.skill === selectedSkill);
+    return [...mocks, ...scored, ...practiceItems].sort((a, b) => (b.lastAttemptedAt ?? '').localeCompare(a.lastAttemptedAt ?? ''));
+  }, [isSuru, practiceItems, evaluationsData, mockAttemptsData, mocksData, pteMocksData, activeExam, selectedSkill]);
 
   const analytics = isSuru
     ? (DUMMY_ANALYTICS[activeExam] ?? DUMMY_ANALYTICS.PTE)
@@ -501,7 +519,7 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
                 <div className="space-y-3">
                   {group.items.map((item, i) => (
                     // Several attempts can share one mistake id, so the index keeps keys unique.
-                    <HistoryCard key={`${item.id}-${i}`} item={item} onOpen={isSuru ? undefined : () => setOpened(item)} />
+                    <HistoryCard key={`${item.id}-${i}`} item={item} onOpen={isSuru ? undefined : () => (item.href ? navigate(item.href) : setOpened(item))} />
                   ))}
                 </div>
               </section>
@@ -618,8 +636,12 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
   );
 }
 
-type HistoryItem = Omit<Mistake, 'exam'> & {
+type HistoryItem = Omit<Mistake, 'exam' | 'skill'> & {
   exam?: ExamType;
+  /** 'full' for a full mock test, which covers every skill. */
+  skill: SkillType | 'full';
+  /** A mock opens its score report here instead of the answer dialog. */
+  href?: string;
   isCorrect: boolean;
   score?: number;
   maxScore?: number;
@@ -651,6 +673,29 @@ function evaluationItem(e: Evaluation): HistoryItem {
     lastAttemptedAt: e.createdAt,
     evaluation: e,
   };
+}
+
+function mockItem(id: string, title: string, href: string, skill: HistoryItem['skill'],
+  score: number | null, maxScore: number, at: string): HistoryItem {
+  return {
+    id, questionId: '', questionTitle: title, skill, typeName: 'Mock test', prompt: '', userResponse: '',
+    correctResponse: '', explanation: '', errorTag: '', failedCount: 0,
+    resolved: score !== null && score / maxScore >= 0.7, isCorrect: false,
+    score: score ?? undefined, maxScore, lastAttemptedAt: at, href,
+  };
+}
+
+// IELTS (and other exams') mocks: a sectional mock has one skill score, the full mock all four.
+function mockAttemptItem(a: MockAttempt, title: string): HistoryItem {
+  const skills = Object.keys(a.skillScores ?? {}) as SkillType[];
+  const max = SCALE[a.exam]?.max ?? 100;
+  return mockItem(a.id, title, `/mocks?review=${a.id}`, skills.length === 1 ? skills[0] : 'full',
+    a.exam === 'IELTS' ? a.userScore : Math.round(a.userScore), max, a.completedAt);
+}
+
+function pteMockItem(s: PteHistoryEntry): HistoryItem {
+  return mockItem(s.id, s.title, pteReportHref(s.id), s.kind === 'full' ? 'full' : s.kind as SkillType,
+    s.headline, 90, s.completedAt ?? s.createdAt);
 }
 
 function startOfDay(d: Date): number {
@@ -743,7 +788,7 @@ function Stat({
 
 function redoHref(item: HistoryItem): string {
   if (item.evaluation) {
-    const label = SYLLABUS[item.evaluation.exam]?.[item.skill]?.find(name =>
+    const label = SYLLABUS[item.evaluation.exam]?.[item.evaluation.skill]?.find(name =>
       matchesTypeKey(name, typeKey(item.typeName))) ?? item.typeName;
     const params = new URLSearchParams({ skill: item.skill, type: typeKey(label), questionId: item.questionId, exam: item.evaluation.exam });
     return `/practice?${params}`;
@@ -758,7 +803,7 @@ function attemptFromMistake(item: HistoryItem): PracticeAttempt {
     id: item.id,
     questionId: item.questionId,
     questionTitle: item.questionTitle,
-    skill: item.skill,
+    skill: item.skill as SkillType, // mocks never open the dialog
     typeName: item.typeName,
     prompt: item.prompt,
     exam: item.exam,
@@ -813,7 +858,7 @@ function HistoryCard({ item, onOpen }: { item: HistoryItem; onOpen?: () => void 
   const className = 'relative flex w-full items-center gap-3.5 overflow-hidden rounded-2xl border border-border/70 bg-card py-3.5 pl-5 pr-3.5 text-left shadow-card transition-all';
   if (!onOpen) return <div className={className}>{body}</div>;
   return (
-    <button type="button" data-tour="history-item" onClick={onOpen} className={`${className} group/card hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30`}>
+    <button type="button" onClick={onOpen} className={`${className} group/card hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30`}>
       {body}
       <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground transition-transform group-hover/card:translate-x-0.5" />
     </button>

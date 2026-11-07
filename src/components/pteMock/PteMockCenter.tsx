@@ -19,7 +19,8 @@ import { PteExamVariant } from '@/lib/pteExamConfig';
  * skill, each with what it is made of, what it costs, and the learner's open
  * attempt or last score. Everything shown comes from the catalog endpoint.
  */
-export default function PteMockCenter({ header }: { header: React.ReactNode }) {
+/** `tabs` (catalogue / score reports) sit under the full test, which leads the page edge to edge. */
+export default function PteMockCenter({ tabs }: { tabs: React.ReactNode }) {
   const navigate = useNavigate();
   const toast = useToast();
   const { pteVariant, setPteVariant } = useApp();
@@ -35,9 +36,15 @@ export default function PteMockCenter({ header }: { header: React.ReactNode }) {
   const live = entries.filter(e => e.live);
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
-      {header}
+    <div className="w-full pb-10">
+      {isPending ? (
+        <Skeleton className="h-56 w-full rounded-none" />
+      ) : full ? (
+        <FullTestCard entry={full} variant={pteVariant} onOpen={() => navigate(pteMockHref('full'))} onReport={id => navigate(pteReportHref(id))} />
+      ) : null}
 
+      <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       {/* PTE Academic vs PTE Core Switcher Tabs in Mock Center */}
       <div className="flex items-center gap-1.5 p-1 bg-muted/70 rounded-xl w-fit border border-border">
         <button
@@ -63,6 +70,8 @@ export default function PteMockCenter({ header }: { header: React.ReactNode }) {
           PTE Core
         </button>
       </div>
+      {tabs}
+      </div>
 
       {live.length > 0 && (
         <div className="space-y-2">
@@ -85,15 +94,12 @@ export default function PteMockCenter({ header }: { header: React.ReactNode }) {
 
       {isPending ? (
         <div className="space-y-4">
-          <Skeleton className="h-48 w-full rounded-2xl" />
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             {[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-56 rounded-2xl" />)}
           </div>
         </div>
       ) : entries.length === 0 ? null : (
         <>
-          {full && <FullTestCard entry={full} variant={pteVariant} onOpen={() => navigate(pteMockHref('full'))} onReport={id => navigate(pteReportHref(id))} />}
-
           <section className="space-y-3">
             <div>
               <h2 className="font-display text-lg font-bold text-foreground">
@@ -119,6 +125,7 @@ export default function PteMockCenter({ header }: { header: React.ReactNode }) {
           </section>
         </>
       )}
+      </div>
     </div>
   );
 }
@@ -138,13 +145,11 @@ function FullTestCard({
   const { data: fullPapers = [] } = useMockPapers('pte', 'full');
   const isCore = variant === 'core';
   const title = isCore ? 'PTE Core Full Mock Test' : entry.title;
-  const description = isCore
-    ? 'All three parts adapted for PTE Core: Speaking (RA, RS, DI, ASQ, RTS), Writing (SWT, Write Email), Reading, and Listening. Timed and scored 10-90.'
-    : entry.description;
 
+  // Edge to edge at the top of the page, like the other page banners.
   return (
-    <Card className="overflow-hidden">
-      <div className={`relative overflow-hidden bg-gradient-to-r ${meta.accent} p-4 sm:p-6 text-white grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5`}>
+    <div className="overflow-hidden">
+      <div className={`relative overflow-hidden bg-gradient-to-r ${meta.accent} min-h-48 content-center px-4 py-8 sm:px-6 sm:py-10 lg:px-8 text-white grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5`}>
         <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10" />
         <div className="relative lg:col-span-2 space-y-2.5">
           <div className="flex items-center gap-2">
@@ -154,15 +159,6 @@ function FullTestCard({
             <span className="flex items-center gap-1 text-[11px] font-semibold text-white/85"><Clock className="h-3 w-3" /> {formatMinutes(entry.estimatedMinutes)}</span>
           </div>
           <h2 className="font-display text-xl sm:text-2xl font-extrabold leading-tight">{title}</h2>
-          <p className="text-xs sm:text-sm text-white/85 max-w-xl line-clamp-2 sm:line-clamp-none">{description}</p>
-          <div className="grid grid-cols-3 gap-2 max-w-md text-center">
-            {entry.parts.map(p => (
-              <div key={p.part} className="rounded-lg bg-white/15 px-2 py-1.5">
-                <span className="block text-sm font-extrabold tabular-nums leading-none">{p.items}</span>
-                <span className="block text-xs font-semibold text-white/80 mt-1 leading-tight">{p.label}</span>
-              </div>
-            ))}
-          </div>
           <p className="flex items-center gap-1.5 text-[11px] font-semibold text-white/80"><ListChecks className="h-3 w-3" /> {fullPapers.length > 0 ? `${fullPapers.length} tests · ` : ''}{entry.availableItems} items</p>
         </div>
         <div className="relative flex flex-col justify-center gap-2 lg:items-end">
@@ -182,7 +178,7 @@ function FullTestCard({
           <p className="hidden sm:block text-[11px] text-white/75">{costLabel(entry.cost)}</p>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 

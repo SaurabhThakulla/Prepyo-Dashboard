@@ -726,7 +726,9 @@ function PracticePageContent() {
   const currentIndex = currentQuestion ? questions.findIndex(q => q.id === currentQuestion.id) : -1;
   const isLast = currentIndex === questions.length - 1;
   // PTE listening titles are "Question N"; drop that, it repeats the number.
-  const questionHeading = (currentQuestion?.title ?? '').replace(isPteListening ? /^question\s*\d+[:\s-]*/i : /^$/, '').trim();
+  const titleText = (currentQuestion?.title ?? '').replace(isPteListening ? /^question\s*\d+[:\s-]*/i : /^$/, '').trim();
+  // A title that only repeats the task name ("Read Aloud") is already in the page header.
+  const questionHeading = titleText.toLowerCase() === (currentQuestion?.typeName ?? '').trim().toLowerCase() ? '' : titleText;
   // Short code in the heading badge: the exam's own (RA, FIB-D), else the type's initials.
   const taskCode = (activeExam === 'PTE' && findPteTaskConfig(currentQuestion?.typeName ?? '')?.code)
     || (currentQuestion?.typeName ?? '').split(/[\s:&-]+/).filter(Boolean).slice(0, 3).map(w => w[0]).join('').toUpperCase();

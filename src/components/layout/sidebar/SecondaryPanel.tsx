@@ -63,6 +63,7 @@ export default function SecondaryPanel({
         <SecondaryNavList
           items={section.items}
           fallbackHeading={section.label}
+          fallbackIcon={section.icon}
           isItemActive={isItemActive}
           onNavigate={onNavigate}
         />

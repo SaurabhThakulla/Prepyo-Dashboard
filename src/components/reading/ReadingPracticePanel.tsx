@@ -457,7 +457,7 @@ function ResultCard({ correct, total, note }: { correct: number; total: number; 
   const Icon = tone.Icon;
 
   return (
-    <Card data-tour="practice-result" role="status" className={`rounded-2xl border ${tone.ring} bg-card p-4 shadow-xs`}>
+    <Card role="status" className={`rounded-2xl border ${tone.ring} bg-card p-4 shadow-xs`}>
       <div className="flex items-center gap-3">
         <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${tone.soft} ${tone.text}`}>
           <Icon className="h-5 w-5" aria-hidden />

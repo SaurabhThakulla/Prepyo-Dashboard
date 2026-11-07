@@ -52,7 +52,7 @@ export function getMobileTab(pathname: string, searchParams: URLSearchParams): M
   if (startsWithAny(pathname, ['/mocks', '/diagnostic'])) return 'mocks';
   if (startsWithAny(pathname, ['/practice', '/mistakes'])) return 'practice';
   if (startsWithAny(pathname, ['/learn', '/tutorials', '/videos'])) return 'learn';
-  if (startsWithAny(pathname, [ME_HREF, '/profile', '/subscription', '/account', '/referrals', '/reports', '/materials'])) {
+  if (startsWithAny(pathname, [ME_HREF, '/profile', '/subscription', '/account', '/reports', '/materials'])) {
     return 'me';
   }
   return 'home';
@@ -105,7 +105,6 @@ export function mobileTitle(pathname: string, searchParams: URLSearchParams, act
   if (pathname === ME_HREF) return 'Me';
   if (pathname === '/profile') return 'Profile & Goals';
   if (pathname === '/subscription' || pathname === '/account') return 'Your Plan';
-  if (pathname === '/referrals') return 'Earn Rewards';
   if (pathname === '/reports') return 'My Reports';
   if (pathname === '/mistakes' || pathname === '/history') return 'Practice history';
   if (pathname === '/admin') return 'Admin';

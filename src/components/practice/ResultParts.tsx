@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Headphones } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Evaluation, ExamType, SentenceFeedback } from '@/lib/types';
 import { markTranscript, type SpokenMark } from '@/lib/transcriptMarks';
@@ -112,6 +113,23 @@ export function ResultSummary({ label, score, outOf, fraction, tone, verdict, me
 }
 
 /** A titled block of the result. Every section uses the same heading. */
+/** The learner's own recorded answer, to hear their voice again under the score. */
+export function AnswerRecording({ src }: { src: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3 dark:bg-primary/10">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+        <Headphones className="h-5 w-5" aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1 space-y-1">
+        <p className="text-sm font-semibold text-foreground">Listen to your answer</p>
+        <audio controls preload="none" src={src} className="h-9 w-full" data-testid="answer-recording">
+          Your browser cannot play this recording.
+        </audio>
+      </div>
+    </div>
+  );
+}
+
 export function ResultSection({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
   return (
     <section className="space-y-3">
@@ -132,14 +150,14 @@ export function xpMeta(xp: number): ReactNode {
 const SPOKEN_CLASS: Record<SpokenMark, string> = {
   error: 'cursor-help text-rose-700 underline decoration-dotted underline-offset-4 dark:text-rose-400',
   filler: 'cursor-help text-amber-700 dark:text-amber-400',
-  good: 'text-emerald-700 dark:text-emerald-400',
+  // Not flagged is not proof of good: pronunciation is never heard and the grader fixes only some sentences.
+  good: 'text-foreground',
 };
 
 /** Legend for an answer coloured by markTranscript; writing calls fillers repeated words. */
 export function MarkedAnswerLegend({ writing = false }: { writing?: boolean }) {
   return (
     <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-      <LegendDot dot="bg-emerald-500">Good</LegendDot>
       <LegendDot dot="bg-amber-500">{writing ? 'Repeated word' : 'Repetition or filler'}</LegendDot>
       <LegendDot dot="bg-rose-500">Grammar or word choice</LegendDot>
     </span>

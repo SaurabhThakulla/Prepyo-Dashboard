@@ -21,10 +21,8 @@ export function useGoogleAuth() {
 
   const buttonRef = useRef<HTMLDivElement | null>(null);
   const agreeTermsRef = useRef(agreeTerms);
-  const referralCodeRef = useRef('');
 
   agreeTermsRef.current = agreeTerms;
-  referralCodeRef.current = (searchParams.get('ref') ?? '').trim().toUpperCase();
 
   const handleCredential = useCallback(
     async (response: GoogleCredentialResponse) => {
@@ -40,7 +38,7 @@ export function useGoogleAuth() {
       setError(null);
       setLoading(true);
       try {
-        const account = await signInWithGoogle(response.credential, referralCodeRef.current || undefined);
+        const account = await signInWithGoogle(response.credential);
         toast.success('Signed in', `Welcome to Prepyo, ${account.name}.`);
 
         // Only same-origin redirects, so ?next= cannot bounce you off-site.

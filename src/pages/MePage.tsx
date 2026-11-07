@@ -9,7 +9,6 @@ import {
   FileText,
   Flame,
   Gauge,
-  Gift,
   History,
   LogOut,
   LucideIcon,
@@ -94,7 +93,6 @@ export default function MePage() {
   const account: Row[] = [
     { label: 'Profile & goals', sublabel: 'Target score, exam date, photo', icon: UserRound, tint: 'text-sky-600 bg-sky-500/10', href: '/profile' },
     ...(planRow ? [planRow] : []),
-    { label: 'Earn rewards', sublabel: 'Invite friends, get free days', icon: Gift, tint: 'text-rose-600 bg-rose-500/10', href: '/referrals' },
     admin
       ? { label: 'Issue reports', sublabel: 'What learners have reported', icon: MessageSquareWarning, tint: 'text-amber-600 bg-amber-500/10', href: '/admin/reports' }
       : { label: 'My reports', sublabel: 'Issues you have reported', icon: MessageSquare, tint: 'text-amber-600 bg-amber-500/10', href: '/reports' },
@@ -109,7 +107,7 @@ export default function MePage() {
       ? [{ label: 'Video lessons', sublabel: `${EXAM_LABELS[activeExam]} masterclasses`, icon: Video, tint: 'text-red-600 bg-red-500/10', href: '/tutorials' }]
       : []),
     ...(hasMaterials(activeExam)
-      ? [{ label: 'Materials', sublabel: 'Official sample questions to download', icon: BookCopy, tint: 'text-indigo-600 bg-indigo-500/10', href: '/materials' }]
+      ? [{ label: 'Materials', sublabel: 'Official sample questions and guides to download', icon: BookCopy, tint: 'text-indigo-600 bg-indigo-500/10', href: '/materials' }]
       : []),
     { label: 'Diagnostic test', sublabel: '15-minute baseline', icon: Gauge, tint: 'text-cyan-600 bg-cyan-500/10', href: '/diagnostic' },
   ];

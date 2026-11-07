@@ -6,7 +6,6 @@ import SkillQuestionCard from '@/components/dashboard/SkillQuestionCard';
 import PracticeStudioPanel, { SkillRow } from '@/components/dashboard/PracticeStudioPanel';
 import CurrentPlanCard from '@/components/dashboard/CurrentPlanCard';
 import DashboardQuickTests from '@/components/dashboard/DashboardQuickTests';
-import TourButton from '@/components/tour/TourButton';
 import { formatScore, planHeadline } from '@/components/onboarding/onboarding';
 import { useDashboardSummary } from '@/lib/hooks/useDashboardSummary';
 import { daysUntilExam, formatExamDate } from '@/lib/dates';
@@ -93,11 +92,9 @@ export default function DashboardPage() {
           <p className="text-sm text-white/75 mt-1.5 font-medium">
             {user ? planHeadline(user) : `Preparing for ${examDisplayName}`}
           </p>
-          {/* Opens by itself for a learner who has not practised anything yet. */}
-          <TourButton autoStart={progress != null && !(progress.skills ?? []).some(row => row.completed > 0)} />
         </div>
 
-        <div className="relative" data-tour="dash-countdown">
+        <div className="relative">
           <ExamCountdown
             examDate={examDate}
             daysLeft={daysLeft}
@@ -106,7 +103,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-2 2xl:grid-cols-4 gap-3 sm:gap-4" data-tour="dash-skills">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-2 2xl:grid-cols-4 gap-3 sm:gap-4">
         {skillsFor(activeExam).map(skill => {
           const row = skillProgress.get(skill);
           return (
@@ -128,12 +125,12 @@ export default function DashboardPage() {
       )}
 
       {/* Full-width Current Plan Banner */}
-      <div data-tour="dash-plan">
+      <div>
         <CurrentPlanCard user={user} />
       </div>
 
       {/* Full-width Practice Studio below Current Plan */}
-      <div data-tour="dash-scores">
+      <div>
         <PracticeStudioPanel
           skills={buildSkillRows(activeExam, progress)}
           mistakeCount={mistakeCount}

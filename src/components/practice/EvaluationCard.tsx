@@ -18,10 +18,12 @@ interface Props {
   answer?: ReactNode;
   answerTitle?: string;
   answerLegend?: ReactNode;
+  /** Shown right under the score, such as the question's recording. */
+  belowScore?: ReactNode;
 }
 
 /** A rated answer on one card: score and summary, the enabling skills, and the answer with its fixes in tabs. */
-export default function EvaluationCard({ evaluation, xpAwarded, taskType, notes = [], answer, answerTitle = 'Your answer', answerLegend }: Props) {
+export default function EvaluationCard({ evaluation, xpAwarded, taskType, notes = [], answer, answerTitle = 'Your answer', answerLegend, belowScore }: Props) {
   const scale = SCALE[evaluation.exam] ?? SCALE.PTE;
   const score = evaluation.estimatedScore;
   const fraction = score === null ? null : (score - scale.min) / (scale.max - scale.min);
@@ -66,6 +68,8 @@ export default function EvaluationCard({ evaluation, xpAwarded, taskType, notes 
           </div>
         )}
       </div>
+
+      {belowScore && <div className="border-t border-border p-4 sm:px-5">{belowScore}</div>}
 
       {tabs.length > 0 && (
         <Tabs defaultValue={tabs[0].id} className="border-t border-border p-4 sm:px-5">

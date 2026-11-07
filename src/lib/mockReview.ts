@@ -41,6 +41,8 @@ export interface ReviewTurn {
   transcript: string;
   seconds: number;
   hasRecording: boolean;
+  /** This answer rated on its own, from the same AI reply as the test; absent on older tests. */
+  evaluation?: Evaluation;
 }
 
 export interface ReviewSection {

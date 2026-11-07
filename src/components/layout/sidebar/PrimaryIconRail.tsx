@@ -8,7 +8,6 @@ import {
   MessageSquare,
   Sun,
   Moon,
-  Gift,
   Home,
   ShieldCheck,
   MessageSquareWarning,
@@ -55,7 +54,6 @@ function menuLinks(user: UserProfile | null): (MenuLink | 'separator')[] {
     { to: '/profile', label: 'Profile', icon: User },
     ...(isInstitutionStudent(user) ? [] : [{ to: '/subscription', label: 'Subscription', icon: CreditCard }]),
     { to: '/reports', label: 'My reports', icon: MessageSquare },
-    { to: '/referrals', label: 'Earn rewards', icon: Gift },
   ];
 }
 
@@ -101,7 +99,7 @@ export default function PrimaryIconRail({
       </div>
 
       <TooltipProvider delayDuration={100}>
-        <nav data-tour="nav" className="flex flex-col items-center gap-2 mb-auto w-full">
+        <nav className="flex flex-col items-center gap-2 mb-auto w-full">
           {sections.map(section => {
             const Icon = section.icon;
             const isSelected = activeSection === section.id;

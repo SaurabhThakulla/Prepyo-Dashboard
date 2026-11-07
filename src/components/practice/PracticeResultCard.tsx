@@ -1,19 +1,24 @@
+import { useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { PracticeResult } from '@/lib/hooks/usePracticeSession';
 import type { Evaluation, PracticeAttempt, Question } from '@/lib/types';
 import EvaluationCard from './EvaluationCard';
 import ExplainMistake from './ExplainMistake';
-import { CONFIDENCE_LABEL, SCALE, MarkedAnswer, onExamScale, MarkedAnswerLegend, ResultSection, ResultSummary, xpMeta, type Tone } from './ResultParts';
+import { CONFIDENCE_LABEL, SCALE, MarkedAnswer, onExamScale, AnswerRecording, MarkedAnswerLegend, ResultSection, ResultSummary, xpMeta, type Tone } from './ResultParts';
 
 /**
  * What came back from grading. Two shapes, because the two paths differ:
  * reading and listening return a right/wrong attempt, writing and speaking
  * return a rubric from the AI evaluator. `bare` drops the card, for the pop-up.
  */
-export default function PracticeResultCard({ result, bare = false, answerText, blankAnswers, taskType }: {
+export default function PracticeResultCard({ result, bare = false, answerText, blankAnswers, taskType, recordingUrl }: {
   result: PracticeResult;
   bare?: boolean;
+  /** A spoken answer marked without a rating (a mock's Read Aloud, say): the learner's own recording. */
+  recordingUrl?: string;
   answerText?: string;
   /** A PTE question's type id, for the per-skill scores of a rated answer. */
   taskType?: string;
@@ -21,7 +26,7 @@ export default function PracticeResultCard({ result, bare = false, answerText, b
   blankAnswers?: Record<string, string>;
 }) {
   const body = result.attempt ? (
-    <DeterministicResult attempt={result.attempt} review={result.review} xpAwarded={result.xpAwarded} blankAnswers={blankAnswers} />
+    <DeterministicResult attempt={result.attempt} review={result.review} xpAwarded={result.xpAwarded} blankAnswers={blankAnswers} recordingUrl={recordingUrl} />
   ) : result.evaluation ? (
     <EvaluationResult evaluation={result.evaluation} xpAwarded={result.xpAwarded} answerText={answerText} taskType={taskType} />
   ) : null;
@@ -33,7 +38,8 @@ export default function PracticeResultCard({ result, bare = false, answerText, b
 export { CONFIDENCE_LABEL, SCALE } from './ResultParts';
 
 /** Reading and listening: graded on the server, right or wrong. */
-function DeterministicResult({ attempt, review, xpAwarded, blankAnswers }: {
+function DeterministicResult({ attempt, review, xpAwarded, blankAnswers, recordingUrl }: {
+  recordingUrl?: string;
   attempt: PracticeAttempt;
   review?: Question;
   xpAwarded: number;
@@ -59,6 +65,8 @@ function DeterministicResult({ attempt, review, xpAwarded, blankAnswers }: {
         meta={[`${attempt.accuracyPercentage}% accuracy`, xpMeta(xpAwarded)]}
         summary={attempt.feedback}
       />
+      {recordingUrl && <AnswerRecording src={recordingUrl} />}
+      {review?.options && review.options.length > 0 && <MarkedOptions options={review.options} given={attempt.userResponse} right={review.correctAnswers} />}
       {review?.blanks && review.blanks.length > 0 && blankAnswers && (
         <ResultSection title="Your answers">
           <BlankAnswers blanks={review.blanks} given={blankAnswers} />
@@ -69,14 +77,16 @@ function DeterministicResult({ attempt, review, xpAwarded, blankAnswers }: {
           <p className="text-sm leading-relaxed text-foreground">{review.explanation}</p>
         </ResultSection>
       )}
-      {review?.audioTranscript && (
-        <ResultSection title={written ? 'Compare' : 'What the speaker said'}>
-          <div className={cn('grid gap-3', written && 'md:grid-cols-2')}>
-            {written && <CompareBox title="Your answer" text={attempt.userResponse || 'No answer given.'} />}
-            <CompareBox title={written ? 'What the speaker said' : undefined} text={review.audioTranscript} />
+      {review?.audioTranscript && (written ? (
+        <ResultSection title="Compare">
+          <div className="grid gap-3 md:grid-cols-2">
+            <CompareBox title="Your answer" text={attempt.userResponse || 'No answer given.'} />
+            <CompareBox title="What the speaker said" text={review.audioTranscript} />
           </div>
         </ResultSection>
-      )}
+      ) : (
+        <Script text={review.audioTranscript} />
+      ))}
       {review && !attempt.isCorrect && <ExplainMistake attempt={attempt} review={review} />}
     </div>
   );
@@ -116,6 +126,53 @@ function BlankAnswers({ blanks, given }: { blanks: NonNullable<Question['blanks'
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+const optionKey = (s: string) => s.trim().toLowerCase();
+
+/** Each option, with the learner's choice and the right one marked. */
+function MarkedOptions({ options, given, right }: { options: NonNullable<Question['options']>; given?: string; right?: string[] }) {
+  const chosen = new Set((given ?? '').split(',').map(optionKey).filter(Boolean));
+  const correct = new Set((right ?? []).map(optionKey));
+  if (chosen.size === 0 && correct.size === 0) return null;
+  const has = (set: Set<string>, o: { id: string; text: string }) => set.has(optionKey(o.id)) || set.has(optionKey(o.text));
+  return (
+    <ResultSection title="Your answer">
+      <ul className="space-y-1.5">
+        {options.map(o => {
+          const isRight = has(correct, o);
+          const isChosen = has(chosen, o);
+          return (
+            <li
+              key={o.id}
+              className={cn(
+                'flex items-start gap-3 rounded-xl border px-3 py-2.5 text-sm',
+                isRight ? 'border-emerald-500/50 bg-emerald-500/10' : isChosen ? 'border-rose-500/50 bg-rose-500/10' : 'border-border',
+              )}
+            >
+              <span className="w-4 shrink-0 font-bold text-muted-foreground">{o.id.length === 1 ? o.id : ''}</span>
+              <span className="flex-1 text-foreground">{o.text}</span>
+              {isChosen && <span className="shrink-0 text-xs font-semibold text-muted-foreground">Your choice</span>}
+              {isRight && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-label="Correct answer" />}
+            </li>
+          );
+        })}
+      </ul>
+    </ResultSection>
+  );
+}
+
+/** The recording's script, folded away until asked for: it is long and only a reference. */
+function Script({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="space-y-2">
+      <Button variant="outline" size="sm" className="h-8 text-xs font-semibold" onClick={() => setOpen(o => !o)} aria-expanded={open}>
+        {open ? 'Hide' : 'Show'} what the speaker said
+      </Button>
+      {open && <CompareBox text={text} />}
     </div>
   );
 }

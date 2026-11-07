@@ -13,6 +13,7 @@ import { EXAM_LABELS } from '@/lib/types';
 const COVER: Record<MaterialProvider, { cover: string; spine: string }> = {
   'ielts-official': { cover: 'from-rose-600 via-red-600 to-red-800', spine: 'bg-red-900/40' },
   'british-council': { cover: 'from-indigo-600 via-blue-700 to-indigo-900', spine: 'bg-indigo-950/40' },
+  idp: { cover: 'from-emerald-600 via-teal-700 to-teal-900', spine: 'bg-teal-950/40' },
   cambridge: { cover: 'from-sky-700 via-cyan-800 to-slate-900', spine: 'bg-slate-950/40' },
   pearson: { cover: 'from-violet-600 via-purple-700 to-indigo-900', spine: 'bg-indigo-950/40' },
 };
@@ -95,7 +96,7 @@ export default function MaterialsPage() {
 
   if (providers.length === 0) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
         <Card className="p-6 text-sm text-muted-foreground">
           Materials are available for IELTS and PTE. Switch your exam to see them.
         </Card>
@@ -104,11 +105,12 @@ export default function MaterialsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-6 sm:px-6 lg:px-8">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary/70 p-6 text-primary-foreground sm:p-8">
+    <div className="w-full">
+      {/* Edge to edge: no gap above or at the sides. */}
+      <div className="relative flex min-h-48 items-center overflow-hidden bg-gradient-to-br from-primary to-primary/70 px-4 py-8 text-primary-foreground sm:px-6 sm:py-10 lg:px-8">
         <span className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10" aria-hidden />
         <span className="pointer-events-none absolute -bottom-20 right-24 h-40 w-40 rounded-full bg-white/10" aria-hidden />
-        <div className="relative flex items-center gap-4">
+        <div className="relative flex w-full items-center gap-4">
           <span className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 sm:flex">
             <BookCopy className="h-7 w-7" />
           </span>
@@ -117,12 +119,13 @@ export default function MaterialsPage() {
               {chosen ? chosen.name : `${EXAM_LABELS[activeExam]} Materials`}
             </h1>
             <p className="text-sm text-primary-foreground/85 sm:text-base">
-              {chosen ? chosen.about : 'Official sample questions to download, free from the people who make the exam.'}
+              {chosen ? chosen.about : 'Official sample questions and guides to download, free from the people who make the exam.'}
             </p>
           </div>
         </div>
       </div>
 
+      <div className="space-y-8 px-4 py-6 sm:px-6 lg:px-8">
       {shelves.map(({ provider, books }) => (
         <section key={provider.id} className="space-y-3">
           {!chosen && (
@@ -155,6 +158,7 @@ export default function MaterialsPage() {
         Each file downloads from the publisher's own website, where they share it free. Prepyo is not part of IELTS,
         the British Council, Cambridge or Pearson and does not copy or host their questions.
       </p>
+      </div>
     </div>
   );
 }
