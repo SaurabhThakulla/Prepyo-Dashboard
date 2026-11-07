@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TestFeedback from '@/components/mocks/TestFeedback';
-import { MarkedAnswer } from '@/components/practice/ResultParts';
+import EvaluationCard from '@/components/practice/EvaluationCard';
+import { AnswerRecording, MarkedAnswer, MarkedAnswerLegend } from '@/components/practice/ResultParts';
 import {
   ItemStatus,
   MockReview,
@@ -24,22 +25,22 @@ const SKILL_LABEL: Record<string, string> = {
   speaking: 'Speaking',
 };
 
-const STATUS: Record<ItemStatus, { label: string; icon: typeof CheckCircle2; tone: string; row: string }> = {
-  correct: { label: 'Correct', icon: CheckCircle2, tone: 'text-emerald-600 dark:text-emerald-400', row: 'border-l-emerald-500' },
-  partial: { label: 'Partly right', icon: CircleMinus, tone: 'text-amber-600 dark:text-amber-400', row: 'border-l-amber-500' },
-  wrong: { label: 'Wrong', icon: XCircle, tone: 'text-rose-600 dark:text-rose-400', row: 'border-l-rose-500' },
-  blank: { label: 'Not answered', icon: CircleSlash, tone: 'text-muted-foreground', row: 'border-l-muted-foreground/40' },
+const STATUS: Record<ItemStatus, { label: string; icon: typeof CheckCircle2; tone: string }> = {
+  correct: { label: 'Correct', icon: CheckCircle2, tone: 'text-emerald-600 dark:text-emerald-400' },
+  partial: { label: 'Partly right', icon: CircleMinus, tone: 'text-amber-600 dark:text-amber-400' },
+  wrong: { label: 'Wrong', icon: XCircle, tone: 'text-rose-600 dark:text-rose-400' },
+  blank: { label: 'Not answered', icon: CircleSlash, tone: 'text-muted-foreground' },
 };
 
 /** A review card: lifts and turns brand blue on hover, and opens its details on click. */
 const CARD =
-  'group cursor-pointer rounded-xl border border-border bg-card px-4 py-3 shadow-sm transition-all duration-150 ' +
-  'hover:-translate-y-px hover:border-primary hover:bg-primary/[0.03] hover:shadow-md ' +
+  'group cursor-pointer rounded-xl border border-border bg-card px-4 py-3 shadow-sm transition-all duration-200 ' +
+  'hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 active:translate-y-0 ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
-const PART_HEADING = 'px-1 pb-1 pt-2 text-xs font-bold uppercase tracking-wide text-muted-foreground';
+const PART_HEADING = 'px-1 pb-1 pt-2 text-xs font-bold uppercase tracking-wide text-primary';
 /** The details button follows its card's hover. */
 const DETAILS =
-  'h-8 shrink-0 text-xs group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground';
+  'h-8 shrink-0 border-primary/40 text-xs text-primary group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground';
 
 /** Lets a card open with Enter or Space, as a button would. */
 const activate = (open: () => void) => (event: React.KeyboardEvent) => {
@@ -55,6 +56,27 @@ const SPEAKING_PART: Record<number, string> = {
   2: 'Part 2 · Long turn',
   3: 'Part 3 · Discussion',
 };
+
+/** Each speaking part keeps one accent: the heading badge and the mic, which fills on hover. */
+const PART_TONE: Record<number, { badge: string; chip: string }> = {
+  1: { badge: 'bg-primary text-primary-foreground', chip: 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground' },
+  2: { badge: 'bg-violet-600 text-white', chip: 'bg-violet-500/10 text-violet-600 group-hover:bg-violet-600 group-hover:text-white dark:text-violet-400' },
+  3: { badge: 'bg-teal-600 text-white', chip: 'bg-teal-500/10 text-teal-700 group-hover:bg-teal-600 group-hover:text-white dark:text-teal-400' },
+};
+
+/** A band as a pill tinted by how strong it is. */
+function BandPill({ band }: { band: number }) {
+  const tone =
+    band >= 7 ? 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/30 dark:text-emerald-400'
+    : band >= 6 ? 'bg-primary/10 text-primary ring-primary/30'
+    : band >= 5 ? 'bg-amber-500/10 text-amber-700 ring-amber-500/30 dark:text-amber-400'
+    : 'bg-rose-500/10 text-rose-700 ring-rose-500/30 dark:text-rose-400';
+  return (
+    <span className={cn('shrink-0 rounded-lg px-2.5 py-1 font-mono text-base font-black tabular-nums ring-1', tone)}>
+      {band.toFixed(1)}
+    </span>
+  );
+}
 
 const numbers = (item: ReviewItem) => (item.to > item.from ? `${item.from}–${item.to}` : String(item.from));
 const blankless = (text: string) => text.replace(/_{3,}/g, '……');
@@ -161,7 +183,7 @@ export function ObjectiveReview({ section }: { section: ReviewSection }) {
                     tabIndex={0}
                     onClick={() => setOpen(index)}
                     onKeyDown={activate(() => setOpen(index))}
-                    className={cn(CARD, 'flex items-center gap-3 border-l-4', status.row)}
+                    className={cn(CARD, 'flex items-center gap-3')}
                     data-testid="review-item"
                   >
                     <span className="flex h-8 min-w-8 shrink-0 items-center justify-center rounded-lg bg-muted px-1.5 text-sm font-bold tabular-nums text-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
@@ -352,7 +374,7 @@ function WritingReview({ tasks }: { tasks: ReviewTask[] }) {
                   {task.words} words{fixes > 0 ? ` · ${fixes} correction${fixes === 1 ? '' : 's'}` : ''}
                 </p>
               </div>
-              <span className="font-mono text-lg font-black tabular-nums text-foreground">{band != null ? band.toFixed(1) : '—'}</span>
+              {band != null ? <BandPill band={band} /> : <span className="font-mono text-lg font-black text-muted-foreground">—</span>}
               <Button size="sm" variant="outline" className={DETAILS} tabIndex={-1}>
                 View details
               </Button>
@@ -413,7 +435,10 @@ function SpeakingReview({ attemptId, section }: { attemptId: string; section: Re
 
       {parts.map(part => (
         <div key={part} className="space-y-2">
-          <h4 className={PART_HEADING}>{SPEAKING_PART[part] ?? `Part ${part}`}</h4>
+          <h4 className="flex items-center gap-2 px-1 pb-1 pt-2 text-xs font-bold uppercase tracking-wide text-foreground">
+            <span className={cn('flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-[11px]', (PART_TONE[part] ?? PART_TONE[1]).badge)}>{part}</span>
+            {(SPEAKING_PART[part] ?? `Part ${part}`).replace(/^Part \d+ · /, '')}
+          </h4>
           <ul className="space-y-2">
             {turns.map((t, index) =>
               t.part !== part ? null : (
@@ -423,30 +448,20 @@ function SpeakingReview({ attemptId, section }: { attemptId: string; section: Re
                   tabIndex={0}
                   onClick={() => setOpen(index)}
                   onKeyDown={activate(() => setOpen(index))}
-                  className={cn(CARD, 'space-y-2.5')}
+                  className={cn(CARD, 'px-5 py-4')}
                   data-testid="review-turn"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                      <Mic className="h-4 w-4" />
+                  <div className="flex items-center gap-4">
+                    <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-200', (PART_TONE[part] ?? PART_TONE[1]).chip)}>
+                      <Mic className="h-5 w-5" />
                     </span>
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <p className="text-sm font-medium text-foreground">{t.question}</p>
-                      <p className="line-clamp-2 text-xs text-muted-foreground">
-                        {t.transcript.trim() ? `“${t.transcript.trim()}”` : 'No answer was heard.'}
-                      </p>
-                    </div>
+                    <p className="min-w-0 flex-1 text-[15px] font-medium text-foreground transition-colors group-hover:text-primary">{t.question}</p>
+                    {t.evaluation?.estimatedScore != null && <BandPill band={t.evaluation.estimatedScore} />}
                     <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground">{t.seconds}s</span>
                     <Button size="sm" variant="outline" className={DETAILS} tabIndex={-1}>
                       View details
                     </Button>
                   </div>
-                  {t.hasRecording && (
-                    // Playing the recording should not open the details.
-                    <div onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
-                      <Recording attemptId={attemptId} turn={t} />
-                    </div>
-                  )}
                 </li>
               ),
             )}
@@ -456,7 +471,7 @@ function SpeakingReview({ attemptId, section }: { attemptId: string; section: Re
 
       <Dialog open={turn != null} onOpenChange={next => !next && setOpen(null)}>
         {turn && (
-          <DialogContent className="font-report sm:max-w-2xl">
+          <DialogContent className="font-report sm:max-w-6xl">
             <DialogHeader>
               <DialogTitle>{SPEAKING_PART[turn.part] ?? `Part ${turn.part}`}</DialogTitle>
               <DialogDescription>You spoke for {turn.seconds} seconds</DialogDescription>
@@ -466,23 +481,47 @@ function SpeakingReview({ attemptId, section }: { attemptId: string; section: Re
                 <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Examiner</p>
                 <p className="text-sm font-medium text-foreground">{turn.question}</p>
               </div>
-              {turn.hasRecording ? (
-                <div className="space-y-1">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Your recording</p>
-                  <Recording attemptId={attemptId} turn={turn} />
-                </div>
-              ) : (
+              {/* The learner's own voice sits under the score, as on a practice result; on its own when unrated. */}
+              {!turn.hasRecording ? (
                 <p className="text-xs text-muted-foreground">No recording is kept for this answer (recordings are kept for 30 days).</p>
+              ) : !turn.evaluation && <AnswerRecording src={recordingUrl(attemptId, turn.key)} />}
+              {turn.evaluation ? (
+                // The same card as a practice answer's result.
+                <EvaluationCard
+                  evaluation={turn.evaluation}
+                  xpAwarded={0}
+                  belowScore={turn.hasRecording ? <AnswerRecording src={recordingUrl(attemptId, turn.key)} /> : undefined}
+                  notes={['This rates this answer alone, from its transcript. Pronunciation was not assessed.']}
+                  answer={<MarkedAnswer text={turn.transcript} fixes={turn.evaluation.sentenceFeedback ?? []} />}
+                  answerLegend={<MarkedAnswerLegend />}
+                />
+              ) : null}
+              {turn.evaluation ? (
+                <section className="space-y-3 rounded-2xl border border-border bg-card p-4 sm:p-5" data-dictionary>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-primary">How to improve</h4>
+                  {turn.evaluation.summary && <p className="text-sm leading-relaxed text-foreground">{turn.evaluation.summary}</p>}
+                  <ul className="space-y-2">
+                    {(turn.evaluation.criteria ?? []).filter(c => c.feedback).map(c => (
+                      <li key={c.name} className="rounded-lg bg-muted/40 px-3 py-2 text-sm">
+                        <p className="font-semibold text-foreground">{c.name}</p>
+                        <p className="leading-relaxed text-muted-foreground">{c.feedback}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : (
+                <>
+                  <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-3 space-y-1">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-primary">What you said</p>
+                    {turn.transcript.trim() ? (
+                      <MarkedAnswer text={turn.transcript} fixes={fixes} rated={rated} />
+                    ) : (
+                      <p className="text-sm italic text-muted-foreground">No answer was heard.</p>
+                    )}
+                  </div>
+                  <TurnFixes turn={turn} fixes={fixes} />
+                </>
               )}
-              <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-3 space-y-1">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-primary">What you said</p>
-                {turn.transcript.trim() ? (
-                  <MarkedAnswer text={turn.transcript} fixes={fixes} rated={rated} />
-                ) : (
-                  <p className="text-sm italic text-muted-foreground">No answer was heard.</p>
-                )}
-              </div>
-              <TurnFixes turn={turn} fixes={fixes} />
             </div>
             <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
               <Button variant="outline" size="sm" disabled={open === 0} onClick={() => setOpen(open! - 1)} className="gap-1">
@@ -536,10 +575,3 @@ function TurnFixes({ turn, fixes }: { turn: ReviewTurn; fixes: { original: strin
   );
 }
 
-function Recording({ attemptId, turn }: { attemptId: string; turn: ReviewTurn }) {
-  return (
-    <audio controls preload="none" src={recordingUrl(attemptId, turn.key)} className="h-9 w-full" data-testid="review-recording">
-      Your browser cannot play this recording.
-    </audio>
-  );
-}

@@ -50,7 +50,7 @@ export default function IeltsTestReport({
   const [showReview, setShowReview] = useState(reviewOpen);
   const reviewRef = useRef<HTMLDivElement>(null);
 
-  const frame = embedded ? 'space-y-5' : 'w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5';
+  const frame = embedded ? 'space-y-5' : 'w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5';
 
   if (isLoading) {
     return (
@@ -90,21 +90,9 @@ export default function IeltsTestReport({
 
   return (
     <div className={frame} data-testid="ielts-test-report">
-      <IeltsReportForm
-        candidateName={user?.name ?? ''}
-        module={review.module ?? ieltsModuleOf(user)}
-        testDate={attempt.completedAt}
-        reportId={attempt.id}
-        bands={bands}
-        overall={full ? attempt.userScore : null}
-        sectional={!full}
-      />
-
-      {notice}
-
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span>{Math.round(attempt.durationSeconds / 60)} min</span>
+          <span>Time taken: {Math.round(attempt.durationSeconds / 60)} min</span>
           {attempt.totalQuestions > 0 && (
             <span>
               · {attempt.totalCorrect} of {attempt.totalQuestions} correct
@@ -132,9 +120,21 @@ export default function IeltsTestReport({
         </div>
       </div>
 
+      <IeltsReportForm
+        candidateName={user?.name ?? ''}
+        module={review.module ?? ieltsModuleOf(user)}
+        testDate={attempt.completedAt}
+        reportId={attempt.id}
+        bands={bands}
+        overall={full ? attempt.userScore : null}
+        sectional={!full}
+      />
+
+      {notice}
+
       {showReview && (
         <div ref={reviewRef} className="scroll-mt-4 space-y-3">
-          <h3 className="text-lg font-bold text-foreground">Review</h3>
+          <h3 className="text-lg font-bold text-primary">Review</h3>
           <IeltsAnswerReview review={review} />
         </div>
       )}

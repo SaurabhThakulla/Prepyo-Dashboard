@@ -48,7 +48,7 @@ export default function IeltsReportForm({
   return (
     <section
       data-testid="ielts-report-form"
-      className="relative overflow-hidden border border-trf-ink/15 bg-trf-paper text-trf-ink shadow-sm font-report"
+      className="relative overflow-hidden border border-trf-ink/70 bg-trf-paper text-trf-ink shadow-sm font-report"
     >
       {/* A watermark, so a screenshot cannot pass for an official report. */}
       <span
@@ -58,9 +58,9 @@ export default function IeltsReportForm({
         Practice
       </span>
 
-      <header className="relative flex flex-col gap-3 border-b border-trf-ink/10 px-4 py-4 sm:flex-row sm:items-end sm:justify-between sm:px-6">
+      <header className="relative flex flex-col gap-3 bg-trf-accent px-4 py-4 text-trf-paper sm:flex-row sm:items-end sm:justify-between sm:px-6">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-trf-accent">Prepyo · IELTS practice</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-trf-paper/75">Prepyo · IELTS practice</p>
           <h2 className="text-xl font-bold uppercase tracking-wide sm:text-2xl">Test Report Form</h2>
         </div>
         <div className="flex flex-wrap gap-4 text-xs font-semibold">
@@ -69,26 +69,26 @@ export default function IeltsReportForm({
         </div>
       </header>
 
-      <div className="relative grid grid-cols-3 gap-px bg-trf-ink/10">
+      <div className="relative grid grid-cols-3 gap-px bg-trf-ink/60">
         <Field label="Test date" value={dateText} />
         <Field label="Test type" value={testType} testId="trf-test-type" accent />
         <Field label="Delivery" value="Computer" />
       </div>
 
       <Bar>Candidate details</Bar>
-      <div className="relative grid grid-cols-2 gap-px bg-trf-ink/10">
+      <div className="relative grid grid-cols-2 gap-px bg-trf-ink/60">
         <Field label="Candidate name" value={candidateName.trim() || '—'} big />
         <Field label="Report number" value={reportId.replace(/-/g, '').slice(0, 10).toUpperCase()} big />
       </div>
 
       <Bar>Test results</Bar>
-      <div className="relative grid grid-cols-3 gap-px bg-trf-ink/10 sm:grid-cols-6">
+      <div className="relative grid grid-cols-3 gap-px bg-trf-ink/60 sm:grid-cols-6">
         {IELTS_SKILLS.map(s => {
           const sat = s in bands;
           const band = bands[s];
           return (
             <div key={s} className="flex flex-col items-center gap-1 bg-trf-paper px-2 py-3" data-testid={`trf-${s}`}>
-              <span className={cn('text-[11px] font-bold uppercase tracking-wide', !sat && 'text-trf-ink/45')}>{SKILL_LABEL[s]}</span>
+              <span className={cn('text-[11px] font-bold uppercase tracking-wide', !sat ? 'text-trf-ink/45' : band != null && bandTone(band).text)}>{SKILL_LABEL[s]}</span>
               <BandBox value={sat ? band ?? null : null} muted={!sat} />
               <span className="h-3 text-[10px] text-trf-ink/50">{sat ? (band == null ? 'Not rated' : '') : 'Not taken'}</span>
             </div>
@@ -101,12 +101,12 @@ export default function IeltsReportForm({
           data-testid="trf-overall"
         >
           <span className="text-center text-[11px] font-bold uppercase tracking-wide text-trf-accent">Overall band</span>
-          <BandBox value={overall} strong />
+          <BandBox value={overall} strong filled={overall != null} />
           <span className="h-3 text-[10px] text-trf-ink/50">{overall == null ? 'Needs all four' : ''}</span>
         </div>
         <div className="flex flex-col items-center gap-1 bg-trf-paper px-2 py-3">
           <span className="text-[11px] font-bold uppercase tracking-wide">CEFR level</span>
-          <span className="flex h-12 min-w-14 items-center justify-center border border-trf-ink/20 bg-trf-paper px-2 text-lg font-bold">
+          <span className={cn('flex h-12 min-w-14 items-center justify-center border px-2 text-lg font-bold', overall != null ? 'border-trf-accent/60 bg-trf-accent/10 text-trf-accent' : 'border-trf-ink/60 bg-trf-paper')}>
             {overall != null ? cefrLevel(overall) : '—'}
           </span>
           <span className="h-3" />
@@ -114,15 +114,15 @@ export default function IeltsReportForm({
       </div>
 
       {headline != null && (
-        <div className="relative border-t border-trf-ink/10 px-4 py-3 sm:px-6">
+        <div className="relative border-t border-trf-ink/60 px-4 py-3 sm:px-6">
           <p className="text-[10px] font-bold uppercase tracking-wide text-trf-ink/50">
             {overall != null ? 'Overall band' : 'Band'} {headline.toFixed(1)}
           </p>
-          <p className="text-base font-bold">{bandDescriptor(headline)}</p>
+          <p className={cn('text-base font-bold', bandTone(headline).text)}>{bandDescriptor(headline)}</p>
         </div>
       )}
 
-      <footer className="relative flex flex-col gap-1 border-t border-trf-ink/10 bg-trf-ink/[0.02] px-4 py-2.5 text-[10px] leading-relaxed text-trf-ink/60 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <footer className="relative flex flex-col gap-1 bg-trf-accent px-4 py-2.5 text-[10px] leading-relaxed text-trf-paper/90 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <span>
           {overall != null
             ? 'Overall band: the mean of the four section bands, rounded to the nearest half band.'
@@ -136,11 +136,11 @@ export default function IeltsReportForm({
 
 function Tick({ checked, children }: { checked: boolean; children: React.ReactNode }) {
   return (
-    <span className={cn('flex items-center gap-1.5 whitespace-nowrap', !checked && 'text-trf-ink/55')}>
+    <span className={cn('flex items-center gap-1.5 whitespace-nowrap', !checked && 'text-trf-paper/60')}>
       <span
         className={cn(
           'flex h-4 w-4 items-center justify-center border text-[11px] font-bold leading-none',
-          checked ? 'border-trf-accent bg-trf-accent text-trf-paper' : 'border-trf-ink/30',
+          checked ? 'border-trf-paper bg-trf-paper text-trf-accent' : 'border-trf-paper/50',
         )}
       >
         {checked ? '✓' : ''}
@@ -152,7 +152,7 @@ function Tick({ checked, children }: { checked: boolean; children: React.ReactNo
 
 function Bar({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative border-y border-trf-ink/10 bg-trf-accent/[0.06] px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.15em] text-trf-accent sm:px-6">
+    <div className="relative border-y border-trf-ink/60 bg-trf-accent/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.15em] text-trf-accent sm:px-6">
       {children}
     </div>
   );
@@ -190,13 +190,22 @@ function Field({
   );
 }
 
-function BandBox({ value, strong = false, muted = false }: { value: number | null; strong?: boolean; muted?: boolean }) {
+/** The same scale as the answer review: green 7+, blue 6-6.5, amber 5-5.5, red below. */
+function bandTone(band: number) {
+  if (band >= 7) return { text: 'text-emerald-700 dark:text-emerald-400', box: 'border-emerald-600/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' };
+  if (band >= 6) return { text: 'text-trf-accent', box: 'border-trf-accent/50 bg-trf-accent/10 text-trf-accent' };
+  if (band >= 5) return { text: 'text-amber-700 dark:text-amber-400', box: 'border-amber-600/50 bg-amber-500/10 text-amber-700 dark:text-amber-400' };
+  return { text: 'text-rose-700 dark:text-rose-400', box: 'border-rose-600/50 bg-rose-500/10 text-rose-700 dark:text-rose-400' };
+}
+
+function BandBox({ value, strong = false, muted = false, filled = false }: { value: number | null; strong?: boolean; muted?: boolean; filled?: boolean }) {
   return (
     <span
       className={cn(
         'flex h-12 min-w-14 items-center justify-center border bg-trf-paper px-2 text-2xl font-bold tabular-nums',
-        strong ? 'border-trf-accent/60 text-trf-accent' : 'border-trf-ink/25 shadow-sm',
-        muted && 'border-dashed border-trf-ink/15 text-trf-ink/25 shadow-none',
+        strong ? 'border-trf-accent/60 text-trf-accent' : value != null ? bandTone(value).box : 'border-trf-ink/60 shadow-sm',
+        filled && 'border-trf-accent bg-trf-accent text-trf-paper',
+        muted && 'border-trf-ink/40 text-trf-ink/25 shadow-none',
       )}
     >
       {value != null ? value.toFixed(1) : '—'}

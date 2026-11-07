@@ -9,12 +9,19 @@ import { Mock, MockAttempt } from '@/lib/types';
  * Titles for mock attempts whose mock is not in the catalogue: the IELTS
  * section mocks and the full mock, which are started from their own pages.
  */
-const SECTION_MOCK_TITLES: Record<string, string> = {
+export const SECTION_MOCK_TITLES: Record<string, string> = {
   'mock-ielts-full': 'IELTS Full Mock Test',
   'mock-ielts-listening-gen': 'IELTS Listening Mock',
+  'mock-ielts-reading-gen': 'IELTS Academic Reading Mock',
+  'mock-ielts-gt-reading-gen': 'IELTS General Training Reading Mock',
   'mock-ielts-writing-gen': 'IELTS Writing Mock',
   'mock-ielts-speaking-gen': 'IELTS Speaking Mock',
 };
+
+/** PTE mock tests list their sessions (with the full report) instead of these attempt rows. */
+export const PTE_MOCK_ATTEMPT_IDS = new Set([
+  'mock-pte-full', 'mock-pte-speaking', 'mock-pte-writing', 'mock-pte-reading', 'mock-pte-listening',
+]);
 
 interface ScoreReportListProps {
   attempts: MockAttempt[];

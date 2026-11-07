@@ -151,35 +151,36 @@ export default function TestFeedback({ evaluation, answer }: { evaluation: Evalu
           </div>
           {parts.map(p => (
             <div key={p.part} className="space-y-3">
-              <h4 className="rounded-lg bg-gradient-to-r from-primary to-primary/75 px-3 py-1.5 text-sm font-semibold text-primary-foreground dark:!bg-muted dark:!text-foreground">
+              <h4 className="bg-gradient-to-r from-primary to-primary/80 px-4 py-2.5 text-[15px] font-semibold tracking-tight text-primary-foreground dark:!bg-muted dark:!text-foreground">
                 {PART_NAME[p.part] ?? `Part ${p.part}`}
               </h4>
-              <ol className="space-y-4">
+              <ol className="divide-y divide-border">
                 {p.turns.map((turn, i) => (
-                  <li key={i} className="space-y-2">
+                  <li key={i} className="space-y-3 py-4 first:pt-1 last:pb-0">
                     {turn.question && (
-                      <div className="flex items-start gap-2.5">
-                        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground" aria-hidden>
-                          <Bot className="h-3.5 w-3.5" />
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-muted text-muted-foreground" aria-hidden>
+                          <Bot className="h-4 w-4" />
                         </span>
                         <div className="min-w-0">
-                          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Examiner</p>
-                          <p className="whitespace-pre-line text-sm font-medium text-foreground">{turn.question}</p>
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Examiner</p>
+                          <p className="whitespace-pre-line text-[15px] font-semibold text-foreground">{turn.question}</p>
                         </div>
                       </div>
                     )}
-                    <div className="flex items-start gap-2.5 sm:pl-9">
-                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary" aria-hidden>
-                        <User className="h-3.5 w-3.5" />
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-primary/10 text-primary" aria-hidden>
+                        <User className="h-4 w-4" />
                       </span>
-                      <div className="min-w-0 flex-1 rounded-xl border border-primary/20 bg-primary/[0.04] px-3 py-2">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-primary">
-                          You{turn.timing ? ` · ${turn.timing}` : ''}
+                      <div className="min-w-0 flex-1 bg-primary/[0.04] px-4 py-3">
+                        <p className="text-[11px] font-bold tracking-wider text-primary">
+                          <span className="uppercase">You</span>
+                          {turn.timing && <span className="font-medium tracking-normal text-muted-foreground"> · {turn.timing}</span>}
                         </p>
                         {!turn.answer.trim() || NO_ANSWER.test(turn.answer.trim()) ? (
                           <p className="text-sm italic text-muted-foreground">No answer was heard.</p>
                         ) : (
-                          <div data-dictionary>
+                          <div data-dictionary className="mt-1 [&_p]:leading-7">
                             <MarkedAnswer text={turn.answer} fixes={fixes} rated={score !== null} />
                           </div>
                         )}
