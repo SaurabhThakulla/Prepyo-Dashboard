@@ -67,33 +67,39 @@ export default function ListeningLetterBoard({
 
   return (
     <MatchDnd entries={entries} disabled={locked} onPlace={place}>
-      <div className="space-y-4">
-        <section aria-label={boxTitle} className="rounded-xl border border-border bg-muted/30 p-3">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start">
+        <section aria-label={boxTitle} className="rounded-xl border border-border bg-muted/30 p-3 lg:sticky lg:top-20 lg:order-last">
           <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">{boxTitle}</h4>
-          <div className={bare ? 'grid grid-cols-4 gap-1.5 sm:grid-cols-8' : 'grid gap-1.5 sm:grid-cols-2'}>
+          <div className={bare ? 'grid grid-cols-6 gap-1.5 sm:grid-cols-8 lg:grid-cols-4' : 'grid gap-1.5 sm:grid-cols-2 lg:grid-cols-1'}>
             {entries.map(entry => (
               <MatchChip key={entry.id} entry={entry} spent={used.has(entry.id)} />
             ))}
           </div>
           {!locked && (
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
               Drag a letter into a box, or tap it and then tap the box. Tap a filled box to empty it.
               {reuse ? ' You may use any letter more than once.' : ' Each letter can be used only once.'}
             </p>
           )}
         </section>
 
-        <ol className="space-y-3">
+        <ol className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
           {items.map(item => {
             const chosen = values[item.slot];
             const mark = review?.[item.slot];
             return (
-              <li key={item.slot} className="flex items-start gap-3">
-                <span className="mt-1.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold tabular-nums text-primary-foreground">
-                  {item.number}
-                </span>
-                <div className="min-w-0 flex-1 space-y-1.5 text-sm leading-relaxed text-foreground sm:text-[15px]">
-                  {item.text && <p className="font-medium">{item.text}</p>}
+              <li
+                key={item.slot}
+                id={`lq-${item.number}`}
+                className="flex scroll-mt-24 flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-3"
+              >
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold tabular-nums text-primary-foreground">
+                    {item.number}
+                  </span>
+                  {item.text && <p className="pt-0.5 text-sm font-medium leading-relaxed text-foreground sm:text-[15px]">{item.text}</p>}
+                </div>
+                <div className="pl-9 sm:w-64 sm:shrink-0 sm:pl-0">
                   <MatchSlot
                     id={item.slot}
                     label={`Question ${item.number}`}
@@ -147,11 +153,11 @@ export function ListeningLetterPractice({ question, responses, disabled, reviewB
 
   const review = reviewBlanks
     ? Object.fromEntries(
-        items.map(item => {
-          const key = blankFor(reviewBlanks, String(item.number));
-          return [item.slot, { correct: key?.correctAnswer, right: gapAccepts(key, responses[item.slot]) }];
-        }),
-      )
+      items.map(item => {
+        const key = blankFor(reviewBlanks, String(item.number));
+        return [item.slot, { correct: key?.correctAnswer, right: gapAccepts(key, responses[item.slot]) }];
+      }),
+    )
     : undefined;
 
   return (

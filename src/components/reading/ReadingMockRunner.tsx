@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, RefreshCw, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import QuestionSource from '@/components/mocks/QuestionSource';
 import { Card } from '@/components/ui/card';
 import { ReadingMockSession } from '@/lib/types';
 import PassageReader from '@/components/reading/PassageReader';
@@ -128,6 +129,12 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
           </button>
         ))}
       </div>
+
+      {activeSet && (
+        <div className="shrink-0">
+          <QuestionSource questions={activeSet.groups.flatMap(group => group.questions)} />
+        </div>
+      )}
 
       {activeSet && (
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-3 overflow-hidden">

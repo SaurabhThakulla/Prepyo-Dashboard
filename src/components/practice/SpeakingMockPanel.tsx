@@ -20,6 +20,7 @@ import SectionMockIntro from '@/components/mocks/SectionMockIntro';
 import TestFeedback from '@/components/mocks/TestFeedback';
 import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
 import MockHeader from '@/components/mocks/MockHeader';
+import QuestionSource from '@/components/mocks/QuestionSource';
 import { CueCardPaper, ExaminerAvatar, ExaminerWave, MicOrb, PART_PHRASES, PART_TIPS, PartProgress, SPEAKING_PARTS, SpeakingDots, TestOverview, TimerRing, VoiceMeter } from '@/components/practice/SpeakingMockStage';
 
 /** How many recent microphone readings the meter shows. */
@@ -146,17 +147,6 @@ export default function SpeakingMockPanel() {
       description="All three parts in one sitting. The examiner's questions are read aloud and each answer is recorded."
       duration="About 15 min"
       items="3 parts"
-      parts={[
-        { name: 'Part 1: Introduction and interview', detail: '4–5 min' },
-        { name: 'Part 2: Long turn', detail: '1 min prep, 2 min talk' },
-        { name: 'Part 3: Discussion', detail: '4–5 min' },
-      ]}
-      rules={[
-        'The parts run in order, one question at a time, as in the test.',
-        'Each answer records until you finish or its time runs out, then the next question is asked.',
-        'Part 2 gives you one minute to prepare before you speak.',
-      ]}
-      equipment="You need a microphone and a quiet room. Your browser asks for the microphone when the test starts."
       credits={SECTION_MOCK_SUB_TESTS}
       subTestsRemaining={subTestsLeft(user?.subscription)}
       isStarting={starting}
@@ -479,6 +469,12 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
           subtitle={`${partLabel} • question ${Math.min(index + 1, session.steps.length)} of ${session.steps.length}`}
           secondsLeft={phase === 'finished' || phase === 'submitting' ? undefined : secondsLeft}
           onLeave={onLeave}
+        />
+        {/* Each part is a step up, as in the test: Part 1 easy, Part 2 medium, Part 3 hard. */}
+        <QuestionSource
+          exam="IELTS"
+          sources={['original']}
+          questions={step ? [{ tags: [], difficulty: step.part === 1 ? 'easy' : step.part === 2 ? 'medium' : 'hard' }] : []}
         />
 
         <div className="lg:hidden">
