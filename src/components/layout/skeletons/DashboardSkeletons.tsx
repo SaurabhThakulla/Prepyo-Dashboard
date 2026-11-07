@@ -154,13 +154,6 @@ export const SubscriptionPageSkeleton = () => (
   </Shell>
 );
 
-export const ReferralsPageSkeleton = () => (
-  <Shell label="referral rewards" className="max-w-5xl mx-auto px-4 sm:px-6 py-6 pb-12 space-y-6">
-    <Card className="p-8 space-y-4 border-primary/20"><Skeleton className="h-8 w-64 rounded-xl" /><Skeleton className="h-4 w-96" /><Skeleton className="h-11 w-full rounded-xl" /></Card>
-    <StatGrid count={4} /><Card className="p-6"><Skeleton className="h-20 w-full rounded-xl" /></Card>
-  </Shell>
-);
-
 export const DiagnosticPageSkeleton = () => (
   <Shell label="diagnostic exam" className="max-w-4xl mx-auto py-6 px-4 space-y-6">
     <Card className="p-6 sm:p-8 space-y-6">

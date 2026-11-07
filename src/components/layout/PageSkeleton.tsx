@@ -7,7 +7,6 @@ import {
   MocksPageSkeleton,
   MistakesPageSkeleton,
   SubscriptionPageSkeleton,
-  ReferralsPageSkeleton,
   DiagnosticPageSkeleton,
   AdminPageSkeleton,
 } from './skeletons/DashboardSkeletons';
@@ -21,7 +20,6 @@ export type PageSkeletonVariant =
   | 'mocks'
   | 'mistakes'
   | 'subscription'
-  | 'referrals'
   | 'diagnostic'
   | 'admin';
 
@@ -48,8 +46,6 @@ export default function PageSkeleton({ variant = 'dashboard', bare = false }: Pa
       return <MistakesPageSkeleton bare={bare} />;
     case 'subscription':
       return <SubscriptionPageSkeleton />;
-    case 'referrals':
-      return <ReferralsPageSkeleton />;
     case 'diagnostic':
       return <DiagnosticPageSkeleton />;
     case 'admin':
@@ -69,7 +65,6 @@ export {
   MocksPageSkeleton,
   MistakesPageSkeleton,
   SubscriptionPageSkeleton,
-  ReferralsPageSkeleton,
   DiagnosticPageSkeleton,
   AdminPageSkeleton,
 };

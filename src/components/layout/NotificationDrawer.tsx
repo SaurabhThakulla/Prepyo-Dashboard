@@ -8,7 +8,6 @@ import {
   ChevronRight,
   CreditCard,
   Flame,
-  Gift,
   Gauge,
   Info,
   Loader2,
@@ -37,7 +36,6 @@ const KIND: Record<string, { icon: React.ElementType; tone: string }> = {
   evaluation: { icon: Award, tone: 'bg-primary/10 text-primary' },
   mission: { icon: Target, tone: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
   streak: { icon: Flame, tone: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
-  referral: { icon: Gift, tone: 'bg-pink-500/10 text-pink-600 dark:text-pink-400' },
   announcement: { icon: Megaphone, tone: 'bg-primary/10 text-primary' },
   system: { icon: Info, tone: 'bg-muted text-muted-foreground' },
 };
