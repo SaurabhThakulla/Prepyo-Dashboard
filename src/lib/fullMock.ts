@@ -26,6 +26,8 @@ export interface FullMockSession {
   attemptId?: string;
   createdAt: string;
   completedAt?: string;
+  /** Full Mock Test N (each section's Test N); absent for one dealt section by section. */
+  number?: number;
 }
 
 /** How a section mock runs inside a full mock rather than on its own. */

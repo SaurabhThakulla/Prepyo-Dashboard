@@ -8,10 +8,32 @@ import {
   Clock,
   Sparkles,
   Eye,
-  Calendar,
-  Layers,
+  ShieldCheck,
 } from 'lucide-react';
 import { MockPaperItem } from '@/lib/types';
+import { LEVEL_STYLE, overallLevel, paperSource } from '@/lib/questionSource';
+
+export { paperSource };
+
+/** A card's level and where its questions come from. */
+function PaperFacts({ paper, exam }: { paper: MockPaperItem; exam: string }) {
+  const source = paperSource(paper.sources, exam);
+  const overall = overallLevel(paper.levels);
+  if (!source && !overall) return null;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+      {overall && (
+        <span className={`rounded-full px-2 py-0.5 font-bold capitalize ${LEVEL_STYLE[overall].chip}`}>{overall}</span>
+      )}
+      {source && (
+        <span className="flex items-center gap-1">
+          <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+          {source}
+        </span>
+      )}
+    </div>
+  );
+}
 
 export interface MockPaperListProps {
   papers: MockPaperItem[];
@@ -83,20 +105,6 @@ export default function MockPaperList({
 
     return result;
   }, [papers, activeFilter, searchQuery]);
-
-  const formatDate = (isoString?: string) => {
-    if (!isoString) return '';
-    try {
-      const date = new Date(isoString);
-      return date.toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
-    } catch {
-      return '';
-    }
-  };
 
   return (
     <div className={page ? 'flex flex-col gap-3' : 'flex flex-col h-full bg-white dark:bg-[#0f141f]'}>
@@ -216,33 +224,13 @@ export default function MockPaperList({
                         Test {paper.number}
                       </span>
                       <span className="text-slate-400 dark:text-slate-500">·</span>
-                      <span className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium truncate max-w-[220px] sm:max-w-xs">
+                      <span className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium truncate max-w-[220px] sm:max-w-md">
                         {paper.title || `${exam} ${section} Test ${paper.number}`}
                       </span>
 
-                      {/* Updated badge */}
-                      {paper.isUpdated && (
-                        <span className="px-2 py-0.5 text-xs font-bold uppercase tracking-wider rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300 dark:border-blue-800/60">
-                          Updated
-                        </span>
-                      )}
                     </div>
 
-                    {/* Metadata line: attempt count and last taken date */}
-                    <div className="flex items-center gap-3 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                      {paper.attemptCount > 0 && (
-                        <span className="flex items-center gap-1 font-medium">
-                          <Layers className="w-3 h-3 text-slate-400" />
-                          {paper.attemptCount} {paper.attemptCount === 1 ? 'attempt' : 'attempts'}
-                        </span>
-                      )}
-                      {paper.lastAttemptAt && (
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-slate-400" />
-                          Sat {formatDate(paper.lastAttemptAt)}
-                        </span>
-                      )}
-                    </div>
+                    <PaperFacts paper={paper} exam={exam} />
                   </div>
 
                   {/* Status Badge */}
