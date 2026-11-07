@@ -7,16 +7,18 @@ import type { PracticeResult } from '@/lib/hooks/usePracticeSession';
 import type { Evaluation, PracticeAttempt, Question } from '@/lib/types';
 import EvaluationCard from './EvaluationCard';
 import ExplainMistake from './ExplainMistake';
-import { CONFIDENCE_LABEL, SCALE, MarkedAnswer, onExamScale, MarkedAnswerLegend, ResultSection, ResultSummary, xpMeta, type Tone } from './ResultParts';
+import { CONFIDENCE_LABEL, SCALE, MarkedAnswer, onExamScale, AnswerRecording, MarkedAnswerLegend, ResultSection, ResultSummary, xpMeta, type Tone } from './ResultParts';
 
 /**
  * What came back from grading. Two shapes, because the two paths differ:
  * reading and listening return a right/wrong attempt, writing and speaking
  * return a rubric from the AI evaluator. `bare` drops the card, for the pop-up.
  */
-export default function PracticeResultCard({ result, bare = false, answerText, blankAnswers, taskType }: {
+export default function PracticeResultCard({ result, bare = false, answerText, blankAnswers, taskType, recordingUrl }: {
   result: PracticeResult;
   bare?: boolean;
+  /** A spoken answer marked without a rating (a mock's Read Aloud, say): the learner's own recording. */
+  recordingUrl?: string;
   answerText?: string;
   /** A PTE question's type id, for the per-skill scores of a rated answer. */
   taskType?: string;
@@ -24,7 +26,7 @@ export default function PracticeResultCard({ result, bare = false, answerText, b
   blankAnswers?: Record<string, string>;
 }) {
   const body = result.attempt ? (
-    <DeterministicResult attempt={result.attempt} review={result.review} xpAwarded={result.xpAwarded} blankAnswers={blankAnswers} />
+    <DeterministicResult attempt={result.attempt} review={result.review} xpAwarded={result.xpAwarded} blankAnswers={blankAnswers} recordingUrl={recordingUrl} />
   ) : result.evaluation ? (
     <EvaluationResult evaluation={result.evaluation} xpAwarded={result.xpAwarded} answerText={answerText} taskType={taskType} />
   ) : null;
@@ -36,7 +38,8 @@ export default function PracticeResultCard({ result, bare = false, answerText, b
 export { CONFIDENCE_LABEL, SCALE } from './ResultParts';
 
 /** Reading and listening: graded on the server, right or wrong. */
-function DeterministicResult({ attempt, review, xpAwarded, blankAnswers }: {
+function DeterministicResult({ attempt, review, xpAwarded, blankAnswers, recordingUrl }: {
+  recordingUrl?: string;
   attempt: PracticeAttempt;
   review?: Question;
   xpAwarded: number;
@@ -62,6 +65,7 @@ function DeterministicResult({ attempt, review, xpAwarded, blankAnswers }: {
         meta={[`${attempt.accuracyPercentage}% accuracy`, xpMeta(xpAwarded)]}
         summary={attempt.feedback}
       />
+      {recordingUrl && <AnswerRecording src={recordingUrl} />}
       {review?.options && review.options.length > 0 && <MarkedOptions options={review.options} given={attempt.userResponse} right={review.correctAnswers} />}
       {review?.blanks && review.blanks.length > 0 && blankAnswers && (
         <ResultSection title="Your answers">

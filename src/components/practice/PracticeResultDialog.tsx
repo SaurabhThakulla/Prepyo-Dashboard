@@ -58,7 +58,7 @@ export default function PracticeResultDialog({ result, answerText, blankAnswers,
         {spoken ? (
           <SpeakingResult evaluation={spoken} xpAwarded={result.xpAwarded} recording={recording} taskType={taskType} recordingUrl={recordingUrl} />
         ) : (
-          <PracticeResultCard result={result} bare answerText={answerText} blankAnswers={blankAnswers} taskType={taskType} />
+          <PracticeResultCard result={result} bare answerText={answerText} blankAnswers={blankAnswers} taskType={taskType} recordingUrl={recordingUrl} />
         )}
 
         <div className="flex flex-wrap items-center justify-end gap-2">
