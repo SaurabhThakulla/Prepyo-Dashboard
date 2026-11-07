@@ -17,6 +17,7 @@ import { TestMicrophone } from '@/lib/pteMock/audio';
 import { formatClock } from '@/lib/pteMock/catalog';
 import { PteSession } from '@/lib/pteMock/types';
 import PteItem from './items/PteItem';
+import QuestionSource from '@/components/mocks/QuestionSource';
 import { ItemHandle } from './items/types';
 
 // The practice screen's pill buttons, on its blue bar.
@@ -210,6 +211,7 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
               <div className="min-w-0 space-y-1 pt-0.5">
                 <h2 className="text-xl font-bold leading-tight text-primary sm:text-2xl">{item.task.name}</h2>
                 <p className="text-sm leading-relaxed text-muted-foreground">{item.task.instructions}</p>
+                <QuestionSource questions={[item.question]} exam="PTE" />
               </div>
             </div>
 

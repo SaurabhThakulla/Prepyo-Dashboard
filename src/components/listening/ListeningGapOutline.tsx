@@ -142,7 +142,7 @@ function GapBox({ number, blankId, responses, disabled, review, onChange }: GapB
       ? 'border-emerald-500 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200'
       : 'border-rose-500 bg-rose-500/10 text-rose-800 dark:text-rose-200';
   return (
-    <span className="mx-1 inline-flex flex-wrap items-center gap-1 align-middle">
+    <span id={`lq-${number}`} className="mx-1 inline-flex scroll-mt-24 flex-wrap items-center gap-1 align-middle">
       <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground tabular-nums">
         {number}
       </span>

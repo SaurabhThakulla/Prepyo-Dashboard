@@ -60,45 +60,47 @@ export default function LearnPage() {
   }, [focusUnit]);
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-10 space-y-8">
-      <section className="rounded-3xl border-2 border-border bg-card p-5 sm:p-6 space-y-5">
-        <div className="space-y-1">
-          <p className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">New to {course.language}?</p>
-          <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">{course.heading}</h1>
-          <p className="text-sm text-muted-foreground max-w-xl">{course.intro}</p>
+    <div className="w-full">
+      {/* The same full-width header as the mock test pages. */}
+      <header className="bg-gradient-to-r from-primary to-primary/75 px-4 py-8 text-primary-foreground sm:px-8 lg:px-10">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-white/80">New to {course.language}?</p>
+        <h1 className="mt-1 font-display text-3xl font-extrabold sm:text-4xl">{course.heading}</h1>
+        <p className="mt-2 max-w-3xl text-sm text-white/85 sm:text-base">{course.intro}</p>
+        <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold">
+          <HeaderStat icon={<Zap className="h-3.5 w-3.5" />} value={progress.xp} label="XP" />
+          <HeaderStat icon={<Flame className="h-3.5 w-3.5" />} value={streak} label="day streak" />
+          <HeaderStat icon={<Star className="h-3.5 w-3.5" />} value={`${doneCount}/${lessonCount(course)}`} label="lessons" />
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <HeaderStat icon={<Zap className="h-5 w-5 text-amber-500" />} value={progress.xp} label="XP" />
-          <HeaderStat icon={<Flame className={`h-5 w-5 ${streak > 0 ? 'text-orange-500' : 'text-muted-foreground'}`} />} value={streak} label="day streak" />
-          <HeaderStat icon={<Star className="h-5 w-5 text-emerald-500" />} value={`${doneCount}/${lessonCount(course)}`} label="lessons" />
-        </div>
-        {upNext && (
-          <Button asChild size="lg" className="h-12 w-full sm:w-auto rounded-2xl border-b-4 border-emerald-700 bg-emerald-500 px-8 font-bold text-white hover:bg-emerald-600">
-            <Link to={lessonHref(upNext.unit.id, upNext.unit.lessons[upNext.index].id)}>
-              {doneCount === 0 ? 'Start the first lesson' : `Continue: ${upNext.unit.lessons[upNext.index].title}`}
-              <ArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
+        {(upNext || known >= 4) && (
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            {upNext && (
+              <Button asChild size="lg" className="h-11 rounded-xl bg-white px-6 font-bold text-primary hover:bg-white/90">
+                <Link to={lessonHref(upNext.unit.id, upNext.unit.lessons[upNext.index].id)}>
+                  {doneCount === 0 ? 'Start the first lesson' : `Continue: ${upNext.unit.lessons[upNext.index].title}`}
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+            )}
+            {known >= 4 && (
+              <Link
+                to="/learn/review"
+                className="flex items-center gap-2.5 rounded-xl bg-white/15 px-4 py-2.5 text-sm transition-colors hover:bg-white/25"
+              >
+                <RotateCcw className="h-4 w-4 shrink-0" />
+                <span>
+                  <span className="font-bold">Review your words</span>
+                  <span className="text-white/80">
+                    {' '}
+                    · {due > 0 ? `${due} of ${known} due` : `all ${known} fresh`}
+                  </span>
+                </span>
+              </Link>
+            )}
+          </div>
         )}
-        {known >= 4 && (
-          <Link
-            to="/learn/review"
-            className="flex items-center gap-3 rounded-2xl border-2 border-violet-200 bg-violet-50 px-4 py-3 text-left transition-colors hover:bg-violet-100 dark:border-violet-900 dark:bg-violet-950/40 dark:hover:bg-violet-950/70"
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-white">
-              <RotateCcw className="h-5 w-5" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold text-foreground">Review your words</span>
-              <span className="block text-xs text-muted-foreground">
-                {due > 0 ? `${due} of ${known} words are due. A quick round keeps them fresh.` : `All ${known} words are fresh. Review any time for extra practice.`}
-              </span>
-            </span>
-            <ArrowRight className="h-4 w-4 shrink-0 text-violet-600" />
-          </Link>
-        )}
-      </section>
+      </header>
 
+      <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8">
       {course.units.map(unit => (
         <UnitPath
           key={unit.id}
@@ -109,19 +111,17 @@ export default function LearnPage() {
           done={unitDoneCount(progress, unit)}
         />
       ))}
+      </div>
     </div>
   );
 }
 
 function HeaderStat({ icon, value, label }: { icon: React.ReactNode; value: React.ReactNode; label: string }) {
   return (
-    <div className="flex flex-col gap-1 rounded-2xl border-2 border-border px-3 py-2.5 sm:flex-row sm:items-center sm:gap-2.5">
+    <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1">
       {icon}
-      <div className="min-w-0">
-        <p className="font-display text-lg font-bold leading-none text-foreground">{value}</p>
-        <p className="text-[11px] leading-tight text-muted-foreground">{label}</p>
-      </div>
-    </div>
+      <span className="tabular-nums">{value}</span> {label}
+    </span>
   );
 }
 

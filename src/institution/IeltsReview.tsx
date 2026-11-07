@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { ArrowLeft, Bot, Loader2, Mic, PenTool } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Bot, Loader2, Mic, Pause, PenTool, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -390,6 +390,11 @@ function MarkedPart({
         <div className="min-w-0 flex-1">
           <h3 className="text-base font-semibold text-foreground">{part.name}</h3>
           {part.words != null && part.key !== 'speaking' && <p className="text-xs text-muted-foreground">{part.words} words</p>}
+          {part.key === 'speaking' && (part.turns ?? []).length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {part.turns!.length} answers · {new Set(part.turns!.map(t => t.part)).size} parts
+            </p>
+          )}
         </div>
         {needs ? (
           <Badge variant="outline" className={`normal-case tracking-normal text-xs font-medium ${TONES.amber.soft}`}>
@@ -419,46 +424,43 @@ function MarkedPart({
         </div>
       )}
 
-      {part.key === 'speaking' && (
-        <ol className="space-y-2">
-          {(part.turns ?? []).map(turn => (
-            <li
-              key={turn.position}
-              className="space-y-2 rounded-xl border border-border bg-background px-3 py-2.5 text-sm transition-colors hover:border-primary"
-              data-testid="marked-turn"
-            >
-              <p className="flex items-start gap-2 text-foreground">
-                <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-semibold text-primary">Part {turn.part}</span>
-                <span className="font-medium">{turn.question}</span>
-                <span className="ml-auto shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground">{turn.seconds}s</span>
-              </p>
-              {turn.hasRecording && <audio controls preload="none" src={recordingUrl(turn.position)} className="h-9 w-full" />}
-              <p className="whitespace-pre-wrap text-[15px] leading-7 text-foreground">{turn.transcript || <span className="italic text-muted-foreground">Nothing was heard.</span>}</p>
-            </li>
-          ))}
-        </ol>
-      )}
+      {part.key === 'speaking' && <SpeakingAnswers turns={part.turns ?? []} recordingUrl={recordingUrl} />}
 
       {part.markable && (
-        <div className="mt-4 grid gap-4 border-t border-border pt-4 md:grid-cols-2">
-          <div className="space-y-1.5">
-            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-              <Bot className="h-3.5 w-3.5" /> AI's band · {part.aiBand == null ? 'could not rate it' : part.aiBand.toFixed(1)}
-            </p>
-            {part.summary && <p className="text-sm leading-6 text-foreground/80">{part.summary}</p>}
+        <div className="mt-4 space-y-4 border-t border-border pt-4">
+          <div className="rounded-xl border border-border bg-muted/20 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                  <Bot className="h-3.5 w-3.5" /> AI's band
+                </p>
+                <p className="mt-0.5 text-3xl font-bold tabular-nums text-foreground">{part.aiBand == null ? '—' : part.aiBand.toFixed(1)}</p>
+                {part.aiBand == null && <p className="text-xs text-muted-foreground">The AI could not rate it</p>}
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-semibold text-muted-foreground">Final band</p>
+                <p className="mt-0.5 text-3xl font-bold tabular-nums text-primary">{given != null ? given.toFixed(1) : '—'}</p>
+              </div>
+            </div>
             {(part.criteria ?? []).length > 0 && (
-              <ul className="space-y-1 text-sm">
+              <ul className="mt-4 space-y-2.5 text-sm">
                 {part.criteria!.map(c => (
-                  <li key={c.name} className="flex justify-between gap-3 rounded-md bg-muted/40 px-2 py-1">
-                    <span className="text-muted-foreground">{c.name}</span>
-                    <span className="font-semibold tabular-nums text-foreground">{c.score.toFixed(1)}</span>
+                  <li key={c.name}>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">{c.name}</span>
+                      <span className="font-semibold tabular-nums text-foreground">{c.score.toFixed(1)}</span>
+                    </div>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (c.score / (c.maxScore || 9)) * 100)}%` }} />
+                    </div>
                   </li>
                 ))}
               </ul>
             )}
+            {part.summary && <p className="mt-3 text-sm leading-6 text-foreground/80">{part.summary}</p>}
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Your band</p>
+            <p className="text-sm font-semibold text-foreground">Your band</p>
             <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={`Your band for ${part.name}`}>
               <BandChip active={mark.band == null} disabled={readOnly} onClick={() => onChange({ band: null })}>
                 {part.aiBand == null ? 'None' : 'Keep AI'}
@@ -495,7 +497,7 @@ function BandChip({ active, disabled, onClick, children }: { active: boolean; di
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'min-w-11 rounded-md border px-2 py-1 text-xs font-semibold tabular-nums transition-colors disabled:cursor-not-allowed',
+        'min-w-12 rounded-lg border px-3 py-1.5 text-sm font-semibold tabular-nums transition-colors disabled:cursor-not-allowed',
         active
           ? 'border-primary bg-primary text-primary-foreground'
           : 'border-border bg-card text-foreground hover:border-primary hover:text-primary disabled:hover:border-border disabled:hover:text-foreground',
@@ -503,5 +505,141 @@ function BandChip({ active, disabled, onClick, children }: { active: boolean; di
     >
       {children}
     </button>
+  );
+}
+
+const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+type Turn = NonNullable<IeltsPart['turns']>[number];
+
+/** The speaking test's answers, one IELTS part at a time; one recording plays at a time. */
+function SpeakingAnswers({ turns, recordingUrl }: { turns: Turn[]; recordingUrl: (position: number) => string }) {
+  const parts = [...new Set(turns.map(t => t.part))].sort();
+  const [shown, setShown] = useState(parts[0] ?? 1);
+  const [playing, setPlaying] = useState<number | null>(null);
+  if (turns.length === 0) return <p className="text-sm text-muted-foreground">No answers were recorded.</p>;
+  return (
+    <div className="overflow-hidden rounded-xl border border-border">
+      {parts.length > 1 && (
+        <div role="tablist" aria-label="Speaking parts" className="flex flex-wrap gap-1.5 border-b border-border bg-muted/20 px-3 py-2.5">
+          {parts.map(p => (
+            <button
+              key={p}
+              type="button"
+              role="tab"
+              aria-selected={p === shown}
+              onClick={() => setShown(p)}
+              className={cn(
+                'rounded-lg border px-3 py-1 text-xs font-semibold transition-colors',
+                p === shown ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:border-primary/50',
+              )}
+            >
+              Part {p} · {turns.filter(t => t.part === p).length}
+            </button>
+          ))}
+        </div>
+      )}
+      <ol className="divide-y divide-border">
+        {turns
+          .filter(t => t.part === shown)
+          .map(turn => (
+            <TurnRow
+              key={turn.position}
+              turn={turn}
+              src={turn.hasRecording ? recordingUrl(turn.position) : ''}
+              active={playing === turn.position}
+              onPlay={() => setPlaying(turn.position)}
+              onStop={() => setPlaying(p => (p === turn.position ? null : p))}
+            />
+          ))}
+      </ol>
+    </div>
+  );
+}
+
+/** One answer: a small play button, the question, a progress bar while it plays, and the transcript. */
+function TurnRow({ turn, src, active, onPlay, onStop }: { turn: Turn; src: string; active: boolean; onPlay: () => void; onStop: () => void }) {
+  const audio = useRef<HTMLAudioElement>(null);
+  const [time, setTime] = useState(0);
+  const [length, setLength] = useState(turn.seconds);
+  // Another answer started: this one stops.
+  useEffect(() => {
+    if (!active) audio.current?.pause();
+  }, [active]);
+  const toggle = () => {
+    const el = audio.current;
+    if (!el) return;
+    if (el.paused) {
+      onPlay();
+      void el.play().catch(onStop);
+    } else {
+      el.pause();
+    }
+  };
+  return (
+    <li className="px-4 py-3.5" data-testid="marked-turn">
+      <div className="flex items-center gap-3">
+        {src ? (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={active ? 'Pause answer' : 'Play answer'}
+            className={cn(
+              'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors',
+              active ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-primary hover:border-primary',
+            )}
+          >
+            {active ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
+          </button>
+        ) : (
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground"
+            title="No recording"
+          >
+            <Mic className="h-4 w-4" />
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-semibold leading-snug text-foreground">{turn.question}</p>
+          {active ? (
+            <div className="mt-1.5 flex items-center gap-2">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${length ? Math.min(100, (time / length) * 100) : 0}%` }} />
+              </div>
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                {clock(time)} / {clock(length)}
+              </span>
+            </div>
+          ) : (
+            <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">{clock(turn.seconds)} answer</p>
+          )}
+        </div>
+      </div>
+      {src && (
+        <audio
+          ref={audio}
+          src={src}
+          preload="none"
+          onTimeUpdate={e => setTime(e.currentTarget.currentTime)}
+          onLoadedMetadata={e => {
+            const d = e.currentTarget.duration;
+            if (Number.isFinite(d)) setLength(d);
+          }}
+          onPause={onStop}
+          onEnded={() => {
+            setTime(0);
+            onStop();
+          }}
+        />
+      )}
+      <p
+        className={cn(
+          'ml-12 mt-2.5 whitespace-pre-wrap border-l-2 bg-muted/30 px-3 py-2 text-sm leading-6 text-foreground/80',
+          active ? 'border-primary' : 'border-border',
+        )}
+      >
+        {turn.transcript || <span className="italic text-muted-foreground">Nothing was heard.</span>}
+      </p>
+    </li>
   );
 }

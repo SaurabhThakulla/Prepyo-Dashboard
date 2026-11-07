@@ -16,6 +16,7 @@ import { writingWordCount, writingWordTarget } from '@/lib/writing';
 import { FullMockSection } from '@/lib/fullMock';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import SectionMockIntro from '@/components/mocks/SectionMockIntro';
+import QuestionSource from '@/components/mocks/QuestionSource';
 import TestFeedback from '@/components/mocks/TestFeedback';
 import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
 import MockHeader from '@/components/mocks/MockHeader';
@@ -185,16 +186,6 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
       description="Task 1 and Task 2 in 60 minutes, as in the test."
       duration="60 min"
       items="2 tasks"
-      parts={[
-        { name: 'Task 1', detail: '150+ words, about 20 min' },
-        { name: 'Task 2: Essay', detail: '250+ words, about 40 min' },
-      ]}
-      rules={[
-        'One clock of 60 minutes covers both tasks.',
-        'Your writing is saved as you go.',
-        'Task 2 counts twice as much as Task 1 in your Writing band.',
-      ]}
-      equipment="This test has no audio. You only need a keyboard."
       credits={SECTION_MOCK_SUB_TESTS}
       subTestsRemaining={subTestsLeft(user?.subscription)}
       isStarting={starting}
@@ -282,6 +273,7 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card className="p-4 space-y-3">
           <h2 className="font-display font-bold text-base text-foreground">{task.title}</h2>
+          <QuestionSource questions={[task]} />
           <p className="text-xs sm:text-[13px] text-foreground leading-relaxed whitespace-pre-line">{task.prompt}</p>
           {task.imageUrl && (
             <div className="mx-auto w-full overflow-x-auto overscroll-x-contain rounded-xl border border-border bg-white p-3">

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, RefreshCw, RotateCcw, Send } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Headphones, RefreshCw, RotateCcw, Send } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
@@ -20,6 +20,7 @@ import { VoicePanel } from '@/components/practice/PromptAudio';
 import MockHeader from '@/components/mocks/MockHeader';
 import { LISTENING_TYPES, lettersMayRepeat } from '@/lib/listeningTypes';
 import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
+import QuestionFigure from '@/components/practice/QuestionFigure';
 
 /** Mirrors billing.SectionMockSubTests on the server, which is what enforces it. */
 const SECTION_MOCK_SUB_TESTS = 5;
@@ -134,18 +135,6 @@ export default function ListeningMockPanel() {
       description="Four recordings and forty questions, each recording played once, as in the test."
       duration="About 30 min"
       items="40 questions"
-      parts={[
-        { name: 'Part 1: Everyday conversation', detail: '10 questions' },
-        { name: 'Part 2: Everyday monologue', detail: '10 questions' },
-        { name: 'Part 3: Study discussion', detail: '10 questions' },
-        { name: 'Part 4: Academic lecture', detail: '10 questions' },
-      ]}
-      rules={[
-        'Each recording plays once.',
-        'You get time to read the questions before each recording.',
-        'You have two minutes to check your answers at the end.',
-      ]}
-      equipment="Use headphones, as in the test centre."
       credits={SECTION_MOCK_SUB_TESTS}
       subTestsRemaining={subTestsLeft(user?.subscription)}
       isStarting={starting}
@@ -154,7 +143,8 @@ export default function ListeningMockPanel() {
   );
 }
 
-type Phase = 'reading' | 'playing' | 'review' | 'submitting';
+// 'heard': the part's recording has ended; the learner moves on with Next part.
+type Phase = 'reading' | 'playing' | 'heard' | 'review' | 'submitting';
 
 interface RunnerProps {
   session: ListeningSession;
@@ -187,6 +177,9 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
   const [partsPlayed, setPartsPlayed] = useState(session.partsPlayed);
   // The part on screen during the checking time: one part at a time, as in the test.
   const [checkIndex, setCheckIndex] = useState(0);
+  // One question group on screen at a time (Questions 11–15, then 16–20). Kept
+  // with its part number, so a new part opens on its first group.
+  const [groupPage, setGroupPage] = useState({ partNo: 0, index: 0 });
   // The paper opens straight into the reading time, and each recording then
   // plays by itself, as in the test. The learner arrives here with a tap
   // (Start, Continue), which lets the browser play the sound.
@@ -299,6 +292,20 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
       setAudioError("The recording couldn't play. Check your sound and try again, or open Prepyo in Chrome or Edge.");
       return;
     }
+    // The learner moves on when ready, with Next part.
+    setPhase('heard');
+  }, [answers, part, partsPlayed, save, session.id]);
+
+  // Next part, at any point in a part: stops its recording, which still counts
+  // as heard (no replay), and opens the next part's reading time, or the
+  // checking time after Part 4.
+  const nextPart = useCallback(() => {
+    if (!part) return;
+    playback.current?.stop();
+    setAudioError(null);
+    const played = Math.max(partsPlayed, part.partNo);
+    setPartsPlayed(played);
+    void save(answers, played);
     if (partIndex + 1 < session.parts.length) {
       setPartIndex(partIndex + 1);
       setCountdown(session.parts[partIndex + 1].readingSeconds);
@@ -307,7 +314,7 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
       setCountdown(REVIEW_SECONDS);
       setPhase('review');
     }
-  }, [answers, part, partIndex, partsPlayed, save, session.id, session.parts]);
+  }, [answers, part, partIndex, partsPlayed, save, session.parts]);
 
   // Reading time over: the recording starts by itself, as in the test.
   useEffect(() => {
@@ -359,7 +366,9 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
           ? `Starts in ${countdown}s · plays once`
           : phase === 'playing'
             ? `Playing · ${Math.round(progress * 100)}%`
-            : ''
+            : phase === 'heard'
+              ? 'Recording finished'
+              : ''
       }
       // Nothing to press: the recording starts by itself, once.
       disabled
@@ -369,13 +378,20 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
       footer={
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" aria-live="polite">
           <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">{part?.setting}</p>
             {phase === 'reading' && (
-              <p className="text-sm text-foreground">
+              <p className="text-xs text-muted-foreground">
                 You now have <strong>{countdown} seconds</strong> to look at Questions {part?.firstNumber}–{part?.lastNumber}. The recording then starts by itself.
               </p>
             )}
             {phase === 'playing' && (
-              <p className="text-sm text-foreground">Listen carefully and answer Questions {part?.firstNumber}–{part?.lastNumber}.</p>
+              <p className="text-xs text-muted-foreground">Listen carefully and answer Questions {part?.firstNumber}–{part?.lastNumber}.</p>
+            )}
+            {phase === 'heard' && (
+              <p className="text-xs text-muted-foreground">
+                The recording has finished. Check Questions {part?.firstNumber}–{part?.lastNumber}, then press{' '}
+                <strong>{partIndex + 1 < session.parts.length ? 'Next part' : 'Go to checking time'}</strong> when you are ready.
+              </p>
             )}
             {audioError && <p role="alert" className="text-sm text-destructive">{audioError}</p>}
           </div>
@@ -398,8 +414,136 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
     />
   );
 
+  const isAnswered = (q: Question) => Boolean(answers[q.id]?.textResponse?.trim()) || Boolean(answers[q.id]?.selectedOptions?.length);
+  // Before the checking time only the part being heard is open; then any part.
+  const canOpen = (index: number) => checking || index === partIndex;
+  const jump = (index: number, number?: number) => {
+    if (!canOpen(index)) return;
+    if (checking) setCheckIndex(index);
+    const target = session.parts[index];
+    const holding = number ? target.groups.findIndex(g => number >= g.firstNumber && number < g.firstNumber + g.questions.length) : 0;
+    setGroupPage({ partNo: target.partNo, index: Math.max(0, holding) });
+    // After the part has rendered.
+    setTimeout(() => {
+      const target = number ? document.getElementById(`lq-${number}`) : null;
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      else window.scrollTo({ top: 0, behavior: 'smooth' });
+      target?.querySelector<HTMLElement>('input')?.focus({ preventScroll: true });
+    }, 50);
+  };
+  const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.max(0, s) % 60).padStart(2, '0')}`;
+
+  // The bar along the bottom of the computer-delivered test: every part, the
+  // open part's question numbers (filled once answered), and the audio status.
+  const navigator = (
+    <nav
+      aria-label="Question navigator"
+      className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-card/95 px-4 py-2.5 shadow-[0_-6px_16px_-8px_rgba(0,0,0,0.15)] backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+    >
+      <div className="mx-auto flex max-w-6xl flex-col gap-2 lg:flex-row lg:items-center lg:gap-4">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-0.5">
+          {session.parts.map((p, index) => {
+            const open = canOpen(index);
+            if (p.partNo !== shownPart?.partNo) {
+              return (
+                <button
+                  key={p.partNo}
+                  type="button"
+                  disabled={!open}
+                  onClick={() => jump(index)}
+                  title={open ? `Go to Part ${p.partNo}` : index < partIndex ? 'Already played' : 'Opens when its recording starts'}
+                  className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs transition-colors enabled:hover:border-primary/50 disabled:opacity-50"
+                >
+                  <span className="font-bold text-foreground">Part {p.partNo}</span>
+                  <span className="tabular-nums text-muted-foreground">{answeredIn(p)} of {partCount(p)}</span>
+                </button>
+              );
+            }
+            return (
+              <div key={p.partNo} className="flex shrink-0 items-center gap-1 rounded-lg bg-primary/[0.07] px-2 py-1 ring-1 ring-primary/30">
+                <span className="pr-1 text-xs font-bold text-primary">Part {p.partNo}</span>
+                {p.groups.flatMap(group =>
+                  group.questions.map((q, i) => {
+                    const number = group.firstNumber + i;
+                    const done = isAnswered(q);
+                    return (
+                      <button
+                        key={q.id}
+                        type="button"
+                        onClick={() => jump(index, number)}
+                        aria-label={`Question ${number}${done ? ', answered' : ''}`}
+                        className={`h-7 min-w-7 rounded-md px-1 text-xs font-bold tabular-nums transition-colors ${
+                          done ? 'bg-primary text-primary-foreground' : 'border border-border bg-background text-foreground hover:border-primary'
+                        }`}
+                      >
+                        {number}
+                      </button>
+                    );
+                  }),
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex shrink-0 items-center justify-between gap-3" aria-live="polite">
+          {phase === 'reading' && (
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+              <Clock className="h-4 w-4 text-primary" /> Recording starts in <span className="tabular-nums">{countdown}s</span>
+            </span>
+          )}
+          {phase === 'playing' && (
+            <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
+              <Headphones className="h-4 w-4 animate-pulse text-primary" /> Part {part?.partNo} playing
+              <span className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+                <span className="block h-full bg-primary transition-[width]" style={{ width: `${Math.round(progress * 100)}%` }} />
+              </span>
+            </span>
+          )}
+          {(phase === 'reading' || phase === 'playing' || phase === 'heard') && (
+            <Button
+              onClick={nextPart}
+              className="h-8 gap-1.5 font-bold"
+              title={phase === 'heard' ? undefined : "This part's recording will not play again"}
+            >
+              {partIndex + 1 < session.parts.length ? 'Next part' : 'Go to checking time'}
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          )}
+          {checking && (
+            <>
+              {partsPlayed >= session.parts.length && phase === 'review' && (
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <Clock className="h-4 w-4 text-primary" /> <span className="tabular-nums">{clock(countdown)}</span> to check
+                </span>
+              )}
+              <div className="flex items-center gap-1.5">
+                <Button variant="outline" size="icon" aria-label="Previous part" disabled={checkIndex === 0} onClick={() => jump(checkIndex - 1)} className="h-8 w-8">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Next part"
+                  disabled={checkIndex >= session.parts.length - 1}
+                  onClick={() => jump(checkIndex + 1)}
+                  className="h-8 w-8"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button onClick={() => void submit()} disabled={phase === 'submitting'} className="h-8 gap-1.5 font-bold">
+                  <Send className="h-3.5 w-3.5" /> {phase === 'submitting' ? 'Marking…' : 'Submit'}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </nav>
+  );
+
   return (
-    <div className="w-full min-h-[calc(100dvh-4rem)] px-4 sm:px-6 lg:px-8 py-5 space-y-3.5 bg-background">
+    <div className="w-full min-h-[calc(100dvh-4rem)] px-4 sm:px-6 lg:px-8 pt-5 bg-background">
+      <div className="mx-auto max-w-6xl space-y-3.5 pb-6">
       <MockHeader
         code={checking ? 'L' : `P${part?.partNo ?? 1}`}
         title={title ?? session.testTitle}
@@ -425,36 +569,6 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
                 ? <>All recordings have played. You have <strong>{countdown} seconds</strong> to check your answers; the paper is then submitted.</>
                 : 'Check your answers, then submit.'}
           </p>
-          <Button onClick={() => void submit()} disabled={phase === 'submitting'} className="shrink-0 gap-1.5 font-bold">
-            <Send className="h-3.5 w-3.5" /> Submit
-          </Button>
-        </div>
-      )}
-
-      {/* During the checking time the learner moves between the parts, one on screen at a time. */}
-      {checking && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="tablist" aria-label="Parts">
-          {session.parts.map((p, index) => {
-            const done = answeredIn(p);
-            const selected = index === checkIndex;
-            return (
-              <button
-                key={p.partNo}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => setCheckIndex(index)}
-                className={`rounded-xl border px-3 py-2 text-left transition-colors ${
-                  selected ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-primary/40'
-                }`}
-              >
-                <span className={`block text-sm font-bold ${selected ? 'text-primary' : 'text-foreground'}`}>Part {p.partNo}</span>
-                <span className="block text-xs text-muted-foreground">
-                  Questions {p.firstNumber}–{p.lastNumber} · {done}/{partCount(p)} answered
-                </span>
-              </button>
-            );
-          })}
         </div>
       )}
 
@@ -468,49 +582,69 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
               <h3 className="text-sm sm:text-base font-semibold">Questions {p.firstNumber}–{p.lastNumber}</h3>
             </div>
             <div className="p-3 sm:p-4 space-y-4">
-              <p className="text-sm text-muted-foreground leading-relaxed">{p.setting}</p>
-              {!checking && p.partNo === part?.partNo && player}
-              <div className="divide-y divide-border">
-                {p.groups.map(group => (
-                  <ListeningGroupView
-                    key={group.id}
-                    group={group}
-                    answers={answers}
-                    disabled={phase === 'submitting'}
-                    onAnswer={answer}
-                  />
-                ))}
-              </div>
+              {(() => {
+                const gi = groupPage.partNo === p.partNo ? Math.min(groupPage.index, p.groups.length - 1) : 0;
+                const group = p.groups[gi];
+                const range = (g: ListeningGroup) => `Questions ${g.firstNumber}–${g.firstNumber + g.questions.length - 1}`;
+                const show = (index: number) => {
+                  setGroupPage({ partNo: p.partNo, index });
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                };
+                return (
+                  <>
+                    {group && <GroupHeading group={group} />}
+                    {p.groups.length > 1 && (
+                      <div role="tablist" aria-label={`Part ${p.partNo} questions`} className="flex flex-wrap gap-1.5">
+                        {p.groups.map((g, index) => (
+                          <button
+                            key={g.id}
+                            type="button"
+                            role="tab"
+                            aria-selected={index === gi}
+                            onClick={() => show(index)}
+                            className={`rounded-lg border px-3 py-1.5 text-xs font-bold tabular-nums transition-colors ${
+                              index === gi ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-foreground hover:border-primary/50'
+                            }`}
+                          >
+                            {range(g)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {!checking && p.partNo === part?.partNo ? (
+                      player
+                    ) : (
+                      <p className="text-sm text-muted-foreground leading-relaxed">{p.setting}</p>
+                    )}
+                    {group && (
+                      <ListeningGroupView
+                        key={group.id}
+                        group={group}
+                        answers={answers}
+                        disabled={phase === 'submitting'}
+                        onAnswer={answer}
+                        showHeading={false}
+                      />
+                    )}
+                    {p.groups.length > 1 && (
+                      <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+                        <Button variant="outline" disabled={gi === 0} onClick={() => show(gi - 1)} className="h-9 gap-1.5">
+                          <ChevronLeft className="h-4 w-4" /> {gi > 0 ? range(p.groups[gi - 1]) : 'Previous'}
+                        </Button>
+                        <Button variant="outline" disabled={gi >= p.groups.length - 1} onClick={() => show(gi + 1)} className="h-9 gap-1.5">
+                          {gi < p.groups.length - 1 ? range(p.groups[gi + 1]) : 'Next'} <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </section>
         ))}
-        {checking && (
-          <div className="flex items-center justify-between gap-2">
-            <Button
-              variant="outline"
-              disabled={checkIndex === 0}
-              onClick={() => {
-                setCheckIndex(index => index - 1);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              className="gap-1.5 font-bold"
-            >
-              <ChevronLeft className="h-4 w-4" /> {checkIndex > 0 ? `Part ${checkIndex}` : 'Previous'}
-            </Button>
-            {checkIndex < session.parts.length - 1 && (
-              <Button
-                onClick={() => {
-                  setCheckIndex(index => index + 1);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="gap-1.5 font-bold"
-              >
-                Part {checkIndex + 2} <ChevronRight className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        )}
       </div>
+      </div>
+      {navigator}
     </div>
   );
 }
@@ -526,18 +660,39 @@ const outlineLine = (prompt: string, number: number) => {
  * One group of questions inside its part's card: the question numbers and
  * heading, the instructions, then the paper.
  */
+/** A group's question numbers, heading and instructions: "Questions 31–40 · Lecture: … · Complete the notes…". */
+function GroupHeading({ group }: { group: ListeningGroup }) {
+  // The word limit in capitals ("ONE WORD ONLY") is the part students must not miss.
+  const pieces = group.instructions.split(/([A-Z]{2,}(?:[ /][A-Z]+)*)/);
+  return (
+    <div className="rounded-xl border border-primary/15 bg-primary/[0.04] px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-bold tabular-nums text-primary-foreground">
+          Questions {group.firstNumber}–{group.firstNumber + group.questions.length - 1}
+        </span>
+        {group.heading && <h4 className="text-base font-bold leading-snug text-foreground">{group.heading}</h4>}
+      </div>
+      <p className="mt-1.5 text-sm leading-relaxed text-foreground/80">
+        {pieces.map((piece, i) => (i % 2 ? <strong key={i} className="font-bold text-foreground">{piece}</strong> : piece))}
+      </p>
+    </div>
+  );
+}
+
 export function ListeningGroupView({
   group,
   answers,
   disabled,
   onAnswer,
+  showHeading = true,
 }: {
   group: ListeningGroup;
   answers: Record<string, AnswerSubmission>;
   disabled: boolean;
   onAnswer: (question: Question, patch: Partial<AnswerSubmission>) => void;
+  /** False where the part card already shows the heading at its top. */
+  showHeading?: boolean;
 }) {
-  const last = group.firstNumber + group.questions.length - 1;
   const box = group.questions[0]?.options ?? [];
   const dragged = LETTER_GROUPS.includes(group.typeId) && box.length > 0;
   const typed = TYPED_GROUPS.includes(group.typeId) && group.questions.every(question => !question.options?.length);
@@ -546,20 +701,11 @@ export function ListeningGroupView({
   return (
     <div className="py-4 first:pt-0 last:pb-0">
       <div className="space-y-3">
-        <div className="space-y-1">
-          <p className="flex flex-wrap items-center gap-2">
-            <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-bold tabular-nums text-primary">
-              Questions {group.firstNumber}–{last}
-            </span>
-            {group.heading && <span className="text-base font-bold text-foreground">{group.heading}</span>}
-          </p>
-          <p className="text-sm text-muted-foreground leading-relaxed">{group.instructions}</p>
-        </div>
+        {showHeading && <GroupHeading group={group} />}
 
         {group.imageUrl && (
-          <div className="mx-auto w-full max-w-xl overflow-hidden rounded-xl border border-border bg-white p-2">
-            <img src={group.imageUrl} alt={group.heading || 'Map'} className="w-full h-auto" />
-          </div>
+          // The same figure as in practice: drawn large enough to read, with zoom and a full view.
+          <QuestionFigure src={group.imageUrl} alt={group.heading || 'Map'} className="border border-border" />
         )}
 
         {dragged ? (
@@ -607,7 +753,7 @@ export function ListeningGroupView({
               const current = answers[question.id];
               const compact = group.typeId === 'ielts-listening-map';
               return (
-                <li key={question.id} className="space-y-2.5">
+                <li key={question.id} id={`lq-${number}`} className="scroll-mt-24 space-y-2.5">
                   <p className="flex items-start gap-2 text-sm sm:text-base text-foreground">
                     <span className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground tabular-nums">
                       {number}

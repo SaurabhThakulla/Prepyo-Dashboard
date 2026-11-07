@@ -813,6 +813,10 @@ export interface MockPaperItem {
   lastAttemptAt?: string;
   attemptCount: number;
   isUpdated: boolean;
+  /** Where the paper's questions come from: 'original' or 'exam_memories'. */
+  sources?: string[];
+  /** How many of the paper's questions are easy, medium and hard. */
+  levels?: Record<string, number>;
 }
 
 

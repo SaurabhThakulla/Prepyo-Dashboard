@@ -8,6 +8,9 @@ const ZOOMS = [1, 1.5, 2, 3];
 
 // Tallest the figure may be drawn, in CSS pixels.
 const MAX_HEIGHT = 360;
+// Narrowest it is drawn where there is room: a near-square map or plan held to
+// MAX_HEIGHT would come out about 440px wide, with labels too small to read.
+const MIN_WIDTH = 560;
 // Blank canvas kept around the trimmed figure, in image pixels.
 const MARGIN = 6;
 // Smallest scale on a phone (18px labels come out near 10px); wider figures scroll.
@@ -121,7 +124,7 @@ export default function QuestionFigure({ src, alt, className }: { src: string; a
   const zoom = zoomFor.src === src ? zoomFor.zoom : 1;
   const [fullView, setFullView] = useState(false);
   // Zooming widens the frame to the whole card; the figure grows up to that width, never past it.
-  const width = `min(100%, ${Math.round((MAX_HEIGHT * c.w * zoom) / c.h)}px)`;
+  const width = `min(100%, ${Math.round(Math.max(MIN_WIDTH, (MAX_HEIGHT * c.w) / c.h) * zoom)}px)`;
   return (
     <div className={cn('relative mx-auto w-full max-w-3xl overflow-hidden rounded-xl bg-white', className, zoom > 1 && 'max-w-none')}>
       <div className="flex justify-end px-2 pt-2">

@@ -1,16 +1,32 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Award, CheckCircle2, Circle, CircleDot, Play, RefreshCw, RotateCcw, XCircle } from 'lucide-react';
+import {
+  Award,
+  BookOpen,
+  CheckCircle2,
+  Circle,
+  CircleDot,
+  Clock,
+  FileText,
+  Headphones,
+  ListChecks,
+  Mic,
+  PenLine,
+  Play,
+  RefreshCw,
+  RotateCcw,
+  XCircle,
+} from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { useToast } from '@/components/ui/toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { isInstitutionStudent, ReadingMockSession } from '@/lib/types';
+import { isInstitutionStudent, MockPaperItem, ReadingMockSession } from '@/lib/types';
+import MockPaperList from '@/components/mocks/MockPaperList';
 import { limitLabel } from '@/lib/subscriptions';
 import {
   FULL_MOCK_SECTIONS,
@@ -61,6 +77,21 @@ export default function FullMockPanel({ header }: { header: React.ReactNode }) {
   const [active, setActive] = useState<ActiveSection | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [results, setResults] = useState<SectionResults>({});
+  // The numbered Full Mock Tests: Test N is each section's Test N.
+  const [tests, setTests] = useState<MockPaperItem[]>([]);
+  const [testsLoading, setTestsLoading] = useState(true);
+  const loadTests = useCallback(async () => {
+    try {
+      setTests((await api.get<{ tests: MockPaperItem[] }>('/full-mocks/catalog')).tests ?? []);
+    } catch {
+      setTests([]); // no list: the single Start button still works
+    } finally {
+      setTestsLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    if (!full || full.status === 'completed') void loadTests();
+  }, [full, loadTests]);
 
   // Reads where the test stands; once all four sections are done, finishes it.
   const refresh = useCallback(
@@ -104,10 +135,11 @@ export default function FullMockPanel({ header }: { header: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const start = async () => {
+  // Starts Full Mock Test {number}; with none, a full mock whose papers are dealt one by one.
+  const start = async (number?: number) => {
     setBusy(true);
     try {
-      const data = await api.post<{ session: FullMockSession }>('/full-mocks', {});
+      const data = await api.post<{ session: FullMockSession }>('/full-mocks', number ? { number } : {});
       setFull(data.session);
       void refreshUser();
     } catch (err) {
@@ -207,7 +239,8 @@ export default function FullMockPanel({ header }: { header: React.ReactNode }) {
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
-      {header}
+      {/* The start page's blue header has its own Score reports link, so no page bar there. */}
+      {(loading || full) && header}
       {loading ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">Loading your full mock…</Card>
       ) : full?.status === 'completed' ? (
@@ -221,7 +254,7 @@ export default function FullMockPanel({ header }: { header: React.ReactNode }) {
           }}
           onRedo={() => {
             setResults({});
-            void start();
+            void start(full.number);
           }}
           busy={busy}
         />
@@ -229,7 +262,7 @@ export default function FullMockPanel({ header }: { header: React.ReactNode }) {
         <div className="w-full flex justify-center">
           <Card className="w-full max-w-2xl p-6 sm:p-8 space-y-5">
             <div className="space-y-1">
-              <CardTitle className="text-xl">IELTS Full Mock Test</CardTitle>
+              <CardTitle className="text-xl">IELTS Full Mock Test{full.number ? ` ${full.number}` : ''}</CardTitle>
               <CardDescription>
                 Take the sections in order. Your place is kept, so you can stop between sections and come back.
               </CardDescription>
@@ -274,55 +307,107 @@ export default function FullMockPanel({ header }: { header: React.ReactNode }) {
           </Card>
         </div>
       ) : (
-        <div className="w-full flex justify-center">
-          <Card className="w-full max-w-2xl p-6 sm:p-8 space-y-5 text-center">
-            <div className="flex items-center justify-center gap-2">
-              <Badge variant="indigo">IELTS</Badge>
-              <Badge variant="default">4 skills · overall band</Badge>
+        <div className="w-full flex flex-col gap-6">
+          <div className="-mx-4 -mt-6 bg-gradient-to-r from-primary to-primary/75 px-4 py-8 text-primary-foreground sm:-mx-6 sm:px-8 lg:-mx-8 lg:px-10">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-white/80">
+                  <Award className="h-4 w-4" /> IELTS · Full mock test
+                </p>
+                <h2 className="mt-1 font-display text-2xl font-extrabold sm:text-3xl">IELTS Full Mock Test</h2>
+                <p className="mt-2 max-w-3xl text-sm text-white/85 sm:text-base">
+                  All four skills in one sitting, as in the test. Your overall band is the mean of the four, rounded to the
+                  nearest half band.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
+                  <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1">
+                    <Clock className="h-3.5 w-3.5" /> About 3 hours
+                  </span>
+                  <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1">
+                    <ListChecks className="h-3.5 w-3.5" /> 4 sections · overall band
+                  </span>
+                </div>
+              </div>
+              <Button
+                variant="secondary"
+                onClick={() => navigate('/mocks?tab=reports')}
+                className="shrink-0 gap-2 border-0 bg-white/15 font-semibold text-white hover:bg-white/25"
+              >
+                <FileText className="h-4 w-4" /> Score reports
+              </Button>
             </div>
-            <div className="space-y-2">
-              <CardTitle className="text-xl sm:text-2xl">IELTS Full Mock Test</CardTitle>
-              <CardDescription className="max-w-lg mx-auto">
-                Listening, Reading and Writing in one sitting, as in the test, then Speaking. Your overall band is the
-                mean of the four, rounded to the nearest half band.
-              </CardDescription>
-            </div>
-            <ol className="text-left space-y-1.5 max-w-md mx-auto">
-              {FULL_MOCK_SECTIONS.map((section, i) => (
-                <li key={section.skill} className="text-sm text-foreground">
-                  <span className="font-bold">
-                    {i + 1}. {section.label}
-                  </span>{' '}
-                  <span className="text-muted-foreground">· {section.timing}</span>
-                </li>
-              ))}
+          </div>
+          <section className="w-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            <ol className="grid grid-cols-2 gap-3 p-4 sm:p-5 lg:grid-cols-4">
+              {FULL_MOCK_SECTIONS.map((section, i) => {
+                const Icon = SECTION_ICONS[section.skill];
+                return (
+                  <li key={section.skill} className="flex items-start gap-3 rounded-xl border border-border bg-background p-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-bold text-foreground">
+                        {i + 1}. {section.label}
+                      </span>
+                      <span className="block text-xs leading-snug text-muted-foreground first-letter:uppercase">{section.timing}</span>
+                    </span>
+                  </li>
+                );
+              })}
             </ol>
-            <Button
-              onClick={() => void start()}
-              disabled={busy || left <= 0}
-              className="w-full sm:w-auto sm:min-w-[240px] mx-auto font-bold gap-2 h-11 shadow-md"
-            >
-              {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
-              <span>Start full mock</span>
-            </Button>
-            <p className="text-[11px] text-muted-foreground">
-              {user?.subscription?.fullMocksFromPool
-                ? `Uses ${IELTS_FULL_MOCK_CREDITS} AI credits from your monthly pool. The sections do not use your daily sub-tests.`
-                : left > 0
-                ? `Uses one of your full mock tests (${limitLabel(left, !Number.isFinite(left))} left). The sections do not use your daily sub-tests.`
-                : 'You have used the full mock tests in your plan.'}{' '}
-              {left <= 0 && !isInstitutionStudent(user) && (
-                <button type="button" className="underline font-semibold" onClick={() => navigate('/subscription')}>
-                  See plans
-                </button>
+            <div className="flex flex-col gap-3 border-t border-border bg-muted/20 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-muted-foreground">
+                {user?.subscription?.fullMocksFromPool
+                  ? `Uses ${IELTS_FULL_MOCK_CREDITS} AI credits from your monthly pool. The sections do not use your daily sub-tests.`
+                  : left > 0
+                  ? `Uses one of your full mock tests (${limitLabel(left, !Number.isFinite(left))} left). The sections do not use your daily sub-tests.`
+                  : 'You have used the full mock tests in your plan.'}{' '}
+                {left <= 0 && !isInstitutionStudent(user) && (
+                  <button type="button" className="font-semibold underline" onClick={() => navigate('/subscription')}>
+                    See plans
+                  </button>
+                )}
+              </p>
+              {/* With numbered tests the list below starts one; the button is the fallback. */}
+              {!testsLoading && tests.length === 0 && (
+                <Button onClick={() => void start()} disabled={busy || left <= 0} className="h-10 shrink-0 gap-2 font-bold">
+                  {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 fill-current" />}
+                  Start full mock
+                </Button>
               )}
-            </p>
-          </Card>
+            </div>
+          </section>
+          {(testsLoading || tests.length > 0) && (
+            <section className="w-full space-y-4">
+              <h2 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Numbered tests</h2>
+              <MockPaperList
+                variant="page"
+                papers={tests}
+                isLoading={testsLoading}
+                exam="IELTS"
+                section="full"
+                onStart={test => void start(test.number)}
+                onResume={test => void start(test.number)}
+                onRetake={test => void start(test.number)}
+                onReview={test => {
+                  if (test.attemptId) navigate(`/mocks?review=${test.attemptId}`);
+                }}
+              />
+            </section>
+          )}
         </div>
       )}
     </div>
   );
 }
+
+const SECTION_ICONS: Record<FullMockSkill, typeof Headphones> = {
+  listening: Headphones,
+  reading: BookOpen,
+  writing: PenLine,
+  speaking: Mic,
+};
 
 function SectionRow({ index, section, current }: { index: number; section: FullMockSectionState; current: boolean }) {
   const meta = FULL_MOCK_SECTIONS[index];
