@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle2, ChevronLeft, ChevronRight, CircleMinus, CircleSlash, Mic, PenTool, XCircle } from 'lucide-react';
+import { BookOpen, CheckCircle2, ChevronLeft, ChevronRight, CircleMinus, CircleSlash, FileText, Headphones, Mic, PenTool, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, dialogBand } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TestFeedback from '@/components/mocks/TestFeedback';
 import EvaluationCard from '@/components/practice/EvaluationCard';
@@ -17,6 +17,7 @@ import {
   itemStatus,
   recordingUrl,
 } from '@/lib/mockReview';
+import type { SentenceFeedback } from '@/lib/types';
 
 const SKILL_LABEL: Record<string, string> = {
   listening: 'Listening',
@@ -51,14 +52,14 @@ const activate = (open: () => void) => (event: React.KeyboardEvent) => {
   }
 };
 
-const SPEAKING_PART: Record<number, string> = {
+export const SPEAKING_PART: Record<number, string> = {
   1: 'Part 1 · Introduction and interview',
   2: 'Part 2 · Long turn',
   3: 'Part 3 · Discussion',
 };
 
 /** Each speaking part keeps one accent: the heading badge and the mic, which fills on hover. */
-const PART_TONE: Record<number, { badge: string; chip: string }> = {
+export const PART_TONE: Record<number, { badge: string; chip: string }> = {
   1: { badge: 'bg-primary text-primary-foreground', chip: 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground' },
   2: { badge: 'bg-violet-600 text-white', chip: 'bg-violet-500/10 text-violet-600 group-hover:bg-violet-600 group-hover:text-white dark:text-violet-400' },
   3: { badge: 'bg-teal-600 text-white', chip: 'bg-teal-500/10 text-teal-700 group-hover:bg-teal-600 group-hover:text-white dark:text-teal-400' },
@@ -116,7 +117,24 @@ export default function IeltsAnswerReview({ review }: { review: MockReview }) {
 type Filter = 'all' | 'wrong' | 'blank';
 
 /** A Listening or Reading paper as cards, each opening into its details. The teacher's review uses it too. */
-export function ObjectiveReview({ section }: { section: ReviewSection }) {
+/** recordings: a listening paper's audio by part number, played once under each part's heading. */
+/** A reading passage as the teacher's review shows it. */
+interface Passage {
+  title: string;
+  subtitle?: string;
+  paragraphs: { label: string; text: string }[];
+}
+
+/** recordings and passages: the teacher's review only, by part (passage) number. */
+export function ObjectiveReview({
+  section,
+  recordings,
+  passages,
+}: {
+  section: ReviewSection;
+  recordings?: Record<number, string>;
+  passages?: Passage[];
+}) {
   const items = section.items ?? [];
   const [filter, setFilter] = useState<Filter>('all');
   const [open, setOpen] = useState<number | null>(null);
@@ -170,6 +188,14 @@ export function ObjectiveReview({ section }: { section: ReviewSection }) {
               {partName} {part}
             </h4>
           )}
+          {section.skill === 'listening' && part > 0 && (recordings?.[part] || section.scripts?.[part - 1]) && (
+            <PartMedia
+              name={`${partName} ${part}`}
+              recording={recordings?.[part]}
+              script={section.scripts?.[part - 1]}
+            />
+          )}
+          {section.skill === 'reading' && part > 0 && passages?.[part - 1] && <PassageCard passage={passages[part - 1]} />}
           <ul className="space-y-2">
             {shown
               .filter(({ item }) => item.part === part)
@@ -222,7 +248,82 @@ export function ObjectiveReview({ section }: { section: ReviewSection }) {
         index={open}
         onIndex={setOpen}
         partName={partName}
+        recording={open == null ? undefined : recordings?.[items[open]?.part ?? 0]}
       />
+    </div>
+  );
+}
+
+/** A script with each speaker's turn on its own line ("Receptionist: …", "Caller: …"). */
+const scriptLines = (script: string) => script.replace(/\s+(?=[A-Z][a-z]+(?: [A-Z][a-z]+)?:\s)/g, '\n');
+
+/** One listening part's recording, played once for the whole part, and its transcript on request. */
+function PartMedia({ name, recording, script }: { name: string; recording?: string; script?: string }) {
+  const [showScript, setShowScript] = useState(false);
+  return (
+    <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3 dark:bg-primary/10" data-testid="part-media">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+          <Headphones className="h-5 w-5" aria-hidden />
+        </span>
+        <div className="min-w-[14rem] flex-1 space-y-1">
+          <p className="text-sm font-semibold text-foreground">{name} recording</p>
+          {recording ? (
+            <audio controls preload="metadata" src={recording} aria-label={`${name} recording`} className="h-9 w-full" />
+          ) : (
+            <p className="text-xs text-muted-foreground">No recording is stored for this part; it was read aloud. Read the transcript instead.</p>
+          )}
+        </div>
+        {script && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 gap-1.5 bg-card"
+            aria-expanded={showScript}
+            onClick={() => setShowScript(s => !s)}
+          >
+            <FileText className="h-4 w-4" aria-hidden />
+            {showScript ? 'Hide transcript' : 'Show transcript'}
+          </Button>
+        )}
+      </div>
+      {script && showScript && (
+        <p className="max-h-72 overflow-y-auto whitespace-pre-line rounded-xl border border-border bg-card p-3 text-sm leading-relaxed text-foreground/90">
+          {scriptLines(script)}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** One reading passage, folded away until the teacher opens it. */
+function PassageCard({ passage }: { passage: Passage }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3 dark:bg-primary/10" data-testid="passage-card">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+          <BookOpen className="h-5 w-5" aria-hidden />
+        </span>
+        <div className="min-w-[14rem] flex-1">
+          <p className="text-sm font-semibold text-foreground">{passage.title}</p>
+          {passage.subtitle && <p className="text-xs text-muted-foreground">{passage.subtitle}</p>}
+        </div>
+        <Button variant="outline" size="sm" className="shrink-0 gap-1.5 bg-card" aria-expanded={open} onClick={() => setOpen(o => !o)}>
+          <FileText className="h-4 w-4" aria-hidden />
+          {open ? 'Hide passage' : 'Show passage'}
+        </Button>
+      </div>
+      {open && (
+        <div className="max-h-96 space-y-3 overflow-y-auto rounded-xl border border-border bg-card p-4 text-sm leading-relaxed text-foreground/90">
+          {passage.paragraphs.map((p, i) => (
+            <p key={i}>
+              {p.label && <span className="mr-2 font-bold text-primary">{p.label}</span>}
+              {p.text}
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -232,11 +333,14 @@ function ItemDialog({
   index,
   onIndex,
   partName,
+  recording,
 }: {
   section: ReviewSection;
   index: number | null;
   onIndex: (index: number | null) => void;
   partName: string;
+  /** The part's recording, when the teacher's review has one. */
+  recording?: string;
 }) {
   const items = section.items ?? [];
   const item = index == null ? null : items[index];
@@ -251,11 +355,11 @@ function ItemDialog({
 
   return (
     <Dialog open onOpenChange={next => !next && onIndex(null)}>
-      <DialogContent className="font-report sm:max-w-2xl" data-testid="review-item-dialog">
-        <DialogHeader>
+      <DialogContent band className="font-report sm:max-w-2xl" data-testid="review-item-dialog">
+        <DialogHeader className={dialogBand}>
           <DialogTitle className="flex items-center gap-2">
             Question {numbers(item)}
-            <span className={cn('flex items-center gap-1 text-sm font-semibold', tone.tone)}>
+            <span className={cn('flex items-center gap-1 rounded-full bg-background px-2 py-0.5 text-sm font-semibold', tone.tone)}>
               <Icon className="h-4 w-4" /> {tone.label}
             </span>
           </DialogTitle>
@@ -267,6 +371,10 @@ function ItemDialog({
 
         <div className="space-y-4">
           <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{blankless(item.question)}</p>
+
+          {recording && (
+            <audio key={recording} controls preload="none" src={recording} aria-label={`${partName} ${item.part} recording`} className="h-9 w-full" />
+          )}
 
           {item.options && item.options.length > 0 && (
             <ul className="space-y-1.5">
@@ -323,7 +431,7 @@ function ItemDialog({
               {showScript && (
                 <p className="max-h-64 overflow-y-auto whitespace-pre-line rounded-xl border border-border p-3 text-xs leading-relaxed text-muted-foreground">
                   {/* Each speaker's turn on its own line ("Receptionist: …", "Caller: …"). */}
-                  {script.replace(/\s+(?=[A-Z][a-z]+(?: [A-Z][a-z]+)?:\s)/g, '\n')}
+                  {scriptLines(script)}
                 </p>
               )}
             </div>
@@ -385,8 +493,8 @@ function WritingReview({ tasks }: { tasks: ReviewTask[] }) {
 
       <Dialog open={open != null} onOpenChange={next => !next && setOpen(null)}>
         {open && (
-          <DialogContent className="font-report sm:max-w-3xl">
-            <DialogHeader>
+          <DialogContent band className="font-report sm:max-w-3xl">
+            <DialogHeader className={dialogBand}>
               <DialogTitle>Writing {open.key === 'task1' ? 'Task 1' : 'Task 2'}</DialogTitle>
               <DialogDescription>{open.words} words</DialogDescription>
             </DialogHeader>
@@ -413,13 +521,7 @@ function WritingReview({ tasks }: { tasks: ReviewTask[] }) {
 }
 
 function SpeakingReview({ attemptId, section }: { attemptId: string; section: ReviewSection }) {
-  const turns = section.turns ?? [];
-  const [open, setOpen] = useState<number | null>(null);
   const [feedback, setFeedback] = useState(false);
-  const parts = [...new Set(turns.map(t => t.part))];
-  const fixes = section.evaluation?.sentenceFeedback ?? [];
-  const rated = section.evaluation?.estimatedScore != null;
-  const turn = open == null ? null : turns[open];
 
   return (
     <div className="space-y-3">
@@ -433,6 +535,53 @@ function SpeakingReview({ attemptId, section }: { attemptId: string; section: Re
         </div>
       )}
 
+      <SpeakingTurns
+        turns={section.turns ?? []}
+        recordingSrc={turn => recordingUrl(attemptId, turn.key)}
+        fixes={section.evaluation?.sentenceFeedback ?? []}
+        rated={section.evaluation?.estimatedScore != null}
+      />
+
+      <Dialog open={feedback} onOpenChange={setFeedback}>
+        {section.evaluation && (
+          <DialogContent band className="font-report sm:max-w-3xl">
+            <DialogHeader className={dialogBand}>
+              <DialogTitle>Speaking feedback</DialogTitle>
+              <DialogDescription>Rated across all three parts.</DialogDescription>
+            </DialogHeader>
+            <TestFeedback evaluation={section.evaluation} />
+          </DialogContent>
+        )}
+      </Dialog>
+    </div>
+  );
+}
+
+/**
+ * The speaking answers part by part, one card a question; a card opens the answer:
+ * its recording, what was said and its rating. The student's review and the
+ * teacher's (`teacher`, which words it about the student) share it.
+ */
+export function SpeakingTurns({
+  turns,
+  recordingSrc,
+  fixes,
+  rated,
+  teacher = false,
+}: {
+  turns: ReviewTurn[];
+  recordingSrc: (turn: ReviewTurn) => string;
+  fixes: SentenceFeedback[];
+  rated: boolean;
+  teacher?: boolean;
+}) {
+  const [open, setOpen] = useState<number | null>(null);
+  const parts = [...new Set(turns.map(t => t.part))];
+  const turn = open == null ? null : turns[open];
+  const listen = teacher ? "Listen to the student's answer" : undefined;
+
+  return (
+    <div className="space-y-3">
       {parts.map(part => (
         <div key={part} className="space-y-2">
           <h4 className="flex items-center gap-2 px-1 pb-1 pt-2 text-xs font-bold uppercase tracking-wide text-foreground">
@@ -471,10 +620,10 @@ function SpeakingReview({ attemptId, section }: { attemptId: string; section: Re
 
       <Dialog open={turn != null} onOpenChange={next => !next && setOpen(null)}>
         {turn && (
-          <DialogContent className="font-report sm:max-w-6xl">
-            <DialogHeader>
+          <DialogContent band className="font-report sm:max-w-6xl">
+            <DialogHeader className={dialogBand}>
               <DialogTitle>{SPEAKING_PART[turn.part] ?? `Part ${turn.part}`}</DialogTitle>
-              <DialogDescription>You spoke for {turn.seconds} seconds</DialogDescription>
+              <DialogDescription>{teacher ? 'Spoke' : 'You spoke'} for {turn.seconds} seconds</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="rounded-xl bg-muted/50 p-3">
@@ -484,13 +633,14 @@ function SpeakingReview({ attemptId, section }: { attemptId: string; section: Re
               {/* The learner's own voice sits under the score, as on a practice result; on its own when unrated. */}
               {!turn.hasRecording ? (
                 <p className="text-xs text-muted-foreground">No recording is kept for this answer (recordings are kept for 30 days).</p>
-              ) : !turn.evaluation && <AnswerRecording src={recordingUrl(attemptId, turn.key)} />}
+              ) : !turn.evaluation && <AnswerRecording src={recordingSrc(turn)} label={listen} />}
               {turn.evaluation ? (
                 // The same card as a practice answer's result.
                 <EvaluationCard
                   evaluation={turn.evaluation}
                   xpAwarded={0}
-                  belowScore={turn.hasRecording ? <AnswerRecording src={recordingUrl(attemptId, turn.key)} /> : undefined}
+                  belowScore={turn.hasRecording ? <AnswerRecording src={recordingSrc(turn)} label={listen} /> : undefined}
+                  answerTitle={teacher ? "Student's answer" : undefined}
                   notes={['This rates this answer alone, from its transcript. Pronunciation was not assessed.']}
                   answer={<MarkedAnswer text={turn.transcript} fixes={turn.evaluation.sentenceFeedback ?? []} />}
                   answerLegend={<MarkedAnswerLegend />}
@@ -512,7 +662,7 @@ function SpeakingReview({ attemptId, section }: { attemptId: string; section: Re
               ) : (
                 <>
                   <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-3 space-y-1">
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-primary">What you said</p>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-primary">{teacher ? "Student's response" : 'What you said'}</p>
                     {turn.transcript.trim() ? (
                       <MarkedAnswer text={turn.transcript} fixes={fixes} rated={rated} />
                     ) : (
@@ -534,18 +684,6 @@ function SpeakingReview({ attemptId, section }: { attemptId: string; section: Re
                 Next <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-          </DialogContent>
-        )}
-      </Dialog>
-
-      <Dialog open={feedback} onOpenChange={setFeedback}>
-        {section.evaluation && (
-          <DialogContent className="font-report sm:max-w-3xl">
-            <DialogHeader>
-              <DialogTitle>Speaking feedback</DialogTitle>
-              <DialogDescription>Rated across all three parts.</DialogDescription>
-            </DialogHeader>
-            <TestFeedback evaluation={section.evaluation} />
           </DialogContent>
         )}
       </Dialog>
