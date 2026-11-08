@@ -31,6 +31,7 @@ import {
   PLANS,
   ReceiptSignature,
   removeSignatureImage,
+  saveBrandColor,
   saveProfile,
   saveSigner,
   SIGNATURE_IMAGE_URL,
@@ -502,14 +503,17 @@ function useProfileDraft(account: InstitutionAccount, onSaved: (account: Institu
 
   const update = (change: Partial<InstitutionProfile>) => setDraft(current => ({ ...current, ...change }));
 
-  const save = async (check: (profile: InstitutionProfile) => Record<string, string>) => {
+  const save = async (
+    check: (profile: InstitutionProfile) => Record<string, string>,
+    send: (profile: InstitutionProfile) => Promise<InstitutionAccount> = p => saveProfile({ ...p, city: p.city.trim() }),
+  ) => {
     const found = check(draft);
     setProblems(found);
     setError(null);
     if (Object.keys(found).length > 0) return;
     setSaving(true);
     try {
-      onSaved(await saveProfile({ ...draft, city: draft.city.trim() }));
+      onSaved(await send(draft));
       onClose();
     } catch (err) {
       if (err instanceof ApiError && err.fields) setProblems(err.fields);
@@ -665,8 +669,6 @@ function BrandingPanel({ account, onSaved, onClose }: { account: InstitutionAcco
   const check = (p: InstitutionProfile) => {
     const found: Record<string, string> = {};
     if (!validColor(p.brandColor)) found.brandColor = 'Choose a brand colour.';
-    if (p.exams.length === 0 || !validCity(p.city))
-      found.profile = 'Fill in "Institution details" and "Exams you teach" first.';
     return found;
   };
 
@@ -707,11 +709,10 @@ function BrandingPanel({ account, onSaved, onClose }: { account: InstitutionAcco
             <span className="font-mono text-xs text-muted-foreground">{draft.brandColor}</span>
           </label>
           {problems.brandColor && <FieldError message={problems.brandColor} />}
-          {problems.profile && <FieldError message={problems.profile} />}
         </div>
         <SignInPreview name={account.institution.name} logoUrl={account.institution.logoUrl} color={draft.brandColor} exams={draft.exams} />
       </PanelBody>
-      <PanelFooter dirty={dirty} saving={saving} error={error} onCancel={onClose} onSave={() => void save(check)} />
+      <PanelFooter dirty={dirty} saving={saving} error={error} onCancel={onClose} onSave={() => void save(check, p => saveBrandColor(p.brandColor))} />
     </>
   );
 }

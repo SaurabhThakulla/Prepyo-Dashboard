@@ -1,5 +1,6 @@
 // Every call the institution pages make to the backend (/api/v1/institution).
 import { api } from '@/lib/api';
+import type { Evaluation } from '@/lib/types';
 
 // none = no plan yet (no seats); expired = students get reading and listening only.
 export type InstitutionStatus = 'none' | 'active' | 'expired';
@@ -198,6 +199,9 @@ export const logOut = () => api.post('/institution/logout');
 export const fetchAccount = () => api.get<InstitutionAccount>('/institution/me');
 
 export const saveProfile = (profile: InstitutionProfile) => api.put<InstitutionAccount>('/institution/profile', profile);
+
+// The brand colour on its own, so it saves before the rest of the profile is filled in.
+export const saveBrandColor = (brandColor: string) => api.put<InstitutionAccount>('/institution/brand-color', { brandColor });
 
 export const uploadLogo = (file: Blob) => api.upload<{ logoUrl: string }>('/institution/logo', file);
 
@@ -452,6 +456,8 @@ export interface IeltsTurn {
   transcript: string;
   seconds: number;
   hasRecording: boolean;
+  /** This answer rated on its own, as the student's review shows it; absent on older tests. */
+  evaluation?: Evaluation;
 }
 
 export interface EvaluationCriterion {
@@ -461,11 +467,20 @@ export interface EvaluationCriterion {
   feedback: string;
 }
 
+/** One reading passage, as the student read it. */
+export interface ReviewPassage {
+  title: string;
+  subtitle?: string;
+  paragraphs: { label: string; text: string }[];
+}
+
 /** One question of a Listening or Reading paper: what was asked, the student's answer and the key. */
 export interface IeltsAnswer {
   /** The paper's question numbers it covers: one, or more for a gap fill or "Choose TWO". */
   from: number;
   to: number;
+  /** A listening question's part (1 to 4) or a reading question's passage (1 to 3). */
+  part?: number;
   question: string;
   /** Empty when the student left it blank. */
   response: string;
@@ -488,6 +503,12 @@ export interface IeltsPart {
   total?: number;
   /** A Listening or Reading paper, question by question; absent once the answers are cleaned up. */
   answers?: IeltsAnswer[];
+  /** A listening paper's audio, one per part, by part number. */
+  recordings?: Record<number, string>;
+  /** A listening paper's transcripts, part 1 first. */
+  scripts?: string[];
+  /** A reading paper's passages, passage 1 first. */
+  passages?: ReviewPassage[];
   aiBand: number | null;
   summary?: string;
   criteria?: EvaluationCriterion[];

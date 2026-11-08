@@ -50,6 +50,13 @@ export type Tone = keyof typeof TONES;
 /** Each exam keeps one colour everywhere, as on the admin dashboard. */
 export const EXAM_TONE: Record<ExamCode, Tone> = { PTE: 'blue', IELTS: 'violet', EPS_TOPIK: 'green', JLPT: 'rose' };
 
+/**
+ * The blue page header, edge to edge under the top bar like the learner pages: the
+ * negative margins cancel the dashboard's padding (px-4 sm:px-6, py-5 lg:py-6).
+ */
+export const HERO =
+  'relative -mx-4 -mt-5 overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/75 px-4 py-6 text-primary-foreground sm:-mx-6 sm:px-6 sm:py-8 lg:-mt-6 lg:px-8';
+
 /** The page's banner: what it is, and the actions that apply to the whole page. */
 export function PageHero({
   eyebrow,
@@ -67,7 +74,7 @@ export function PageHero({
   children?: React.ReactNode;
 }) {
   return (
-    <header className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/75 p-5 text-primary-foreground shadow-lg sm:p-7">
+    <header className={HERO}>
       <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
       <div className="pointer-events-none absolute -bottom-24 right-40 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
       <div className="relative flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
