@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { onRecordingStarted } from '@/lib/audioFocus';
+import { announcePromptPlaying, onRecordingStarted } from '@/lib/audioFocus';
 import { Volume2, Play, Square, Pause, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
@@ -90,7 +90,15 @@ function useAutoPlay(seconds: number | undefined, start: () => void, key?: strin
       setLeft(null);
       startRef.current();
     }, 1000);
-    return () => clearInterval(tick);
+    // Answering before the audio began: it must not start over the recording.
+    const cancel = onRecordingStarted(() => {
+      clearInterval(tick);
+      setLeft(null);
+    });
+    return () => {
+      clearInterval(tick);
+      cancel();
+    };
   }, [seconds, key]);
 
   return left;
@@ -239,6 +247,7 @@ export default function PromptAudio({
     if (!text) return;
     cancelPlayback();
     window.speechSynthesis.cancel();
+    announcePromptPlaying();
     const run = generation.current;
     setError(null);
     setSpeaking(true);
@@ -598,6 +607,7 @@ function ServerSpokenAudio({
       const segments = data.segments ?? [];
       if (current !== run.current) return;
       if (segments.length === 0) throw new Error('empty');
+      announcePromptPlaying();
       setStarted(true);
       setPlaying(true);
       setFinished(false);
@@ -715,7 +725,18 @@ function RecordedAudio({
     setError(null);
   }, [src, questionId]);
 
-  useEffect(() => onRecordingStarted(() => audioRef.current?.pause()), []);
+  // The pause between two runs; a recording starting cancels the second run too.
+  const gapTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(gapTimer.current), []);
+  useEffect(
+    () =>
+      onRecordingStarted(() => {
+        clearTimeout(gapTimer.current);
+        audioRef.current?.pause();
+        setPlaying(false);
+      }),
+    [],
+  );
 
   const started = progress > 0 || playing || finished;
   const toggle = () => {
@@ -743,6 +764,7 @@ function RecordedAudio({
         src={src}
         preload="metadata"
         onPlay={() => {
+          announcePromptPlaying();
           if (audioRef.current) audioRef.current.playbackRate = speed;
           setPlaying(true);
           setFinished(false);
@@ -755,7 +777,7 @@ function RecordedAudio({
             round.current += 1;
             const el = event.currentTarget;
             setPlaying(true);
-            setTimeout(() => {
+            gapTimer.current = setTimeout(() => {
               el.currentTime = 0;
               el.play().catch(() => setError("The audio couldn't play. Check your sound is on and try again."));
             }, REPEAT_GAP_MS);

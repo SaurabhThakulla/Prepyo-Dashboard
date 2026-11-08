@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { announceRecording } from '@/lib/audioFocus';
+import { announceRecording, onPromptPlaying } from '@/lib/audioFocus';
 import { Mic, MicOff, Square, Loader2, AlertCircle, Check, Info } from 'lucide-react';
 import { canRecord, formatDuration, pickRecorderMimeType, beep } from '@/lib/audio';
 import { startTranscribing, type TranscriptSession } from '@/lib/speech';
@@ -371,6 +371,21 @@ export default function AudioRecorder({
     clearTimer();
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
   }, [clearTimer]);
+
+  // The learner plays the question's audio: a recording in progress stops (the
+  // answer so far is kept), and preparation goes back to the start button.
+  useEffect(
+    () =>
+      onPromptPlaying(() => {
+        if (phaseNow.current === 'recording') handleStopEarly();
+        else if (phaseNow.current === 'prep') {
+          clearTimer();
+          releaseMic();
+          setPhase('idle');
+        }
+      }),
+    [clearTimer, handleStopEarly, releaseMic],
+  );
 
   const handleSkipPrep = useCallback(() => {
     clearTimer();
