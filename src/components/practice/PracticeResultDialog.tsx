@@ -1,6 +1,7 @@
 import { ChevronRight, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle, dialogBand } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import PracticeResultCard from './PracticeResultCard';
 import SpeakingResult from './SpeakingResult';
 import PteSkillScores from './PteSkillScores';
@@ -46,8 +47,8 @@ export default function PracticeResultDialog({ result, answerText, blankAnswers,
   const spoken = result.evaluation?.skill === 'speaking' ? result.evaluation : null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl gap-4 sm:p-5">
-        <div className="space-y-0.5 pr-8">
+      <DialogContent band className="max-w-5xl gap-4">
+        <div className={cn('space-y-0.5', dialogBand)}>
           <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
           <DialogDescription className="text-xs">{description}</DialogDescription>
         </div>

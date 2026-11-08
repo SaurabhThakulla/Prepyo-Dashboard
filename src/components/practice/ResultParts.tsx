@@ -114,14 +114,14 @@ export function ResultSummary({ label, score, outOf, fraction, tone, verdict, me
 
 /** A titled block of the result. Every section uses the same heading. */
 /** The learner's own recorded answer, to hear their voice again under the score. */
-export function AnswerRecording({ src }: { src: string }) {
+export function AnswerRecording({ src, label = 'Listen to your answer' }: { src: string; label?: string }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3 dark:bg-primary/10">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
         <Headphones className="h-5 w-5" aria-hidden />
       </span>
       <div className="min-w-0 flex-1 space-y-1">
-        <p className="text-sm font-semibold text-foreground">Listen to your answer</p>
+        <p className="text-sm font-semibold text-foreground">{label}</p>
         <audio controls preload="none" src={src} className="h-9 w-full" data-testid="answer-recording">
           Your browser cannot play this recording.
         </audio>
