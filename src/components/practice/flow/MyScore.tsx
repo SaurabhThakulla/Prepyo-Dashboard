@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { ChevronRight, History, Loader2, TrendingDown, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle, dialogBand } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import type { PracticeAttempt } from '@/lib/types';
 import PracticeResultCard, { SCALE } from '../PracticeResultCard';
@@ -193,8 +193,8 @@ function summarise(entry: PastTry): Summary {
 function SittingDialog({ entry, onClose }: { entry: Extract<PastTry, { kind: 'sitting' }>; onClose: () => void }) {
   return (
     <Dialog open onOpenChange={o => !o && onClose()}>
-      <DialogContent className="max-w-5xl gap-5">
-        <div className="space-y-1 border-b border-border pb-4 pr-8">
+      <DialogContent band className="max-w-5xl gap-5">
+        <div className={cn('space-y-1', dialogBand)}>
           <DialogTitle className="text-lg font-semibold">Your result · {when(entry.at)}</DialogTitle>
           <DialogDescription className="text-sm">How each question you answered on this passage was marked.</DialogDescription>
         </div>
@@ -206,7 +206,7 @@ function SittingDialog({ entry, onClose }: { entry: Extract<PastTry, { kind: 'si
             </div>
           ))}
         </div>
-        <div className="flex justify-end border-t border-border pt-4">
+        <div className="flex justify-end ml-2 border-t border-border pt-4">
           <Button variant="ghost" className="h-10 rounded-xl px-5 text-xs font-bold" onClick={onClose}>Close</Button>
         </div>
       </DialogContent>
