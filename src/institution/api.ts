@@ -272,7 +272,7 @@ export const deletePayment = (id: string) => api.delete(`/institution/payments/$
 
 /** Emails the student the receipt PDF for one payment. emailed is false when they have no email on file or email is off. */
 export const emailReceipt = (paymentId: string, pdf: Blob) =>
-  api.upload<{ emailed: boolean; to?: string; reason?: 'no_email' | 'email_off' }>(`/institution/payments/${paymentId}/receipt-email`, pdf);
+  api.upload<{ emailed: boolean; to?: string; reason?: 'no_email' | 'email_off' | 'daily_limit' }>(`/institution/payments/${paymentId}/receipt-email`, pdf);
 
 // Exams the institution can set one booking target for, applied to all their students.
 export type TargetExam = 'PTE' | 'IELTS';

@@ -66,7 +66,7 @@ interface SectionResults {
  * The server keeps where the learner is, so leaving and coming back resumes
  * the section they were on.
  */
-export default function FullMockPanel({ header }: { header: React.ReactNode }) {
+export default function FullMockPanel() {
   const navigate = useNavigate();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -239,8 +239,6 @@ export default function FullMockPanel({ header }: { header: React.ReactNode }) {
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
-      {/* The start page's blue header has its own Score reports link, so no page bar there. */}
-      {(loading || full) && header}
       {loading ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">Loading your full mock…</Card>
       ) : full?.status === 'completed' ? (

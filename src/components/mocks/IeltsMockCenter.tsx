@@ -16,10 +16,11 @@ import {
 } from '@/components/layout/sidebar/navigation';
 
 interface IeltsMockCenterProps {
-  header: React.ReactNode;
+  /** The Exam Catalog / Score Reports switch, shown under the full mock card. */
+  tabs: React.ReactNode;
 }
 
-export default function IeltsMockCenter({ header }: IeltsMockCenterProps) {
+export default function IeltsMockCenter({ tabs }: IeltsMockCenterProps) {
   const navigate = useNavigate();
   const { user } = useApp();
   const module = ieltsModuleOf(user);
@@ -74,11 +75,10 @@ export default function IeltsMockCenter({ header }: IeltsMockCenterProps) {
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
-      {header}
-
       {/* Hero: Full Mock Simulator */}
-      <Card className="overflow-hidden shadow-lg border-primary/20">
-        <div className="bg-primary p-5 sm:p-8 text-white grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+      {/* Full bleed: the negative margins cancel the page padding on the left, top and right. */}
+      <Card className="-mx-4 -mt-6 overflow-hidden rounded-none border-0 shadow-none sm:-mx-6 lg:-mx-8">
+        <div className="bg-primary px-4 py-6 sm:px-6 sm:py-8 lg:px-8 text-white grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="lg:col-span-2 space-y-3">
             <Badge className="hidden sm:inline-flex bg-white/20 hover:bg-white/25 text-white border-transparent">
               Recommended · Complete 4-Skill Exam
@@ -86,10 +86,6 @@ export default function IeltsMockCenter({ header }: IeltsMockCenterProps) {
             <h2 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight">
               IELTS Full Mock Simulator
             </h2>
-            <p className="hidden sm:block text-sm text-white/85 max-w-xl leading-relaxed">
-              Sit all four sections in test-day sequence: Listening, Reading, Writing, and Speaking. Evaluated across
-              every skill to produce an official IELTS 1.0–9.0 overall band prediction with diagnostic feedback.
-            </p>
             <div className="flex flex-wrap gap-2 text-xs font-semibold pt-1">
               <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1">
                 <Clock className="h-3.5 w-3.5" /> About 2h 45m
@@ -121,6 +117,8 @@ export default function IeltsMockCenter({ header }: IeltsMockCenterProps) {
           </div>
         </div>
       </Card>
+
+      <div className="flex justify-end">{tabs}</div>
 
       {/* Sectional Tests */}
       <section className="space-y-4">
