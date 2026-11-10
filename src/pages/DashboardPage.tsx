@@ -3,69 +3,26 @@ import { useApp } from '@/context/AppContext';
 import ExamDateDialog from '@/components/dashboard/ExamDateDialog';
 import ExamCountdown from '@/components/dashboard/ExamCountdown';
 import SkillQuestionCard from '@/components/dashboard/SkillQuestionCard';
-import PracticeStudioPanel, { SkillRow } from '@/components/dashboard/PracticeStudioPanel';
 import CurrentPlanCard from '@/components/dashboard/CurrentPlanCard';
 import DashboardQuickTests from '@/components/dashboard/DashboardQuickTests';
-import { formatScore, planHeadline } from '@/components/onboarding/onboarding';
+import SkillProfileCard from '@/components/dashboard/SkillProfileCard';
+import MistakesPage from '@/pages/MistakesPage';
+import { planHeadline } from '@/components/onboarding/onboarding';
 import { useDashboardSummary } from '@/lib/hooks/useDashboardSummary';
 import { daysUntilExam, formatExamDate } from '@/lib/dates';
-import { EXAM_LABELS, EXAM_MAX_SCORE, ExamType, ProgressSummary, SkillType, skillsFor } from '@/lib/types';
+import { EXAM_LABELS, skillsFor } from '@/lib/types';
 import { DashboardPageSkeleton } from '@/components/layout/PageSkeleton';
-
-const SKILL_SUBTITLES: Record<ExamType, Partial<Record<SkillType, string>>> = {
-  PTE: {
-    speaking: 'Read aloud, describe image',
-    writing: 'Essay, summarise written text',
-    reading: 'Fill in the blanks, multiple choice',
-    listening: 'Dictation, summarise spoken text',
-  },
-  IELTS: {
-    speaking: 'Part 1, 2, 3 questions',
-    writing: 'Task 1 & Task 2',
-    reading: 'Passages 1–3',
-    listening: 'Sections 1–4',
-  },
-  EPS_TOPIK: {
-    reading: 'Pictures, signs, notices & short texts',
-    listening: 'Words, replies & workplace dialogues',
-  },
-  JLPT: {
-    reading: 'Kanji, vocabulary, grammar & short texts',
-    listening: 'Tasks, key points & quick replies',
-  },
-};
-
-function buildSkillRows(exam: ExamType, progress: ProgressSummary | null): SkillRow[] {
-  const bySkill = new Map((progress?.skills ?? []).map(row => [row.skill, row]));
-
-  // Only the skills the exam has: EPS-TOPIK shows Reading and Listening alone.
-  return skillsFor(exam).map(skill => {
-    const row = bySkill.get(skill);
-    const max = EXAM_MAX_SCORE[exam];
-    const band = (value: number) => formatScore(exam, value);
-    const hasScore = row != null && row.estimate != null;
-
-    return {
-      name: skill.charAt(0).toUpperCase() + skill.slice(1),
-      sub: SKILL_SUBTITLES[exam][skill] ?? '',
-      scoreText: hasScore ? `${band(row!.estimate!)}/${band(max)}` : '',
-      percent: hasScore ? Math.round((row!.estimate! / max) * 100) : 0,
-      href: `/practice?skill=${skill}`,
-    };
-  });
-}
 
 export default function DashboardPage() {
   const { user, activeExam, pteVariant } = useApp();
   const [isExamDateOpen, setIsExamDateOpen] = useState(false);
-  const { progress, unresolvedMistakes, isLoading } = useDashboardSummary(activeExam);
+  const { progress, isLoading } = useDashboardSummary(activeExam);
 
   if (isLoading) {
     return <DashboardPageSkeleton />;
   }
 
   const userName = user?.name?.split(' ')[0] ?? 'there';
-  const mistakeCount = unresolvedMistakes ?? 0;
 
   const examDate = user?.examDate ? formatExamDate(user.examDate) : null;
   const daysLeft = user?.examDate ? daysUntilExam(user.examDate) : null;
@@ -129,12 +86,10 @@ export default function DashboardPage() {
         <CurrentPlanCard user={user} />
       </div>
 
-      {/* Full-width Practice Studio below Current Plan */}
-      <div>
-        <PracticeStudioPanel
-          skills={buildSkillRows(activeExam, progress)}
-          mistakeCount={mistakeCount}
-        />
+      <SkillProfileCard progress={progress} />
+
+      <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-sm">
+        <MistakesPage embedded />
       </div>
 
       <ExamDateDialog open={isExamDateOpen} onOpenChange={setIsExamDateOpen} />
