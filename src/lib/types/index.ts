@@ -169,12 +169,6 @@ export interface UserProfile {
   level: number;
   xpToNextLevel: number;
 
-  /**
-   * When a profile picture was last set, absent when there is none. Doubles as
-   * the cache key for the image URL — see profileImageUrl in lib/api.
-   */
-  avatarUpdatedAt?: string;
-  coverUpdatedAt?: string;
 
   /** Null until the learner finishes or skips onboarding; absent on servers that predate it. */
   onboardingCompletedAt?: string | null;
