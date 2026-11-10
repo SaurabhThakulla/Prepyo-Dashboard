@@ -14,7 +14,7 @@ import StudentsPage from './StudentsCard';
 import StudentLoginPage from './StudentLoginPage';
 import { EXAM_CHOICES } from './profile';
 import { PageHero } from './ui';
-import { Layers, Settings as SettingsIcon, Wallet } from 'lucide-react';
+import { CreditCard, Layers, Settings as SettingsIcon, Users, Wallet } from 'lucide-react';
 
 const TITLES: Record<InstitutionSection, string> = {
   overview: 'Students',
@@ -64,7 +64,12 @@ export default function DashboardPage() {
   // through: the admin changes the details on the Settings page.
   return (
     <InstitutionLayout account={account} title={TITLES[page]} signingOut={signingOut} onSignOut={signOut}>
-      {page === 'overview' && <StudentsPage account={account} exams={studentExams(institution)} />}
+      {page === 'overview' && (
+        <div className="space-y-6">
+          <PageHero eyebrow="People" eyebrowIcon={Users} title="Students" subtitle={`${institution.name} · who is studying, how active they are, and who needs a nudge`} />
+          <StudentsPage account={account} exams={studentExams(institution)} />
+        </div>
+      )}
       {page === 'batches' && (
         <div className="space-y-6">
           <PageHero eyebrow="Classes" eyebrowIcon={Layers} title="Batches" subtitle={`${institution.name} · group students into classes to follow them together`} />
@@ -78,7 +83,12 @@ export default function DashboardPage() {
         </div>
       )}
       {page === 'mocks' && <InstituteMocksSection account={account} />}
-      {page === 'subscription' && <SubscriptionSection account={account} />}
+      {page === 'subscription' && (
+        <div className="space-y-6">
+          <PageHero eyebrow="Plan" eyebrowIcon={CreditCard} title="Subscription" subtitle={`${institution.name} · your plan, seats and renewal`} />
+          <SubscriptionSection account={account} />
+        </div>
+      )}
       {page === 'settings' && (
         <div className="space-y-6">
           <PageHero eyebrow="Account" eyebrowIcon={SettingsIcon} title="Settings" subtitle={`${institution.name} · your details and sign-in page`} />

@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { rememberInstitution } from '@/lib/signOutPath';
 import { api, ApiError } from '@/lib/api';
 import '@/lib/google';
@@ -103,6 +104,10 @@ interface NotificationPage {
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  // Cached queries are not keyed by user, so a different account must never
+  // see the previous one's data: the cache is dropped on sign-out and switch.
+  const queryClient = useQueryClient();
+  const cachedUserId = useRef<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationTotal, setNotificationTotal] = useState(0);
@@ -212,6 +217,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [theme, setTheme]);
 
   const applyUser = useCallback((next: UserProfile) => {
+    if (cachedUserId.current !== null && cachedUserId.current !== next.id) queryClient.clear();
+    cachedUserId.current = next.id;
     setUser(next);
     rememberInstitution(next);
     if (isExamType(next.targetExam)) {
@@ -222,7 +229,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // ignore
       }
     }
-  }, []);
+  }, [queryClient]);
 
   const refreshNotifications = useCallback(async () => {
     try {
@@ -319,8 +326,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setNotifications([]);
       setActiveExamState('PTE');
+      queryClient.clear();
+      cachedUserId.current = null;
     }
-  }, []);
+  }, [queryClient]);
 
   const updateProfile = useCallback(
     async (updates: Partial<Pick<UserProfile, 'name' | 'targetExam' | 'targetModule' | 'targetScore' | 'examDate' | 'nepalRegion'>>) => {

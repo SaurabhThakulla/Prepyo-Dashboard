@@ -32,7 +32,6 @@ const PROTECTED_PREFIXES = [
   '/mocks',
   '/institute-mock',
   '/mistakes',
-  '/profile',
   '/subscription',
   '/diagnostic',
   '/reports',

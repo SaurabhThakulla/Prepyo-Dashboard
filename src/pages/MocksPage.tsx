@@ -194,13 +194,13 @@ export default function MocksPage() {
     if (searchParams.get('view') === 'full') {
       return (
         <Suspense fallback={<AppPageSkeleton />}>
-          <FullMockPanel header={header} />
+          <FullMockPanel />
         </Suspense>
       );
     }
     return (
       <Suspense fallback={<AppPageSkeleton />}>
-        <IeltsMockCenter header={header} />
+        <IeltsMockCenter tabs={tabs} />
       </Suspense>
     );
   }

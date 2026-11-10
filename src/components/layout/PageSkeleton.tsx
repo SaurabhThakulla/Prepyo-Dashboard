@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   DashboardPageSkeleton,
-  ProfilePageSkeleton,
   PracticePageSkeleton,
   ReadingPracticeSkeleton,
   MocksPageSkeleton,
@@ -13,7 +12,6 @@ import {
 
 export type PageSkeletonVariant =
   | 'dashboard'
-  | 'profile'
   | 'practice'
   | 'reading'
   | 'reading-mcq'
@@ -30,8 +28,6 @@ export interface PageSkeletonProps {
 
 export default function PageSkeleton({ variant = 'dashboard', bare = false }: PageSkeletonProps) {
   switch (variant) {
-    case 'profile':
-      return <ProfilePageSkeleton />;
     case 'practice':
       return <PracticePageSkeleton bare={bare} />;
     // Every reading task loads into the same two-pane layout, so they share one
@@ -59,7 +55,6 @@ export default function PageSkeleton({ variant = 'dashboard', bare = false }: Pa
 export {
   PageSkeleton,
   DashboardPageSkeleton,
-  ProfilePageSkeleton,
   PracticePageSkeleton,
   ReadingPracticeSkeleton,
   MocksPageSkeleton,

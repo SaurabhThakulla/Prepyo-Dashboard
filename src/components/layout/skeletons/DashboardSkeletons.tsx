@@ -69,25 +69,6 @@ export const DashboardPageSkeleton = () => (
   </Shell>
 );
 
-export const ProfilePageSkeleton = () => (
-  <Shell label="profile" className="p-0 pb-12 space-y-6">
-    <div className="bg-card border-b border-border/80">
-      <Skeleton className="h-48 sm:h-64 w-full rounded-none" />
-      <div className="px-4 sm:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-border/40">
-        <div className="flex items-center gap-4"><Skeleton className="h-20 w-20 -mt-10 rounded-full ring-4 ring-background shrink-0" /><div className="space-y-2"><Skeleton className="h-6 w-44" /><Skeleton className="h-3.5 w-56" /></div></div>
-        <Skeleton className="h-9 w-28 rounded-xl" />
-      </div>
-    </div>
-    <div className="px-4 sm:px-8 space-y-6">
-      <StatGrid count={4} />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="flex items-center justify-center p-8"><Skeleton className="h-52 w-52 rounded-full" /></Card>
-        <Card className="lg:col-span-2 p-6 space-y-4"><Skeleton className="h-5 w-44" /><Skeleton className="h-48 w-full rounded-xl" /></Card>
-      </div>
-    </div>
-  </Shell>
-);
-
 export const PracticePageSkeleton = ({ bare = false }: { bare?: boolean } = {}) => (
   <Shell
     label="practice question"

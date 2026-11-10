@@ -386,6 +386,7 @@ function StudentFeeDialog({ fee, account, batch, onChanged }: { fee: StudentFee;
         const sent = await emailReceipt(payment.id, await feeReceiptPdf(await receiptData(account, latest, batch)));
         if (sent.emailed) return `${recorded} Receipt emailed to ${sent.to}.`;
         if (sent.reason === 'no_email') return `${recorded} Add the student's email to send receipts automatically.`;
+        if (sent.reason === 'daily_limit') return `${recorded} Today's email limit is reached, so download the receipt and share it instead.`;
         return recorded;
       } catch (err) {
         return `${recorded} The receipt could not be emailed: ${errorMessage(err)}`;

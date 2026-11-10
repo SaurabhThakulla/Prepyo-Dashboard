@@ -186,6 +186,10 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
       description="Task 1 and Task 2 in 60 minutes, as in the test."
       duration="60 min"
       items="2 tasks"
+      parts={[
+        { label: 'Task 1', timing: 'About 20 minutes · at least 150 words' },
+        { label: 'Task 2', timing: 'About 40 minutes · at least 250 words' },
+      ]}
       credits={SECTION_MOCK_SUB_TESTS}
       subTestsRemaining={subTestsLeft(user?.subscription)}
       isStarting={starting}

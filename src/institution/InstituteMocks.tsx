@@ -1,6 +1,6 @@
 import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Check, ClipboardCheck, Loader2, Lock, Mic, Pencil, PenTool, Play, Plus, Search, Shuffle, Sparkles, Square, Trash2, Users, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, ChevronRight, ClipboardCheck, Headphones, Loader2, Lock, Mic, Pencil, PenTool, Play, Plus, Search, Shuffle, Sparkles, Square, Trash2, Users, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -48,7 +48,7 @@ import {
 import { FormError } from './FormField';
 import IeltsReviewScreen, { bandText } from './IeltsReview';
 import PteReportForm from '@/components/pteMock/PteReportForm';
-import { TONES, useConfirm } from './ui';
+import { EXAM_TONE, HERO, PageHero, TONES, useConfirm } from './ui';
 
 // ---------------------------------------------------------------- shared bits
 
@@ -58,6 +58,9 @@ const STATE_LABEL: Record<MockState, { label: string; tone: string }> = {
   open: { label: 'Open', tone: TONES.green.soft },
   closed: { label: 'Closed', tone: 'border-border bg-muted text-muted-foreground' },
 };
+
+/** Each kind of mock keeps one icon in the list. */
+const KIND_ICON: Record<InstituteMockKind, typeof Mic> = { full: ClipboardCheck, speaking: Mic, writing: PenTool, reading: BookOpen, listening: Headphones };
 
 const ATTEMPT_LABEL: Record<MockAttemptRow['status'], { label: string; tone: string }> = {
   in_progress: { label: 'Taking it', tone: TONES.blue.soft },
@@ -135,77 +138,129 @@ function MocksList({ account, onOpen }: { account: InstitutionAccount; onOpen: (
   }, []);
 
   return (
-    <Card className="space-y-5 p-4 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">Institute Mocks</h2>
-          <p className="text-sm text-muted-foreground">Tests you set, the AI marks, and you review before students see the score.</p>
-        </div>
-        <Button size="sm" className="h-9" onClick={() => setCreating(true)}>
-          <Plus className="mr-1.5 h-4 w-4" /> New mock
-        </Button>
-      </div>
-
-      <FormError message={error} />
-      {mocks === null && !error && (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-        </p>
-      )}
-      {mocks?.length === 0 && (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border px-4 py-12 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <ClipboardCheck className="h-6 w-6" />
-          </span>
-          <p className="font-display text-base font-semibold text-foreground">No Institute Mocks yet</p>
-          <p className="max-w-sm text-sm text-muted-foreground">Create one, choose its questions, and set it for a batch.</p>
-        </div>
-      )}
-      {mocks && mocks.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[760px] text-sm">
-            <thead>
-              <tr className="whitespace-nowrap bg-muted/60 text-left text-xs font-medium text-muted-foreground">
-                <th className="w-full px-4 py-3">Mock</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">Paper</th>
-                <th className="px-5 py-3">Students</th>
-                <th className="px-5 py-3">To review</th>
-                <th className="px-5 py-3">Released</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {mocks.map(m => (
-                <tr key={m.id} onClick={() => onOpen(m.id)} className="cursor-pointer transition-colors hover:bg-muted/40">
-                  <td className="px-4 py-3">
-                    <span className="block font-medium text-foreground">{m.name}</span>
-                    <span className="block text-xs text-muted-foreground">
-                      {m.title}
-                      {m.exam === 'IELTS' && ' · Academic'}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-5 py-3">
-                    <Badge variant="outline" className={`normal-case tracking-normal text-xs font-medium ${STATE_LABEL[m.state].tone}`}>
-                      {STATE_LABEL[m.state].label}
-                    </Badge>
-                  </td>
-                  <td className="whitespace-nowrap px-5 py-3 tabular-nums">
-                    {m.questions} / {m.needed} {unitWord(m.exam, m.needed)}
-                  </td>
-                  <td className="px-5 py-3 tabular-nums">{m.students}</td>
-                  <td className={`px-5 py-3 tabular-nums ${m.waiting > 0 ? 'font-medium text-amber-700 dark:text-amber-300' : ''}`}>{m.waiting}</td>
-                  <td className="px-5 py-3 tabular-nums">{m.released}</td>
+    <div className="space-y-6">
+      <PageHero
+        eyebrow="Tests"
+        eyebrowIcon={ClipboardCheck}
+        title="Institute Mocks"
+        subtitle="Tests you set, the AI marks, and you review before students see the score."
+        actions={
+          <Button size="sm" variant="secondary" className="h-9 bg-white text-primary hover:bg-white/90" onClick={() => setCreating(true)}>
+            <Plus className="mr-1.5 h-4 w-4" /> New mock
+          </Button>
+        }
+      />
+      <Card className="space-y-5 p-4 sm:p-6">
+        <FormError message={error} />
+        {mocks === null && !error && (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          </p>
+        )}
+        {mocks?.length === 0 && (
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border px-4 py-12 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <ClipboardCheck className="h-6 w-6" />
+            </span>
+            <p className="font-display text-base font-semibold text-foreground">No Institute Mocks yet</p>
+            <p className="max-w-sm text-sm text-muted-foreground">Create one, choose its questions, and set it for a batch.</p>
+          </div>
+        )}
+        {mocks && mocks.length > 0 && (
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="w-full min-w-[820px] text-sm">
+              <thead>
+                <tr className="whitespace-nowrap border-b border-border bg-muted/40 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <th className="w-full py-3 pl-5 pr-4">Mock</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Paper</th>
+                  <th className="px-4 py-3 text-right">Students</th>
+                  <th className="px-4 py-3 text-right">To review</th>
+                  <th className="px-4 py-3 text-right">Released</th>
+                  <th className="w-10 py-3 pr-4" aria-hidden />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody className="divide-y divide-border">
+                {mocks.map(m => {
+                  const KindIcon = KIND_ICON[m.kind] ?? ClipboardCheck;
+                  const full = m.needed > 0 && m.questions >= m.needed;
+                  return (
+                    <tr
+                      key={m.id}
+                      tabIndex={0}
+                      role="link"
+                      aria-label={`Open ${m.name}`}
+                      onClick={() => onOpen(m.id)}
+                      onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onOpen(m.id))}
+                      className="group cursor-pointer transition-colors hover:bg-primary/[0.04] focus-visible:bg-primary/[0.06] focus-visible:outline-none"
+                    >
+                      <td className="border-l-[3px] border-l-transparent py-3.5 pl-[17px] pr-4 transition-colors group-hover:border-l-primary group-focus-visible:border-l-primary">
+                        <div className="flex items-center gap-3">
+                          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-105 ${TONES[EXAM_TONE[m.exam] ?? 'blue'].soft}`}>
+                            <KindIcon className="h-[18px] w-[18px]" aria-hidden />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate font-semibold text-foreground transition-colors group-hover:text-primary">{m.name}</span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {m.title}
+                              {m.exam === 'IELTS' && ' · Academic'}
+                            </span>
+                          </span>
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3.5">
+                        <Badge variant="outline" className={`normal-case tracking-normal text-xs font-medium ${STATE_LABEL[m.state].tone}`}>
+                          {STATE_LABEL[m.state].label}
+                        </Badge>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3.5">
+                        <span className="tabular-nums text-foreground">
+                          {m.questions} / {m.needed} <span className="text-muted-foreground">{unitWord(m.exam, m.needed)}</span>
+                        </span>
+                        <span className="mt-1.5 block h-1 w-28 overflow-hidden rounded-full bg-muted">
+                          <span
+                            className={`block h-full rounded-full ${full ? 'bg-emerald-500' : 'bg-primary'}`}
+                            style={{ width: `${m.needed ? Math.min(100, (m.questions / m.needed) * 100) : 0}%` }}
+                          />
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <span className="inline-flex items-center gap-1.5 tabular-nums text-foreground">
+                          <Users className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                          {m.students}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3.5 text-right">
+                        {m.waiting > 0 ? (
+                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold tabular-nums ${TONES.amber.soft}`}>
+                            {m.waiting} to review
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 text-right tabular-nums">
+                        {m.released > 0 ? <span className="font-medium text-foreground">{m.released}</span> : <span className="text-muted-foreground">—</span>}
+                      </td>
+                      <td className="py-3.5 pr-4 text-right">
+                        <ChevronRight
+                          className="ml-auto h-4 w-4 text-muted-foreground/60 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-primary"
+                          aria-hidden
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-      <Dialog open={creating} onOpenChange={open => !open && setCreating(false)}>
-        {creating && <CreateDialog exams={mockExams(account)} onCreated={id => onOpen(id)} />}
-      </Dialog>
-    </Card>
+        <Dialog open={creating} onOpenChange={open => !open && setCreating(false)}>
+          {creating && <CreateDialog exams={mockExams(account)} onCreated={id => onOpen(id)} />}
+        </Dialog>
+      </Card>
+    </div>
   );
 }
 
@@ -474,11 +529,13 @@ function MockEditor({
 
   return (
     <div className="space-y-4">
-      <Card className="space-y-5 p-4 pb-0 sm:p-6 sm:pb-0">
-        <button type="button" onClick={onBack} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+      <header className={`${HERO} space-y-5`}>
+        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-24 right-40 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+        <button type="button" onClick={onBack} className="relative inline-flex items-center gap-1.5 text-sm text-white/80 hover:text-white">
           <ArrowLeft className="h-4 w-4" /> Institute Mocks
         </button>
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="relative flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1 space-y-2">
             {/* The name reads as a title and edits in place. */}
             <div className="group relative max-w-xl">
@@ -486,12 +543,12 @@ function MockEditor({
                 aria-label="Mock name"
                 value={name}
                 onChange={e => (setName(e.target.value), setDirty(true))}
-                className="h-11 border-transparent bg-transparent px-2 -mx-2 pr-8 font-display text-xl font-bold shadow-none hover:border-border focus-visible:border-input sm:text-2xl"
+                className="h-11 border-transparent bg-transparent px-2 -mx-2 pr-8 font-display text-xl font-bold text-white shadow-none hover:border-white/40 focus-visible:border-white/60 focus-visible:bg-white/10 focus-visible:ring-white/40 sm:text-2xl"
               />
-              <Pencil className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
+              <Pencil className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-white/70 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <Badge variant="outline" className={`normal-case tracking-normal text-xs font-medium ${STATE_LABEL[mock.state].tone}`}>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-white/80">
+              <Badge variant="outline" className="border-white/30 bg-white/15 normal-case tracking-normal text-xs font-medium text-white">
                 {STATE_LABEL[mock.state].label}
               </Badge>
               <span>{mock.title}</span>
@@ -502,22 +559,22 @@ function MockEditor({
               {dirty && (
                 <>
                   <span aria-hidden>·</span>
-                  <span className="text-amber-600 dark:text-amber-400">Unsaved changes</span>
+                  <span className="font-medium text-amber-200">Unsaved changes</span>
                 </>
               )}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {mock.started === 0 && (
-              <Button variant="ghost" size="sm" className="h-9 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700 dark:text-rose-400" onClick={() => void remove()}>
+              <Button variant="ghost" size="sm" className="h-9 text-white/90 hover:bg-rose-500/25 hover:text-white" onClick={() => void remove()}>
                 <Trash2 className="mr-1.5 h-4 w-4" /> Delete
               </Button>
             )}
-            <Button variant="outline" size="sm" className="h-9 px-4" onClick={() => void save()} disabled={busy || !dirty}>
+            <Button variant="outline" size="sm" className="h-9 border-white/40 bg-white/10 px-4 text-white hover:bg-white/20 hover:text-white" onClick={() => void save()} disabled={busy || !dirty}>
               Save
             </Button>
             {!mock.publishedAt && (
-              <Button size="sm" className="h-9 px-5" onClick={() => void publish()} disabled={busy}>
+              <Button size="sm" className="h-9 bg-white px-5 text-primary hover:bg-white/90" onClick={() => void publish()} disabled={busy}>
                 {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
                 Publish
               </Button>
@@ -526,29 +583,32 @@ function MockEditor({
         </div>
 
         {/* How full the paper is, at a glance. */}
-        <div className="space-y-1.5">
+        <div className="relative space-y-1.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-medium text-foreground">Paper</span>
-            <span className="tabular-nums text-muted-foreground">
+            <span className="font-medium text-white">Paper</span>
+            <span className="tabular-nums text-white/80">
               {chosen} of {needed} {unitWord(mock.exam, needed)} chosen
             </span>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+          <div className="h-1.5 overflow-hidden rounded-full bg-white/20">
             <div
-              className={`h-full rounded-full transition-all ${chosen >= needed ? 'bg-emerald-500' : 'bg-primary'}`}
+              className={`h-full rounded-full transition-all ${chosen >= needed ? 'bg-emerald-400' : 'bg-white'}`}
               style={{ width: `${needed ? Math.min(100, (chosen / needed) * 100) : 0}%` }}
             />
           </div>
         </div>
 
-        <FormError message={error} />
-        {notice && (
-          <p className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
-            <Check className="h-4 w-4" aria-hidden /> {notice}
-          </p>
-        )}
+      </header>
 
-        <div role="tablist" className="-mx-4 flex gap-6 overflow-x-auto border-t border-border px-4 sm:-mx-6 sm:px-6">
+      <FormError message={error} />
+      {notice && (
+        <p className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+          <Check className="h-4 w-4" aria-hidden /> {notice}
+        </p>
+      )}
+
+      <Card className="px-4 py-0 sm:px-6">
+        <div role="tablist" className="flex gap-6 overflow-x-auto">
           {(
             [
               ['paper', 'Paper', `${chosen}/${needed}`],
@@ -562,7 +622,7 @@ function MockEditor({
               role="tab"
               aria-selected={tab === id}
               onClick={() => setTab(id)}
-              className={`-mt-px flex shrink-0 items-center gap-2 border-t-2 py-3 text-sm font-medium transition-colors ${tab === id ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              className={`flex shrink-0 items-center gap-2 border-b-2 py-3.5 text-sm font-medium transition-colors ${tab === id ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
             >
               {label}
               {count && (
@@ -1251,9 +1311,20 @@ function ResultsTable({ mock, onReview }: { mock: InstituteMockDetail; onReview:
   return (
     <Card className="space-y-4 p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          {roster.length} student{roster.length === 1 ? '' : 's'} · {mock.attempts.length} started · {mock.waiting} to review · {mock.released} released
-        </p>
+        <div className="flex flex-wrap gap-2" data-testid="results-summary">
+          {(
+            [
+              ['Students', roster.length, 'border-border bg-muted/40 text-foreground'],
+              ['Started', mock.attempts.length, TONES.blue.soft],
+              ['To review', mock.waiting, mock.waiting > 0 ? TONES.amber.soft : 'border-border bg-muted/40 text-muted-foreground'],
+              ['Released', mock.released, TONES.green.soft],
+            ] as const
+          ).map(([label, value, tone]) => (
+            <span key={label} className={`inline-flex items-baseline gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${tone}`}>
+              <span className="text-base font-bold tabular-nums">{value}</span> {label}
+            </span>
+          ))}
+        </div>
         <div className="flex flex-wrap gap-1 rounded-lg bg-muted p-1 text-xs font-semibold" role="group" aria-label="Show">
           {(Object.keys(ROSTER_FILTERS) as RosterFilter[]).map(f => (
             <button
@@ -1279,6 +1350,7 @@ function ResultsTable({ mock, onReview }: { mock: InstituteMockDetail; onReview:
             const label = r.status === 'not_started' ? NOT_STARTED : ATTEMPT_LABEL[r.status];
             const canOpen = Boolean(r.attemptId) && (r.status === 'submitted' || r.status === 'released');
             const open = () => r.attemptId && onReview(r.attemptId);
+            const accent = ROW_ACCENT[r.status] ?? ROW_ACCENT.not_started;
             return (
               <li
                 key={r.userId}
@@ -1295,23 +1367,25 @@ function ResultsTable({ mock, onReview }: { mock: InstituteMockDetail; onReview:
                       },
                     }
                   : {})}
-                className={`group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm transition-all duration-150 ${
+                className={`group flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-200 ${
                   canOpen
-                    ? 'cursor-pointer hover:-translate-y-px hover:border-primary hover:bg-primary/[0.03] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary'
-                    : ''
+                    ? 'cursor-pointer border-border bg-card shadow-sm hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/[0.03] hover:shadow-md hover:shadow-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary'
+                    : 'border-border/70 bg-muted/20'
                 }`}
                 data-testid="roster-row"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-transform duration-200 group-hover:scale-105 ${accent.avatar}`}>
                   {(r.name.trim()[0] ?? '?').toUpperCase()}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-foreground">{r.name}</p>
+                  <p className={`truncate text-sm font-semibold transition-colors ${canOpen ? 'text-foreground group-hover:text-primary' : 'text-foreground/80'}`}>{r.name}</p>
                   <p className="truncate font-mono text-xs text-muted-foreground">@{r.username}</p>
                 </div>
-                <div className="hidden text-right text-xs text-muted-foreground sm:block">
-                  {r.submittedAt && <p>Handed in {day(r.submittedAt)}</p>}
-                  {r.finalScore != null && <p className="font-semibold tabular-nums text-foreground">{finalScoreText(mock.exam, r.finalScore)}</p>}
+                <div className="hidden items-center gap-3 text-xs text-muted-foreground sm:flex">
+                  {r.submittedAt && <span>Handed in {day(r.submittedAt)}</span>}
+                  {r.finalScore != null && (
+                    <span className="rounded-md bg-muted px-2 py-0.5 text-sm font-bold tabular-nums text-foreground">{finalScoreText(mock.exam, r.finalScore)}</span>
+                  )}
                 </div>
                 <Badge variant="outline" className={`shrink-0 normal-case tracking-normal text-xs font-medium ${label.tone}`}>
                   {label.label}
@@ -1324,6 +1398,7 @@ function ResultsTable({ mock, onReview }: { mock: InstituteMockDetail; onReview:
                     className="h-8 shrink-0 text-xs group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground"
                   >
                     {r.status === 'submitted' ? 'Review' : 'View'}
+                    <ChevronRight className="ml-0.5 h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
                   </Button>
                 )}
               </li>
@@ -1346,6 +1421,14 @@ const ROSTER_FILTERS: Record<RosterFilter, { label: string; match: (status: Mock
 };
 
 const NOT_STARTED = { label: 'Not started', tone: 'border-border bg-muted text-muted-foreground' };
+
+/** A roster row's avatar colour, by where the student's sitting is. */
+const ROW_ACCENT: Record<MockRosterRow['status'], { avatar: string }> = {
+  not_started: { avatar: 'bg-muted text-muted-foreground' },
+  in_progress: { avatar: 'bg-sky-500/10 text-sky-700 dark:text-sky-300' },
+  submitted: { avatar: 'bg-amber-500/15 text-amber-700 dark:text-amber-300' },
+  released: { avatar: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
+};
 
 function ReviewScreen({
   account,

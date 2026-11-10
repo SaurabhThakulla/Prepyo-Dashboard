@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bug,
-  User,
   CreditCard,
   LogOut,
   MessageSquare,
@@ -45,13 +44,11 @@ function menuLinks(user: UserProfile | null): (MenuLink | 'separator')[] {
       { to: '/admin/reports', label: 'Issue reports', icon: MessageSquareWarning },
       { to: '/admin/consultancies', label: 'Consultancies', icon: Building2 },
       'separator',
-      { to: '/profile', label: 'Profile', icon: User },
       { to: '/reports', label: 'My reports', icon: MessageSquare },
     ];
   }
   return [
     { to: '/dashboard', label: 'Home', icon: Home },
-    { to: '/profile', label: 'Profile', icon: User },
     ...(isInstitutionStudent(user) ? [] : [{ to: '/subscription', label: 'Subscription', icon: CreditCard }]),
     { to: '/reports', label: 'My reports', icon: MessageSquare },
   ];

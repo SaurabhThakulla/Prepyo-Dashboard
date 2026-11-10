@@ -1,3 +1,4 @@
+import { onRecordingStarted } from '@/lib/audioFocus';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Question } from '@/lib/types';
 import { Playback, StoppedError } from '@/lib/scriptPlayer';
@@ -99,6 +100,9 @@ export function usePromptPlayback(question: Question, delaySeconds: number, onDo
     playback.current?.stop();
     playback.current = null;
   }, []);
+
+  // Whatever opens the microphone, the recording never plays over the answer.
+  useEffect(() => onRecordingStarted(stop), [stop]);
 
   return { present, phase, countdown, progress, stop };
 }

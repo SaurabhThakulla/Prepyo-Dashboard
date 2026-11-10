@@ -18,15 +18,13 @@ import {
   RotateCcw,
   ShieldCheck,
   Sparkles,
-  UserRound,
   Video,
   BookCopy,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import ReportIssueDialog from '@/components/support/ReportIssueDialog';
 import { ExamSwitcher } from '@/components/layout/sidebar/SecondaryPanel';
-import { profileImageUrl } from '@/lib/api';
 import { accountLines } from '@/lib/account';
 import { EXAM_LABELS, isAdmin, isInstitutionStudent, isPremiumUser } from '@/lib/types';
 import { hasMaterials } from '@/data/materials';
@@ -91,7 +89,6 @@ export default function MePage() {
           href: '/subscription',
         };
   const account: Row[] = [
-    { label: 'Profile & goals', sublabel: 'Target score, exam date, photo', icon: UserRound, tint: 'text-sky-600 bg-sky-500/10', href: '/profile' },
     ...(planRow ? [planRow] : []),
     admin
       ? { label: 'Issue reports', sublabel: 'What learners have reported', icon: MessageSquareWarning, tint: 'text-amber-600 bg-amber-500/10', href: '/admin/reports' }
@@ -127,12 +124,8 @@ export default function MePage() {
 
   return (
     <div className="mx-auto w-full max-w-xl space-y-5 px-4 py-5 sm:py-8">
-      <Link
-        to="/profile"
-        className="flex items-center gap-4 rounded-3xl border border-border bg-card p-4 shadow-sm transition-transform active:scale-[0.99]"
-      >
+      <div className="flex items-center gap-4 rounded-3xl border border-border bg-card p-4 shadow-sm">
         <Avatar className="h-16 w-16 ring-4 ring-primary/10">
-          {user.avatarUpdatedAt && <AvatarImage src={profileImageUrl('avatar', user.avatarUpdatedAt)} alt="" />}
           <AvatarFallback className="bg-primary/10 text-xl font-bold text-primary">
             {user.name?.charAt(0)?.toUpperCase() || 'L'}
           </AvatarFallback>
@@ -157,7 +150,7 @@ export default function MePage() {
           </div>
         </div>
         <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
-      </Link>
+      </div>
 
       {admin ? (
         <section className="space-y-2 rounded-3xl border border-border bg-card p-4">

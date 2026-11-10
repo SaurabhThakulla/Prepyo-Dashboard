@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Bot, Loader2, Mic, Pause, PenTool, Play } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ArrowLeft, Bot, Loader2, Mic, PenTool } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { errorMessage } from '@/lib/api';
 import IeltsReportForm from '@/components/mocks/ielts/IeltsReportForm';
-import { ObjectiveReview } from '@/components/mocks/ielts/IeltsAnswerReview';
+import { ObjectiveReview, SpeakingTurns } from '@/components/mocks/ielts/IeltsAnswerReview';
 import { IeltsSkill, ieltsOverallBand, ieltsWritingBand } from '@/lib/mockReview';
 import {
   BandMark,
@@ -20,6 +20,7 @@ import {
   InstitutionAccount,
   mockRecordingUrl,
   MockReview,
+  ReviewPassage,
   releaseMockResult,
   saveMockReview,
 } from './api';
@@ -305,7 +306,7 @@ function SectionReview({
     <div className="space-y-3">
       {section.parts.map(part =>
         part.key === 'listening' || part.key === 'reading' ? (
-          <AnswerSheet key={part.key} answers={part.answers} skill={part.key} correct={part.correct} total={part.total} band={part.aiBand} />
+          <AnswerSheet key={part.key} answers={part.answers} recordings={part.recordings} scripts={part.scripts} passages={part.passages} skill={part.key} correct={part.correct} total={part.total} band={part.aiBand} />
         ) : (
           <MarkedPart
             key={part.key}
@@ -325,12 +326,18 @@ function SectionReview({
 /** A Listening or Reading paper question by question, as the student's own review shows it. */
 export function AnswerSheet({
   answers,
+  recordings,
+  scripts,
+  passages,
   skill = 'reading',
   correct,
   total,
   band = null,
 }: {
   answers?: IeltsAnswer[];
+  recordings?: Record<number, string>;
+  scripts?: string[];
+  passages?: ReviewPassage[];
   skill?: 'listening' | 'reading';
   correct?: number;
   total?: number;
@@ -352,8 +359,11 @@ export function AnswerSheet({
           band,
           correct: correct ?? marks,
           total: total ?? outOf,
-          items: answers.map(a => ({ ...a, part: 0, typeId: '' })),
+          items: answers.map(a => ({ ...a, part: a.part ?? 0, typeId: '' })),
+          scripts,
         }}
+        recordings={recordings}
+        passages={passages}
       />
     </div>
   );
@@ -406,18 +416,16 @@ function MarkedPart({
       </header>
 
       {(part.key === 'task1' || part.key === 'task2') && (
-        <div className="space-y-3">
-          <details className="rounded-xl border border-border bg-muted/30">
-            <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-semibold text-foreground hover:text-primary">The task</summary>
-            <div className="space-y-3 border-t border-border px-4 py-4 text-foreground">
-              {part.title && <p className="text-base font-semibold">{part.title}</p>}
-              {part.prompt && <p className="max-w-[72ch] whitespace-pre-wrap text-[15px] leading-8">{part.prompt}</p>}
-              {part.imageUrl && <img src={part.imageUrl} alt="" className="max-h-56 border border-border bg-white" />}
-            </div>
-          </details>
+        <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+          <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4 text-foreground lg:sticky lg:top-20">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">The task</p>
+            {part.title && <p className="text-base font-semibold">{part.title}</p>}
+            {part.prompt && <p className="whitespace-pre-line text-sm leading-6">{part.prompt}</p>}
+            {part.imageUrl && <img src={part.imageUrl} alt={part.title ?? 'Task chart'} className="w-full rounded-lg border border-border bg-white object-contain" />}
+          </div>
           <div className="space-y-1.5">
             <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Student's answer</p>
-            <p className="max-w-[72ch] whitespace-pre-wrap rounded-lg border border-primary/20 bg-primary/[0.03] px-4 py-3 text-[15px] leading-8 text-foreground">
+            <p className="whitespace-pre-wrap rounded-xl border border-primary/20 bg-primary/[0.03] px-4 py-3 text-[15px] leading-7 text-foreground">
               {part.response || <span className="text-muted-foreground">Nothing was written, or it has been deleted.</span>}
             </p>
           </div>
@@ -508,138 +516,18 @@ function BandChip({ active, disabled, onClick, children }: { active: boolean; di
   );
 }
 
-const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-
 type Turn = NonNullable<IeltsPart['turns']>[number];
 
-/** The speaking test's answers, one IELTS part at a time; one recording plays at a time. */
+/** The speaking test's answers as the student's own review shows them: a card a question, opening to the answer and its rating. */
 function SpeakingAnswers({ turns, recordingUrl }: { turns: Turn[]; recordingUrl: (position: number) => string }) {
-  const parts = [...new Set(turns.map(t => t.part))].sort();
-  const [shown, setShown] = useState(parts[0] ?? 1);
-  const [playing, setPlaying] = useState<number | null>(null);
   if (turns.length === 0) return <p className="text-sm text-muted-foreground">No answers were recorded.</p>;
   return (
-    <div className="overflow-hidden rounded-xl border border-border">
-      {parts.length > 1 && (
-        <div role="tablist" aria-label="Speaking parts" className="flex flex-wrap gap-1.5 border-b border-border bg-muted/20 px-3 py-2.5">
-          {parts.map(p => (
-            <button
-              key={p}
-              type="button"
-              role="tab"
-              aria-selected={p === shown}
-              onClick={() => setShown(p)}
-              className={cn(
-                'rounded-lg border px-3 py-1 text-xs font-semibold transition-colors',
-                p === shown ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:border-primary/50',
-              )}
-            >
-              Part {p} · {turns.filter(t => t.part === p).length}
-            </button>
-          ))}
-        </div>
-      )}
-      <ol className="divide-y divide-border">
-        {turns
-          .filter(t => t.part === shown)
-          .map(turn => (
-            <TurnRow
-              key={turn.position}
-              turn={turn}
-              src={turn.hasRecording ? recordingUrl(turn.position) : ''}
-              active={playing === turn.position}
-              onPlay={() => setPlaying(turn.position)}
-              onStop={() => setPlaying(p => (p === turn.position ? null : p))}
-            />
-          ))}
-      </ol>
-    </div>
-  );
-}
-
-/** One answer: a small play button, the question, a progress bar while it plays, and the transcript. */
-function TurnRow({ turn, src, active, onPlay, onStop }: { turn: Turn; src: string; active: boolean; onPlay: () => void; onStop: () => void }) {
-  const audio = useRef<HTMLAudioElement>(null);
-  const [time, setTime] = useState(0);
-  const [length, setLength] = useState(turn.seconds);
-  // Another answer started: this one stops.
-  useEffect(() => {
-    if (!active) audio.current?.pause();
-  }, [active]);
-  const toggle = () => {
-    const el = audio.current;
-    if (!el) return;
-    if (el.paused) {
-      onPlay();
-      void el.play().catch(onStop);
-    } else {
-      el.pause();
-    }
-  };
-  return (
-    <li className="px-4 py-3.5" data-testid="marked-turn">
-      <div className="flex items-center gap-3">
-        {src ? (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label={active ? 'Pause answer' : 'Play answer'}
-            className={cn(
-              'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors',
-              active ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-primary hover:border-primary',
-            )}
-          >
-            {active ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
-          </button>
-        ) : (
-          <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground"
-            title="No recording"
-          >
-            <Mic className="h-4 w-4" />
-          </span>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-semibold leading-snug text-foreground">{turn.question}</p>
-          {active ? (
-            <div className="mt-1.5 flex items-center gap-2">
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${length ? Math.min(100, (time / length) * 100) : 0}%` }} />
-              </div>
-              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                {clock(time)} / {clock(length)}
-              </span>
-            </div>
-          ) : (
-            <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">{clock(turn.seconds)} answer</p>
-          )}
-        </div>
-      </div>
-      {src && (
-        <audio
-          ref={audio}
-          src={src}
-          preload="none"
-          onTimeUpdate={e => setTime(e.currentTarget.currentTime)}
-          onLoadedMetadata={e => {
-            const d = e.currentTarget.duration;
-            if (Number.isFinite(d)) setLength(d);
-          }}
-          onPause={onStop}
-          onEnded={() => {
-            setTime(0);
-            onStop();
-          }}
-        />
-      )}
-      <p
-        className={cn(
-          'ml-12 mt-2.5 whitespace-pre-wrap border-l-2 bg-muted/30 px-3 py-2 text-sm leading-6 text-foreground/80',
-          active ? 'border-primary' : 'border-border',
-        )}
-      >
-        {turn.transcript || <span className="italic text-muted-foreground">Nothing was heard.</span>}
-      </p>
-    </li>
+    <SpeakingTurns
+      teacher
+      turns={turns.map(t => ({ ...t, key: String(t.position) }))}
+      recordingSrc={t => recordingUrl(Number(t.key))}
+      fixes={[]}
+      rated={false}
+    />
   );
 }

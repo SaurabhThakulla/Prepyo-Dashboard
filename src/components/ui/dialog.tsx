@@ -28,8 +28,10 @@ const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     /** A short confirmation stays a card in the middle of a phone screen instead of rising as a sheet. */
     centered?: boolean
+    /** The dialog opens with a full-width blue header (`dialogBand`), so the close button turns white on it. */
+    band?: boolean
   }
->(({ className, children, centered = false, ...props }, ref) => (
+>(({ className, children, centered = false, band = false, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -43,7 +45,12 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-3.5 top-3.5 sm:right-4 sm:top-4 rounded-full p-1.5 bg-background/80 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/80 shadow-xs transition-all opacity-80 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none z-30">
+      <DialogPrimitive.Close className={cn(
+        "absolute right-3.5 top-3.5 sm:right-4 sm:top-4 rounded-full p-1.5 border shadow-xs transition-all opacity-80 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none z-30",
+        band
+          ? "max-sm:top-5 sm:top-5 border-white/30 bg-white/15 text-white hover:bg-white/25"
+          : "bg-background/80 hover:bg-muted text-muted-foreground hover:text-foreground border-border/80"
+      )}>
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
@@ -51,6 +58,9 @@ const DialogContent = React.forwardRef<
   </DialogPortal>
 ))
 DialogContent.displayName = DialogPrimitive.Content.displayName
+
+/** A full-width blue header across the top of a `band` dialog (cancels the content padding). */
+const dialogBand = "-mx-4 -mt-6 sm:-mx-6 sm:-mt-6 bg-primary px-4 py-4 pr-14 sm:px-6 sm:pr-16 text-primary-foreground [&_h2]:text-primary-foreground [&_p]:text-primary-foreground/80"
 
 const DialogHeader = ({
   className,
@@ -112,6 +122,7 @@ export {
   DialogPortal,
   DialogOverlay,
   DialogClose,
+  dialogBand,
   DialogTrigger,
   DialogContent,
   DialogHeader,

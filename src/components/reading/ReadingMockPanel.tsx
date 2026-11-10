@@ -97,6 +97,11 @@ export default function ReadingMockPanel({ section }: { section?: FullMockSectio
       description="A full, timed reading section: three passages and forty questions, marked on the server."
       duration="60 min"
       items="40 questions"
+      parts={[
+        { label: 'Passage 1', timing: 'About 20 minutes' },
+        { label: 'Passage 2', timing: 'About 20 minutes' },
+        { label: 'Passage 3', timing: 'About 20 minutes' },
+      ]}
       credits={SECTION_MOCK_SUB_TESTS}
       subTestsRemaining={subTestsRemaining}
       isStarting={starting}

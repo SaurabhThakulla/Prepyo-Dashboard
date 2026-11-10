@@ -145,13 +145,6 @@ export const api = {
   upload,
 };
 
-/** Where a stored profile picture is served from. */
-export function profileImageUrl(kind: 'avatar' | 'cover', updatedAt: string): string {
-  // The timestamp is the cache key: the URL is stable until the image changes,
-  // and changes the moment it does.
-  return `/api/v1/profile/${kind}?v=${encodeURIComponent(updatedAt)}`;
-}
-
 /**
  * Wording this app owns, keyed by the stable error code.
  *
