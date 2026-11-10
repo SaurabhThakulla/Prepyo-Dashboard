@@ -147,6 +147,11 @@ export default function SpeakingMockPanel() {
       description="All three parts in one sitting. The examiner's questions are read aloud and each answer is recorded."
       duration="About 15 min"
       items="3 parts"
+      parts={[
+        { label: 'Introduction', timing: '4 to 5 minutes' },
+        { label: 'Cue card', timing: '1 minute to prepare, up to 2 to speak' },
+        { label: 'Discussion', timing: '4 to 5 minutes' },
+      ]}
       credits={SECTION_MOCK_SUB_TESTS}
       subTestsRemaining={subTestsLeft(user?.subscription)}
       isStarting={starting}

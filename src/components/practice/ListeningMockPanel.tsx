@@ -135,6 +135,12 @@ export default function ListeningMockPanel() {
       description="Four recordings and forty questions, each recording played once, as in the test."
       duration="About 30 min"
       items="40 questions"
+      parts={[
+        { label: 'Recording 1', timing: '10 questions · everyday conversation' },
+        { label: 'Recording 2', timing: '10 questions · everyday talk' },
+        { label: 'Recording 3', timing: '10 questions · study discussion' },
+        { label: 'Recording 4', timing: '10 questions · academic lecture' },
+      ]}
       credits={SECTION_MOCK_SUB_TESTS}
       subTestsRemaining={subTestsLeft(user?.subscription)}
       isStarting={starting}
