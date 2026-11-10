@@ -71,11 +71,7 @@ export default function SecondaryPanel({
         <div className="p-4">
           {/* A consultancy's student is never offered an upgrade: their plan is the consultancy's. */}
           {isPremiumUser(user) || isInstitutionStudent(user) ? (
-            <Link
-              to="/profile"
-              onClick={onNavigate}
-              className="flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-white/10 border border-white/15 hover:bg-white/15 transition-colors"
-            >
+            <div className="flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-white/10 border border-white/15">
               <div className="flex items-center gap-3 min-w-0">
                 <Avatar className="h-9 w-9 ring-2 ring-white/60">
                   <AvatarFallback className="bg-white text-primary text-sm font-bold">
@@ -94,7 +90,7 @@ export default function SecondaryPanel({
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-white/60 shrink-0" />
-            </Link>
+            </div>
           ) : (
             <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-gradient-to-br from-white/20 to-white/5 p-4">
               {/* Soft glow in the corner */}
