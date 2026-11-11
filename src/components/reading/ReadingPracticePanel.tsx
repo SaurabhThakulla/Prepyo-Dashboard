@@ -136,8 +136,9 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
     toast.info('Test stopped', 'Reading session has ended.');
   }, [sessionId, setActiveTestSession, toast]);
 
-  // Redo passes the passage just checked so the same one is dealt again.
-  const handleStart = useCallback(async (redoPassageId?: string) => {
+  // Deals `pickedId` (Redo, the list, the arrows); without one the server picks
+  // a fresh passage. Not the URL's passage: Shuffle would deal it again forever.
+  const handleStart = useCallback(async (pickedId?: string) => {
     if (isStarting || isSessionActive) return;
     setIsStarting(true);
     try {
@@ -155,7 +156,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
         return;
       }
 
-      const dealtSet = await deal(targetId ?? '', mistakeId, redoPassageId ?? passageId);
+      const dealtSet = await deal(targetId ?? '', mistakeId, pickedId);
       if (!dealtSet) {
         return;
       }
@@ -190,7 +191,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
     } finally {
       setIsStarting(false);
     }
-  }, [isStarting, isSessionActive, types, typesQuery, initialTypeKey, currentTypeId, deal, activeExam, refreshUser, setActiveTestSession, handleStop, toast, mistakeId, passageId]);
+  }, [isStarting, isSessionActive, types, typesQuery, initialTypeKey, currentTypeId, deal, activeExam, refreshUser, setActiveTestSession, handleStop, toast, mistakeId]);
 
   const handleCheck = async () => {
     try {
@@ -245,13 +246,14 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
     [displayedGroups],
   );
 
-  // A passage picked from the list replaces the one on screen in place.
+  // A passage picked from the list, the arrows or Shuffle (no id: the server picks)
+  // replaces the one on screen in place, stopping the open test first.
   const pickedPassage = useRef(passageId);
-  const [pendingPassage, setPendingPassage] = useState<string | null>(null);
+  const [pendingPassage, setPendingPassage] = useState<{ id?: string } | null>(null);
   useEffect(() => {
     if (passageId === pickedPassage.current) return;
     pickedPassage.current = passageId;
-    if (passageId && set) setPendingPassage(passageId);
+    if (passageId && set) setPendingPassage({ id: passageId });
   }, [passageId, set]);
   useEffect(() => {
     if (!pendingPassage || isStarting || isStopping) return;
@@ -260,7 +262,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
       return;
     }
     setPendingPassage(null);
-    void handleStart(pendingPassage);
+    void handleStart(pendingPassage.id);
   }, [pendingPassage, isSessionActive, isStarting, isStopping, handleStart, handleStop]);
 
   const linked = firstAvailable(typeIdsFor(initialTypeKey), types);
@@ -277,8 +279,8 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
   useEffect(() => {
     if (!waitingToStart || listOpen || isStarting || pendingPassage) return;
     autoStartedFor.current = startKey;
-    void handleStart();
-  }, [waitingToStart, listOpen, isStarting, pendingPassage, startKey, handleStart]);
+    void handleStart(passageId);
+  }, [waitingToStart, listOpen, isStarting, pendingPassage, startKey, handleStart, passageId]);
 
   // No start screen: the passage opens straight away and stays up after Stop.
   if (!set && loadingNext) {
@@ -299,7 +301,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
     return (
       <EmptyState
         message={practice.dealError ?? 'Pick a task type to begin'}
-        onRetry={targetTypeId ? () => void handleStart() : undefined}
+        onRetry={targetTypeId ? () => void handleStart(passageId) : undefined}
         types={alternatives}
         onPick={() => void handleStart()}
       />
@@ -366,9 +368,9 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
               <PracticeActionBar
                 index={passageIndex}
                 total={mistakeId ? 0 : passageIds.length}
-                onJump={mistakeId ? undefined : i => void handleStart(passageIds[i])}
-                onShuffle={mistakeId ? undefined : () => void handleStart()}
-                disabled={isSessionActive || practice.checking || loadingNext}
+                onJump={mistakeId ? undefined : i => setPendingPassage({ id: passageIds[i] })}
+                onShuffle={mistakeId ? undefined : () => setPendingPassage({})}
+                disabled={practice.checking || loadingNext}
                 actions={
                   <>
                     {practice.checked && mistakeId && practice.correctCount > 0 && !resolution.resolved ? (
