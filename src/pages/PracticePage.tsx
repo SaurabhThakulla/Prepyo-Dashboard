@@ -801,7 +801,7 @@ function PracticePageContent() {
     <div
       data-practice-workspace
       className={`w-full ${isReading && !isAdminUser && !listPage
-          ? 'min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] lg:overflow-hidden'
+          ? 'min-h-[calc(100dvh-var(--app-header-h,4rem))] lg:h-[calc(100dvh-var(--app-header-h,4rem))] lg:max-h-[calc(100dvh-var(--app-header-h,4rem))] lg:overflow-hidden'
           : 'min-h-[calc(100vh-4rem)]'
         } p-0 m-0 max-sm:pb-20 flex flex-col bg-background`}
     >

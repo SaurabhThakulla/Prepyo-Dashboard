@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import {
   CheckCircle2,
   AlertCircle,
@@ -20,7 +20,6 @@ export interface ToastItem {
 }
 
 interface ToastContextType {
-  toasts: ToastItem[];
   showToast: (toast: Omit<ToastItem, 'id'>) => string;
   dismissToast: (id: string) => void;
   success: (title: string, description?: string) => string;
@@ -84,6 +83,11 @@ export function ToastProvider({ children, position = 'top-right' }: ToastProvide
       showToast({ type: 'warning', title, description, duration: 4500 }),
     [showToast]
   );
+  // Stable across renders: callers put `toast` in hook deps, and a new object per toast re-ran their effects in a loop.
+  const value = useMemo(
+    () => ({ showToast, dismissToast, success, error, info, warning }),
+    [showToast, dismissToast, success, error, info, warning]
+  );
   const isTop = position.startsWith('top');
   const positionClasses: Record<string, string> = {
     'top-right': 'top-4 right-4 sm:top-6 sm:right-6',
@@ -95,17 +99,7 @@ export function ToastProvider({ children, position = 'top-right' }: ToastProvide
   };
 
   return (
-    <ToastContext.Provider
-      value={{
-        toasts,
-        showToast,
-        dismissToast,
-        success,
-        error,
-        info,
-        warning,
-      }}
-    >
+    <ToastContext.Provider value={value}>
       {children}
 
       {/* Global Toast Container */}

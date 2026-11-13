@@ -78,6 +78,42 @@
   border-color: hsl(var(--border));
 }
 
+/* The blue bar along the bottom of every mock test. Used with `dark` beside it
+   (so the light dark: tints apply), it re-points the theme colours for whatever
+   sits on it: the main action turns white, everything else is light on blue. */
+.test-bar {
+  --background: 224 62% 44%;
+  --foreground: 0 0% 100%;
+  --card: 224 62% 44%;
+  --primary: 0 0% 100%;
+  --primary-foreground: 224 72% 34%;
+  --muted: 224 58% 48%;
+  --muted-foreground: 220 80% 90%;
+  --accent: 224 60% 52%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 92% 84%;
+  --destructive-foreground: 0 70% 26%;
+  --border: 222 75% 66%;
+  --input: 222 75% 66%;
+  --ring: 0 0% 100%;
+  color: hsl(var(--foreground));
+  background: linear-gradient(90deg, hsl(226 78% 28%), hsl(224 72% 38%) 55%, hsl(221 80% 46%));
+  border-top: 1px solid hsl(0 0% 100% / 0.14);
+}
+
+/* Every button on the bar answers the pointer the same way: it lifts a little. */
+.test-bar button {
+  transition: background-color 150ms, color 150ms, border-color 150ms, transform 150ms, box-shadow 150ms;
+}
+.test-bar button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px -8px rgb(2 12 50 / 0.7);
+}
+.test-bar button:not(:disabled):active {
+  transform: none;
+  box-shadow: none;
+}
+
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));

@@ -261,7 +261,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       <div
-        style={{ '--sidebar-offset': locked ? '0px' : panelPushes ? '416px' : '64px' } as React.CSSProperties}
+        // --app-header-h: a locked test hides the header, so pages sized to "the screen minus the header" get the whole screen.
+        style={{ '--sidebar-offset': locked ? '0px' : panelPushes ? '416px' : '64px', '--app-header-h': locked ? '0px' : '4rem' } as React.CSSProperties}
         className={`${locked ? 'lg:pl-0' : panelPushes ? 'lg:pl-[416px]' : 'lg:pl-16'
           } flex w-full min-w-0 flex-col min-h-screen transition-[padding] duration-300 ease-in-out`}
       >
