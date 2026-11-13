@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { Building2, ChevronLeft, ChevronRight, ClipboardCheck, CreditCard, Layers, Loader2, LogOut, LucideIcon, Menu, Settings, Users, Wallet } from 'lucide-react';
 import { formatExamDate } from '@/lib/dates';
-import AnimatedLogo from '@/components/layout/AnimatedLogo';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
@@ -21,7 +20,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { InstitutionAccount, PLANS } from './api';
-import { dashboardPath, sectionPath } from './paths';
+import { sectionPath } from './paths';
 import BrandMark from './BrandMark';
 import { brandGradient, useBrandColor } from './brand';
 
@@ -102,14 +101,6 @@ function InstitutionSidebar({ account, signingOut, onSignOut }: { account: Insti
         style={{ backgroundImage: brandGradient(institution.profile.brandColor) }}
       >
         <SidebarHeader className="gap-4 px-3 pb-2 pt-4 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
-          <Link to={dashboardPath(institution.code)} className="flex items-center gap-2 px-1 group-data-[collapsible=icon]:px-0" title="Students">
-            <AnimatedLogo size={36} />
-            <span className="font-display text-base font-black group-data-[collapsible=icon]:hidden">prepyo</span>
-            <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide group-data-[collapsible=icon]:hidden">
-              <Building2 className="h-3 w-3" /> Institution
-            </span>
-          </Link>
-
           <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 p-2.5 pr-3 backdrop-blur-sm group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0">
             <BrandMark
               name={institution.name}

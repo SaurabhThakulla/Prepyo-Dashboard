@@ -9,6 +9,7 @@ import {
   BadgeCheck,
   Clock,
   LineChart,
+  Mail,
   Trophy,
   UserCog,
   Check,
@@ -58,6 +59,7 @@ import {
   setStudentFee,
   setStudentBatch,
   setStudentDisabled,
+  setStudentEmail,
   setStudentExam,
   Student,
   STUDENT_ALLOWANCE,
@@ -66,7 +68,7 @@ import {
   TargetExam,
 } from './api';
 import { EXAM_CHOICES } from './profile';
-import { dashboardPath, sectionPath } from './paths';
+import { LOGIN_PATH, sectionPath } from './paths';
 import { FormError } from './FormField';
 import { EXAM_TONE, FilterTabs, Kpi, TONES, useConfirm } from './ui';
 import StudentActivityPanel from './StudentActivity';
@@ -82,7 +84,7 @@ interface Props {
 // A password is shown once, right after it is made.
 interface Credentials {
   name: string;
-  username: string;
+  email: string;
   password: string;
   // Set when the student was added but their fee or payment could not be saved.
   warning?: string;
@@ -166,7 +168,10 @@ export default function StudentsPage({ account, exams }: Props) {
   }, [studentParam]);
   const now = Date.now();
 
-  const loginAddress = window.location.origin + dashboardPath(institution.code);
+  // Every consultancy's students and admins sign in on this one page, with their email.
+  const loginAddress = window.location.origin + LOGIN_PATH;
+  // The student whose sign-in email is being changed.
+  const [editingEmail, setEditingEmail] = useState<Student | null>(null);
 
   const load = useCallback(
     () =>
@@ -213,9 +218,10 @@ export default function StudentsPage({ account, exams }: Props) {
       if (!ok) return;
       await run(async () => {
         const { password } = await resetStudentPassword(student.id);
-        setCredentials({ name: student.name, username: student.username, password });
+        setCredentials({ name: student.name, email: student.email ?? '', password });
       });
     },
+    editEmail: student => setEditingEmail(student),
     changeExam: async (student, next) => {
       if (next === student.exam) return;
       const ok = await confirm({
@@ -300,7 +306,7 @@ export default function StudentsPage({ account, exams }: Props) {
   const activeInPeriod = (s: Student) => s.usage.practiceAttempts + s.usage.mocksCompleted + s.usage.aiEvaluations + s.usage.tutorMessages > 0;
   const needle = query.trim().toLowerCase();
   const list = inBatch.filter(s => {
-    if (needle && !s.name.toLowerCase().includes(needle) && !s.username.toLowerCase().includes(needle)) return false;
+    if (needle && !s.name.toLowerCase().includes(needle) && !(s.email ?? '').toLowerCase().includes(needle)) return false;
     if (status === 'active') return !s.disabled && activeInPeriod(s);
     if (status === 'ready') return isReady(s);
     if (status === 'idle') return isIdle(s, now);
@@ -543,7 +549,7 @@ export default function StudentsPage({ account, exams }: Props) {
                           <Avatar name={student.name} exam={student.exam} />
                           <span className="min-w-0">
                             <span className="block truncate font-medium text-foreground">{student.name}</span>
-                            <span className="block font-mono text-xs text-foreground/60">{student.username}</span>
+                            <span className="block text-xs text-foreground/60">{student.email || 'No email: cannot sign in'}</span>
                           </span>
                         </button>
                       </td>
@@ -649,6 +655,18 @@ export default function StudentsPage({ account, exams }: Props) {
       <Dialog open={!!credentials} onOpenChange={open => !open && setCredentials(null)}>
         {credentials && <CredentialsDialog credentials={credentials} loginAddress={loginAddress} />}
       </Dialog>
+
+      <Dialog open={!!editingEmail} onOpenChange={open => !open && setEditingEmail(null)}>
+        {editingEmail && (
+          <EmailDialog
+            student={editingEmail}
+            onSaved={() => {
+              setEditingEmail(null);
+              void load();
+            }}
+          />
+        )}
+      </Dialog>
     </div>
   );
 }
@@ -656,6 +674,7 @@ export default function StudentsPage({ account, exams }: Props) {
 interface StudentActions {
   busy: boolean;
   reset: (student: Student) => Promise<void>;
+  editEmail: (student: Student) => void;
   changeExam: (student: Student, exam: ExamCode) => void;
   changeBatch: (student: Student, batchId: string) => void;
   // Opens the "Move to batch" dialog for one student.
@@ -797,6 +816,9 @@ function RowMenu({ student, actions, onOpen, canMove }: { student: Student; acti
             <ArrowRightLeft className="mr-2 h-3.5 w-3.5" /> Move to batch
           </DropdownMenuItem>
         )}
+        <DropdownMenuItem onSelect={() => actions.editEmail(student)}>
+          <Mail className="mr-2 h-3.5 w-3.5" /> {student.email ? 'Edit email' : 'Add email'}
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => void actions.reset(student)}>
           <KeyRound className="mr-2 h-3.5 w-3.5" /> New password
         </DropdownMenuItem>
@@ -853,7 +875,6 @@ function StudentSheet({
                 <div className="min-w-0 flex-1 pt-0.5">
                   <SheetPrimitive.Title className="break-words font-display text-xl font-semibold leading-tight text-foreground">{student.name}</SheetPrimitive.Title>
                   <SheetPrimitive.Description className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                    <span className="font-mono text-xs">@{student.username}</span>
                     {student.email && (
                       <a href={`mailto:${student.email}`} className="truncate hover:text-foreground hover:underline">
                         {student.email}
@@ -1044,8 +1065,8 @@ function AddStudentDialog({
       setError("Enter the student's name.");
       return;
     }
-    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError('Enter an email like name@example.com, or leave it empty.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Enter the student's email, like name@example.com. They sign in with it.");
       return;
     }
     if ([totalNpr, discountNpr, paidNpr].some(Number.isNaN)) {
@@ -1080,7 +1101,7 @@ function AddStudentDialog({
     }
     onAdded({
       name: created.student.name,
-      username: created.student.username,
+      email: created.student.email ?? '',
       password: created.password,
       warning,
       movedIn: created.student.movedIn,
@@ -1091,7 +1112,7 @@ function AddStudentDialog({
     <DialogContent className="gap-5 sm:max-w-xl">
       <DialogHeader className="space-y-1 text-left">
         <DialogTitle className="font-sans text-lg font-semibold">Add a student</DialogTitle>
-        <DialogDescription>They get a username and password to sign in at your page.</DialogDescription>
+        <DialogDescription>They sign in with their email and the password you get next.</DialogDescription>
       </DialogHeader>
       <form onSubmit={add} className="space-y-5">
         <section className="space-y-3">
@@ -1113,7 +1134,7 @@ function AddStudentDialog({
           </div>
           <div className="space-y-1.5">
             <label htmlFor="new-student-email" className={FIELD_LABEL}>
-              Email <span className="font-normal text-muted-foreground">(optional)</span>
+              Email
             </label>
             <Input
               id="new-student-email"
@@ -1344,17 +1365,21 @@ function CredentialsDialog({ credentials, loginAddress }: { credentials: Credent
         <DialogDescription>The password is shown this once, so copy it now.</DialogDescription>
       </DialogHeader>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm">
-        <dt className="text-muted-foreground">Address</dt>
-        <dd className="break-all font-mono text-xs font-semibold text-foreground">{loginAddress}</dd>
-        <dt className="text-muted-foreground">Username</dt>
-        <dd className="font-mono font-semibold text-foreground">{credentials.username}</dd>
+        <dt className="text-muted-foreground">Sign-in page</dt>
+        <dd className="break-all font-mono text-xs font-semibold text-foreground">
+          <a href={loginAddress} target="_blank" rel="noreferrer" className="hover:underline">
+            {loginAddress}
+          </a>
+        </dd>
+        <dt className="text-muted-foreground">Email</dt>
+        <dd className="break-all font-mono font-semibold text-foreground">{credentials.email || 'None yet: add one to let them sign in'}</dd>
         <dt className="text-muted-foreground">Password</dt>
         <dd className="font-mono font-semibold text-foreground">{credentials.password}</dd>
       </dl>
       {credentials.movedIn && (
         <p className="rounded-lg border border-sky-500/30 bg-sky-500/10 p-3 text-sm text-sky-800 dark:text-sky-300">
           This email already had a Prepyo account. It is now part of your consultancy, with its practice history. From now on
-          they sign in with this username, not Google.
+          they sign in with this email and password, not Google.
         </p>
       )}
       {credentials.warning && (
@@ -1362,7 +1387,59 @@ function CredentialsDialog({ credentials, loginAddress }: { credentials: Credent
           {credentials.warning}
         </p>
       )}
-      <CopyButton text={`${loginAddress}\nUsername: ${credentials.username}\nPassword: ${credentials.password}`} label="Copy details" />
+      <CopyButton text={`Sign-in page: ${loginAddress}\nEmail: ${credentials.email}\nPassword: ${credentials.password}`} label="Copy details" />
+    </DialogContent>
+  );
+}
+
+/** Changes the email a student signs in with. */
+function EmailDialog({ student, onSaved }: { student: Student; onSaved: () => void }) {
+  const [email, setEmail] = useState(student.email ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Enter an email like name@example.com.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await setStudentEmail(student.id, email.trim());
+      onSaved();
+    } catch (err) {
+      setError(errorMessage(err));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <DialogContent className="gap-5 sm:max-w-sm">
+      <DialogHeader className="space-y-1 text-left">
+        <DialogTitle className="font-sans text-lg font-semibold">{student.email ? 'Edit email' : 'Add email'}</DialogTitle>
+        <DialogDescription>{student.name} signs in with this email and their password.</DialogDescription>
+      </DialogHeader>
+      <form onSubmit={save} className="space-y-4" noValidate>
+        <Input
+          type="email"
+          inputMode="email"
+          aria-label="Student email"
+          autoComplete="off"
+          placeholder="name@example.com"
+          value={email}
+          onChange={event => setEmail(event.target.value)}
+          disabled={busy}
+          autoFocus
+          className="h-10 text-sm"
+        />
+        <FormError message={error} />
+        <Button type="submit" disabled={busy} className="w-full">
+          {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save email
+        </Button>
+      </form>
     </DialogContent>
   );
 }

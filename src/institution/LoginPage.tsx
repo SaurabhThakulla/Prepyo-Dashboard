@@ -2,6 +2,7 @@ import React, { FormEvent, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { ArrowRight, Loader2, Lock, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useApp } from '@/context/AppContext';
 import { errorMessage } from '@/lib/api';
 import { logIn } from './api';
 import { useInstitutionAccount } from './account';
@@ -10,8 +11,10 @@ import { InstitutionLoading } from './InstitutionPage';
 import InstitutionAuthLayout from './InstitutionAuthLayout';
 import FormField, { FormError } from './FormField';
 
+/** The one sign-in for every institution: its admins open their dashboard, its students the learner app. */
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { refreshUser } = useApp();
   const { account, setAccount } = useInstitutionAccount();
 
   const [email, setEmail] = useState('');
@@ -34,17 +37,22 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const signedIn = await logIn(email.trim(), password);
+      if ('student' in signedIn) {
+        // The student is now an ordinary signed-in learner; load them and open the app.
+        await refreshUser();
+        navigate('/dashboard', { replace: true });
+        return;
+      }
       setAccount(signedIn);
       navigate(dashboardPath(signedIn.institution.code), { replace: true });
     } catch (err) {
       setError(errorMessage(err));
-    } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <InstitutionAuthLayout title="Institution sign-in" subtitle="For the admin of a consultancy or institute.">
+    <InstitutionAuthLayout title="Institution sign-in" subtitle="For students and admins of a consultancy or institute.">
       <form onSubmit={submit} className="space-y-4" noValidate>
         <FormField
           label="Email"
@@ -76,6 +84,8 @@ export default function LoginPage() {
           {!submitting && <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />}
         </Button>
       </form>
+
+      <p className="mt-4 text-center text-xs text-muted-foreground">Students: forgot your password? Ask your institution to reset it.</p>
 
       <div className="mt-6 space-y-2 text-center text-sm text-muted-foreground">
         <p>
