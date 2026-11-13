@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
 import { useTestLock } from '@/lib/hooks/useTestLock';
+import FullscreenButton from '@/components/layout/FullscreenButton';
 import { errorMessage } from '@/lib/api';
 import { usePteTestRunner } from '@/lib/hooks/usePteTestRunner';
 import { TestMicrophone } from '@/lib/pteMock/audio';
@@ -182,6 +183,7 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
                 </div>
               </div>
             )}
+            <FullscreenButton />
           </div>
         </div>
         <div className="h-1 bg-muted">
@@ -252,21 +254,21 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
         )}
       </main>
 
-      {/* The test's controls, on the practice screen's blue bar: forward only */}
-      <div className="sticky bottom-0 z-30 px-4 pb-4 sm:px-6 lg:px-8">
-        <div className="flex w-full items-center justify-between gap-2.5 rounded-2xl border border-[#0f2a6b] bg-[#13307f] p-2.5 shadow-lg dark:border-border dark:bg-card sm:p-3">
+      {/* The test's controls, edge to edge as in every mock: forward only */}
+      <div className="sticky bottom-0 z-30 dark test-bar px-4 py-2.5 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.35)] sm:px-6 lg:px-8">
+        <div className="flex w-full items-center justify-between gap-2.5">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Button variant="outline" onClick={onLeave} className={PILL}>
               <LogOut className="h-3.5 w-3.5" /> <span>Save and Exit</span>
             </Button>
-            <Button variant="ghost" onClick={() => setConfirmEnd(true)} className={`${PILL} text-white hover:bg-white/15 hover:text-white dark:text-foreground`}>
+            <Button variant="ghost" onClick={() => setConfirmEnd(true)} className={`${PILL} text-muted-foreground hover:bg-destructive/10 hover:text-destructive`}>
               <Flag className="h-3.5 w-3.5" /> <span className="hidden sm:inline">End test</span>
             </Button>
           </div>
           <Button
             onClick={onNext}
             disabled={!item || submitting || ending}
-            className="h-10 min-w-[120px] gap-1.5 rounded-full bg-white px-5 font-bold text-primary shadow-md hover:bg-white/90 dark:bg-primary dark:text-primary-foreground"
+            className="h-10 min-w-[120px] gap-1.5 rounded-full px-5 font-bold shadow-md"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Next <ArrowRight className="h-4 w-4" />

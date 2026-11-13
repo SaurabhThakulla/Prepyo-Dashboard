@@ -11,6 +11,9 @@ import { pteReportHref } from '@/lib/pteMock/catalog';
 import { PteCatalogEntry } from '@/lib/pteMock/types';
 import { MockPaperItem } from '@/lib/types';
 import MockPaperList from '@/components/mocks/MockPaperList';
+import PreTestChecks, { CheckSkill } from '@/components/mocks/PreTestChecks';
+
+const PTE_SKILL_ORDER: CheckSkill[] = ['speaking', 'writing', 'reading', 'listening'];
 
 interface Props {
   entry: PteCatalogEntry;
@@ -68,6 +71,26 @@ export default function PteMockIntro({ entry, serverTranscription, starting, onS
     onStart(currentMic, paper.id);
   };
 
+  // A new attempt goes through the equipment checks first; a resumed one does not.
+  const [checking, setChecking] = useState<MockPaperItem | null>(null);
+  if (checking) {
+    return (
+      <PreTestChecks
+        exam="PTE"
+        title={entry.title}
+        skills={PTE_SKILL_ORDER.filter(skill => entry.tasks.some(t => t.skill === skill && t.available > 0))}
+        sections={entry.parts.map(p => ({ label: p.label }))}
+        error={micError}
+        beginning={starting}
+        onBegin={() => void handleStartPaper(checking)}
+        onCancel={() => {
+          setChecking(null);
+          setMicError(null);
+        }}
+      />
+    );
+  }
+
   const resuming = Boolean(entry.live);
   const cannotScoreSpeech = needsMic && !serverTranscription && !speechRecognitionSupported();
   const warn = 'flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300';
@@ -120,13 +143,13 @@ export default function PteMockIntro({ entry, serverTranscription, starting, onS
           selectedPaperId={selectedPaperId}
           exam="PTE"
           section={entry.kind}
-          onStart={paper => void handleStartPaper(paper)}
+          onStart={paper => !starting && setChecking(paper)}
           onResume={paper => void handleStartPaper(paper)}
           onReview={paper => {
             const id = paper.lastAttemptSessionId || paper.sessionId;
             if (id) navigate(pteReportHref(id));
           }}
-          onRetake={paper => void handleStartPaper(paper)}
+          onRetake={paper => !starting && setChecking(paper)}
         />
       </section>
     </div>
