@@ -8,6 +8,7 @@ import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
 import { useReadingMock } from '@/lib/hooks/useReading';
 import MockHeader from '@/components/mocks/MockHeader';
+import TestFooter from '@/components/mocks/TestFooter';
 import { useTestLock } from '@/lib/hooks/useTestLock';
 import { needsParagraphLabels } from '@/lib/readingTypes';
 
@@ -88,17 +89,16 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
   const activeSet = sets[activeIndex];
 
   return (
-    <div className="w-full min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] p-0 m-0 flex flex-col bg-background lg:overflow-hidden px-3 sm:px-6 lg:px-8 py-2.5 space-y-2.5">
-      <div className="shrink-0">
-        <MockHeader
-          code={`R${activeIndex + 1}`}
-          title={session.mockTitle ?? 'Reading Mock'}
-          subtitle={`Passage ${activeIndex + 1} of ${sets.length} • ${session.totalQuestions} questions • marked automatically`}
-          secondsLeft={secondsLeft}
-          answered={{ done: mock.answeredCount, total: session.totalQuestions }}
-          onLeave={mock.exit}
-        />
-      </div>
+    // The whole screen: a running mock has no app header above it.
+    <div className="w-full min-h-dvh lg:h-dvh p-0 m-0 flex flex-col bg-background lg:overflow-hidden px-3 sm:px-6 lg:px-8 pt-2.5 space-y-2.5">
+      <MockHeader
+        className="-mx-3 -mt-2.5 shrink-0 sm:-mx-6 lg:-mx-8"
+        code={`R${activeIndex + 1}`}
+        title={session.mockTitle ?? 'Reading Mock'}
+        subtitle={`Passage ${activeIndex + 1} of ${sets.length} • ${session.totalQuestions} questions • marked automatically`}
+        secondsLeft={secondsLeft}
+        answered={{ done: mock.answeredCount, total: session.totalQuestions }}
+      />
 
       {session.reusedPassages && (
         <Card className="p-2.5 flex items-start gap-2 border-amber-500/40 bg-amber-500/5 shrink-0">
@@ -171,11 +171,12 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-border shrink-0">
-        <p className="text-[11px] text-muted-foreground">
-          Unanswered questions are marked wrong. You can move between passages freely, and your answers are saved as you go.
-        </p>
-        <Button onClick={() => void finish()} disabled={submitting} className="font-bold gap-1.5 shadow-md">
+      <TestFooter
+        className="-mx-3 sm:-mx-6 lg:-mx-8"
+        onLeave={mock.exit}
+        note="Unanswered questions are marked wrong. You can move between passages freely, and your answers are saved as you go."
+      >
+        <Button onClick={() => void finish()} disabled={submitting} className="h-9 rounded-full font-bold gap-1.5 shadow-md">
           {submitting ? (
             <>
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -188,7 +189,7 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
             </>
           )}
         </Button>
-      </div>
+      </TestFooter>
     </div>
   );
 }

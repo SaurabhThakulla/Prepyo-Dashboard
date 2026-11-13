@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Clock, Headphones, RefreshCw, RotateCcw, Send } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Headphones, LogOut, RefreshCw, RotateCcw, Send } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
@@ -444,10 +444,16 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
   const navigator = (
     <nav
       aria-label="Question navigator"
-      className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-card/95 px-4 py-2.5 shadow-[0_-6px_16px_-8px_rgba(0,0,0,0.15)] backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+      className="sticky bottom-0 z-30 -mx-4 dark test-bar px-4 py-2.5 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.35)] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
     >
-      <div className="mx-auto flex max-w-6xl flex-col gap-2 lg:flex-row lg:items-center lg:gap-4">
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-0.5">
+      <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:gap-4">
+        <div className="flex shrink-0 items-center gap-4">
+          <Button variant="outline" onClick={onLeave} className="h-9 shrink-0 gap-1.5 rounded-full px-4 text-xs font-bold">
+            <LogOut className="h-3.5 w-3.5" /> Save and Exit
+          </Button>
+          <span className="hidden h-8 w-px bg-border lg:block" aria-hidden />
+        </div>
+        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto py-0.5 scrollbar-thin">
           {session.parts.map((p, index) => {
             const open = canOpen(index);
             if (p.partNo !== shownPart?.partNo) {
@@ -458,16 +464,21 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
                   disabled={!open}
                   onClick={() => jump(index)}
                   title={open ? `Go to Part ${p.partNo}` : index < partIndex ? 'Already played' : 'Opens when its recording starts'}
-                  className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs transition-colors enabled:hover:border-primary/50 disabled:opacity-50"
+                  className="flex shrink-0 flex-col gap-1 rounded-xl border border-border bg-background px-3 py-1.5 text-left text-xs transition-colors enabled:hover:border-primary/50 enabled:hover:bg-primary/[0.04] disabled:opacity-50"
                 >
-                  <span className="font-bold text-foreground">Part {p.partNo}</span>
-                  <span className="tabular-nums text-muted-foreground">{answeredIn(p)} of {partCount(p)}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="font-bold text-foreground">Part {p.partNo}</span>
+                    <span className="tabular-nums text-muted-foreground">{answeredIn(p)}/{partCount(p)}</span>
+                  </span>
+                  <span className="h-1 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
+                    <span className="block h-full rounded-full bg-primary" style={{ width: `${(answeredIn(p) / Math.max(1, partCount(p))) * 100}%` }} />
+                  </span>
                 </button>
               );
             }
             return (
-              <div key={p.partNo} className="flex shrink-0 items-center gap-1 rounded-lg bg-primary/[0.07] px-2 py-1 ring-1 ring-primary/30">
-                <span className="pr-1 text-xs font-bold text-primary">Part {p.partNo}</span>
+              <div key={p.partNo} className="flex shrink-0 items-center gap-1 rounded-xl bg-primary/[0.07] px-2 py-1.5 ring-1 ring-primary/30">
+                <span className="px-1.5 text-xs font-bold text-primary">Part {p.partNo}</span>
                 {p.groups.flatMap(group =>
                   group.questions.map((q, i) => {
                     const number = group.firstNumber + i;
@@ -478,8 +489,8 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
                         type="button"
                         onClick={() => jump(index, number)}
                         aria-label={`Question ${number}${done ? ', answered' : ''}`}
-                        className={`h-7 min-w-7 rounded-md px-1 text-xs font-bold tabular-nums transition-colors ${
-                          done ? 'bg-primary text-primary-foreground' : 'border border-border bg-background text-foreground hover:border-primary'
+                        className={`h-8 min-w-8 rounded-full px-1 text-xs font-bold tabular-nums transition-colors ${
+                          done ? 'bg-primary text-primary-foreground shadow-sm' : 'border border-border bg-background text-foreground hover:border-primary hover:text-primary'
                         }`}
                       >
                         {number}
@@ -493,12 +504,12 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
         </div>
         <div className="flex shrink-0 items-center justify-between gap-3" aria-live="polite">
           {phase === 'reading' && (
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+            <span className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-foreground">
               <Clock className="h-4 w-4 text-primary" /> Recording starts in <span className="tabular-nums">{countdown}s</span>
             </span>
           )}
           {phase === 'playing' && (
-            <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
+            <span className="flex items-center gap-2 rounded-full bg-primary/[0.07] px-3 py-1.5 text-xs font-semibold text-foreground">
               <Headphones className="h-4 w-4 animate-pulse text-primary" /> Part {part?.partNo} playing
               <span className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
                 <span className="block h-full bg-primary transition-[width]" style={{ width: `${Math.round(progress * 100)}%` }} />
@@ -508,7 +519,7 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
           {(phase === 'reading' || phase === 'playing' || phase === 'heard') && (
             <Button
               onClick={nextPart}
-              className="h-8 gap-1.5 font-bold"
+              className="h-9 gap-1.5 rounded-full px-5 font-bold shadow-md"
               title={phase === 'heard' ? undefined : "This part's recording will not play again"}
             >
               {partIndex + 1 < session.parts.length ? 'Next part' : 'Go to checking time'}
@@ -518,12 +529,12 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
           {checking && (
             <>
               {partsPlayed >= session.parts.length && phase === 'review' && (
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <span className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-foreground">
                   <Clock className="h-4 w-4 text-primary" /> <span className="tabular-nums">{clock(countdown)}</span> to check
                 </span>
               )}
               <div className="flex items-center gap-1.5">
-                <Button variant="outline" size="icon" aria-label="Previous part" disabled={checkIndex === 0} onClick={() => jump(checkIndex - 1)} className="h-8 w-8">
+                <Button variant="outline" size="icon" aria-label="Previous part" disabled={checkIndex === 0} onClick={() => jump(checkIndex - 1)} className="h-9 w-9 rounded-full">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button
@@ -532,11 +543,11 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
                   aria-label="Next part"
                   disabled={checkIndex >= session.parts.length - 1}
                   onClick={() => jump(checkIndex + 1)}
-                  className="h-8 w-8"
+                  className="h-9 w-9 rounded-full"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-                <Button onClick={() => void submit()} disabled={phase === 'submitting'} className="h-8 gap-1.5 font-bold">
+                <Button onClick={() => void submit()} disabled={phase === 'submitting'} className="h-9 gap-1.5 rounded-full px-5 font-bold shadow-md">
                   <Send className="h-3.5 w-3.5" /> {phase === 'submitting' ? 'Marking…' : 'Submit'}
                 </Button>
               </div>
@@ -548,16 +559,16 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
   );
 
   return (
-    <div className="w-full min-h-[calc(100dvh-4rem)] px-4 sm:px-6 lg:px-8 pt-5 bg-background">
-      <div className="mx-auto max-w-6xl space-y-3.5 pb-6">
+    <div className="flex w-full min-h-dvh flex-col px-4 sm:px-6 lg:px-8 bg-background">
       <MockHeader
+        className="-mx-4 mb-3.5 sm:-mx-6 lg:-mx-8"
         code={checking ? 'L' : `P${part?.partNo ?? 1}`}
         title={title ?? session.testTitle}
         subtitle={`${checking ? 'All four parts' : `Part ${part?.partNo} of 4`} • 40 questions • each recording plays once`}
         secondsLeft={secondsLeft}
         answered={{ done: answered, total: 40 }}
-        onLeave={onLeave}
       />
+      <div className="flex-1 space-y-3.5 pb-6">
 
       {session.reusedTest && (
         <p className="text-[11px] text-amber-700 dark:text-amber-400">

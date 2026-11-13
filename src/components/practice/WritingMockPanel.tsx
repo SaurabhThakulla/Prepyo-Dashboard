@@ -20,6 +20,7 @@ import QuestionSource from '@/components/mocks/QuestionSource';
 import TestFeedback from '@/components/mocks/TestFeedback';
 import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
 import MockHeader from '@/components/mocks/MockHeader';
+import TestFooter from '@/components/mocks/TestFooter';
 
 /** Mirrors billing.SectionMockSubTests on the server, which is what enforces it. */
 const SECTION_MOCK_SUB_TESTS = 5;
@@ -243,13 +244,13 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
   ];
 
   return (
-    <div className="w-full min-h-[calc(100dvh-4rem)] px-4 sm:px-6 lg:px-8 py-5 space-y-3.5 bg-background">
+    <div className="flex w-full min-h-dvh flex-col px-4 sm:px-6 lg:px-8 py-5 space-y-3.5 bg-background">
       <MockHeader
+        className="-mx-4 -mt-5 sm:-mx-6 lg:-mx-8"
         code={active === 'task1' ? 'T1' : 'T2'}
         title={`IELTS ${IELTS_MODULE_LABEL[session.module]} Writing Mock`}
         subtitle="2 tasks • 60 minutes • Task 2 counts twice as much as Task 1"
         secondsLeft={secondsLeft}
-        onLeave={onLeave}
       />
 
       <div className="flex gap-2" role="tablist">
@@ -308,8 +309,8 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
         </Card>
       </div>
 
-      <div className="flex justify-end">
-        <Button onClick={onSubmit} disabled={submitting} className="font-bold gap-1.5 shadow-md">
+      <TestFooter className="-mx-4 !-mb-5 sm:-mx-6 lg:-mx-8" onLeave={onLeave} note="Your writing is saved as you go.">
+        <Button onClick={onSubmit} disabled={submitting} className="h-9 rounded-full font-bold gap-1.5 shadow-md">
           {submitting ? (
             <>
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -322,7 +323,7 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
             </>
           )}
         </Button>
-      </div>
+      </TestFooter>
     </div>
   );
 }

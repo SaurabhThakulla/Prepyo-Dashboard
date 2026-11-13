@@ -20,6 +20,7 @@ import SectionMockIntro from '@/components/mocks/SectionMockIntro';
 import TestFeedback from '@/components/mocks/TestFeedback';
 import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
 import MockHeader from '@/components/mocks/MockHeader';
+import TestFooter from '@/components/mocks/TestFooter';
 import QuestionSource from '@/components/mocks/QuestionSource';
 import { CueCardPaper, ExaminerAvatar, ExaminerWave, MicOrb, PART_PHRASES, PART_TIPS, PartProgress, SPEAKING_PARTS, SpeakingDots, TestOverview, TimerRing, VoiceMeter } from '@/components/practice/SpeakingMockStage';
 
@@ -466,15 +467,14 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
   const timerTone = phase === 'recording' ? 'recording' : phase === 'prep' ? 'primary' : 'idle';
   const timerLabel = phase === 'prep' ? 'Prepare' : phase === 'recording' ? 'Speak' : phase === 'examiner' ? 'Listen' : 'Wait';
   return (
-    <div className="w-full min-h-[calc(100dvh-4rem)] bg-background">
-      <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6 lg:px-8">
-        <MockHeader
-          code={step ? `P${step.part}` : 'S'}
-          title={`IELTS Speaking Mock: ${session.title}`}
-          subtitle={`${partLabel} • question ${Math.min(index + 1, session.steps.length)} of ${session.steps.length}`}
-          secondsLeft={phase === 'finished' || phase === 'submitting' ? undefined : secondsLeft}
-          onLeave={onLeave}
-        />
+    <div className="flex w-full min-h-dvh flex-col bg-background">
+      <MockHeader
+        code={step ? `P${step.part}` : 'S'}
+        title={`IELTS Speaking Mock: ${session.title}`}
+        subtitle={`${partLabel} • question ${Math.min(index + 1, session.steps.length)} of ${session.steps.length}`}
+        secondsLeft={phase === 'finished' || phase === 'submitting' ? undefined : secondsLeft}
+      />
+      <div className="flex w-full flex-1 flex-col space-y-4 px-4 py-5 sm:px-6 lg:px-8">
         {/* Each part is a step up, as in the test: Part 1 easy, Part 2 medium, Part 3 hard. */}
         <QuestionSource
           exam="IELTS"
@@ -725,7 +725,7 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
         )}
         </div>
 
-        <aside className="lg:sticky lg:top-4">
+        <aside className="lg:sticky lg:top-24">
           <TestOverview
             steps={session.steps}
             index={index}
@@ -733,6 +733,13 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
           />
         </aside>
         </div>
+        <TestFooter className="-mx-4 !-mb-5 sm:-mx-6 lg:-mx-8" onLeave={onLeave} note="Each answer is saved as soon as you finish it.">
+          {pill && (
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${pill.className}`}>
+              {pill.icon} {pill.text}
+            </span>
+          )}
+        </TestFooter>
       </div>
     </div>
   );

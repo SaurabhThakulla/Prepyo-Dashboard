@@ -50,8 +50,9 @@ export default function MockExamRunner({
 
   return (
     <div data-practice-workspace className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
-      {/* Scrolls with the page: a floating bar would sit over the question. */}
+      {/* The test bar, kept in view at the top. */}
       <MockHeader
+        className="-mx-4 -mt-6 sm:-mx-6 lg:-mx-8"
         code={`${currentIndex + 1}`}
         title={mock.title}
         subtitle={`${mock.exam.replace('_', '-')} • question ${currentIndex + 1} of ${questions.length}`}
