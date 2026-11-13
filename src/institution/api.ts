@@ -191,8 +191,9 @@ export interface StudentActivity {
 }
 
 // The admin's own account.
+// One sign-in for admins and students: an admin gets their account, a student is signed in as a learner.
 export const logIn = (email: string, password: string) =>
-  api.post<InstitutionAccount>('/institution/login', { email, password });
+  api.post<InstitutionAccount | { student: true }>('/institution/login', { email, password });
 
 export const logOut = () => api.post('/institution/logout');
 
@@ -293,12 +294,13 @@ export const resetStudentPassword = (id: string) =>
 
 export const removeStudent = (id: string) => api.delete(`/institution/students/${id}`);
 
-// The student sign-in page.
+// Whether an address belongs to an institution (404 if not).
 export const lookUpInstitution = (code: string) =>
   api.get<{ name: string; code: string; brandColor?: string; logoUrl?: string }>(`/institution/lookup/${encodeURIComponent(code)}`);
 
-export const studentLogIn = (code: string, username: string, password: string) =>
-  api.post('/institution/student-login', { code, username, password });
+// Changes the email the student signs in with.
+export const setStudentEmail = (id: string, email: string) =>
+  api.put<{ email: string }>(`/institution/students/${id}/email`, { email });
 
 // ---------------------------------------------------------------- Institute Mocks
 

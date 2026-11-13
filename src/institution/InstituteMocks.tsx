@@ -695,7 +695,7 @@ function PaperBuilder({
   // Which list is shown: the bank to choose from, or what is selected for this task.
   const [view, setView] = useState<'bank' | 'selected'>('bank');
   // Prebuilt: take one of Prepyo's numbered tests whole. Custom: build it task by task.
-  const [mode, setMode] = useState<'prebuilt' | 'custom'>(items.length > 0 ? 'custom' : 'prebuilt');
+  const [mode, setMode] = useState<'prebuilt' | 'custom'>(SHOW_CUSTOM && items.length > 0 ? 'custom' : 'prebuilt');
   const [papers, setPapers] = useState<ReadyPaper[] | null>(null);
   const [papersError, setPapersError] = useState<string | null>(null);
   const [bank, setBank] = useState<BankQuestion[] | null>(null);
@@ -771,7 +771,8 @@ function PaperBuilder({
 
   return (
     <Card className="overflow-hidden p-0">
-      <div className="grid md:grid-cols-[17rem_1fr]">
+      <div className={SHOW_CUSTOM ? 'grid md:grid-cols-[17rem_1fr]' : ''}>
+        {SHOW_CUSTOM && (
         <nav aria-label={ielts ? 'Sections' : 'Tasks'} className="border-b border-border bg-muted/30 p-3 md:border-b-0 md:border-r">
           <div className="space-y-4 md:sticky md:top-4">
             <div role="tablist" aria-label="How to build the paper" className="grid grid-cols-2 rounded-xl border border-border bg-background p-1">
@@ -842,6 +843,7 @@ function PaperBuilder({
             ))}
           </div>
         </nav>
+        )}
 
         {mode === 'prebuilt' && (
           <ReadyPapersList
@@ -1057,6 +1059,9 @@ function PaperBuilder({
 }
 
 /** Prepyo's numbered tests for this kind of mock, to take one whole. */
+// shortcut: building a mock by hand (the Custom tab) is hidden until it is reworked; set true to bring it back.
+const SHOW_CUSTOM = false;
+
 function ReadyPapersList({
   title,
   papers,
@@ -1095,34 +1100,48 @@ function ReadyPapersList({
       )}
       {papers !== null && papers.length === 0 && (
         <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-          There are no prebuilt tests for this kind of mock yet. Use Custom to build one.
+          There are no prebuilt tests for this kind of mock yet.
         </p>
       )}
       {papers !== null && papers.length > 0 && (
         <ul className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
           {papers.map(p => {
             const on = p.number === current;
+            const name = (
+              <div className="min-w-0">
+                <p className="font-medium text-foreground">{p.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {p.itemIds.length} {p.itemIds.length === 1 ? 'part' : 'parts'}
+                </p>
+              </div>
+            );
             return (
-              <li
-                key={p.number}
-                className={`flex items-center justify-between gap-3 rounded-xl border p-4 ${on ? 'border-primary/40 bg-primary/5' : 'border-border bg-background'}`}
-              >
-                <div className="min-w-0">
-                  <p className="font-medium text-foreground">{p.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {p.itemIds.length} {p.itemIds.length === 1 ? 'part' : 'parts'}
-                  </p>
-                </div>
-                {on ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                    <Check className="h-3.5 w-3.5" /> On the paper
-                  </span>
+              <li key={p.number}>
+                {on || locked ? (
+                  <div
+                    className={`flex items-center justify-between gap-3 rounded-xl border p-4 ${on ? 'border-primary/40 bg-primary/5' : 'border-border bg-background'}`}
+                  >
+                    {name}
+                    {on && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                        <Check className="h-3.5 w-3.5" /> On the paper
+                      </span>
+                    )}
+                  </div>
                 ) : (
-                  !locked && (
-                    <Button size="sm" variant="outline" className="shrink-0" disabled={busy} onClick={() => onUse(p.number)}>
+                  // The whole card puts the test on the paper, not only its button.
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onUse(p.number)}
+                    aria-label={`Use ${p.title}`}
+                    className="group flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-background p-4 text-left transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/[0.03] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:translate-y-0 active:shadow-sm disabled:pointer-events-none disabled:opacity-60"
+                  >
+                    {name}
+                    <span className="inline-flex h-8 shrink-0 items-center rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground shadow-sm transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground">
                       Use this test
-                    </Button>
-                  )
+                    </span>
+                  </button>
                 )}
               </li>
             );
