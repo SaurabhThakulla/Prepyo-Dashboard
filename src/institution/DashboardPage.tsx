@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ExamCode, InstitutionAccount, logOut } from './api';
+import { ApiError } from '@/lib/api';
+import NotFoundPage from '@/pages/NotFoundPage';
+import { ExamCode, InstitutionAccount, logOut, lookUpInstitution } from './api';
 import { useInstitutionAccount } from './account';
-import { dashboardPath, sectionPath } from './paths';
+import { dashboardPath, LOGIN_PATH, sectionPath } from './paths';
 import { InstitutionLoading } from './InstitutionPage';
 import InstitutionLayout, { InstitutionSection } from './InstitutionLayout';
 import BatchesSection from './BatchesSection';
@@ -11,7 +13,6 @@ import SettingsSection from './SettingsSection';
 import SubscriptionSection from './SubscriptionSection';
 import InstituteMocksSection from './InstituteMocks';
 import StudentsPage from './StudentsCard';
-import StudentLoginPage from './StudentLoginPage';
 import { EXAM_CHOICES } from './profile';
 import { PageHero } from './ui';
 import { CreditCard, Layers, Settings as SettingsIcon, Users, Wallet } from 'lucide-react';
@@ -25,7 +26,26 @@ const TITLES: Record<InstitutionSection, string> = {
   settings: 'Settings',
 };
 
-/** /<name>[/<page>]: the institution's own address. Its admin sees the dashboard, everyone else the student sign-in. */
+/** Signed out at /<name>: a real institution's address leads to the shared sign-in, any other is not found. */
+function SignedOut({ code }: { code: string }) {
+  const [known, setKnown] = useState<boolean | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    setKnown(undefined);
+    lookUpInstitution(code).then(
+      () => !cancelled && setKnown(true),
+      // Only a 404 means nobody uses the address; on any other failure, signing in is still the way on.
+      err => !cancelled && setKnown(!(err instanceof ApiError && err.status === 404)),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [code]);
+  if (known === undefined) return <InstitutionLoading />;
+  return known ? <Navigate to={LOGIN_PATH} replace /> : <NotFoundPage />;
+}
+
+/** /<name>[/<page>]: the institution's dashboard, for its signed-in admin only. */
 export default function DashboardPage() {
   const { code = '', section = 'overview' } = useParams<{ code: string; section: string }>();
   const { search } = useLocation();
@@ -34,11 +54,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
 
   if (account === undefined) return <InstitutionLoading />;
-  // Signed out (an admin who just left, or anyone else), this address is the
-  // institution's own sign-in page; other sections lead back to it.
-  if (account === null) {
-    return section === 'overview' ? <StudentLoginPage /> : <Navigate to={dashboardPath(code)} replace />;
-  }
+  if (account === null) return <SignedOut code={code} />;
 
   const { institution } = account;
   // Students used to have a page of their own; they are the main page now.
@@ -48,13 +64,13 @@ export default function DashboardPage() {
   if (!(section in TITLES)) return <Navigate to={dashboardPath(institution.code)} replace />;
   const page = section as InstitutionSection;
 
-  // The admin stays on the institution's own page, not Prepyo's admin login.
+  // The admin lands on the institution sign-in, not Prepyo's admin login.
   const signOut = async () => {
     setSigningOut(true);
     try {
       await logOut();
     } finally {
-      navigate(dashboardPath(institution.code), { replace: true });
+      navigate(LOGIN_PATH, { replace: true });
       setAccount(null);
       setSigningOut(false);
     }
