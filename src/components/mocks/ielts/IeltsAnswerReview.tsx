@@ -493,7 +493,7 @@ function WritingReview({ tasks }: { tasks: ReviewTask[] }) {
 
       <Dialog open={open != null} onOpenChange={next => !next && setOpen(null)}>
         {open && (
-          <DialogContent band className="font-report sm:max-w-3xl">
+          <DialogContent band className="font-report sm:max-w-5xl">
             <DialogHeader className={dialogBand}>
               <DialogTitle>Writing {open.key === 'task1' ? 'Task 1' : 'Task 2'}</DialogTitle>
               <DialogDescription>{open.words} words</DialogDescription>
@@ -502,7 +502,7 @@ function WritingReview({ tasks }: { tasks: ReviewTask[] }) {
               <div className="rounded-xl bg-muted/50 p-3 space-y-2">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">The question</p>
                 <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{open.prompt}</p>
-                {open.imageUrl && <img src={open.imageUrl} alt="" className="max-h-72 rounded-lg border border-border bg-white" />}
+                {open.imageUrl && <img src={open.imageUrl} alt="" className="mx-auto block max-h-[28rem] rounded-lg bg-white" />}
               </div>
               {open.evaluation ? (
                 <TestFeedback evaluation={open.evaluation} answer={open.answer} />
@@ -544,7 +544,7 @@ function SpeakingReview({ attemptId, section }: { attemptId: string; section: Re
 
       <Dialog open={feedback} onOpenChange={setFeedback}>
         {section.evaluation && (
-          <DialogContent band className="font-report sm:max-w-3xl">
+          <DialogContent band className="font-report sm:max-w-5xl">
             <DialogHeader className={dialogBand}>
               <DialogTitle>Speaking feedback</DialogTitle>
               <DialogDescription>Rated across all three parts.</DialogDescription>

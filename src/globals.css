@@ -114,6 +114,66 @@
   box-shadow: none;
 }
 
+/* The bar's main forward action: a lit pearl pill whose arrow leans forward on hover. */
+.test-bar button.test-next {
+  background-image: linear-gradient(180deg, #fff 0%, hsl(218 100% 95%) 100%);
+  color: hsl(224 76% 30%);
+  box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 hsl(220 60% 86%), 0 0 0 1px hsl(0 0% 100% / 0.55), 0 10px 22px -10px rgb(2 12 50 / 0.8);
+}
+.test-bar button.test-next:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 hsl(220 60% 86%), 0 0 0 4px hsl(0 0% 100% / 0.18), 0 14px 26px -10px rgb(2 12 50 / 0.85);
+}
+.test-bar button.test-next svg:last-child {
+  transition: transform 150ms;
+}
+.test-bar button.test-next:not(:disabled):hover svg:last-child {
+  transform: translateX(3px);
+}
+/* The arrow (or send) icon sits in a deep-blue disc at the pill's right end. */
+.test-bar button.test-next .test-next-chip {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-image: linear-gradient(180deg, hsl(221 83% 55%) 0%, hsl(226 78% 38%) 100%);
+  color: #fff;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.35), 0 3px 8px -3px rgb(2 12 50 / 0.7);
+}
+
+/* The bar's way out (Save and Exit): a soft glass pill that brightens on hover. */
+.test-bar button.test-leave {
+  background-color: hsl(0 0% 100% / 0.14);
+  color: #fff;
+}
+.test-bar button.test-leave:not(:disabled):hover {
+  background-color: hsl(0 0% 100% / 0.24);
+  color: #fff;
+}
+/* Ending a test early: a fainter pill that turns red on hover. */
+.test-bar button.test-end {
+  background-color: hsl(0 0% 100% / 0.08);
+  color: hsl(0 0% 100% / 0.85);
+}
+.test-bar button.test-end:not(:disabled):hover {
+  background-color: hsl(350 89% 60%);
+  color: #fff;
+}
+
+/* SignalBars while a recording plays: each bar rises and falls on its own beat. */
+@keyframes signal-bar {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+.signal-live {
+  animation: signal-bar 1.1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .signal-live { animation: none; }
+}
+
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));

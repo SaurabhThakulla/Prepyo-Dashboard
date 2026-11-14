@@ -59,8 +59,8 @@ export default function OptionList({
         const isWrong = Boolean(result) && isSelected && !isCorrect;
 
         let classes =
-          'bg-background border-border text-foreground hover:border-primary/40 hover:bg-muted/40';
-        let badge = 'bg-muted text-muted-foreground border-border';
+          'bg-muted/50 border-transparent text-foreground hover:bg-primary/[0.08]';
+        let badge = 'bg-background text-muted-foreground border-transparent';
 
         if (result && isCorrect) {
           classes = 'bg-emerald-600 text-white border-emerald-600 shadow-sm font-semibold';
@@ -72,7 +72,7 @@ export default function OptionList({
           classes = 'bg-primary text-primary-foreground border-primary shadow-sm font-semibold';
           badge = 'bg-white/20 text-white border-transparent';
         } else if (result) {
-          classes = 'opacity-50 bg-background border-border text-muted-foreground';
+          classes = 'opacity-50 bg-muted/50 border-transparent text-muted-foreground';
         }
 
         return (

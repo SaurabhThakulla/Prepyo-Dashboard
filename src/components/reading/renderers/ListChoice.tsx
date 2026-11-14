@@ -12,8 +12,8 @@ export default function ListChoice({ question, answer, result, locked, onChange 
   const isCorrect = result?.attempt.isCorrect;
 
   let tone = chosen
-    ? 'border-primary/60 bg-primary/10 text-primary font-semibold'
-    : 'border-input bg-background text-muted-foreground hover:border-primary/50';
+    ? 'border-transparent bg-primary/15 text-primary font-semibold'
+    : 'border-transparent bg-muted/60 text-muted-foreground hover:bg-primary/10';
   if (result) {
     tone = isCorrect
       ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 font-semibold'

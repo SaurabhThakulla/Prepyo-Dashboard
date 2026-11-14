@@ -37,8 +37,6 @@ export const SECTION_ICONS: Record<FullMockSkill, typeof Headphones> = {
 };
 
 // A button on the blue bar: a pill, like the ones inside a section.
-const BAR_PILL = 'h-9 gap-1.5 rounded-full px-4 text-xs font-bold';
-
 /**
  * Between the sections of an IELTS mock: the sections in order with the next
  * one to start, between the same blue bars as inside a section. The full mock
@@ -48,7 +46,7 @@ export default function MockSectionsCard({ title, sections, current, busy, disab
   const [confirmEnd, setConfirmEnd] = useState(false);
   const done = sections.filter(s => s.status === 'submitted' || s.status === 'closed').length;
   return (
-    <Card className="w-full max-w-2xl overflow-hidden p-0">
+    <Card className="w-full max-w-2xl overflow-hidden border-0 p-0">
       {/* The same blue bar as the footer, and as tall: the test's name, how far along, full screen. */}
       <div className="dark test-bar flex items-center justify-between gap-3 px-5 py-3.5 sm:px-8">
         <h2 className="truncate font-display text-lg font-bold">{title}</h2>
@@ -64,7 +62,7 @@ export default function MockSectionsCard({ title, sections, current, busy, disab
           {sections.map((section, i) => (
             <SectionRow key={section.skill} index={i} section={section} current={current === section.skill}>
               {current === section.skill && (
-                <div className="mt-4 flex flex-col gap-3 border-t border-primary/15 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="mt-4 flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-foreground/80">
                     {aboutOf(section.skill)}{' '}
                     {section.skill === 'listening' && 'Use headphones.'}
@@ -87,11 +85,16 @@ export default function MockSectionsCard({ title, sections, current, busy, disab
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span>End this full mock without an overall band? It is not returned to your allowance.</span>
             <span className="flex shrink-0 gap-2">
-              <Button size="sm" variant="outline" className={BAR_PILL} onClick={() => setConfirmEnd(false)}>
-                Keep going
+              {/* Keeping going is the safe choice, so it is the lit pill; ending is plainly red. */}
+              <Button autoFocus className="test-next h-10 gap-2 rounded-full px-5 font-bold" onClick={() => setConfirmEnd(false)}>
+                <Play className="h-3.5 w-3.5 fill-current" /> Keep going
               </Button>
-              <Button size="sm" variant="destructive" className={BAR_PILL} disabled={busy} onClick={onEnd}>
-                End it
+              <Button
+                className="h-10 gap-2 rounded-full bg-rose-500 px-5 font-bold text-white shadow-md hover:bg-rose-600"
+                disabled={busy}
+                onClick={onEnd}
+              >
+                <XCircle className="h-4 w-4" /> End it
               </Button>
             </span>
           </div>
@@ -106,16 +109,15 @@ export default function MockSectionsCard({ title, sections, current, busy, disab
             <span className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
               {onEnd && (
                 <Button
-                  size="sm"
                   variant="ghost"
-                  className={`${BAR_PILL} text-muted-foreground hover:bg-destructive/15 hover:text-destructive`}
+                  className="test-end h-10 gap-2 rounded-full px-4 font-semibold"
                   onClick={() => setConfirmEnd(true)}
                 >
-                  End this full mock
+                  <XCircle className="h-4 w-4" /> End mock
                 </Button>
               )}
-              <Button size="sm" variant="outline" className={`${BAR_PILL} hover:bg-primary hover:text-primary-foreground`} onClick={onLeave}>
-                <LogOut className="h-3.5 w-3.5" /> Save and exit
+              <Button className="test-next h-10 gap-2 rounded-full px-5 font-bold" onClick={onLeave}>
+                <LogOut className="h-4 w-4" /> Save and exit
               </Button>
             </span>
           </div>
@@ -154,8 +156,8 @@ function SectionRow({
   const StatusIcon = status.icon;
   return (
     <li
-      className={`rounded-xl border p-3 transition-colors sm:p-4 ${
-        current ? 'border-primary/40 bg-primary/5 shadow-sm ring-1 ring-primary/15' : 'border-border bg-card'
+      className={`rounded-xl p-3 transition-colors sm:p-4 ${
+        current ? 'bg-primary/[0.06]' : 'bg-muted/40'
       }`}
       aria-current={current ? 'step' : undefined}
     >

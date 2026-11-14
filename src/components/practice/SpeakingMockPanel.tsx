@@ -21,6 +21,7 @@ import TestFeedback from '@/components/mocks/TestFeedback';
 import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
 import MockHeader from '@/components/mocks/MockHeader';
 import TestFooter from '@/components/mocks/TestFooter';
+import ConfirmSubmit from '@/components/mocks/ConfirmSubmit';
 import QuestionSource from '@/components/mocks/QuestionSource';
 import { CueCardPaper, ExaminerAvatar, ExaminerWave, MicOrb, PART_PHRASES, PART_TIPS, PartProgress, SPEAKING_PARTS, SpeakingDots, TestOverview, TimerRing, VoiceMeter } from '@/components/practice/SpeakingMockStage';
 
@@ -120,7 +121,7 @@ export default function SpeakingMockPanel() {
   };
 
   if (!isPremiumUser(user)) return <PracticeMockPaywall skill="speaking" exam={activeExam} institution={isInstitutionStudent(user)} />;
-  if (outcome) return <SpeakingResult outcome={outcome} onBack={() => navigate('/practice?skill=speaking')} onRedo={() => { setOutcome(null); void start(); }} />;
+  if (outcome) return <SpeakingResult outcome={outcome} onBack={() => navigate('/mocks')} onRedo={() => { setOutcome(null); void start(); }} />;
   if (session) {
     return (
       <SpeakingMockRunner
@@ -131,7 +132,7 @@ export default function SpeakingMockPanel() {
           void refreshUser();
           refreshPapers();
         }}
-        onLeave={() => navigate('/practice?skill=speaking')}
+        onLeave={() => navigate('/mocks')}
         onClosed={message => {
           toast.warning('This test is closed', message);
           setSession(null);
@@ -204,6 +205,7 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
   // Part 2: whether the minute to prepare has begun for the current card.
   const [prepared, setPrepared] = useState(false);
   const [notes, setNotes] = useState('');
+  const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<SpokenAnswer[]>(session.answers);
   const [pending, setPending] = useState<PendingAnswer | null>(null);
@@ -490,7 +492,7 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
         <div className="min-w-0 space-y-4">
 
         {phase === 'intro' && (
-          <Card className="relative overflow-hidden p-0">
+          <Card className="relative overflow-hidden border-0 p-0">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-gradient-to-b from-primary/10 to-transparent" aria-hidden />
             <div className="relative mx-auto flex max-w-2xl flex-col items-center gap-6 px-5 py-10 text-center sm:px-8 sm:py-12 lg:min-h-[540px] lg:justify-center">
               <div className="relative flex h-28 w-28 items-center justify-center" aria-hidden>
@@ -513,7 +515,7 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
               {index === 0 && (
                 <ol className="grid w-full gap-2 sm:grid-cols-3">
                   {[1, 2, 3].map(part => (
-                    <li key={part} className="flex items-center gap-3 rounded-2xl border border-border bg-muted/30 px-4 py-3 text-left sm:flex-col sm:items-center sm:gap-1.5 sm:text-center">
+                    <li key={part} className="flex items-center gap-3 rounded-2xl bg-muted/40 px-4 py-3 text-left sm:flex-col sm:items-center sm:gap-1.5 sm:text-center">
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">P{part}</span>
                       <span className="min-w-0">
                         <span className="block text-sm font-semibold text-foreground">{SPEAKING_PARTS[part]}</span>
@@ -550,7 +552,7 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
         )}
 
         {active && step && (
-          <Card className="overflow-hidden p-0">
+          <Card className="overflow-hidden border-0 p-0">
             <div className="grid lg:grid-cols-[minmax(0,1fr)_320px]">
               <div className="space-y-5 p-5 sm:p-6">
                 <div className="flex items-center gap-4">
@@ -566,8 +568,8 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
                 </div>
 
                 {(step.lead || showQuestion) && (
-                  <div className="space-y-2 rounded-2xl rounded-tl-sm border border-border bg-muted/40 p-4 sm:p-5" aria-live="polite">
-                    {step.lead && <p className="text-sm leading-relaxed text-muted-foreground">{step.lead}</p>}
+                  <div className="space-y-2 rounded-2xl rounded-tl-sm bg-muted/50 p-4 sm:p-5" aria-live="polite">
+                    {step.lead && <p className="text-base leading-relaxed text-foreground/75">{step.lead}</p>}
                     {showQuestion && <p className="text-lg font-semibold leading-snug text-foreground sm:text-xl">{step.question}</p>}
                   </div>
                 )}
@@ -605,7 +607,7 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
                 )}
               </div>
 
-              <div className="order-first flex items-center gap-4 border-b border-border bg-muted/25 p-4 lg:order-none lg:flex-col lg:justify-center lg:border-b-0 lg:border-l lg:p-6 lg:text-center">
+              <div className="order-first flex items-center gap-4 bg-muted/30 p-4 lg:order-none lg:flex-col lg:justify-center lg:p-6 lg:text-center">
                 <TimerRing seconds={countdown} total={countdownTotal} tone={timerTone} label={timerLabel} />
 
                 <div className="flex min-w-0 flex-1 flex-col items-start gap-3 lg:w-full lg:flex-none lg:items-center">
@@ -668,13 +670,13 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
         )}
 
         {active && step && PART_PHRASES[step.part] && (
-          <Card className="p-4 sm:p-5">
+          <Card className="border-0 p-4 sm:p-5">
             <p className="flex items-center gap-2 text-sm font-bold text-foreground">
               <MessageCircle className="h-4 w-4 text-primary" /> Useful ways to begin
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {PART_PHRASES[step.part].map(phrase => (
-                <span key={phrase} className="rounded-full border border-primary/20 bg-primary/[0.05] px-3 py-1.5 text-sm text-foreground">
+                <span key={phrase} className="rounded-full bg-primary/[0.07] px-3 py-1.5 text-sm text-foreground">
                   {phrase}
                 </span>
               ))}
@@ -685,13 +687,13 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
         {active && step && PART_TIPS[step.part] && (
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
             {PART_TIPS[step.part].map(tip => (
-              <div key={tip.title} className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4">
+              <div key={tip.title} className="flex items-start gap-3 rounded-2xl bg-card p-4 shadow-sm">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
                   <Lightbulb className="h-4 w-4" />
                 </span>
                 <div className="space-y-0.5">
                   <p className="text-sm font-bold text-foreground">{tip.title}</p>
-                  <p className="text-xs leading-relaxed text-muted-foreground">{tip.detail}</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{tip.detail}</p>
                 </div>
               </div>
             ))}
@@ -699,13 +701,13 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
         )}
 
         {error && (
-          <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <p role="alert" className="rounded-xl bg-destructive/[0.07] px-4 py-3 text-sm text-destructive">
             {error}
           </p>
         )}
 
         {(phase === 'finished' || phase === 'submitting') && (
-          <Card className="p-6 sm:p-8">
+          <Card className="border-0 p-6 sm:p-8">
             <div className="mx-auto flex max-w-md flex-col items-center gap-4 text-center">
               <span className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
                 <CheckCircle2 className="h-9 w-9 text-emerald-500" />
@@ -716,10 +718,16 @@ export function SpeakingMockRunner({ session, onDone, onLeave, onClosed }: Runne
                   {saved.length} of {session.steps.length} answers were recorded.
                 </p>
               </div>
-              <Button size="lg" onClick={() => void submit()} disabled={phase === 'submitting'} className="h-11 gap-2 rounded-full px-6 font-bold">
+              <Button size="lg" onClick={() => setConfirmSubmit(true)} disabled={phase === 'submitting'} className="h-11 gap-2 rounded-full px-6 font-bold">
                 {phase === 'submitting' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 {phase === 'submitting' ? 'Rating your test…' : 'Get my rating'}
               </Button>
+              <ConfirmSubmit
+                open={confirmSubmit}
+                onCancel={() => setConfirmSubmit(false)}
+                onConfirm={() => void submit()}
+                description={`${saved.length} of ${session.steps.length} answers were recorded. You cannot record them again after this.`}
+              />
             </div>
           </Card>
         )}
@@ -751,7 +759,7 @@ export function SpeakingResult({ outcome, onBack, onRedo }: { outcome: SpeakingO
       <IeltsTestReport
         attemptId={outcome.attempt.id}
         xpAwarded={outcome.xpAwarded}
-        backLabel="Back to speaking practice"
+        backLabel="Back to mock tests"
         onBack={onBack}
         onRedo={onRedo}
       />
@@ -760,7 +768,7 @@ export function SpeakingResult({ outcome, onBack, onRedo }: { outcome: SpeakingO
   const band = outcome.evaluation.estimatedScore;
   return (
     <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 space-y-4">
-      <Card className="overflow-hidden p-0">
+      <Card className="overflow-hidden border-0 p-0">
         <div className="flex flex-col items-center gap-5 bg-gradient-to-br from-primary/[0.08] via-transparent to-transparent p-6 text-center sm:flex-row sm:text-left">
           <div className="relative flex h-28 w-28 shrink-0 items-center justify-center">
             <svg viewBox="0 0 120 120" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden>
@@ -792,7 +800,7 @@ export function SpeakingResult({ outcome, onBack, onRedo }: { outcome: SpeakingO
       </Card>
       <TestFeedback evaluation={outcome.evaluation} />
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="outline" onClick={onBack}>Back to speaking practice</Button>
+        <Button variant="outline" onClick={onBack}>Back to mock tests</Button>
         {onRedo && (
           <Button onClick={onRedo} className="gap-1.5">
             <RotateCcw className="h-4 w-4" />

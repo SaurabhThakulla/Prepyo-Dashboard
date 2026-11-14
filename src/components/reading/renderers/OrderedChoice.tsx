@@ -28,8 +28,8 @@ export default function OrderedChoice({ question, answer, result, locked, onChan
         const isWrong = Boolean(result) && isSelected && !isCorrect;
 
         let classes =
-          'bg-background border-border text-foreground hover:border-primary/40 hover:bg-muted/40';
-        let badge = 'bg-muted text-muted-foreground border-border';
+          'bg-muted/50 border-transparent text-foreground hover:bg-primary/[0.08]';
+        let badge = 'bg-background text-muted-foreground border-transparent';
 
         if (result && isCorrect) {
           classes = 'bg-emerald-600/10 border-emerald-500/50 text-foreground';
@@ -41,7 +41,7 @@ export default function OrderedChoice({ question, answer, result, locked, onChan
           classes = 'bg-primary/10 border-primary/50 text-foreground';
           badge = 'bg-primary text-primary-foreground border-transparent';
         } else if (result) {
-          classes = 'opacity-50 bg-background border-border text-muted-foreground';
+          classes = 'opacity-50 bg-muted/50 border-transparent text-muted-foreground';
         }
 
         return (

@@ -4,7 +4,8 @@ import { Volume2, Play, Square, Pause, ChevronDown, ChevronUp, FileText } from '
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { assignVoices, FALLBACK_LANG, scriptLanguage, splitSentences, splitTurns } from '@/lib/listeningScript';
-import { browserVoiceBroken, markBrowserVoiceBroken, Playback, playClips, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
+import { browserVoiceBroken, markBrowserVoiceBroken, Playback, playClips, StoppedError, unlockAudio, watchClipLevels } from '@/lib/scriptPlayer';
+import { SignalBars } from '@/components/mocks/PreTestChecks';
 
 interface PromptAudioProps {
   /** A real recording, when the question has one. Always preferred. */
@@ -835,9 +836,6 @@ function RecordedAudio({
   );
 }
 
-const BAR_COUNT = 96;
-// Fixed, speech-like heights so the resting wave has a shape, not a flat line.
-const BAR_SHAPE = Array.from({ length: BAR_COUNT }, (_, i) => 0.3 + 0.7 * Math.abs(Math.sin(i * 0.9) * Math.cos(i * 0.37)));
 const SPEED_OPTIONS = [1.0, 1.25, 1.5, 2.0];
 
 interface VoicePanelProps {
@@ -857,8 +855,10 @@ interface VoicePanelProps {
 }
 
 /**
- * The listening panel: a glowing play orb and a voice waveform that comes alive
- * while the audio plays and fills in as it goes.
+ * The listening panel, laid out as the mocks show a recording: the play button
+ * and a large status line, centred, over a radio-style signal that fills in as
+ * the audio plays and follows the live sound where the browser can read it.
+ * Practice keeps the button (the learner starts it), speed and transcript.
  */
 export function VoicePanel({
   disabled = false,
@@ -873,104 +873,67 @@ export function VoicePanel({
   footer,
   label = 'Listen',
 }: VoicePanelProps) {
-  const played = Math.round(Math.min(1, Math.max(0, progress)) * BAR_COUNT);
   const Icon = toggleIcon === 'play' ? Play : toggleIcon === 'pause' ? Pause : Square;
+  const [levels, setLevels] = useState<number[] | null>(null);
+  useEffect(() => {
+    if (!playing) return;
+    const stop = watchClipLevels(40, setLevels);
+    return () => {
+      stop();
+      setLevels(null);
+    };
+  }, [playing]);
 
   return (
-    <div
-      className={`relative overflow-hidden rounded-xl p-4 sm:p-5 transition-colors duration-500 ${
-        playing
-          ? 'bg-gradient-to-br from-primary/10 via-primary/[0.04] to-indigo-500/10'
-          : 'bg-primary/[0.05]'
-      }`}
-    >
-      {playing && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-10 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-primary/20 blur-3xl motion-safe:animate-pulse"
-        />
-      )}
+    <div className="space-y-3 py-2">
+      {/* One row, kept together: play, the signal, then speed. */}
+      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3">
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={disabled}
+          aria-label={toggleLabel}
+          className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-primary-foreground transition-all active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-40 bg-primary hover:scale-105 ${
+            playing ? 'ring-8 ring-primary/15' : 'shadow-md'
+          }`}
+        >
+          <Icon className={`h-5 w-5 fill-current ${toggleIcon === 'play' ? 'ml-0.5' : ''}`} />
+        </button>
+        {/* The button and the signal say it all on screen; the words are for screen readers. */}
+        <p className="sr-only" aria-live="polite">
+          {status || label}
+        </p>
 
-      <div className="relative flex items-center gap-3 sm:gap-4">
-        <div className="relative shrink-0">
-          {playing && (
-            <>
-              <span aria-hidden className="absolute inset-0 rounded-full bg-primary/30 motion-safe:animate-ping" />
-              <span aria-hidden className="absolute -inset-2 rounded-full border-2 border-primary/30 motion-safe:animate-pulse" />
-            </>
-          )}
-          <button
-            type="button"
-            onClick={onToggle}
-            disabled={disabled}
-            aria-label={toggleLabel}
-            className="relative flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-all duration-300 active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 bg-gradient-to-br from-primary to-indigo-600 shadow-primary/30 hover:scale-105"
-          >
-            <Icon className={`h-5 w-5 ${toggleIcon === 'play' ? 'ml-0.5 fill-current' : 'fill-current'}`} />
-          </button>
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
-            <span className="flex shrink-0 items-center gap-1.5 text-sm font-bold text-foreground">
-              <Volume2 className={`h-4 w-4 ${playing ? 'text-primary' : 'text-muted-foreground'}`} />
-              {label}
-            </span>
-            {status && (
-              <span className="min-w-0 text-xs font-semibold text-muted-foreground" aria-live="polite">
-                {status}
-              </span>
-            )}
-          </div>
-
-          <div aria-hidden className="mt-2.5 flex h-10 items-center justify-between gap-px">
-            {BAR_SHAPE.map((height, i) => (
-              <span
-                key={i}
-                style={{
-                  height: `${Math.round(height * 100)}%`,
-                  animationDelay: `${(i * 73) % 900}ms`,
-                  animationDuration: `${700 + ((i * 131) % 500)}ms`,
-                }}
-                // Thin bars like the recorder's; a phone shows every other one.
-                className={`w-[3px] shrink-0 origin-center rounded-full transition-colors duration-300 sm:w-1 ${
-                  i < played ? 'bg-primary' : playing ? 'bg-primary/25' : 'bg-muted-foreground/30'
-                } ${playing ? 'animate-voice-bar' : 'scale-y-[0.55]'} ${i % 2 ? 'max-sm:hidden' : ''}`}
-              />
-            ))}
-          </div>
-
-          <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted-foreground/15">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-primary to-indigo-500 transition-[width] duration-300 ease-out"
-              style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
-            />
-          </div>
-
-          {onSpeedChange && (
-            <div className="mt-2 flex items-center justify-end">
-              <div className="relative group inline-flex items-center">
-                <select
-                  value={speed}
-                  onChange={e => onSpeedChange(Number(e.target.value))}
-                  aria-label="Playback speed"
-                  title="Audio playback speed"
-                  className="appearance-none cursor-pointer rounded-full border border-border/80 bg-background/95 hover:bg-background px-3 py-1 pr-6 text-xs font-semibold font-mono text-foreground hover:text-primary hover:border-primary/50 shadow-2xs focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all"
-                >
-                  {SPEED_OPTIONS.map(s => (
-                    <option key={s} value={s} className="bg-background text-foreground font-sans font-medium">
-                      {s.toFixed(1)}x
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
-              </div>
-            </div>
+        <div className="flex items-center">
+          {/* Played once and done: the signal settles into a flat line. */}
+          {disabled ? (
+            <div className="h-[3px] w-64 rounded-full bg-primary/30" aria-hidden />
+          ) : (
+            <SignalBars progress={playing || progress > 0 ? progress : 1} playing={playing} levels={levels} className="h-12" />
           )}
         </div>
+
+        {onSpeedChange && (
+          <div className="relative group inline-flex shrink-0 items-center">
+            <select
+              value={speed}
+              onChange={e => onSpeedChange(Number(e.target.value))}
+              aria-label="Playback speed"
+              title="Audio playback speed"
+              className="appearance-none cursor-pointer rounded-full bg-muted/70 hover:bg-muted px-3 py-1 pr-6 text-xs font-semibold font-mono text-foreground hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all"
+            >
+              {SPEED_OPTIONS.map(s => (
+                <option key={s} value={s} className="bg-background text-foreground font-sans font-medium">
+                  {s.toFixed(1)}x
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+          </div>
+        )}
       </div>
 
-      {footer && <div className="relative mt-3 space-y-2">{footer}</div>}
+      {footer && <div className="w-full space-y-2">{footer}</div>}
     </div>
   );
 }

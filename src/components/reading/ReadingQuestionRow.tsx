@@ -54,7 +54,7 @@ export default function ReadingQuestionRow({
         : 'bg-rose-500 text-white border-rose-500'
     : isAnswered(answer)
       ? 'bg-primary text-primary-foreground border-primary'
-      : 'bg-background text-muted-foreground border-border';
+      : 'bg-muted text-muted-foreground border-transparent';
 
   const control = (
     <Renderer

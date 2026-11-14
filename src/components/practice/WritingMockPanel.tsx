@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { RefreshCw, RotateCcw, Send } from 'lucide-react';
+import { ArrowRight, RefreshCw, RotateCcw, Send } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
@@ -21,6 +21,7 @@ import TestFeedback from '@/components/mocks/TestFeedback';
 import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
 import MockHeader from '@/components/mocks/MockHeader';
 import TestFooter from '@/components/mocks/TestFooter';
+import ConfirmSubmit from '@/components/mocks/ConfirmSubmit';
 
 /** Mirrors billing.SectionMockSubTests on the server, which is what enforces it. */
 const SECTION_MOCK_SUB_TESTS = 5;
@@ -149,7 +150,7 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
   const leave = () => {
     if (session) void saveDrafts(session, drafts);
     if (section) section.onLeave();
-    else navigate('/practice?skill=writing');
+    else navigate('/mocks');
   };
 
   if (!section && !isPremiumUser(user)) {
@@ -157,7 +158,7 @@ export default function WritingMockPanel({ section }: { section?: FullMockSectio
   }
 
   if (outcome) {
-    return <WritingMockResult outcome={outcome} onBack={() => navigate('/practice?skill=writing')} onRedo={() => { setOutcome(null); void start(); }} />;
+    return <WritingMockResult outcome={outcome} onBack={() => navigate('/mocks')} onRedo={() => { setOutcome(null); void start(); }} />;
   }
 
   if (session) {
@@ -216,6 +217,7 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
   // paper resumes with the time it has left.
   const [deadline] = useState(() => Date.now() + session.secondsRemaining * 1000);
   const [secondsLeft, setSecondsLeft] = useState(() => Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+  const [confirmSubmit, setConfirmSubmit] = useState(false);
 
   useEffect(() => {
     if (secondsLeft <= 0) return;
@@ -261,10 +263,10 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
             role="tab"
             aria-selected={active === tab.key}
             onClick={() => onSelect(tab.key)}
-            className={`flex-1 px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors ${
+            className={`flex-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
               active === tab.key
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border bg-card text-muted-foreground hover:border-primary/40'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-card text-muted-foreground shadow-sm hover:bg-primary/10 hover:text-primary'
             }`}
           >
             {tab.label}
@@ -276,12 +278,12 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <Card className="p-4 space-y-3">
+        <Card className="border-0 p-4 space-y-3">
           <h2 className="font-display font-bold text-base text-foreground">{task.title}</h2>
           <QuestionSource questions={[task]} />
           <p className="text-xs sm:text-[13px] text-foreground leading-relaxed whitespace-pre-line">{task.prompt}</p>
           {task.imageUrl && (
-            <div className="mx-auto w-full overflow-x-auto overscroll-x-contain rounded-xl border border-border bg-white p-3">
+            <div className="mx-auto w-full overflow-x-auto overscroll-x-contain rounded-xl bg-white p-3">
               {/* Squeezed to a phone's width the labels are too small to read,
                   so there the figure keeps a readable width and scrolls sideways. */}
               <img src={task.imageUrl} alt={task.title} className="h-auto w-[520px] max-w-none object-contain sm:w-full sm:max-w-full" />
@@ -289,7 +291,7 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
           )}
         </Card>
 
-        <Card className="p-4 space-y-2.5">
+        <Card className="border-0 p-4 space-y-2.5">
           <div className="flex items-center justify-between text-xs">
             <span className="text-sm font-bold text-foreground">Your {active === 'task1' ? 'Task 1' : 'Task 2'} response</span>
             <Badge variant={words >= target ? 'success' : 'warning'}>{`${words} / ${target} words`}</Badge>
@@ -300,7 +302,7 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
             disabled={submitting}
             onChange={event => onChange(active, event.target.value)}
             placeholder="Write your response here…"
-            className="border-2 border-primary bg-background px-4 py-3 text-[15px] leading-7 text-foreground placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-primary/30"
+            className="border-0 bg-muted/40 px-4 py-3 text-[15px] leading-7 text-foreground placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-primary/30"
             aria-label={`${active === 'task1' ? 'Task 1' : 'Task 2'} response`}
           />
           <p className="text-xs leading-relaxed text-foreground/75">
@@ -310,20 +312,36 @@ function WritingMockRunner({ session, drafts, active, submitting, onSelect, onCh
       </div>
 
       <TestFooter className="-mx-4 !-mb-5 sm:-mx-6 lg:-mx-8" onLeave={onLeave} note="Your writing is saved as you go.">
-        <Button onClick={onSubmit} disabled={submitting} className="h-9 rounded-full font-bold gap-1.5 shadow-md">
-          {submitting ? (
-            <>
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              <span>Rating both tasks…</span>
-            </>
-          ) : (
-            <>
-              <Send className="w-3.5 h-3.5" />
-              <span>Finish and submit</span>
-            </>
-          )}
-        </Button>
+        {/* Task 1 moves on to Task 2; Task 2 submits the paper, after a yes. */}
+        {active === 'task1' ? (
+          <Button
+            onClick={() => onSelect('task2')}
+            disabled={submitting}
+            className="test-next h-11 gap-3 rounded-full pl-6 pr-1.5 font-bold tracking-wide"
+          >
+            Next
+            <span className="test-next-chip"><ArrowRight className="h-4 w-4" /></span>
+          </Button>
+        ) : (
+          <Button
+            onClick={() => setConfirmSubmit(true)}
+            disabled={submitting}
+            className="test-next h-11 gap-3 rounded-full pl-6 pr-1.5 font-bold tracking-wide"
+          >
+            {submitting ? 'Rating both tasks…' : 'Finish and submit'}
+            <span className="test-next-chip">
+              {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </span>
+          </Button>
+        )}
       </TestFooter>
+
+      <ConfirmSubmit
+        open={confirmSubmit}
+        onCancel={() => setConfirmSubmit(false)}
+        onConfirm={onSubmit}
+        description={`Task 1 has ${writingWordCount(drafts.task1)} words and Task 2 has ${writingWordCount(drafts.task2)}. You cannot change your writing after this.`}
+      />
     </div>
   );
 }
@@ -334,7 +352,7 @@ function WritingMockResult({ outcome, onBack, onRedo }: { outcome: WritingMockOu
       <IeltsTestReport
         attemptId={outcome.attempt.id}
         xpAwarded={outcome.xpAwarded}
-        backLabel="Back to writing practice"
+        backLabel="Back to mock tests"
         onBack={onBack}
         onRedo={onRedo}
       />
@@ -344,7 +362,7 @@ function WritingMockResult({ outcome, onBack, onRedo }: { outcome: WritingMockOu
   const t2 = outcome.task2Evaluation.estimatedScore;
   return (
     <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 space-y-4">
-      <Card className="p-5 text-center space-y-1.5">
+      <Card className="border-0 p-5 text-center space-y-1.5">
         <span className="text-xs font-bold text-muted-foreground uppercase">Estimated Writing band</span>
         <div className="font-display text-4xl font-black text-foreground">
           {outcome.writingBand != null ? outcome.writingBand.toFixed(1) : '—'}
@@ -367,7 +385,7 @@ function WritingMockResult({ outcome, onBack, onRedo }: { outcome: WritingMockOu
       </div>
 
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="outline" onClick={onBack}>Back to writing practice</Button>
+        <Button variant="outline" onClick={onBack}>Back to mock tests</Button>
         {onRedo && (
           <Button onClick={onRedo} className="gap-1.5">
             <RotateCcw className="h-4 w-4" />

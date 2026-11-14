@@ -120,7 +120,7 @@ function SortableBox({ id, position, text, disabled, pairCorrect, reviewing }: S
     disabled,
   });
 
-  let tone = 'bg-card border-border';
+  let tone = 'bg-muted/50 border-transparent';
   if (reviewing && pairCorrect === true) tone = 'bg-emerald-500/10 border-emerald-500/40';
   else if (reviewing && pairCorrect === false) tone = 'bg-rose-500/10 border-rose-500/30';
 
@@ -141,7 +141,7 @@ function SortableBox({ id, position, text, disabled, pairCorrect, reviewing }: S
         className={`shrink-0 flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-muted-foreground ${disabled ? 'opacity-50' : ''}`}
       >
         <GripVertical className="w-4 h-4" />
-        <span className="w-5 h-5 rounded-md bg-primary/10 text-primary font-mono font-bold text-[11px] flex items-center justify-center border border-primary/20">
+        <span className="w-5 h-5 rounded-md bg-primary/10 text-primary font-mono font-bold text-[11px] flex items-center justify-center">
           {position}
         </span>
       </span>

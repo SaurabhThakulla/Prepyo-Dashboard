@@ -193,7 +193,7 @@ export default function BlankedText({
       <div className="space-y-4">
         {body}
 
-        <div className="flex flex-wrap gap-2 p-3.5 rounded-xl bg-muted/30 border border-border">
+        <div className="flex flex-wrap gap-2 p-3.5 rounded-xl bg-muted/50">
           {wordBank.map(word => (
             <WordChip
               key={word.label}
@@ -253,8 +253,8 @@ function GapSlot({ id, word, armed, disabled, tone, onPlace, onClear }: GapSlotP
   const slotTone = tone
     ? tone
     : word
-      ? 'border-primary/60 bg-primary/10 text-primary'
-      : `border-dashed ${isOver || armed ? 'border-primary bg-primary/15' : 'border-primary/50 bg-primary/[0.06] hover:bg-primary/10'}`;
+      ? 'border-transparent bg-primary/10 text-primary'
+      : isOver || armed ? 'border-primary bg-primary/15' : 'border-transparent bg-primary/[0.07] hover:bg-primary/10';
 
   return (
     <button
@@ -297,10 +297,10 @@ function WordChip({ word, spent, armed, disabled, onArm }: WordChipProps) {
       style={{ touchAction: 'none' }}
       className={`rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
         spent
-          ? 'opacity-40 bg-background border-border text-muted-foreground cursor-default'
+          ? 'opacity-40 bg-background border-transparent text-muted-foreground cursor-default'
           : armed
             ? 'bg-primary text-primary-foreground border-primary cursor-pointer'
-            : 'bg-background border-border text-foreground hover:border-primary/40 cursor-grab active:cursor-grabbing'
+            : 'bg-background border-transparent text-foreground shadow-2xs hover:border-primary/40 cursor-grab active:cursor-grabbing'
       } ${isDragging ? 'opacity-40 border-dashed' : ''}`}
     >
       {word}
@@ -329,10 +329,10 @@ function sameWord(given: string, want?: string): boolean | undefined {
 }
 
 // An unanswered dropdown, tinted so the gaps are easy to spot in the text.
-const EMPTY = 'bg-primary/5 border-primary/30 text-primary hover:border-primary/60';
+const EMPTY = 'bg-primary/[0.07] border-transparent text-primary hover:bg-primary/10';
 
 function toneOf(verdict: boolean | undefined): string {
-  if (verdict === undefined) return 'bg-background border-border text-foreground';
+  if (verdict === undefined) return 'bg-primary/10 border-transparent text-foreground';
   return verdict
     ? 'bg-emerald-500/15 border-emerald-500 text-emerald-800 dark:text-emerald-200'
     : 'bg-rose-500/15 border-rose-500 text-rose-800 dark:text-rose-200';

@@ -1,7 +1,7 @@
 import { Question } from '@/lib/types';
 import { AnswerRecorder } from '@/lib/answerRecorder';
 import { createDeliveryMeter, Delivery, DeliveryMeter } from '@/lib/delivery';
-import { Playback, playRecording, StoppedError } from '@/lib/scriptPlayer';
+import { Playback, playClips, playRecording } from '@/lib/scriptPlayer';
 
 /**
  * Sound for the PTE test player: the prompt recordings, the beep before a
@@ -20,7 +20,8 @@ export function hasPromptAudio(question: Question): boolean {
  * otherwise its script spoken by the browser or, failing that, the server.
  */
 export async function playPrompt(question: Question, onProgress?: (fraction: number) => void): Promise<Playback> {
-  if (question.audioUrl) return playFile(question.audioUrl, onProgress);
+  // Through the one shared clip player, which iOS lets play after a countdown and the level meter can hear.
+  if (question.audioUrl) return playClips([{ url: question.audioUrl }], onProgress);
   const audioUrl = `/questions/${question.id}/playback/audio`;
   // In a mock the script is withheld; /playback refuses it there and the
   // server's voice plays instead.
@@ -30,27 +31,6 @@ export async function playPrompt(question: Question, onProgress?: (fraction: num
   const script = question.audioTranscript?.trim();
   if (!script) return { done: Promise.resolve(), stop: () => {} };
   return playRecording({ script, audioUrl }, onProgress);
-}
-
-function playFile(url: string, onProgress?: (fraction: number) => void): Playback {
-  const audio = new Audio(url);
-  let reject: (err: Error) => void = () => {};
-  const done = new Promise<void>((resolve, rej) => {
-    reject = rej;
-    audio.onended = () => resolve();
-    audio.onerror = () => rej(new Error('The recording could not be played.'));
-    audio.ontimeupdate = () => {
-      if (audio.duration > 0) onProgress?.(audio.currentTime / audio.duration);
-    };
-  });
-  void audio.play().catch(err => reject(err instanceof Error ? err : new Error(String(err))));
-  return {
-    done,
-    stop: () => {
-      audio.pause();
-      reject(new StoppedError());
-    },
-  };
 }
 
 /**

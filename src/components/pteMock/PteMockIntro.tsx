@@ -79,7 +79,7 @@ export default function PteMockIntro({ entry, serverTranscription, starting, onS
         exam="PTE"
         title={entry.title}
         skills={PTE_SKILL_ORDER.filter(skill => entry.tasks.some(t => t.skill === skill && t.available > 0))}
-        sections={entry.parts.map(p => ({ label: p.label }))}
+        sections={entry.parts.map(p => ({ label: p.label, timing: p.minutes ? `${p.minutes} minutes` : undefined }))}
         error={micError}
         beginning={starting}
         onBegin={() => void handleStartPaper(checking)}

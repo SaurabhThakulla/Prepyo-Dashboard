@@ -22,7 +22,7 @@ import QuestionSource from '@/components/mocks/QuestionSource';
 import { ItemHandle } from './items/types';
 
 // The practice screen's pill buttons, on its blue bar.
-const PILL = 'h-9 gap-1.5 rounded-full px-3 text-xs font-bold sm:px-4';
+const PILL = 'h-10 gap-2 rounded-full px-3 text-sm font-semibold sm:px-4';
 
 interface Props {
   initial: PteSession;
@@ -38,15 +38,17 @@ interface Props {
  *
  * The bar across the top is the test's own — the time left on the clock the
  * item runs on, and where the learner is. There is no Back button, because the
- * test has none. Next asks before skipping an item with no answer, since an
- * item passed cannot be returned to; when a clock runs out the item is sent as
- * it stands and the test moves on by itself.
+ * test has none. Next always asks before moving on (and warns when the item
+ * has no answer), since an item passed cannot be returned to; when a clock
+ * runs out the item is sent as it stands and the test moves on by itself.
  */
 export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Props) {
   const toast = useToast();
   const { session, submitting, error, secondsLeft, submit, saveDraft, finish } = usePteTestRunner(initial);
   const itemRef = useRef<ItemHandle>(null);
-  const [confirmSkip, setConfirmSkip] = useState(false);
+  // Which item Next was pressed on, and whether it had an answer then. Keyed by
+  // position so the question closes by itself if the clock moves the test on.
+  const [confirmNext, setConfirmNext] = useState<{ position: number; answered: boolean } | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [ending, setEnding] = useState(false);
   const expiredFor = useRef<string | null>(null);
@@ -105,12 +107,10 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
   }, [submit, submitting]);
 
   const onNext = () => {
-    if (!itemRef.current?.hasAnswer()) {
-      setConfirmSkip(true);
-      return;
-    }
-    void advance();
+    if (!item) return;
+    setConfirmNext({ position: item.position, answered: Boolean(itemRef.current?.hasAnswer()) });
   };
+  const confirmOpen = confirmNext != null && confirmNext.position === item?.position;
 
   // The clock ran out: the item goes as it stands, as it does in the test.
   useEffect(() => {
@@ -144,23 +144,28 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
   const done = Math.max(0, session.current - 1);
 
   return (
-    <div data-practice-workspace className="w-full min-h-dvh flex flex-col">
-      {/* The test bar: where the learner is, and the clock */}
-      <div className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
-        <div className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">PTE Academic · Mock test</p>
-            <h1 className="truncate font-display text-base font-bold text-foreground">{session.title}</h1>
-            {part && (
-              <p className="text-xs text-muted-foreground">
-                Part {partIndex + 1} of {session.parts.length}: <span className="font-semibold text-foreground">{part.label}</span>
-                {item && <> · item {item.partPosition} of {item.partItems}</>}
-              </p>
-            )}
+    <div data-practice-workspace className="w-full min-h-dvh flex flex-col bg-card">
+      {/* The test bar, the same blue as the IELTS mocks': where the learner is, and the clock */}
+      <div className="dark test-bar sticky top-0 z-30 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.35)]">
+        <div className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 px-2 text-xs font-bold text-primary-foreground shadow-md sm:h-11 sm:min-w-11 sm:text-sm">
+              {/* Two letters fit the badge; the full task code is on hover. */}
+              <span title={item?.task.code}>{item ? item.task.code.slice(0, 2) : 'PTE'}</span>
+            </span>
+            <div className="min-w-0">
+              <h1 className="truncate font-display text-base font-bold leading-tight text-primary sm:text-lg">{session.title}</h1>
+              {part && (
+                <p className="truncate text-xs text-muted-foreground">
+                  Part {partIndex + 1} of {session.parts.length}: {part.label}
+                  {item && <> · item {item.partPosition} of {item.partItems}</>}
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {item && (
-              <div className="rounded-2xl bg-muted px-3.5 py-2 text-center leading-tight">
+              <div className="rounded-xl bg-muted px-3 py-1.5 text-center leading-tight">
                 <p className="text-[11px] text-muted-foreground">Question</p>
                 <p className="text-sm font-bold tabular-nums text-foreground">
                   {item.position} / {session.totalItems}
@@ -169,7 +174,7 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
             )}
             {secondsLeft != null && session.clock && (
               <div
-                className={`flex items-center gap-2.5 rounded-2xl px-3.5 py-2 transition-colors ${
+                className={`flex items-center gap-2 rounded-xl px-3 py-1.5 transition-colors ${
                   lowTime ? 'bg-rose-500 text-white animate-pulse' : 'bg-primary/[0.07]'
                 }`}
                 aria-live={lowTime ? 'polite' : 'off'}
@@ -183,7 +188,7 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
                 </div>
               </div>
             )}
-            <FullscreenButton />
+            <FullscreenButton tone="onPrimary" />
           </div>
         </div>
         <div className="h-1 bg-muted">
@@ -195,38 +200,31 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
       </div>
 
       {/* The item, in the practice screen's layout */}
-      <main className="w-full flex-1 space-y-4 px-4 py-5 sm:px-6 lg:px-8">
-        {item && item.partPosition === 1 && part && (
-          <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
-            <span className="font-bold">Part {partIndex + 1}: {part.label}</span> begins: {part.items} item
-            {part.items === 1 ? '' : 's'}.
-            {item.task.clock === 'section' && ' This part shares one clock, which is now running.'}
-          </div>
-        )}
+      <main className="w-full flex-1 space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         {item ? (
           <>
             {/* Task type and its instructions */}
             <div className="flex items-start gap-3 sm:gap-4">
               <span className="inline-flex h-12 min-w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 px-2 text-sm font-bold text-primary-foreground shadow-md sm:h-14 sm:min-w-14">
-                {item.task.code}
+                <span title={item.task.code}>{item.task.code.slice(0, 2)}</span>
               </span>
               <div className="min-w-0 space-y-1 pt-0.5">
                 <h2 className="text-xl font-bold leading-tight text-primary sm:text-2xl">{item.task.name}</h2>
-                <p className="text-sm leading-relaxed text-muted-foreground">{item.task.instructions}</p>
+                {/* A listening item's own task text stands here, above its recording, as in the IELTS mocks. */}
+                {item.part === 'listening' && item.question.prompt ? (
+                  <p className="whitespace-pre-line pt-1 text-lg font-medium leading-relaxed text-foreground">{item.question.prompt}</p>
+                ) : (
+                  <p className="text-sm leading-relaxed text-muted-foreground">{item.task.instructions}</p>
+                )}
                 <QuestionSource questions={[item.question]} exam="PTE" />
               </div>
             </div>
 
-            {/* The question: blue bar with its number, then its content */}
-            <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-              <div className="flex items-center gap-3 bg-gradient-to-r from-primary to-primary/75 px-4 py-3 text-primary-foreground dark:!bg-muted dark:!text-foreground sm:px-5">
-                <span className="rounded-lg bg-white/15 px-2.5 py-0.5 font-bold tabular-nums">#{item.position}</span>
-                <span className="h-5 w-px bg-white/40" aria-hidden />
-                <h3 className="text-sm font-semibold leading-snug sm:text-base">{item.task.name}</h3>
-              </div>
-              <div className="p-4 sm:p-5">
+            {/* The question itself, on the page: no card or bar around it, as in the IELTS mocks */}
+            <div>
+              <div>
                 {needsMic ? (
-                  <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-muted/40 px-4 py-8 text-center">
+                  <div className="flex flex-col items-center gap-3 rounded-2xl bg-muted/40 px-4 py-8 text-center">
                     <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
                       <Mic className="h-6 w-6" />
                     </span>
@@ -258,41 +256,47 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
       <div className="sticky bottom-0 z-30 dark test-bar px-4 py-2.5 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.35)] sm:px-6 lg:px-8">
         <div className="flex w-full items-center justify-between gap-2.5">
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <Button variant="outline" onClick={onLeave} className={PILL}>
-              <LogOut className="h-3.5 w-3.5" /> <span>Save and Exit</span>
+            <Button variant="ghost" onClick={onLeave} className={`test-leave ${PILL}`}>
+              <LogOut className="h-4 w-4" /> <span>Save and Exit</span>
             </Button>
-            <Button variant="ghost" onClick={() => setConfirmEnd(true)} className={`${PILL} text-muted-foreground hover:bg-destructive/10 hover:text-destructive`}>
-              <Flag className="h-3.5 w-3.5" /> <span className="hidden sm:inline">End test</span>
+            <Button variant="ghost" onClick={() => setConfirmEnd(true)} className={`test-end ${PILL}`}>
+              <Flag className="h-4 w-4" /> <span className="hidden sm:inline">End test</span>
             </Button>
           </div>
           <Button
             onClick={onNext}
             disabled={!item || submitting || ending}
-            className="h-10 min-w-[120px] gap-1.5 rounded-full px-5 font-bold shadow-md"
+            className="test-next h-11 min-w-[136px] gap-2 rounded-full px-6 font-bold tracking-wide"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Next <ArrowRight className="h-4 w-4" />
+            {item && item.position >= session.totalItems ? 'Submit test' : 'Next'} <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <Dialog open={confirmSkip} onOpenChange={setConfirmSkip}>
+      <Dialog open={confirmOpen} onOpenChange={open => !open && setConfirmNext(null)}>
         <DialogContent centered>
           <DialogHeader>
-            <DialogTitle>Move on without answering?</DialogTitle>
+            <DialogTitle>
+              {item && item.position >= session.totalItems ? 'Do you want to submit your test?' : 'Do you want to go to the next question?'}
+            </DialogTitle>
             <DialogDescription>
-              You have not answered this item. Once you move on you cannot come back to it, and it will score zero.
+              {confirmNext?.answered
+                ? 'You cannot come back to this question once you move on.'
+                : 'You have not answered this question. Once you move on you cannot come back to it, and it will score zero.'}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmSkip(false)}>Stay on this item</Button>
+            <Button variant="outline" onClick={() => setConfirmNext(null)} className="min-w-[96px]">No</Button>
             <Button
+              autoFocus
               onClick={() => {
-                setConfirmSkip(false);
+                setConfirmNext(null);
                 void advance();
               }}
+              className="min-w-[96px]"
             >
-              Move on
+              Yes
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -157,18 +157,27 @@ export function MatchChip({ entry, spent }: MatchChipProps) {
       onClick={() => arm(isArmed ? null : entry.id)}
       // Without this a touch drag scrolls the page instead of moving the entry.
       style={{ touchAction: 'none' }}
-      className={`flex w-full items-start gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
+      className={`flex w-full items-center gap-3 rounded-xl border p-1.5 text-left text-[15px] font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary ${
+        entry.text ? 'pr-3' : 'justify-center'
+      } ${
         spent
-          ? 'cursor-default border-border bg-background text-muted-foreground opacity-40'
+          ? 'cursor-default border-transparent bg-transparent text-muted-foreground'
           : isArmed
-            ? 'cursor-pointer border-primary bg-primary text-primary-foreground'
-            : 'cursor-grab border-border bg-background text-foreground hover:border-primary/50 active:cursor-grabbing'
-      } ${isDragging ? 'border-dashed opacity-40' : ''}`}
+            ? 'cursor-pointer border-primary bg-primary text-primary-foreground shadow-md'
+            : 'cursor-grab border-transparent bg-card text-foreground shadow-[0_1px_3px_rgba(15,23,42,0.08)] hover:border-primary/40 hover:shadow-md active:cursor-grabbing'
+      } ${isDragging ? 'opacity-40' : ''}`}
     >
+      {/* The letter in its own tile; a used option is struck through so it reads as taken. */}
       {entry.label && (
-        <span className={`shrink-0 font-bold ${isArmed ? '' : 'text-primary'}`}>{entry.label}</span>
+        <span
+          className={`flex h-7 min-w-7 shrink-0 items-center justify-center rounded-lg px-1.5 text-sm font-bold ${
+            spent ? 'bg-muted text-muted-foreground/70' : isArmed ? 'bg-white/20' : 'bg-primary/10 text-primary'
+          }`}
+        >
+          {entry.label}
+        </span>
       )}
-      <span className="leading-snug">{entry.text}</span>
+      {entry.text && <span className={`leading-snug ${spent ? 'line-through decoration-muted-foreground/40 opacity-60' : ''}`}>{entry.text}</span>}
     </button>
   );
 }
@@ -195,8 +204,8 @@ export function MatchSlot({ id, placed, verdict, correct, label, placeholder = '
   const { setNodeRef, isOver } = useDroppable({ id: `slot:${id}`, disabled });
 
   let tone = placed
-    ? 'border-primary/60 bg-primary/10 text-primary'
-    : `border-dashed ${isOver || armed ? 'border-primary bg-primary/15' : 'border-primary/50 bg-primary/[0.05] hover:bg-primary/10'}`;
+    ? 'border-transparent bg-primary/10 text-primary'
+    : isOver || armed ? 'border-primary bg-primary/15' : 'border-transparent bg-primary/[0.07] hover:bg-primary/10';
   if (verdict !== undefined) {
     tone = verdict
       ? 'border-emerald-500 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200'

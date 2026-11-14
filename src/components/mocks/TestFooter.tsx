@@ -26,8 +26,8 @@ export default function TestFooter({
     >
       <div className="flex items-center justify-between gap-4">
         <div className="flex shrink-0 items-center gap-4">
-          <Button variant="outline" onClick={onLeave} className="h-9 gap-1.5 rounded-full px-4 text-xs font-bold">
-            <LogOut className="h-3.5 w-3.5" /> <span>Save and Exit</span>
+          <Button variant="ghost" onClick={onLeave} className="test-leave h-10 gap-2 rounded-full px-4 text-sm font-semibold">
+            <LogOut className="h-4 w-4" /> <span>Save and Exit</span>
           </Button>
           {note && <span className="hidden h-8 w-px bg-border md:block" aria-hidden />}
         </div>

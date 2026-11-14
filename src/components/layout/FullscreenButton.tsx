@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Maximize2, Minimize2 } from 'lucide-react';
+import { Maximize, Minimize } from 'lucide-react';
 
+// A labelled pill that stands out, so learners notice they can take the test full screen.
 const TONES = {
-  light: 'border border-border bg-background text-foreground hover:bg-muted',
-  onPrimary: 'bg-white/15 text-white hover:bg-white/25',
+  light: 'bg-primary/10 text-primary ring-1 ring-primary/25 hover:bg-primary/15',
+  // A fixed blue: inside .test-bar the theme's "primary" is white, which hid the label.
+  onPrimary: 'bg-white text-[hsl(224_76%_30%)] shadow-md hover:bg-white/90',
 };
 
 /**
@@ -21,7 +23,7 @@ export default function FullscreenButton({ tone = 'light' }: { tone?: keyof type
   if (typeof document === 'undefined' || !document.fullscreenEnabled) return null;
 
   const label = on ? 'Exit full screen' : 'Full screen';
-  const Icon = on ? Minimize2 : Maximize2;
+  const Icon = on ? Minimize : Maximize;
   return (
     <button
       type="button"
@@ -29,9 +31,10 @@ export default function FullscreenButton({ tone = 'light' }: { tone?: keyof type
       onClick={() => void (on ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {})}
       aria-label={label}
       title={label}
-      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${TONES[tone]}`}
+      className={`inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-3.5 ${TONES[tone]}`}
     >
       <Icon className="h-4 w-4" />
+      <span className="hidden sm:inline">{label}</span>
     </button>
   );
 }

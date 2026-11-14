@@ -55,7 +55,7 @@ export default function ReadingGroupCard({
   const heading = onlyTitle && !same(onlyTitle, group.instructions) ? onlyTitle : '';
 
   return (
-    <Card className="p-3.5 sm:p-5 space-y-4 bg-card dark:bg-[#0f141f] border-border/80 border-r-0 rounded-r-none rounded-l-lg shadow-2xs">
+    <Card className="p-3.5 sm:p-5 space-y-4 bg-card dark:bg-[#0f141f] border-0 rounded-xl shadow-sm">
       <div className="flex items-start gap-3 sm:gap-4">
         <span className="inline-flex h-12 min-w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 px-2 text-xs sm:text-sm font-bold text-primary-foreground shadow-md">
           {code}
@@ -73,7 +73,7 @@ export default function ReadingGroupCard({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+      <div className="rounded-2xl bg-card overflow-hidden shadow-[0_6px_20px_-12px_rgba(15,23,42,0.3)]">
         <div className="flex items-center gap-3 bg-gradient-to-r from-primary to-primary/75 px-4 py-3 text-primary-foreground dark:!bg-muted dark:!text-foreground sm:px-5">
           <span className="rounded-lg bg-white/15 px-2.5 py-0.5 text-sm font-bold tabular-nums">
             {total > 1 ? `#${startNumber}–${endNumber}` : `#${startNumber}`}
@@ -87,7 +87,7 @@ export default function ReadingGroupCard({
         {!wordBank && !ownLayout && group.resources && group.resources.length > 0 && (
           <div className="space-y-1.5 p-3 sm:p-4 pb-0 sm:pb-0">
             {group.resources.map(resource => (
-              <div key={resource.label} className="p-2.5 rounded-lg bg-muted/30 border border-border space-y-0.5">
+              <div key={resource.label} className="p-2.5 rounded-lg bg-muted/50 space-y-0.5">
                 <span className="text-xs font-bold text-primary">{resource.label}</span>
                 <p className="text-xs text-foreground leading-normal">{resource.text}</p>
               </div>
@@ -136,7 +136,7 @@ export default function ReadingGroupCard({
             />
           </div>
         ) : (
-          <div className="divide-y divide-border/60">
+          <div className="py-1">
             {group.questions.map((question, index) => (
               <ReadingQuestionRow
                 key={question.id}

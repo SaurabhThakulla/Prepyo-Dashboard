@@ -67,7 +67,7 @@ export default function ReadingParagraphGroup({
       </p>
 
       {graded.length > 0 && (
-        <div className="pt-2 border-t border-border/70 space-y-1">
+        <div className="pt-2 space-y-1">
           {wrong.length === 0 ? (
             <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
               <CheckCircle2 className="w-3.5 h-3.5" />

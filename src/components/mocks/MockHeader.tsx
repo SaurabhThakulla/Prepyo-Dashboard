@@ -17,7 +17,7 @@ interface MockHeaderProps {
 }
 
 /**
- * The test bar at the top of every IELTS mock paper, kept in view as the page
+ * The blue test bar at the top of every IELTS mock paper (the footer's blue), kept in view as the page
  * scrolls: the paper and where the learner is on the left, then how many are
  * answered, the time left and full screen. Leaving is in the bar at the bottom
  * (TestFooter).
@@ -26,7 +26,7 @@ export default function MockHeader({ code, title, subtitle, secondsLeft, answere
   const lowTime = secondsLeft !== undefined && secondsLeft <= 300;
   const left = Math.max(0, secondsLeft ?? 0);
   return (
-    <div className={`sticky top-0 z-30 border-b border-border bg-card/95 px-4 py-2.5 shadow-sm backdrop-blur sm:px-6 lg:px-8 ${className}`}>
+    <div className={`dark test-bar sticky top-0 z-30 px-4 py-2.5 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.35)] sm:px-6 lg:px-8 ${className}`}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <span className="inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 px-2 text-xs font-bold text-primary-foreground shadow-md sm:h-11 sm:min-w-11 sm:text-sm">
@@ -62,7 +62,7 @@ export default function MockHeader({ code, title, subtitle, secondsLeft, answere
               </div>
             </div>
           )}
-          <FullscreenButton />
+          <FullscreenButton tone="onPrimary" />
         </div>
       </div>
     </div>

@@ -62,7 +62,7 @@ export default function ListMatchingGroup({
   return (
     <MatchDnd entries={entries} disabled={locked} onPlace={place}>
       <div className="space-y-4 p-3 sm:p-4">
-        <section aria-label={group.boxTitle || 'List'} className="rounded-xl border border-border bg-muted/30 p-3">
+        <section aria-label={group.boxTitle || 'List'} className="rounded-xl bg-muted/50 p-3">
           {group.boxTitle && <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">{group.boxTitle}</h4>}
           <div className={`grid gap-1.5 ${isEnding ? '' : 'sm:grid-cols-2'}`}>
             {entries.map(entry => (
@@ -85,7 +85,7 @@ export default function ListMatchingGroup({
             const correctId = result?.review.correctAnswers?.[0];
             return (
               <li key={question.id} data-dictionary className="flex items-start gap-3">
-                <span className="mt-1.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-background text-[11px] font-bold tabular-nums text-muted-foreground">
+                <span className="mt-1.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold tabular-nums text-muted-foreground">
                   {number}
                 </span>
                 <div className="min-w-0 flex-1 space-y-1.5 text-[13px] sm:text-sm leading-relaxed text-foreground">
@@ -134,7 +134,7 @@ export default function ListMatchingGroup({
 /** One line under a marked set: all right, or how many. */
 export function SetScore({ right, total }: { right: number; total: number }) {
   return (
-    <div className="border-t border-border/70 pt-2">
+    <div className="pt-2">
       {right === total ? (
         <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
           <CheckCircle2 className="h-3.5 w-3.5" />

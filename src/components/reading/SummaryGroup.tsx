@@ -111,7 +111,7 @@ export default function SummaryGroup({ group, startNumber, answers, results, dis
       <table className="w-full border-collapse text-[14px] sm:text-[15px]">
         <tbody>
           {rows.map(({ question, index, cell, text }) => (
-            <tr key={question.id} className="border-b border-border/70 last:border-0 align-top">
+            <tr key={question.id} className="align-top">
               <th scope="row" className="w-[34%] py-2.5 pr-3 text-left font-semibold text-foreground">{cell}</th>
               <td className="py-2.5 font-reading leading-loose text-foreground/90">{gap(question, index, text)}</td>
             </tr>
@@ -124,7 +124,7 @@ export default function SummaryGroup({ group, startNumber, answers, results, dis
       <ol className="mx-auto max-w-xl space-y-1">
         {rows.map(({ question, index, text }) => (
           <li key={question.id} className="flex flex-col items-center gap-1">
-            <div className="w-full rounded-lg border border-border bg-background px-3 py-2 text-center font-reading text-[15px] leading-loose text-foreground/90">
+            <div className="w-full rounded-lg bg-muted/50 px-3 py-2 text-center font-reading text-[15px] leading-loose text-foreground/90">
               {gap(question, index, text)}
             </div>
             {index < rows.length - 1 && <ArrowDown className="h-4 w-4 text-muted-foreground" aria-hidden />}
@@ -157,7 +157,7 @@ export default function SummaryGroup({ group, startNumber, answers, results, dis
     <div data-dictionary className="space-y-4 p-3 sm:p-4">
       <div className="rounded-xl bg-muted/20 px-3 py-4 sm:px-5">{body}</div>
       {box.length > 0 && (
-        <section aria-label="List of words" className="rounded-xl border border-border bg-muted/30 p-3">
+        <section aria-label="List of words" className="rounded-xl bg-muted/50 p-3">
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
             {box.map(entry => (
               <MatchChip key={entry.id} entry={entry} spent={used.has(entry.id)} />

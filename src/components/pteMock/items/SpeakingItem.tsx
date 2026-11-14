@@ -1,7 +1,7 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { beep, TestMicrophone } from '@/lib/pteMock/audio';
 import { encodeForUpload } from '@/lib/audio';
-import { Mic, Square } from 'lucide-react';
+import { Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PteAnswer } from '@/lib/pteMock/types';
 import { AudioStatusPanel, RecorderPhase, RecorderStatusPanel } from './StatusPanels';
@@ -144,7 +144,7 @@ const SpeakingItem = forwardRef<ItemHandle, ItemProps>(function SpeakingItem({ i
         <p className="text-base leading-relaxed text-foreground whitespace-pre-line">{question.prompt}</p>
       )}
 
-      {isAudioTask && <AudioStatusPanel phase={playback.phase} countdown={playback.countdown} progress={playback.progress} />}
+      {isAudioTask && <AudioStatusPanel phase={playback.phase} countdown={playback.countdown} />}
 
       {question.imageUrl && (
         <div className="flex justify-center rounded-xl border border-border bg-white p-3">
@@ -179,14 +179,9 @@ const SpeakingItem = forwardRef<ItemHandle, ItemProps>(function SpeakingItem({ i
       )}
 
       {phase === 'recording' && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
-            Speak clearly. Recording stops by itself when the time is up or after {TestMicrophone.SILENCE_SECONDS} seconds of silence.
-          </p>
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => void stopRecording('You ended the recording. Your answer is saved.')}>
-            <Square className="h-3.5 w-3.5 fill-current" /> Done
-          </Button>
-        </div>
+        <p className="text-xs text-muted-foreground">
+          Speak clearly. Recording stops by itself when the time is up or after {TestMicrophone.SILENCE_SECONDS} seconds of silence, or press Next.
+        </p>
       )}
     </div>
   );

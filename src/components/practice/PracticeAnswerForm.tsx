@@ -88,8 +88,8 @@ export default function PracticeAnswerForm({
             return (
               <label
                 key={option.id}
-                className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer text-xs transition-colors ${
-                  checked ? 'border-primary bg-primary/5' : 'border-border bg-background hover:border-primary/40'
+                className={`flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer text-[15px] leading-snug transition-colors ${
+                  checked ? 'bg-primary/10 font-medium text-foreground' : 'bg-muted/50 text-foreground hover:bg-primary/[0.06]'
                 }`}
               >
                 {isMultiple ? (
@@ -101,7 +101,7 @@ export default function PracticeAnswerForm({
                         event.target.checked ? [...prev, option.id] : prev.filter(id => id !== option.id),
                       )
                     }
-                    className="mt-0.5 rounded border-input text-primary focus:ring-primary h-3.5 w-3.5"
+                    className="h-[18px] w-[18px] shrink-0 cursor-pointer accent-primary"
                   />
                 ) : (
                   <input
@@ -110,7 +110,7 @@ export default function PracticeAnswerForm({
                     value={option.id}
                     checked={checked}
                     onChange={() => session.setSelectedOptions([option.id])}
-                    className="mt-0.5 border-input text-primary focus:ring-primary h-3.5 w-3.5"
+                    className="h-[18px] w-[18px] shrink-0 cursor-pointer accent-primary"
                   />
                 )}
                 <OptionContent option={option} index={optionIndex} />

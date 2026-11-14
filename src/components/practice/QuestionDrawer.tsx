@@ -468,12 +468,26 @@ export default function QuestionDrawer<T extends DrawerItem>({
 }
 
 /** Takes the learner from an open question back to the task's question list. */
-export function BackToQuestions({ onClick, label = 'All questions' }: { onClick: () => void; label?: string }) {
+/** Back to the list. `round` draws only the arrow, as the first thing in a task's header row. */
+export function BackToQuestions({ onClick, label = 'All questions', round = false }: { onClick: () => void; label?: string; round?: boolean }) {
+  if (round) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        title={label}
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted/70 text-foreground transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer"
+      >
+        <ArrowLeft className="h-5 w-5" />
+      </button>
+    );
+  }
   return (
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 self-start rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors cursor-pointer"
+      className="inline-flex items-center gap-1.5 self-start rounded-full bg-muted/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
     >
       <ArrowLeft className="w-3.5 h-3.5" />
       <span>{label}</span>

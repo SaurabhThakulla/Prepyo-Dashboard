@@ -50,7 +50,7 @@ export default function ListeningGapOutline({
     );
 
   return (
-    <div data-testid="listening-outline" className="space-y-3 rounded-xl border border-border bg-background p-3 text-[15px] leading-relaxed text-foreground sm:p-4 sm:text-base">
+    <div data-testid="listening-outline" className="space-y-4 text-base leading-relaxed text-foreground sm:text-lg">
       {blocks.map((block, blockIndex) => {
         if (block.kind === 'table') {
           const [head, ...body] = block.rows;
@@ -109,7 +109,7 @@ export default function ListeningGapOutline({
               return (
                 <p
                   key={lineIndex}
-                  className={`leading-loose ${bullet ? 'flex gap-2' : ''} ${step ? 'rounded-lg border border-border bg-card px-3 py-1.5 text-center' : ''}`}
+                  className={`leading-loose ${bullet ? 'flex gap-2' : ''} ${step ? 'rounded-lg bg-muted/50 px-3 py-1.5 text-center' : ''}`}
                 >
                   {bullet && <span aria-hidden className="text-primary">•</span>}
                   <span>{renderPieces(bullet ? line.slice(2) : line)}</span>
@@ -137,13 +137,14 @@ function GapBox({ number, blankId, responses, disabled, review, onChange }: GapB
   const marked = Boolean(review?.correctAnswer);
   const right = marked && gapAccepts(review, value);
   const tone = !marked
-    ? 'border-primary/50 bg-card focus:border-primary focus:ring-2 focus:ring-primary/30'
+    ? // A blank on the line, as on paper: faint until written in, tinted while typing.
+      `text-primary focus:border-primary focus:bg-primary/[0.05] ${value ? 'border-primary' : 'border-primary/30 hover:border-primary/60'}`
     : right
       ? 'border-emerald-500 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200'
       : 'border-rose-500 bg-rose-500/10 text-rose-800 dark:text-rose-200';
   return (
     <span id={`lq-${number}`} className="mx-1 inline-flex scroll-mt-24 flex-wrap items-center gap-1 align-middle">
-      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground tabular-nums">
+      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1 text-xs font-bold text-primary-foreground tabular-nums">
         {number}
       </span>
       <input
@@ -156,7 +157,7 @@ function GapBox({ number, blankId, responses, disabled, review, onChange }: GapB
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck={false}
-        className={`h-8 w-32 rounded-md border px-2 text-sm font-semibold outline-none transition-colors disabled:opacity-100 sm:w-40 ${tone}`}
+        className={`h-9 w-36 rounded-t-md border-0 border-b-2 bg-transparent px-1 text-center text-base font-semibold outline-none transition-colors disabled:opacity-100 sm:w-44 ${tone}`}
       />
       {marked &&
         (right ? (

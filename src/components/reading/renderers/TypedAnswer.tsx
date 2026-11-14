@@ -12,8 +12,8 @@ export default function TypedAnswer({ question, answer, result, locked, onChange
   const isCorrect = result?.attempt.isCorrect;
 
   let tone = typed.trim()
-    ? 'border-primary/60 bg-primary/10 text-primary'
-    : 'border-dashed border-primary/45 bg-primary/[0.04] text-foreground';
+    ? 'border-transparent bg-primary/10 text-primary'
+    : 'border-transparent bg-primary/[0.07] text-foreground';
   if (result) {
     tone = isCorrect
       ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200'

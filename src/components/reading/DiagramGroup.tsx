@@ -28,14 +28,14 @@ export default function DiagramGroup({ group, startNumber, answers, results, dis
   return (
     <div data-dictionary className="space-y-4 p-3 sm:p-4">
       {group.imageUrl ? (
-        <figure className="overflow-hidden rounded-xl border border-border bg-white">
+        <figure className="overflow-hidden rounded-xl bg-white shadow-sm">
           <img
             src={group.imageUrl}
             alt={group.boxTitle ? `Diagram: ${group.boxTitle}` : 'Diagram to label'}
             className="mx-auto block h-auto w-full max-w-2xl"
           />
           {group.boxTitle && (
-            <figcaption className="border-t border-border bg-muted/30 px-3 py-1.5 text-center text-xs font-semibold text-foreground">
+            <figcaption className="bg-muted/40 px-3 py-1.5 text-center text-xs font-semibold text-foreground">
               {group.boxTitle}
             </figcaption>
           )}
@@ -50,7 +50,7 @@ export default function DiagramGroup({ group, startNumber, answers, results, dis
           const result = results?.[question.id];
           return (
             <li key={question.id} className="flex items-start gap-3">
-              <span className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-background text-[11px] font-bold tabular-nums text-muted-foreground">
+              <span className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold tabular-nums text-muted-foreground">
                 {number}
               </span>
               <p className="min-w-0 flex-1 font-reading text-[15px] leading-loose text-foreground/90">

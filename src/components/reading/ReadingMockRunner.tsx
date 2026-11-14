@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, RefreshCw, Send } from 'lucide-react';
+import { AlertTriangle, ArrowRight, RefreshCw, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import QuestionSource from '@/components/mocks/QuestionSource';
 import { Card } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
 import { useReadingMock } from '@/lib/hooks/useReading';
 import MockHeader from '@/components/mocks/MockHeader';
 import TestFooter from '@/components/mocks/TestFooter';
+import ConfirmSubmit from '@/components/mocks/ConfirmSubmit';
 import { useTestLock } from '@/lib/hooks/useTestLock';
 import { needsParagraphLabels } from '@/lib/readingTypes';
 
@@ -29,6 +30,7 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
   useTestLock('Reading test', mock.exit);
   const sets = session.sets ?? [];
   const [activeIndex, setActiveIndex] = useState(0);
+  const [confirmFinish, setConfirmFinish] = useState(false);
   // The clock is the server's: a reopened paper resumes with the time it has
   // left, not a fresh hour. Counting down to a fixed deadline, rather than
   // subtracting a second per tick, stays right when the tab is throttled.
@@ -90,9 +92,9 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
 
   return (
     // The whole screen: a running mock has no app header above it.
-    <div className="w-full min-h-dvh lg:h-dvh p-0 m-0 flex flex-col bg-background lg:overflow-hidden px-3 sm:px-6 lg:px-8 pt-2.5 space-y-2.5">
+    <div className="w-full min-h-dvh lg:h-dvh p-0 m-0 flex flex-col bg-background lg:overflow-hidden px-3 sm:px-6 lg:px-8 space-y-2.5">
       <MockHeader
-        className="-mx-3 -mt-2.5 shrink-0 sm:-mx-6 lg:-mx-8"
+        className="-mx-3 shrink-0 sm:-mx-6 lg:-mx-8"
         code={`R${activeIndex + 1}`}
         title={session.mockTitle ?? 'Reading Mock'}
         subtitle={`Passage ${activeIndex + 1} of ${sets.length} • ${session.totalQuestions} questions • marked automatically`}
@@ -116,10 +118,10 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
             key={set.passage?.id ?? index}
             type="button"
             onClick={() => setActiveIndex(index)}
-            className={`flex-1 px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors ${
+            className={`flex-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
               index === activeIndex
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border bg-card text-muted-foreground hover:border-primary/40'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-card text-muted-foreground shadow-sm hover:bg-primary/10 hover:text-primary'
             }`}
           >
             Passage {index + 1}
@@ -153,7 +155,7 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
           <div
             className={`w-full ${
               activeSet.passage ? 'lg:w-1/2 lg:h-full' : 'lg:w-full lg:h-full'
-            } min-h-0 flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card/40 p-2.5 sm:p-3.5`}
+            } min-h-0 flex flex-col overflow-hidden rounded-xl bg-muted/40 p-2.5 sm:p-3.5`}
           >
             <div className="flex-1 min-h-0 lg:overflow-y-auto pr-1.5 space-y-4 scrollbar-thin">
               {activeSet.groups.map((group, groupIndex) => (
@@ -176,20 +178,39 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
         onLeave={mock.exit}
         note="Unanswered questions are marked wrong. You can move between passages freely, and your answers are saved as you go."
       >
-        <Button onClick={() => void finish()} disabled={submitting} className="h-9 rounded-full font-bold gap-1.5 shadow-md">
-          {submitting ? (
-            <>
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              <span>Grading…</span>
-            </>
-          ) : (
-            <>
-              <Send className="w-3.5 h-3.5" />
-              <span>Finish and grade</span>
-            </>
-          )}
-        </Button>
+        {activeIndex < sets.length - 1 ? (
+          <Button
+            onClick={() => setActiveIndex(activeIndex + 1)}
+            disabled={submitting}
+            className="test-next h-11 gap-3 rounded-full pl-6 pr-1.5 font-bold tracking-wide"
+          >
+            Next passage
+            <span className="test-next-chip"><ArrowRight className="h-4 w-4" /></span>
+          </Button>
+        ) : (
+          <Button
+            onClick={() => setConfirmFinish(true)}
+            disabled={submitting}
+            className="test-next h-11 gap-3 rounded-full pl-6 pr-1.5 font-bold tracking-wide"
+          >
+            {submitting ? 'Grading…' : 'Finish and grade'}
+            <span className="test-next-chip">
+              {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </span>
+          </Button>
+        )}
       </TestFooter>
+
+      <ConfirmSubmit
+        open={confirmFinish}
+        onCancel={() => setConfirmFinish(false)}
+        onConfirm={() => void finish()}
+        description={
+          mock.answeredCount < session.totalQuestions
+            ? `${session.totalQuestions - mock.answeredCount} of ${session.totalQuestions} questions are unanswered and will be marked wrong. You cannot change your answers after this.`
+            : undefined
+        }
+      />
     </div>
   );
 }

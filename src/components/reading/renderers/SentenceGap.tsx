@@ -49,8 +49,8 @@ export default function SentenceGap({ question, answer, result, locked, number, 
   const width = options.length ? `${Math.min(Math.max(widest + 5, 8), 28)}ch` : '11ch';
 
   let tone = filled
-    ? 'border-primary/60 bg-primary/10 text-primary font-semibold shadow-2xs'
-    : 'border-dashed border-primary/45 bg-primary/[0.04] text-foreground hover:border-primary/70';
+    ? 'border-transparent bg-primary/10 text-primary font-semibold'
+    : 'border-transparent bg-primary/[0.07] text-foreground hover:bg-primary/10';
   if (result) {
     tone = isCorrect
       ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 font-semibold'

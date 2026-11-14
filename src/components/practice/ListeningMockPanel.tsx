@@ -9,15 +9,18 @@ import { useToast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AnswerSubmission, MockAttempt, Question, isInstitutionStudent, isPremiumUser } from '@/lib/types';
 import { subTestsLeft } from '@/lib/subscriptions';
 import { Playback, playClips, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
+import { beep } from '@/lib/audio';
+import RecordingStatus from '@/components/mocks/RecordingStatus';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import SectionMockIntro from '@/components/mocks/SectionMockIntro';
 import ListeningLetterBoard from '@/components/listening/ListeningLetterBoard';
 import ListeningGapOutline from '@/components/listening/ListeningGapOutline';
-import { VoicePanel } from '@/components/practice/PromptAudio';
 import MockHeader from '@/components/mocks/MockHeader';
+import ConfirmSubmit from '@/components/mocks/ConfirmSubmit';
 import { LISTENING_TYPES, lettersMayRepeat } from '@/lib/listeningTypes';
 import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
 import QuestionFigure from '@/components/practice/QuestionFigure';
@@ -107,7 +110,7 @@ export default function ListeningMockPanel() {
   };
 
   if (!isPremiumUser(user)) return <PracticeMockPaywall skill="listening" exam={activeExam} institution={isInstitutionStudent(user)} />;
-  if (outcome) return <ListeningResult outcome={outcome} onBack={() => navigate('/practice?skill=listening')} onRedo={() => { setOutcome(null); void start(); }} />;
+  if (outcome) return <ListeningResult outcome={outcome} onBack={() => navigate('/mocks')} onRedo={() => { setOutcome(null); void start(); }} />;
   if (session) {
     return (
       <ListeningMockRunner
@@ -118,7 +121,7 @@ export default function ListeningMockPanel() {
           void refreshUser();
           refreshPapers();
         }}
-        onLeave={() => navigate('/practice?skill=listening')}
+        onLeave={() => navigate('/mocks')}
         onClosed={message => {
           toast.warning('This paper is closed', message);
           setSession(null);
@@ -186,6 +189,9 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
   // One question group on screen at a time (Questions 11–15, then 16–20). Kept
   // with its part number, so a new part opens on its first group.
   const [groupPage, setGroupPage] = useState({ partNo: 0, index: 0 });
+  // The part Next part was pressed on: it asks before moving on, as a part's recording never plays again.
+  const [confirmPart, setConfirmPart] = useState<number | null>(null);
+  const [confirmSubmit, setConfirmSubmit] = useState(false);
   // The paper opens straight into the reading time, and each recording then
   // plays by itself, as in the test. The learner arrives here with a tap
   // (Start, Continue), which lets the browser play the sound.
@@ -265,6 +271,8 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
     setAudioError(null);
     setPhase('playing');
     setProgress(0);
+    // The test's cue that the recording is about to begin.
+    await beep();
     // Once started, a recording counts as heard: leaving now does not earn a replay.
     const played = Math.max(partsPlayed, part.partNo);
     setPartsPlayed(played);
@@ -362,63 +370,24 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
 
   const checking = phase === 'review' || phase === 'submitting';
 
-  const player = (
-    <VoicePanel
-      label={`Part ${part?.partNo} of 4 recording`}
-      playing={phase === 'playing'}
-      progress={phase === 'playing' ? progress : 0}
-      status={
-        phase === 'reading'
-          ? `Starts in ${countdown}s · plays once`
-          : phase === 'playing'
-            ? `Playing · ${Math.round(progress * 100)}%`
-            : phase === 'heard'
-              ? 'Recording finished'
-              : ''
-      }
-      // Nothing to press: the recording starts by itself, once.
-      disabled
-      onToggle={() => undefined}
-      toggleLabel={phase === 'playing' ? 'Recording playing' : 'The recording starts by itself'}
-      toggleIcon={phase === 'playing' ? 'pause' : 'play'}
-      footer={
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" aria-live="polite">
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">{part?.setting}</p>
-            {phase === 'reading' && (
-              <p className="text-xs text-muted-foreground">
-                You now have <strong>{countdown} seconds</strong> to look at Questions {part?.firstNumber}–{part?.lastNumber}. The recording then starts by itself.
-              </p>
-            )}
-            {phase === 'playing' && (
-              <p className="text-xs text-muted-foreground">Listen carefully and answer Questions {part?.firstNumber}–{part?.lastNumber}.</p>
-            )}
-            {phase === 'heard' && (
-              <p className="text-xs text-muted-foreground">
-                The recording has finished. Check Questions {part?.firstNumber}–{part?.lastNumber}, then press{' '}
-                <strong>{partIndex + 1 < session.parts.length ? 'Next part' : 'Go to checking time'}</strong> when you are ready.
-              </p>
-            )}
-            {audioError && <p role="alert" className="text-sm text-destructive">{audioError}</p>}
-          </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            {audioError && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  unlockAudio();
-                  void play();
-                }}
-                className="font-bold gap-1.5"
-              >
-                <RefreshCw className="w-3.5 h-3.5" /> Try the audio again
-              </Button>
-            )}
-          </div>
-        </div>
-      }
-    />
-  );
+  const audioStatus = <RecordingStatus state={phase === 'reading' ? 'waiting' : phase === 'playing' ? 'playing' : 'done'} countdown={countdown} />;
+
+  // Under the bar, only when the recording could not play: why, and a retry.
+  const audioNote = audioError ? (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p role="alert" className="text-sm text-destructive">{audioError}</p>
+      <Button
+        variant="outline"
+        onClick={() => {
+          unlockAudio();
+          void play();
+        }}
+        className="font-bold gap-1.5"
+      >
+        <RefreshCw className="w-3.5 h-3.5" /> Try the audio again
+      </Button>
+    </div>
+  ) : null;
 
   const isAnswered = (q: Question) => Boolean(answers[q.id]?.textResponse?.trim()) || Boolean(answers[q.id]?.selectedOptions?.length);
   // Before the checking time only the part being heard is open; then any part.
@@ -437,6 +406,14 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
       target?.querySelector<HTMLElement>('input')?.focus({ preventScroll: true });
     }, 50);
   };
+  // Next and back move through a part's question groups (21-25, then 26-30) before changing part.
+  const shownGroup = shownPart && groupPage.partNo === shownPart.partNo ? Math.min(groupPage.index, shownPart.groups.length - 1) : 0;
+  const nextGroup = shownPart && shownGroup < shownPart.groups.length - 1 ? shownGroup + 1 : null;
+  const showGroup = (index: number) => {
+    if (!shownPart) return;
+    setGroupPage({ partNo: shownPart.partNo, index });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.max(0, s) % 60).padStart(2, '0')}`;
 
   // The bar along the bottom of the computer-delivered test: every part, the
@@ -448,8 +425,8 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
     >
       <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:gap-4">
         <div className="flex shrink-0 items-center gap-4">
-          <Button variant="outline" onClick={onLeave} className="h-9 shrink-0 gap-1.5 rounded-full px-4 text-xs font-bold">
-            <LogOut className="h-3.5 w-3.5" /> Save and Exit
+          <Button variant="ghost" onClick={onLeave} className="test-leave h-10 shrink-0 gap-2 rounded-full px-4 text-sm font-semibold">
+            <LogOut className="h-4 w-4" /> Save and Exit
           </Button>
           <span className="hidden h-8 w-px bg-border lg:block" aria-hidden />
         </div>
@@ -464,7 +441,7 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
                   disabled={!open}
                   onClick={() => jump(index)}
                   title={open ? `Go to Part ${p.partNo}` : index < partIndex ? 'Already played' : 'Opens when its recording starts'}
-                  className="flex shrink-0 flex-col gap-1 rounded-xl border border-border bg-background px-3 py-1.5 text-left text-xs transition-colors enabled:hover:border-primary/50 enabled:hover:bg-primary/[0.04] disabled:opacity-50"
+                  className="flex shrink-0 flex-col gap-1 rounded-xl bg-muted/60 px-3 py-1.5 text-left text-xs transition-colors enabled:hover:border-primary/50 enabled:hover:bg-primary/[0.04] disabled:opacity-50"
                 >
                   <span className="flex items-center gap-2">
                     <span className="font-bold text-foreground">Part {p.partNo}</span>
@@ -490,7 +467,7 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
                         onClick={() => jump(index, number)}
                         aria-label={`Question ${number}${done ? ', answered' : ''}`}
                         className={`h-8 min-w-8 rounded-full px-1 text-xs font-bold tabular-nums transition-colors ${
-                          done ? 'bg-primary text-primary-foreground shadow-sm' : 'border border-border bg-background text-foreground hover:border-primary hover:text-primary'
+                          done ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted text-foreground hover:bg-primary/10 hover:text-primary'
                         }`}
                       >
                         {number}
@@ -518,11 +495,11 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
           )}
           {(phase === 'reading' || phase === 'playing' || phase === 'heard') && (
             <Button
-              onClick={nextPart}
-              className="h-9 gap-1.5 rounded-full px-5 font-bold shadow-md"
-              title={phase === 'heard' ? undefined : "This part's recording will not play again"}
+              onClick={() => (nextGroup !== null ? showGroup(nextGroup) : setConfirmPart(partIndex))}
+              className="test-next h-10 gap-2 rounded-full px-6 font-bold tracking-wide"
+              title={nextGroup !== null || phase === 'heard' ? undefined : "This part's recording will not play again"}
             >
-              {partIndex + 1 < session.parts.length ? 'Next part' : 'Go to checking time'}
+              {nextGroup !== null ? 'Next' : partIndex + 1 < session.parts.length ? 'Next part' : 'Go to checking time'}
               <ChevronRight className="h-4 w-4" />
             </Button>
           )}
@@ -534,20 +511,20 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
                 </span>
               )}
               <div className="flex items-center gap-1.5">
-                <Button variant="outline" size="icon" aria-label="Previous part" disabled={checkIndex === 0} onClick={() => jump(checkIndex - 1)} className="h-9 w-9 rounded-full">
+                <Button variant="outline" size="icon" aria-label="Previous" disabled={checkIndex === 0 && shownGroup === 0} onClick={() => (shownGroup > 0 ? showGroup(shownGroup - 1) : jump(checkIndex - 1))} className="h-9 w-9 rounded-full">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  aria-label="Next part"
-                  disabled={checkIndex >= session.parts.length - 1}
-                  onClick={() => jump(checkIndex + 1)}
+                  aria-label="Next"
+                  disabled={nextGroup === null && checkIndex >= session.parts.length - 1}
+                  onClick={() => (nextGroup !== null ? showGroup(nextGroup) : jump(checkIndex + 1))}
                   className="h-9 w-9 rounded-full"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-                <Button onClick={() => void submit()} disabled={phase === 'submitting'} className="h-9 gap-1.5 rounded-full px-5 font-bold shadow-md">
+                <Button onClick={() => setConfirmSubmit(true)} disabled={phase === 'submitting'} className="h-9 gap-1.5 rounded-full px-5 font-bold shadow-md">
                   <Send className="h-3.5 w-3.5" /> {phase === 'submitting' ? 'Marking…' : 'Submit'}
                 </Button>
               </div>
@@ -559,7 +536,7 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
   );
 
   return (
-    <div className="flex w-full min-h-dvh flex-col px-4 sm:px-6 lg:px-8 bg-background">
+    <div className="flex w-full min-h-dvh flex-col px-4 sm:px-6 lg:px-8 bg-card">
       <MockHeader
         className="-mx-4 mb-3.5 sm:-mx-6 lg:-mx-8"
         code={checking ? 'L' : `P${part?.partNo ?? 1}`}
@@ -578,7 +555,7 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
 
       {/* Once every recording has played, the bar to check and submit sits above the paper. */}
       {checking && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4" aria-live="polite">
+        <div className="flex flex-col gap-3 rounded-2xl bg-primary/[0.06] p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4" aria-live="polite">
           <p className="text-sm text-foreground">
             {phase === 'submitting'
               ? 'Marking your paper…'
@@ -589,50 +566,21 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
         </div>
       )}
 
-      {/* Each part is one card, as a practice item is: its bar, the recording, then its questions. */}
+      {/* Each part: its questions' heading, the recording, then the questions. */}
       <div className="space-y-5">
         {visibleParts.map(p => (
-          <section key={p.partNo} className="rounded-2xl border border-border bg-card shadow-sm">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-t-2xl bg-gradient-to-r from-primary to-primary/75 px-4 py-3 text-primary-foreground dark:!bg-muted dark:!text-foreground sm:px-5">
-              <span className="rounded-lg bg-white/15 px-2.5 py-0.5 font-bold">Part {p.partNo}</span>
-              <span className="h-5 w-px bg-white/40" aria-hidden />
-              <h3 className="text-sm sm:text-base font-semibold">Questions {p.firstNumber}–{p.lastNumber}</h3>
-            </div>
-            <div className="p-3 sm:p-4 space-y-4">
+          <section key={p.partNo} className="rounded-2xl bg-card">
+            <div className="space-y-6 py-6 sm:px-2 sm:py-8">
               {(() => {
                 const gi = groupPage.partNo === p.partNo ? Math.min(groupPage.index, p.groups.length - 1) : 0;
                 const group = p.groups[gi];
-                const range = (g: ListeningGroup) => `Questions ${g.firstNumber}–${g.firstNumber + g.questions.length - 1}`;
-                const show = (index: number) => {
-                  setGroupPage({ partNo: p.partNo, index });
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                };
+                // One question group at a time (Next in the bar moves on): which questions, the recording, then the questions.
                 return (
                   <>
+                    {!checking && p.partNo === part?.partNo && audioNote}
                     {group && <GroupHeading group={group} />}
-                    {p.groups.length > 1 && (
-                      <div role="tablist" aria-label={`Part ${p.partNo} questions`} className="flex flex-wrap gap-1.5">
-                        {p.groups.map((g, index) => (
-                          <button
-                            key={g.id}
-                            type="button"
-                            role="tab"
-                            aria-selected={index === gi}
-                            onClick={() => show(index)}
-                            className={`rounded-lg border px-3 py-1.5 text-xs font-bold tabular-nums transition-colors ${
-                              index === gi ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-foreground hover:border-primary/50'
-                            }`}
-                          >
-                            {range(g)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {!checking && p.partNo === part?.partNo ? (
-                      player
-                    ) : (
-                      <p className="text-sm text-muted-foreground leading-relaxed">{p.setting}</p>
-                    )}
+                    {/* The recording sits above the questions, or under the map where there is one. */}
+                    {!checking && p.partNo === part?.partNo && !group?.imageUrl && audioStatus}
                     {group && (
                       <ListeningGroupView
                         key={group.id}
@@ -641,17 +589,8 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
                         disabled={phase === 'submitting'}
                         onAnswer={answer}
                         showHeading={false}
+                        afterFigure={!checking && p.partNo === part?.partNo ? audioStatus : null}
                       />
-                    )}
-                    {p.groups.length > 1 && (
-                      <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
-                        <Button variant="outline" disabled={gi === 0} onClick={() => show(gi - 1)} className="h-9 gap-1.5">
-                          <ChevronLeft className="h-4 w-4" /> {gi > 0 ? range(p.groups[gi - 1]) : 'Previous'}
-                        </Button>
-                        <Button variant="outline" disabled={gi >= p.groups.length - 1} onClick={() => show(gi + 1)} className="h-9 gap-1.5">
-                          {gi < p.groups.length - 1 ? range(p.groups[gi + 1]) : 'Next'} <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
                     )}
                   </>
                 );
@@ -662,6 +601,46 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
       </div>
       </div>
       {navigator}
+
+      <ConfirmSubmit
+        open={confirmSubmit}
+        onCancel={() => setConfirmSubmit(false)}
+        onConfirm={() => void submit()}
+        description={(() => {
+          const unanswered = session.parts.flatMap(p => p.groups.flatMap(g => g.questions)).filter(q => !isAnswered(q)).length;
+          return unanswered
+            ? `${unanswered} question${unanswered === 1 ? ' is' : 's are'} unanswered and will be marked wrong. You cannot change your answers after this.`
+            : undefined;
+        })()}
+      />
+
+      <Dialog open={confirmPart === partIndex && !checking} onOpenChange={open => !open && setConfirmPart(null)}>
+        <DialogContent centered>
+          <DialogHeader>
+            <DialogTitle>
+              {partIndex + 1 < session.parts.length ? 'Do you want to go to the next part?' : 'Do you want to go to the checking time?'}
+            </DialogTitle>
+            <DialogDescription>
+              {phase === 'heard'
+                ? 'You can still change your answers to this part in the checking time.'
+                : "This part's recording stops now and will not play again."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmPart(null)} className="min-w-[96px]">No</Button>
+            <Button
+              autoFocus
+              onClick={() => {
+                setConfirmPart(null);
+                nextPart();
+              }}
+              className="min-w-[96px]"
+            >
+              Yes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -680,21 +659,21 @@ const outlineLine = (prompt: string, number: number) => {
 /** A group's question numbers, heading and instructions: "Questions 31–40 · Lecture: … · Complete the notes…". */
 function GroupHeading({ group }: { group: ListeningGroup }) {
   // The word limit in capitals ("ONE WORD ONLY") is the part students must not miss.
-  const pieces = group.instructions.split(/([A-Z]{2,}(?:[ /][A-Z]+)*)/);
+  const pieces = group.instructions.split(/([A-Z]{2,}(?:[ /][A-Z]+)*)/);
+  // As on the paper: which questions on their own line, what to do, then the title of what follows.
   return (
-    <div className="rounded-xl border border-primary/15 bg-primary/[0.04] px-4 py-3">
-      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-        <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-bold tabular-nums text-primary-foreground">
-          Questions {group.firstNumber}–{group.firstNumber + group.questions.length - 1}
-        </span>
-        {group.heading && <h4 className="text-base font-bold leading-snug text-foreground">{group.heading}</h4>}
-      </div>
-      <p className="mt-1.5 text-sm leading-relaxed text-foreground/80">
+    <div className="space-y-2">
+      <span className="inline-block rounded-md bg-primary px-2.5 py-1 text-sm font-bold tabular-nums text-primary-foreground">
+        Questions {group.firstNumber}–{group.firstNumber + group.questions.length - 1}
+      </span>
+      <p className="text-lg font-medium leading-relaxed text-foreground">
         {pieces.map((piece, i) => (i % 2 ? <strong key={i} className="font-bold text-foreground">{piece}</strong> : piece))}
       </p>
+      {group.heading && <h4 className="pt-2 text-xl font-bold leading-snug text-foreground">{group.heading}</h4>}
     </div>
   );
 }
+
 
 export function ListeningGroupView({
   group,
@@ -702,6 +681,7 @@ export function ListeningGroupView({
   disabled,
   onAnswer,
   showHeading = true,
+  afterFigure,
 }: {
   group: ListeningGroup;
   answers: Record<string, AnswerSubmission>;
@@ -709,6 +689,8 @@ export function ListeningGroupView({
   onAnswer: (question: Question, patch: Partial<AnswerSubmission>) => void;
   /** False where the part card already shows the heading at its top. */
   showHeading?: boolean;
+  /** Shown under the group's map or diagram, where it has one. */
+  afterFigure?: React.ReactNode;
 }) {
   const box = group.questions[0]?.options ?? [];
   const dragged = LETTER_GROUPS.includes(group.typeId) && box.length > 0;
@@ -722,11 +704,12 @@ export function ListeningGroupView({
 
         {group.imageUrl && (
           // The same figure as in practice: drawn large enough to read, with zoom and a full view.
-          <QuestionFigure src={group.imageUrl} alt={group.heading || 'Map'} className="border border-border" />
+          <QuestionFigure src={group.imageUrl} alt={group.heading || 'Map'} />
         )}
+        {group.imageUrl && afterFigure}
 
         {dragged ? (
-          <div className="rounded-xl border border-border bg-background p-3 sm:p-4">
+          <div>
             <ListeningLetterBoard
               options={box}
               items={group.questions.map((question, index) => ({
@@ -787,9 +770,9 @@ export function ListeningGroupView({
                       return (
                         <label
                           key={option.id}
-                          className={`flex items-start gap-2.5 rounded-xl border cursor-pointer text-xs sm:text-sm transition-colors ${
+                          className={`flex items-start gap-2.5 rounded-xl cursor-pointer text-base transition-colors ${
                             compact ? 'px-3.5 py-2' : 'p-3.5'
-                          } ${selected ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40'}`}
+                          } ${selected ? 'bg-primary/15' : 'bg-muted/50 hover:bg-primary/[0.08]'}`}
                         >
                           <input
                             type="radio"
@@ -833,7 +816,7 @@ export function ListeningResult({
       <IeltsTestReport
         attemptId={outcome.attempt.id}
         xpAwarded={outcome.xpAwarded}
-        backLabel="Back to listening practice"
+        backLabel="Back to mock tests"
         onBack={onBack}
         onRedo={onRedo}
       />
@@ -842,7 +825,7 @@ export function ListeningResult({
   const answersById = new Map((outcome.submitted ?? []).map(a => [a.questionId, a]));
   return (
     <div className={embedded ? 'space-y-4' : 'w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 space-y-4'}>
-      <Card className="p-5 text-center space-y-1.5">
+      <Card className="border-0 p-5 text-center space-y-1.5">
         <span className="text-xs font-bold text-muted-foreground uppercase">Estimated Listening band</span>
         <div className="font-display text-4xl font-black text-foreground">{outcome.attempt.userScore.toFixed(1)}</div>
         <p className="text-xs text-muted-foreground">
@@ -851,7 +834,7 @@ export function ListeningResult({
         {outcome.xpAwarded > 0 && <Badge variant="default">+{outcome.xpAwarded} XP</Badge>}
       </Card>
 
-      <Card className="p-4 space-y-2">
+      <Card className="border-0 p-4 space-y-2">
         <h2 className="font-display text-sm font-bold text-foreground">Answers</h2>
         <ol className="space-y-1.5">
           {outcome.review.map((question, index) => {
@@ -873,7 +856,7 @@ export function ListeningResult({
         </ol>
       </Card>
 
-      <Card className="p-4 space-y-2">
+      <Card className="border-0 p-4 space-y-2">
         <Button variant="ghost" size="sm" onClick={() => setShowScripts(open => !open)} className="font-bold -ml-2">
           {showScripts ? 'Hide transcripts' : 'Show transcripts'}
         </Button>
@@ -888,7 +871,7 @@ export function ListeningResult({
 
       {!embedded && (
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="outline" onClick={onBack}>Back to listening practice</Button>
+        <Button variant="outline" onClick={onBack}>Back to mock tests</Button>
         {onRedo && (
           <Button onClick={onRedo} className="gap-1.5">
             <RotateCcw className="h-4 w-4" />

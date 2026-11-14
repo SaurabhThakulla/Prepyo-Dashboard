@@ -334,6 +334,71 @@ export function playClips(segments: Segment[], onProgress?: (fraction: number) =
 }
 
 /**
+ * The live sound of the clip element as `bars` levels (0-1), the lowest
+ * frequencies in the middle, for a radio-style meter. It listens to a copy of
+ * the sound (captureStream), so the recording itself plays exactly as before.
+ * `onLevels(null)` means no levels can be read (Safari, Firefox, a clip from
+ * another site, the browser's own voice): the meter should animate on its own.
+ * Returns the function that stops listening.
+ */
+export function watchClipLevels(bars: number, onLevels: (levels: number[] | null) => void): () => void {
+  const audio = clipElement() as HTMLAudioElement & { captureStream?: () => MediaStream };
+  const Context = window.AudioContext;
+  if (!audio.captureStream || !Context) {
+    onLevels(null);
+    return () => {};
+  }
+  const context = new Context();
+  const analyser = context.createAnalyser();
+  analyser.fftSize = 256;
+  analyser.smoothingTimeConstant = 0.75;
+  const bins = new Uint8Array(analyser.frequencyBinCount);
+  let source: MediaStreamAudioSourceNode | null = null;
+  // Each clip gives the element a new track, so listen again whenever one starts.
+  const attach = () => {
+    try {
+      const stream = audio.captureStream!();
+      if (!stream.getAudioTracks().length) return;
+      source?.disconnect();
+      source = context.createMediaStreamSource(stream);
+      source.connect(analyser);
+    } catch {
+      // Nothing to read; the silence check below hands over to the animation.
+    }
+  };
+  attach();
+  audio.addEventListener('playing', attach);
+  void context.resume().catch(() => {});
+
+  const started = performance.now();
+  let heard = false;
+  let frame = 0;
+  const half = bars / 2;
+  const tick = () => {
+    if (context.state === 'running') {
+      analyser.getByteFrequencyData(bins);
+      // Speech sits in the first ~24 bins (up to about 4 kHz).
+      const levels = Array.from({ length: bars }, (_, i) => bins[Math.floor((Math.abs(i + 0.5 - half) / half) * 24)] / 255);
+      heard = heard || levels.some(level => level > 0);
+      if (heard) onLevels(levels);
+    }
+    // Still nothing after a second and a half: this sound cannot be read.
+    if (!heard && performance.now() - started > 1500) {
+      onLevels(null);
+      return;
+    }
+    frame = requestAnimationFrame(tick);
+  };
+  frame = requestAnimationFrame(tick);
+  return () => {
+    cancelAnimationFrame(frame);
+    audio.removeEventListener('playing', attach);
+    source?.disconnect();
+    void context.close().catch(() => {});
+  };
+}
+
+/**
  * Plays `first`; if the browser's voice turns out not to work, plays `second`
  * instead, from the start, since nothing was heard.
  */

@@ -1011,7 +1011,6 @@ function PracticePageContent() {
         <div className="w-full flex flex-col flex-1">
           {/* Unified Full-Width Workspace matching Reading layout */}
           <div className="w-full px-4 sm:px-6 lg:px-8 py-5 space-y-4 flex-1 flex flex-col">
-            {drawerShown && <BackToQuestions onClick={showList} />}
             {/* Warning banner when practicing a task locked in current PTE variant */}
             {activeExam === 'PTE' && typeParam && !isPteTaskAvailable(pteVariant, typeParam) && (
               <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/90 dark:bg-amber-950/40 p-4 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
@@ -1040,10 +1039,16 @@ function PracticePageContent() {
               {/* Task type, its instructions, and the time allowed */}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3 sm:gap-4">
+                  {/* Back to the list: a round arrow at the start of the row, level with the task badge. */}
+                  {drawerShown && (
+                    <div className="flex h-12 shrink-0 items-center sm:h-14">
+                      <BackToQuestions onClick={showList} round />
+                    </div>
+                  )}
                   <span className="inline-flex h-12 min-w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 px-2 text-sm font-bold text-primary-foreground shadow-md sm:h-14 sm:min-w-14">
                     {taskCode}
                   </span>
-                  <div className="min-w-0 space-y-1 pt-0.5">
+                  <div className="min-w-0 space-y-1 pt-2.5 sm:pt-3.5">
                     <h2 className="text-xl sm:text-2xl font-bold text-primary leading-tight">{currentQuestion.typeName}</h2>
                     {currentQuestion.timeLimitSeconds > 0 && (
                       <p className="flex items-center gap-1.5 text-xs font-semibold text-primary sm:hidden">
@@ -1088,23 +1093,22 @@ function PracticePageContent() {
                 </div>
               </div>
 
-              {/* The question: blue bar with its number and title, then its content */}
+              {/* The question on a plain white sheet, as in the mocks: its number and title, then its content */}
               {/* Only the heading, prompt and passage open the dictionary: not the audio player or help boxes. */}
-              <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+              <div className="rounded-2xl bg-card overflow-hidden">
               {(questionHeading || (!isPteListening && currentIndex >= 0)) && (
-                <div className="flex items-center gap-3 bg-gradient-to-r from-primary to-primary/75 px-4 py-3 text-primary-foreground dark:!bg-muted dark:!text-foreground sm:px-5">
-                  {!isPteListening && currentIndex >= 0 && <span className="rounded-lg bg-white/15 px-2.5 py-0.5 font-bold tabular-nums">#{currentIndex + 1}</span>}
-                  {!isPteListening && currentIndex >= 0 && questionHeading && <span className="h-5 w-px bg-white/40" aria-hidden />}
-                  {questionHeading && <h3 data-dictionary className="text-sm sm:text-base font-semibold leading-snug">{questionHeading}</h3>}
+                <div className="flex items-center gap-3 px-4 pt-4 sm:px-6 sm:pt-6">
+                  {!isPteListening && currentIndex >= 0 && <span className="rounded-md bg-primary px-2.5 py-1 text-sm font-bold tabular-nums text-primary-foreground">#{currentIndex + 1}</span>}
+                  {questionHeading && <h3 data-dictionary className="text-lg sm:text-xl font-bold leading-snug text-foreground">{questionHeading}</h3>}
                 </div>
               )}
 
-              <div className="p-3 sm:p-4 space-y-3 empty:hidden">
+              <div className="p-4 sm:p-6 space-y-4 empty:hidden">
 
                 {/* IELTS Speaking Part 2 shows its task card as the test does; other prompts as text. */}
                 {promptInCard && currentQuestion.prompt && (cueCard ? <CueCard card={cueCard} /> : (
                   // Blank lines between paragraphs become a small gap, not a whole empty line.
-                  <div data-dictionary className={`space-y-1.5 leading-relaxed ${promptIsQuestion ? 'text-base text-foreground' : 'text-sm text-muted-foreground'}`}>
+                  <div data-dictionary className={`space-y-2 leading-relaxed ${promptIsQuestion ? 'text-lg font-medium text-foreground' : 'text-base text-foreground/80'}`}>
                     {currentQuestion.prompt.trim().split(/\n\s*\n/).map((paragraph, i) => (
                       <p key={i} className="whitespace-pre-line">{paragraph.trim()}</p>
                     ))}
@@ -1137,16 +1141,6 @@ function PracticePageContent() {
                   highlights={isListeningLetterTask(currentQuestion) ? undefined : result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
                   onFinished={() => setHeardPromptFor(currentQuestion.id)}
                 />}
-
-                {/* Read Aloud: hear the passage. Stored audio when there is some, the browser's voice for now otherwise. */}
-                {isReadAloudTask(currentQuestion) && currentQuestion.contextPassage && (
-                  <PromptAudio
-                    key={`read-aloud-${currentQuestion.id}`}
-                    audioUrl={currentQuestion.audioUrl}
-                    audioTranscript={passageText(currentQuestion)}
-                    title={currentQuestion.title}
-                  />
-                )}
 
                 {(currentQuestion.exam === 'EPS_TOPIK' || currentQuestion.exam === 'JLPT') && (currentQuestion.hasTranslation || result?.review?.audioTranslation) && (
                   <KoreanHelp
@@ -1209,6 +1203,16 @@ function PracticePageContent() {
                   )
                 )}
                 </div>
+
+                {/* Read Aloud: the passage first, then hear it. Stored audio when there is some, the browser's voice for now otherwise. */}
+                {isReadAloudTask(currentQuestion) && currentQuestion.contextPassage && (
+                  <PromptAudio
+                    key={`read-aloud-${currentQuestion.id}`}
+                    audioUrl={currentQuestion.audioUrl}
+                    audioTranscript={passageText(currentQuestion)}
+                    title={currentQuestion.title}
+                  />
+                )}
 
               </div>
               </div>
