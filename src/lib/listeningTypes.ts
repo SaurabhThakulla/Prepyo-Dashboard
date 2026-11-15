@@ -13,6 +13,12 @@ export const LISTENING_TYPES = {
   matching: 'ielts-listening-matching',
 } as const;
 
+/** The IELTS Listening part (1-4) a `?type=` key names, as the sidebar links "Part 1". */
+export function listeningPartOf(syllabusKey?: string | null): number | undefined {
+  const match = /^part([1-4])$/.exec(syllabusKey ?? '');
+  return match ? Number(match[1]) : undefined;
+}
+
 const GAP_TYPES: string[] = [LISTENING_TYPES.table, LISTENING_TYPES.diagram, LISTENING_TYPES.shortAnswer];
 const LETTER_TYPES: string[] = [LISTENING_TYPES.matching, LISTENING_TYPES.diagram];
 
