@@ -174,6 +174,16 @@
   .signal-live { animation: none; }
 }
 
+/* Laptop screens. The app is laid out on a 1920px-wide screen; on 1024-1919px
+   (1366x768, or 1920x1080 at 125% Windows scaling = 1536px) the same 16px rem
+   makes everything look zoomed in. Every rem size follows this: 14px up to
+   1280px, rising to 16px at 1920px. Phones and tablets keep 16px. */
+@media (min-width: 1024px) {
+  html {
+    font-size: clamp(14px, calc(10px + 0.3125vw), 16px);
+  }
+}
+
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
