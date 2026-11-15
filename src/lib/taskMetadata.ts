@@ -230,6 +230,48 @@ const IELTS_TASK_META: Record<string, TaskMeta> = {
     bgLight: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400',
     scoreWeight: 'Weight: 30% of Speaking Score',
   },
+  // Learners pick Reading by part: one passage and a real part's worth of its questions.
+  part1: {
+    code: 'R-P1',
+    name: 'Reading Part 1',
+    skill: 'reading',
+    color: 'bg-amber-500 text-white',
+    bgLight: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
+    scoreWeight: 'About 13 of 40 questions · 20 minutes',
+  },
+  part2: {
+    code: 'R-P2',
+    name: 'Reading Part 2',
+    skill: 'reading',
+    color: 'bg-amber-500 text-white',
+    bgLight: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
+    scoreWeight: 'About 13 of 40 questions · 20 minutes',
+  },
+  part3: {
+    code: 'R-P3',
+    name: 'Reading Part 3',
+    skill: 'reading',
+    color: 'bg-amber-500 text-white',
+    bgLight: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
+    scoreWeight: 'About 14 of 40 questions · 20 minutes',
+  },
+  // Learners pick Writing by part; the task types are a filter inside it.
+  task1: {
+    code: 'W-T1',
+    name: 'Writing Task 1',
+    skill: 'writing',
+    color: 'bg-emerald-600 text-white',
+    bgLight: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+    scoreWeight: 'Weight: 33% of Writing Band',
+  },
+  task2: {
+    code: 'W-T2',
+    name: 'Writing Task 2',
+    skill: 'writing',
+    color: 'bg-emerald-600 text-white',
+    bgLight: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+    scoreWeight: 'Weight: 67% of Writing Band',
+  },
   describefigure: {
     code: 'W-T1',
     name: 'Describe the Figure (Task 1)',
@@ -401,7 +443,7 @@ export function getTaskMetadata(
     .replace(/[^a-z0-9]/g, '');
 
   const map = TASK_META[exam] ?? IELTS_TASK_META;
-  if (map[cleanKey]) {
+  if (map[cleanKey] && map[cleanKey].skill === skill) {
     return map[cleanKey];
   }
 

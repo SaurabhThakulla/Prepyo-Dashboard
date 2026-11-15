@@ -28,6 +28,16 @@
         "writing": {
           "title": "Writing",
           "description": "Write clear essays and describe charts in English",
+          "parts": [
+            {
+              "name": "Task 1",
+              "simpleDescription": "Describe a chart, graph, table, map or process in at least 150 words"
+            },
+            {
+              "name": "Task 2",
+              "simpleDescription": "Write an essay of at least 250 words: opinion, both views, advantages, problem/solution, cause/effect or two-part"
+            }
+          ],
           "topics": [
             {
               "name": "Describe the figure",
@@ -63,6 +73,20 @@
         "reading": {
           "title": "Reading",
           "description": "Read long stories/articles and answer questions about them",
+          "parts": [
+            {
+              "name": "Part 1",
+              "simpleDescription": "One factual passage and about 13 questions: True/False/Not Given, matching information, multiple choice, sentence completion"
+            },
+            {
+              "name": "Part 2",
+              "simpleDescription": "One passage and about 13 questions: matching headings and features, sentence endings, summary, diagram labels, short answers"
+            },
+            {
+              "name": "Part 3",
+              "simpleDescription": "The hardest passage and about 15 questions of any type, as in the last part of the test"
+            }
+          ],
           "topics": [
             {
               "name": "Multiple Choice",
@@ -113,6 +137,28 @@
         "listening": {
           "title": "Listening",
           "description": "Listen to audio recordings and answer questions",
+          "parts": [
+            {
+              "name": "Part 1",
+              "simpleDescription": "A conversation about everyday life, such as a booking, and 10 questions: mostly form and note completion"
+            },
+            {
+              "name": "Part 2",
+              "simpleDescription": "One speaker on an everyday topic, such as a tour or a radio talk, and 10 questions: multiple choice, maps, matching"
+            },
+            {
+              "name": "Part 3",
+              "simpleDescription": "Two to four people discussing study or training, and 10 questions: multiple choice and matching"
+            },
+            {
+              "name": "Part 4",
+              "simpleDescription": "A university lecture and 10 questions: mostly note completion"
+            },
+            {
+              "name": "Question types",
+              "simpleDescription": "Short single-question clips, filtered by question type"
+            }
+          ],
           "topics": [
             {
               "name": "Fill in the blanks",

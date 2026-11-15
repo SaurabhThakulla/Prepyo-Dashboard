@@ -286,6 +286,8 @@ export interface Question {
   /** An English version exists; premium learners can open it with Help. */
   hasTranslation?: boolean;
   imageUrl?: string;
+  /** What the picture is on a chart task: bar, line, pie, table, process, map, mixed or diagram. */
+  imageKind?: string;
   prepTimeSeconds?: number;
   timeLimitSeconds: number;
   options?: QuestionOption[];
