@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, ArrowRight, RefreshCw, Send } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Flag, RefreshCw, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import QuestionSource from '@/components/mocks/QuestionSource';
 import { Card } from '@/components/ui/card';
@@ -12,6 +12,8 @@ import TestFooter from '@/components/mocks/TestFooter';
 import ConfirmSubmit from '@/components/mocks/ConfirmSubmit';
 import { useTestLock } from '@/lib/hooks/useTestLock';
 import { needsParagraphLabels } from '@/lib/readingTypes';
+import { isAnswered } from '@/components/reading/ReadingQuestionRow';
+import { FlagToggle, NavNumber, toggled } from '@/components/mocks/QuestionNav';
 
 interface ReadingMockRunnerProps {
   session: ReadingMockSession;
@@ -31,6 +33,9 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
   const sets = session.sets ?? [];
   const [activeIndex, setActiveIndex] = useState(0);
   const [confirmFinish, setConfirmFinish] = useState(false);
+  // Flagged question ids, and the question last opened or answered (the one Flag acts on).
+  const [flags, setFlags] = useState<Set<string>>(() => new Set());
+  const [current, setCurrent] = useState<string | undefined>();
   // The clock is the server's: a reopened paper resumes with the time it has
   // left, not a fresh hour. Counting down to a fixed deadline, rather than
   // subtracting a second per tick, stays right when the tab is throttled.
@@ -89,6 +94,79 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
   };
 
   const activeSet = sets[activeIndex];
+
+  // Every question with its paper-wide number, for the navigator.
+  const items = sets.flatMap((set, setIndex) =>
+    set.groups.flatMap((group, groupIndex) =>
+      group.questions.map((question, i) => ({
+        id: question.id,
+        number: (startNumbers[setIndex]?.[groupIndex] ?? 1) + i,
+        setIndex,
+        groupId: group.id,
+      })),
+    ),
+  );
+  // Flag acts only on a question of the passage on screen.
+  const currentItem = items.find(item => item.id === current && item.setIndex === activeIndex);
+
+  const answer = (questionId: string, patch: Parameters<typeof mock.answer>[1]) => {
+    setCurrent(questionId);
+    mock.answer(questionId, patch);
+  };
+
+  // Opens the question's passage and scrolls to its group (the renderers carry no per-question anchor).
+  const jump = (item: (typeof items)[number]) => {
+    setActiveIndex(item.setIndex);
+    setCurrent(item.id);
+    setTimeout(() => document.getElementById(`rg-${item.groupId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
+
+  // The bar of the computer-delivered test: every passage, the open passage's
+  // question numbers (filled once answered, flagged), and Flag.
+  const navigator = (
+    <nav aria-label="Question navigator" className="mb-2 flex items-center gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto py-0.5 scrollbar-thin">
+        {sets.map((set, index) => {
+          const inSet = items.filter(item => item.setIndex === index);
+          if (index !== activeIndex) {
+            const done = inSet.filter(item => isAnswered(mock.answers[item.id])).length;
+            return (
+              <button
+                key={set.passage?.id ?? index}
+                type="button"
+                onClick={() => setActiveIndex(index)}
+                className="flex shrink-0 items-center gap-2 rounded-xl bg-muted/60 px-3 py-1.5 text-xs transition-colors hover:bg-primary/10"
+              >
+                <span className="font-bold text-foreground">Passage {index + 1}</span>
+                <span className="tabular-nums text-muted-foreground">{done}/{inSet.length}</span>
+                {inSet.some(item => flags.has(item.id)) && <Flag aria-label="has flagged questions" className="h-3 w-3 fill-amber-400 text-amber-500" />}
+              </button>
+            );
+          }
+          return (
+            <div key={set.passage?.id ?? index} className="flex shrink-0 items-center gap-1 rounded-xl bg-primary/[0.07] px-2 py-1 ring-1 ring-primary/30">
+              <span className="px-1.5 text-xs font-bold text-primary">Passage {index + 1}</span>
+              {inSet.map(item => (
+                <NavNumber
+                  key={item.id}
+                  number={item.number}
+                  answered={isAnswered(mock.answers[item.id])}
+                  flagged={flags.has(item.id)}
+                  current={item.id === current}
+                  onClick={() => jump(item)}
+                />
+              ))}
+            </div>
+          );
+        })}
+      </div>
+      <FlagToggle
+        number={currentItem?.number}
+        flagged={currentItem !== undefined && flags.has(currentItem.id)}
+        onToggle={() => currentItem && setFlags(previous => toggled(previous, currentItem.id))}
+      />
+    </nav>
+  );
 
   return (
     // The whole screen: a running mock has no app header above it.
@@ -159,14 +237,15 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
           >
             <div className="flex-1 min-h-0 lg:overflow-y-auto pr-1.5 space-y-4 scrollbar-thin">
               {activeSet.groups.map((group, groupIndex) => (
-                <ReadingGroupCard
-                  key={group.id}
-                  group={group}
-                  startNumber={startNumbers[activeIndex]?.[groupIndex] ?? 1}
-                  answers={mock.answers}
-                  disabled={submitting}
-                  onAnswer={mock.answer}
-                />
+                <div key={group.id} id={`rg-${group.id}`} className="scroll-mt-2">
+                  <ReadingGroupCard
+                    group={group}
+                    startNumber={startNumbers[activeIndex]?.[groupIndex] ?? 1}
+                    answers={mock.answers}
+                    disabled={submitting}
+                    onAnswer={answer}
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -176,6 +255,7 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
       <TestFooter
         className="-mx-3 sm:-mx-6 lg:-mx-8"
         onLeave={mock.exit}
+        navigator={navigator}
         note="Unanswered questions are marked wrong. You can move between passages freely, and your answers are saved as you go."
       >
         {activeIndex < sets.length - 1 ? (

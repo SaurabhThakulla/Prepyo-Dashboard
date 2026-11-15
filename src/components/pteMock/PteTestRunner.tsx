@@ -210,8 +210,8 @@ export default function PteTestRunner({ initial, mic, onFinished, onLeave }: Pro
               </span>
               <div className="min-w-0 space-y-1 pt-0.5">
                 <h2 className="text-xl font-bold leading-tight text-primary sm:text-2xl">{item.task.name}</h2>
-                {/* A listening item's own task text stands here, above its recording, as in the IELTS mocks. */}
-                {item.part === 'listening' && item.question.prompt ? (
+                {/* A listening or speaking item's own task text stands here, once, above its recording (Read Aloud's text is its passage). */}
+                {(item.part === 'listening' || (item.task.skill === 'speaking' && item.task.code !== 'RA')) && item.question.prompt ? (
                   <p className="whitespace-pre-line pt-1 text-lg font-medium leading-relaxed text-foreground">{item.question.prompt}</p>
                 ) : (
                   <p className="text-sm leading-relaxed text-muted-foreground">{item.task.instructions}</p>

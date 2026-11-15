@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Clock, Headphones, LogOut, RefreshCw, RotateCcw, Send } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Flag, Headphones, LogOut, RefreshCw, RotateCcw, Send } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
@@ -21,6 +21,7 @@ import ListeningLetterBoard from '@/components/listening/ListeningLetterBoard';
 import ListeningGapOutline from '@/components/listening/ListeningGapOutline';
 import MockHeader from '@/components/mocks/MockHeader';
 import ConfirmSubmit from '@/components/mocks/ConfirmSubmit';
+import { FlagToggle, NavNumber, toggled } from '@/components/mocks/QuestionNav';
 import { LISTENING_TYPES, lettersMayRepeat } from '@/lib/listeningTypes';
 import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
 import QuestionFigure from '@/components/practice/QuestionFigure';
@@ -192,6 +193,9 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
   // The part Next part was pressed on: it asks before moving on, as a part's recording never plays again.
   const [confirmPart, setConfirmPart] = useState<number | null>(null);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
+  // Flagged question numbers, and the question last opened or worked on (the one Flag acts on).
+  const [flags, setFlags] = useState<Set<number>>(() => new Set());
+  const [current, setCurrent] = useState<number | undefined>();
   // The paper opens straight into the reading time, and each recording then
   // plays by itself, as in the test. The learner arrives here with a tap
   // (Start, Continue), which lets the browser play the sound.
@@ -395,6 +399,7 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
   const jump = (index: number, number?: number) => {
     if (!canOpen(index)) return;
     if (checking) setCheckIndex(index);
+    if (number) setCurrent(number);
     const target = session.parts[index];
     const holding = number ? target.groups.findIndex(g => number >= g.firstNumber && number < g.firstNumber + g.questions.length) : 0;
     setGroupPage({ partNo: target.partNo, index: Math.max(0, holding) });
@@ -414,6 +419,8 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
     setGroupPage({ partNo: shownPart.partNo, index });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+  // Flag acts only on a question of the part on screen.
+  const flaggable = shownPart && current !== undefined && current >= shownPart.firstNumber && current <= shownPart.lastNumber ? current : undefined;
   const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.max(0, s) % 60).padStart(2, '0')}`;
 
   // The bar along the bottom of the computer-delivered test: every part, the
@@ -446,6 +453,9 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
                   <span className="flex items-center gap-2">
                     <span className="font-bold text-foreground">Part {p.partNo}</span>
                     <span className="tabular-nums text-muted-foreground">{answeredIn(p)}/{partCount(p)}</span>
+                    {[...flags].some(n => n >= p.firstNumber && n <= p.lastNumber) && (
+                      <Flag aria-label="has flagged questions" className="h-3 w-3 fill-amber-400 text-amber-500" />
+                    )}
                   </span>
                   <span className="h-1 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
                     <span className="block h-full rounded-full bg-primary" style={{ width: `${(answeredIn(p) / Math.max(1, partCount(p))) * 100}%` }} />
@@ -459,19 +469,15 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
                 {p.groups.flatMap(group =>
                   group.questions.map((q, i) => {
                     const number = group.firstNumber + i;
-                    const done = isAnswered(q);
                     return (
-                      <button
+                      <NavNumber
                         key={q.id}
-                        type="button"
+                        number={number}
+                        answered={isAnswered(q)}
+                        flagged={flags.has(number)}
+                        current={current === number}
                         onClick={() => jump(index, number)}
-                        aria-label={`Question ${number}${done ? ', answered' : ''}`}
-                        className={`h-8 min-w-8 rounded-full px-1 text-xs font-bold tabular-nums transition-colors ${
-                          done ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted text-foreground hover:bg-primary/10 hover:text-primary'
-                        }`}
-                      >
-                        {number}
-                      </button>
+                      />
                     );
                   }),
                 )}
@@ -480,6 +486,11 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
           })}
         </div>
         <div className="flex shrink-0 items-center justify-between gap-3" aria-live="polite">
+          <FlagToggle
+            number={flaggable}
+            flagged={flaggable !== undefined && flags.has(flaggable)}
+            onToggle={() => flaggable !== undefined && setFlags(previous => toggled(previous, flaggable))}
+          />
           {phase === 'reading' && (
             <span className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-foreground">
               <Clock className="h-4 w-4 text-primary" /> Recording starts in <span className="tabular-nums">{countdown}s</span>
@@ -566,8 +577,15 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
         </div>
       )}
 
-      {/* Each part: its questions' heading, the recording, then the questions. */}
-      <div className="space-y-5">
+      {/* Each part: its questions' heading, the recording, then the questions.
+          Clicking or typing in a question makes it the one Flag acts on. */}
+      <div
+        className="space-y-5"
+        onFocusCapture={event => {
+          const id = (event.target as HTMLElement).closest('[id^="lq-"]')?.id;
+          if (id) setCurrent(Number(id.slice(3)));
+        }}
+      >
         {visibleParts.map(p => (
           <section key={p.partNo} className="rounded-2xl bg-card">
             <div className="space-y-6 py-6 sm:px-2 sm:py-8">

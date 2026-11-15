@@ -3,6 +3,7 @@ import { beep, TestMicrophone } from '@/lib/pteMock/audio';
 import { encodeForUpload } from '@/lib/audio';
 import { Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import QuestionFigure from '@/components/practice/QuestionFigure';
 import { PteAnswer } from '@/lib/pteMock/types';
 import { AudioStatusPanel, RecorderPhase, RecorderStatusPanel } from './StatusPanels';
 import { usePromptPlayback } from './usePromptPlayback';
@@ -137,19 +138,14 @@ const SpeakingItem = forwardRef<ItemHandle, ItemProps>(function SpeakingItem({ i
   );
 
   const isAudioTask = playback.present;
-  // As practice lays it out: the recording and what to speak about, then the recorder below.
+  // The task text is in the runner's header. Here: the recording, what to speak about, then the microphone.
   return (
     <div className="space-y-4">
-      {question.prompt && task.code !== 'RA' && (
-        <p className="text-base leading-relaxed text-foreground whitespace-pre-line">{question.prompt}</p>
-      )}
-
       {isAudioTask && <AudioStatusPanel phase={playback.phase} countdown={playback.countdown} />}
 
       {question.imageUrl && (
-        <div className="flex justify-center rounded-xl border border-border bg-white p-3">
-          <img src={question.imageUrl} alt={question.title || 'Image to describe'} className="max-h-[360px] w-auto object-contain" />
-        </div>
+        // The practice figure: drawn large, with zoom in and out and a full view.
+        <QuestionFigure src={question.imageUrl} alt={question.title || 'Image to describe'} className="-mx-4 w-auto rounded-none sm:mx-auto sm:w-full sm:rounded-xl" />
       )}
 
       {question.contextPassage && !isRepeatSentenceTask(question) && (
@@ -158,16 +154,19 @@ const SpeakingItem = forwardRef<ItemHandle, ItemProps>(function SpeakingItem({ i
         </div>
       )}
 
-      <RecorderStatusPanel phase={phase} countdown={countdown} total={response} prepTotal={prep} level={level} note={note} />
+      {/* While the recording plays it is the only status on screen; the microphone's comes after it. */}
+      {!(isAudioTask && phase === 'waiting') && (
+        <RecorderStatusPanel phase={phase} countdown={countdown} total={response} prepTotal={prep} level={level} note={note} />
+      )}
 
       {mic && (phase === 'waiting' || phase === 'prep') && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
-          <p className="text-sm text-foreground">
-            Ready already? Answer now: {isAudioTask ? 'the recording stops and ' : ''}your microphone opens straight away.
-          </p>
+        <div className="flex flex-wrap items-center justify-center gap-3 text-sm text-muted-foreground">
+          <span>Ready already?</span>
           <Button
             size="sm"
-            className="gap-1.5"
+            variant="outline"
+            className="gap-1.5 rounded-full"
+            title={`${isAudioTask ? 'The recording stops and ' : ''}your microphone opens straight away.`}
             onClick={() => {
               playback.stop();
               void startRecording();
@@ -179,7 +178,7 @@ const SpeakingItem = forwardRef<ItemHandle, ItemProps>(function SpeakingItem({ i
       )}
 
       {phase === 'recording' && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground">
           Speak clearly. Recording stops by itself when the time is up or after {TestMicrophone.SILENCE_SECONDS} seconds of silence, or press Next.
         </p>
       )}

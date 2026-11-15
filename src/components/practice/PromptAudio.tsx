@@ -60,6 +60,24 @@ interface PromptAudioProps {
    * do ("Beginning in 3 seconds"). Pressing play first starts it sooner.
    */
   autoPlayAfter?: number;
+  /**
+   * 'full': play, signal and speed (listening). 'button': a small play button at
+   * the bottom right (Read Aloud, where the audio is optional). 'bar': play,
+   * time, progress, speed and volume in one row (speaking tasks built on audio).
+   */
+  layout?: PlayerLayout;
+}
+
+type PlayerLayout = 'full' | 'button' | 'bar';
+// Read by VoicePanel, so the three ways of playing (recording, server voice, browser voice) all look alike.
+const PlayerLayoutContext = React.createContext<PlayerLayout>('full');
+
+export default function PromptAudio({ layout = 'full', ...props }: PromptAudioProps) {
+  return (
+    <PlayerLayoutContext.Provider value={layout}>
+      <PromptAudioPlayer {...props} />
+    </PlayerLayoutContext.Provider>
+  );
 }
 
 /**
@@ -128,7 +146,7 @@ const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
  * background noise a real recording has, and a learner who mistakes one for the
  * other will misjudge how ready they are.
  */
-export default function PromptAudio({
+function PromptAudioPlayer({
   audioUrl,
   audioTranscript,
   title,
@@ -164,6 +182,10 @@ export default function PromptAudio({
   const [speed, setSpeed] = useState(1);
   const speedRef = useRef(1);
   speedRef.current = speed;
+  // Applies from the next sentence: the browser cannot change a sentence already being spoken.
+  const [volume, setVolume] = useState(1);
+  const volumeRef = useRef(1);
+  volumeRef.current = volume;
   // A script fetched at play time, for items that do not carry one.
   const [fetchedScript, setFetchedScript] = useState<string | null>(null);
   // Once is once: set when playback finishes, so stopping/pausing does not lock it out.
@@ -371,6 +393,7 @@ export default function PromptAudio({
           if (voice) utterance.voice = voice;
           utterance.lang = voice?.lang ?? FALLBACK_LANG[language];
           utterance.rate = 0.95 * speedRef.current;
+          utterance.volume = volumeRef.current;
           utterance.onstart = () => {
             anyStarted = true;
           };
@@ -487,6 +510,8 @@ export default function PromptAudio({
       toggleIcon={speaking ? 'pause' : 'play'}
       speed={speed}
       onSpeedChange={setSpeed}
+      volume={volume}
+      onVolumeChange={setVolume}
       footer={
         <>
           {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
@@ -571,6 +596,13 @@ function ServerSpokenAudio({
     speedRef.current = newSpeed;
     playbackRef.current?.setSpeed?.(newSpeed);
   };
+  const [volume, setVolume] = useState(1);
+  const volumeRef = useRef(1);
+  const handleVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    volumeRef.current = newVolume;
+    playbackRef.current?.setVolume?.(newVolume);
+  };
 
   useEffect(() => {
     run.current += 1;
@@ -620,6 +652,7 @@ function ServerSpokenAudio({
         const playback = playClips(segments, fraction => {
           if (current === run.current) setProgress((round + fraction) / repeat);
         }, speedRef.current);
+        playback.setVolume?.(volumeRef.current);
         playbackRef.current = playback;
         await playback.done;
         if (current !== run.current) return;
@@ -671,6 +704,8 @@ function ServerSpokenAudio({
       toggleIcon={playing ? 'pause' : 'play'}
       speed={speed}
       onSpeedChange={handleSpeedChange}
+      volume={volume}
+      onVolumeChange={handleVolumeChange}
       footer={
         <>
           {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
@@ -713,15 +748,23 @@ function RecordedAudio({
   const [finished, setFinished] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1);
+  const [volume, setVolume] = useState(1);
+  const [elapsed, setElapsed] = useState(0);
+  const [duration, setDuration] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.playbackRate = speed;
   }, [speed]);
 
   useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [volume]);
+
+  useEffect(() => {
     round.current = 0;
     setPlaying(false);
     setProgress(0);
+    setElapsed(0);
     setFinished(false);
     setError(null);
   }, [src, questionId]);
@@ -789,8 +832,13 @@ function RecordedAudio({
           setProgress(1);
           onFinished();
         }}
+        onLoadedMetadata={event => {
+          const length = event.currentTarget.duration;
+          if (Number.isFinite(length)) setDuration(length);
+        }}
         onTimeUpdate={event => {
           const el = event.currentTarget;
+          setElapsed(el.currentTime);
           if (el.duration) setProgress((round.current + el.currentTime / el.duration) / repeat);
         }}
         onError={() => {
@@ -823,6 +871,10 @@ function RecordedAudio({
         toggleIcon={playing ? 'pause' : 'play'}
         speed={speed}
         onSpeedChange={setSpeed}
+        elapsed={elapsed}
+        duration={duration}
+        volume={volume}
+        onVolumeChange={setVolume}
         footer={
           (error || footer) && (
             <>
@@ -852,7 +904,18 @@ interface VoicePanelProps {
   footer?: React.ReactNode;
   /** The heading beside the speaker icon. */
   label?: string;
+  /** Seconds played and the recording's length, where the audio knows them (a stored recording). */
+  elapsed?: number;
+  duration?: number;
+  /** 0 to 1; the bar player shows a slider when given. */
+  volume?: number;
+  onVolumeChange?: (volume: number) => void;
 }
+
+const clock = (seconds: number) => {
+  const s = Math.max(0, Math.floor(seconds));
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+};
 
 /**
  * The listening panel, laid out as the mocks show a recording: the play button
@@ -872,22 +935,125 @@ export function VoicePanel({
   onSpeedChange,
   footer,
   label = 'Listen',
+  elapsed,
+  duration,
+  volume,
+  onVolumeChange,
 }: VoicePanelProps) {
   const Icon = toggleIcon === 'play' ? Play : toggleIcon === 'pause' ? Pause : Square;
+  const layout = React.useContext(PlayerLayoutContext);
   const [levels, setLevels] = useState<number[] | null>(null);
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || layout !== 'full') return;
     const stop = watchClipLevels(40, setLevels);
     return () => {
       stop();
       setLevels(null);
     };
-  }, [playing]);
+  }, [playing, layout]);
+
+  const speedSelect = onSpeedChange && (
+    <div className="relative group ml-auto inline-flex shrink-0 items-center">
+      <select
+        value={speed}
+        onChange={e => onSpeedChange(Number(e.target.value))}
+        aria-label="Playback speed"
+        title="Audio playback speed"
+        className="appearance-none cursor-pointer rounded-full bg-muted/70 hover:bg-muted px-3 py-1 pr-6 text-xs font-semibold font-mono text-foreground hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all"
+      >
+        {SPEED_OPTIONS.map(s => (
+          <option key={s} value={s} className="bg-background text-foreground font-sans font-medium">
+            {s.toFixed(1)}x
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+    </div>
+  );
+
+  if (layout === 'bar') {
+    const fill = `${Math.round(Math.min(1, Math.max(0, progress)) * 1000) / 10}%`;
+    const timed = duration != null && duration > 0;
+    return (
+      <div className="space-y-2">
+        {/* One bordered row: play, the time and a progress line, speed, volume. */}
+        <div className="flex items-center gap-3 rounded-xl border border-primary/30 px-3 py-2.5 sm:gap-4 sm:px-4">
+          <button
+            type="button"
+            onClick={onToggle}
+            disabled={disabled}
+            aria-label={toggleLabel}
+            title={toggleLabel}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Icon className={`h-4 w-4 fill-current ${toggleIcon === 'play' ? 'ml-0.5' : ''}`} />
+          </button>
+          <p className="sr-only" aria-live="polite">
+            {status || label}
+          </p>
+          <div className="min-w-0 flex-1">
+            {/* Without a known length (a voice reading the script) the status takes the time's place. */}
+            <div className="flex items-center justify-between gap-2 text-xs font-medium tabular-nums text-foreground">
+              <span className="truncate">{timed ? clock(elapsed ?? 0) : status || clock(0)}</span>
+              {timed && <span>{clock(duration)}</span>}
+            </div>
+            <div className="relative mt-1.5 h-1.5 rounded-full bg-primary/15" aria-hidden>
+              <div className="h-full rounded-full bg-primary" style={{ width: fill }} />
+              <span className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-border bg-background shadow-sm" style={{ left: fill }} />
+            </div>
+          </div>
+          {speedSelect}
+          {onVolumeChange && (
+            <label className="hidden shrink-0 items-center gap-2 sm:flex">
+              <Volume2 className="h-4 w-4 text-primary" aria-hidden />
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={volume ?? 1}
+                onChange={e => onVolumeChange(Number(e.target.value))}
+                aria-label="Volume"
+                className="w-20 cursor-pointer accent-primary"
+              />
+            </label>
+          )}
+        </div>
+        {footer && <div className="w-full space-y-2">{footer}</div>}
+      </div>
+    );
+  }
+
+  if (layout === 'button') {
+    return (
+      <div className="space-y-2">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onToggle}
+            disabled={disabled}
+            aria-label={toggleLabel}
+            title={toggleLabel}
+            className={`flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-all hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-40 ${
+              playing ? 'ring-4 ring-primary/15' : ''
+            }`}
+          >
+            <Icon className={`h-4 w-4 fill-current ${toggleIcon === 'play' ? 'ml-0.5' : ''}`} />
+          </button>
+          <p className="sr-only" aria-live="polite">
+            {status || label}
+          </p>
+        </div>
+        {footer && <div className="w-full space-y-2">{footer}</div>}
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-3 py-2">
-      {/* One row, kept together: play, the signal, then speed. */}
-      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3">
+    // Same tinted box as the passage above it, so the player reads as part of the question.
+    <div className="space-y-3 rounded-xl bg-primary/[0.04] px-3 py-3 sm:px-4">
+      {/* One row, kept together: play, the signal, then speed at the far end. */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
         <button
           type="button"
           onClick={onToggle}
@@ -913,24 +1079,7 @@ export function VoicePanel({
           )}
         </div>
 
-        {onSpeedChange && (
-          <div className="relative group inline-flex shrink-0 items-center">
-            <select
-              value={speed}
-              onChange={e => onSpeedChange(Number(e.target.value))}
-              aria-label="Playback speed"
-              title="Audio playback speed"
-              className="appearance-none cursor-pointer rounded-full bg-muted/70 hover:bg-muted px-3 py-1 pr-6 text-xs font-semibold font-mono text-foreground hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all"
-            >
-              {SPEED_OPTIONS.map(s => (
-                <option key={s} value={s} className="bg-background text-foreground font-sans font-medium">
-                  {s.toFixed(1)}x
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
-          </div>
-        )}
+        {speedSelect}
       </div>
 
       {footer && <div className="w-full space-y-2">{footer}</div>}

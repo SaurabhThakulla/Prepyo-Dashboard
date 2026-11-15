@@ -18,6 +18,7 @@ export interface Playback {
   stop: () => void;
   /** Sets playback speed rate. */
   setSpeed?: (speed: number) => void;
+  setVolume?: (volume: number) => void;
 }
 
 export class StoppedError extends Error {
@@ -277,6 +278,8 @@ export function playClips(segments: Segment[], onProgress?: (fraction: number) =
   activeClips?.stop();
   const audio = clipElement();
   audio.playbackRate = speed;
+  // The element is shared: a volume set for one recording must not carry over to the next.
+  audio.volume = 1;
   let stopped = false;
   let reject: (reason: unknown) => void = () => {};
   const detach = () => {
@@ -327,6 +330,9 @@ export function playClips(segments: Segment[], onProgress?: (fraction: number) =
     },
     setSpeed: (newSpeed: number) => {
       audio.playbackRate = newSpeed;
+    },
+    setVolume: (volume: number) => {
+      audio.volume = volume;
     },
   };
   activeClips = playback;

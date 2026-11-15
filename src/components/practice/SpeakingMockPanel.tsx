@@ -791,9 +791,20 @@ export function SpeakingResult({ outcome, onBack, onRedo }: { outcome: SpeakingO
           </div>
           <div className="space-y-2">
             <span className="text-xs font-bold uppercase tracking-wide text-primary">Speaking estimate</span>
-            <p className="text-sm text-muted-foreground">
-              Rated across all three parts from transcripts of your answers. Pronunciation could not be assessed, so this uses three of the four Speaking criteria. A practice estimate, not an official result.
-            </p>
+            {band != null ? (
+              <p className="text-sm text-muted-foreground">
+                Rated across all three parts from transcripts of your answers. Pronunciation could not be assessed, so this uses three of the four Speaking criteria. A practice estimate, not an official result.
+              </p>
+            ) : (
+              // The rater gives no band when too little was heard; nothing is saved to the learner's results.
+              <div className="space-y-1.5 text-sm text-muted-foreground">
+                <p className="font-semibold text-foreground">Not enough speech was heard to give a band.</p>
+                <p>
+                  This test was not scored and does not count towards your results. Below is what was heard. Check that your
+                  microphone is picking you up, then answer each question in full and try again.
+                </p>
+              </div>
+            )}
             {outcome.xpAwarded > 0 && <Badge variant="default">+{outcome.xpAwarded} XP</Badge>}
           </div>
         </div>

@@ -803,7 +803,7 @@ function PracticePageContent() {
       className={`w-full ${isReading && !isAdminUser && !listPage
           ? 'min-h-[calc(100dvh-var(--app-header-h,4rem))] lg:h-[calc(100dvh-var(--app-header-h,4rem))] lg:max-h-[calc(100dvh-var(--app-header-h,4rem))] lg:overflow-hidden'
           : 'min-h-[calc(100vh-4rem)]'
-        } p-0 m-0 max-sm:pb-20 flex flex-col bg-background`}
+        } p-0 m-0 max-sm:pb-20 flex flex-col bg-card`}
     >
       {/* An admin has no reason to sit the paper. They add questions/passages instead. */}
       {user?.subscription?.aiBlocked && (selectedSkill === 'speaking' || selectedSkill === 'writing') ? (
@@ -1093,22 +1093,23 @@ function PracticePageContent() {
                 </div>
               </div>
 
-              {/* The question on a plain white sheet, as in the mocks: its number and title, then its content */}
+              {/* The question straight on the page's white, with no card of its own: its number and title, then its content */}
               {/* Only the heading, prompt and passage open the dictionary: not the audio player or help boxes. */}
-              <div className="rounded-2xl bg-card overflow-hidden">
+              <div>
               {(questionHeading || (!isPteListening && currentIndex >= 0)) && (
-                <div className="flex items-center gap-3 px-4 pt-4 sm:px-6 sm:pt-6">
+                <div className="flex items-center gap-3 pt-2">
                   {!isPteListening && currentIndex >= 0 && <span className="rounded-md bg-primary px-2.5 py-1 text-sm font-bold tabular-nums text-primary-foreground">#{currentIndex + 1}</span>}
                   {questionHeading && <h3 data-dictionary className="text-lg sm:text-xl font-bold leading-snug text-foreground">{questionHeading}</h3>}
                 </div>
               )}
 
-              <div className="p-4 sm:p-6 space-y-4 empty:hidden">
+              <div className="py-4 space-y-4 empty:hidden">
 
                 {/* IELTS Speaking Part 2 shows its task card as the test does; other prompts as text. */}
                 {promptInCard && currentQuestion.prompt && (cueCard ? <CueCard card={cueCard} /> : (
                   // Blank lines between paragraphs become a small gap, not a whole empty line.
-                  <div data-dictionary className={`space-y-2 leading-relaxed ${promptIsQuestion ? 'text-lg font-medium text-foreground' : 'text-base text-foreground/80'}`}>
+                  // A task's instruction is small and muted so it does not mix with the question; a writing topic is the question, so it stays full size.
+                  <div data-dictionary className={`space-y-2 leading-relaxed ${promptIsQuestion ? 'text-lg font-medium text-foreground' : currentQuestion.skill === 'writing' ? 'text-base text-foreground/80' : 'text-sm text-muted-foreground'}`}>
                     {currentQuestion.prompt.trim().split(/\n\s*\n/).map((paragraph, i) => (
                       <p key={i} className="whitespace-pre-line">{paragraph.trim()}</p>
                     ))}
@@ -1135,6 +1136,8 @@ function PracticePageContent() {
                   // The recording plays on its own after the test's lead-in; speaking recording follows it.
                   autoPlayAfter={result === null ? audioDelayFor(currentQuestion) : undefined}
                   title={currentQuestion.title}
+                  // Speaking tasks answered from what they hear (Repeat Sentence, Re-tell Lecture...): one bar with time, speed and volume.
+                  layout={currentQuestion.skill === 'speaking' ? 'bar' : undefined}
                   // IELTS speaking shows its question on screen; the recording only reads it aloud.
                   allowTranscript={!(currentQuestion.exam === 'IELTS' && currentQuestion.skill === 'speaking')}
                   // A matching key is a letter, not words said in the recording.
@@ -1211,6 +1214,7 @@ function PracticePageContent() {
                     audioUrl={currentQuestion.audioUrl}
                     audioTranscript={passageText(currentQuestion)}
                     title={currentQuestion.title}
+                    layout="button"
                   />
                 )}
 

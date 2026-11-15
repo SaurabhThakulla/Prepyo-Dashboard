@@ -11,11 +11,14 @@ import { Button } from '@/components/ui/button';
 export default function TestFooter({
   onLeave,
   note,
+  navigator,
   children,
   className = '',
 }: {
   onLeave: () => void;
   note?: ReactNode;
+  /** A row above the buttons: the paper's question navigator. */
+  navigator?: ReactNode;
   children?: ReactNode;
   className?: string;
 }) {
@@ -24,6 +27,7 @@ export default function TestFooter({
     <div
       className={`sticky bottom-0 z-30 !mt-auto shrink-0 dark test-bar px-4 py-2.5 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.35)] sm:px-6 lg:px-8 ${className}`}
     >
+      {navigator}
       <div className="flex items-center justify-between gap-4">
         <div className="flex shrink-0 items-center gap-4">
           <Button variant="ghost" onClick={onLeave} className="test-leave h-10 gap-2 rounded-full px-4 text-sm font-semibold">

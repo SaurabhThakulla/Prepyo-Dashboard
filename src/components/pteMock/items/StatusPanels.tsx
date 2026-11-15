@@ -18,12 +18,12 @@ export function AudioStatusPanel({ phase, countdown }: { phase: PlaybackPhase; c
 
 export type RecorderPhase = 'waiting' | 'prep' | 'recording' | 'done' | 'skipped';
 
-const TONE: Record<RecorderPhase, { panel: string; dial: string; text: string; bar: string }> = {
-  waiting: { panel: 'border-border bg-muted/40', dial: 'bg-muted-foreground/30 text-white', text: 'text-muted-foreground', bar: 'bg-muted-foreground/20' },
-  prep: { panel: 'border-amber-200/70 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/10', dial: 'bg-amber-500 text-white ring-8 ring-amber-500/15', text: 'text-amber-700 dark:text-amber-300', bar: 'bg-amber-400' },
-  recording: { panel: 'border-rose-200/70 bg-rose-50 dark:border-rose-500/20 dark:bg-rose-500/10', dial: 'bg-rose-500 text-white ring-8 ring-rose-500/15', text: 'text-rose-700 dark:text-rose-300', bar: 'bg-rose-500' },
-  done: { panel: 'border-emerald-200/70 bg-emerald-50 dark:border-emerald-500/20 dark:bg-emerald-500/10', dial: 'bg-emerald-500 text-white', text: 'text-emerald-700 dark:text-emerald-300', bar: 'bg-emerald-500' },
-  skipped: { panel: 'border-border bg-muted/40', dial: 'bg-amber-500 text-white', text: 'text-muted-foreground', bar: 'bg-muted-foreground/20' },
+const TONE: Record<RecorderPhase, { dial: string; text: string; bar: string }> = {
+  waiting: { dial: 'bg-muted-foreground/30 text-white', text: 'text-muted-foreground', bar: 'bg-muted-foreground/20' },
+  prep: { dial: 'bg-amber-500 text-white ring-8 ring-amber-500/15', text: 'text-amber-700 dark:text-amber-300', bar: 'bg-amber-400' },
+  recording: { dial: 'bg-rose-500 text-white ring-8 ring-rose-500/15', text: 'text-rose-700 dark:text-rose-300', bar: 'bg-rose-500' },
+  done: { dial: 'bg-emerald-500 text-white', text: 'text-emerald-700 dark:text-emerald-300', bar: 'bg-emerald-500' },
+  skipped: { dial: 'bg-amber-500 text-white', text: 'text-muted-foreground', bar: 'bg-muted-foreground/20' },
 };
 
 export function RecorderStatusPanel({
@@ -65,8 +65,8 @@ export function RecorderStatusPanel({
   const live = phase === 'recording';
 
   return (
-    <div className={`w-full space-y-4 rounded-2xl border p-5 text-center transition-colors ${tone.panel}`} role="status" aria-live="polite">
-      <p className="font-display text-lg font-bold text-foreground">{title}</p>
+    <div className="w-full space-y-4 py-4 text-center" role="status" aria-live="polite">
+      <p className="text-xl font-medium text-foreground sm:text-2xl">{title}</p>
 
       <div className="flex items-center justify-center gap-4">
         {/* The microphone's level either side of the dial while it records */}
