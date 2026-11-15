@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import AudioRecorder, { type RecorderStatus } from '@/components/practice/AudioRecorder';
+import AudioRecorder from '@/components/practice/AudioRecorder';
 import { audioDelayFor, prepSecondsFor } from '@/components/practice/prepTime';
 import QuestionFigure from '@/components/practice/QuestionFigure';
 import PromptAudio from '@/components/practice/PromptAudio';
@@ -35,7 +35,7 @@ import OptionContent, { hasPictureOptions, MarkedText } from '@/components/pract
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
 import ListeningGapOutline from '@/components/listening/ListeningGapOutline';
 import { ListeningLetterPractice } from '@/components/listening/ListeningLetterBoard';
-import { isListeningGapTask, isListeningLetterTask } from '@/lib/listeningTypes';
+import { isListeningGapTask, isListeningLetterTask, listeningPartOf } from '@/lib/listeningTypes';
 import ConversationPassage, { conversationTurns } from '@/components/practice/ConversationPassage';
 import { isAiRatedListening, isReadAloudTask, isRepeatSentenceTask, isWordHighlightTask, passageText } from '@/lib/listening';
 import { allowsMultipleChoices } from '@/lib/choices';
@@ -45,9 +45,9 @@ import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isInstitutio
 import FreePlanNotice from '@/institution/FreePlanNotice';
 import PracticeActionBar, { CostChip, gradingUnits, notesFor, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
 import MyScore from '@/components/practice/flow/MyScore';
-import RecordingPlayback from '@/components/practice/flow/RecordingPlayback';
 
 const ReadingPracticePanel = lazy(() => import('@/components/reading/ReadingPracticePanel'));
+const ListeningPartPanel = lazy(() => import('@/components/listening/ListeningPartPanel'));
 const ReadingMockPanel = lazy(() => import('@/components/reading/ReadingMockPanel'));
 const SkillMockPanel = lazy(() => import('@/components/practice/SkillMockPanel'));
 const WritingMockPanel = lazy(() => import('@/components/practice/WritingMockPanel'));
@@ -57,10 +57,11 @@ const PracticeMockPaywall = lazy(() => import('@/components/practice/PracticeMoc
 const AdminReadingAuthoring = lazy(() => import('@/components/admin/AdminReadingAuthoring'));
 const AdminQuestionAuthoring = lazy(() => import('@/components/admin/AdminQuestionAuthoring'));
 import { useReadingPracticePassages } from '@/lib/hooks/useReading';
+import { useListeningPracticeParts } from '@/lib/hooks/useListeningPractice';
 import { fetchAllQuestions } from '@/lib/hooks/useResources';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
-import { familyOf, typeIdsFor } from '@/lib/readingTypes';
+import { familyOf, readingPartOf, typeIdsFor } from '@/lib/readingTypes';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { answeredContext, questionContext } from '@/lib/tutorContext';
 import { encodeForUpload } from '@/lib/audio';
@@ -175,11 +176,16 @@ function PracticePageContent() {
   // they are dealt one at a time like listening, not from the passage list.
   const readingList =
     selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK' && activeExam !== 'JLPT' && !isMockMode && !mistakeId && !isAdmin(user);
+  // IELTS Listening Part 1-4: one recording and its questions, picked from a list of recordings.
+  const listeningPart =
+    selectedSkill === 'listening' && activeExam === 'IELTS' && !isMockMode && !mistakeId && !isAdmin(user)
+      ? listeningPartOf(typeParam)
+      : undefined;
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [loading, setLoading] = useState(
-    () => !mistakeId && !readingList && Boolean(typeParam || drawerParam === 'open' || drawerParam === '1'),
+    () => !mistakeId && !readingList && !listeningPart && Boolean(typeParam || drawerParam === 'open' || drawerParam === '1'),
   );
   // The list of mock papers opens with the page, so the learner picks one straight away.
   // Practice opens on its first question instead (a start costs a credit), with the list a tap away.
@@ -199,9 +205,12 @@ function PracticePageContent() {
     () => [...new Set(typeIdsFor(typeParam).flatMap(familyOf))],
     [typeParam],
   );
-  const readingPassagesQuery = useReadingPracticePassages(activeExam, readingFamily, readingList);
+  const readingPassagesQuery = useReadingPracticePassages(activeExam, readingFamily, readingList, readingPartOf(typeParam));
   const readingPassages = readingPassagesQuery.data?.passages ?? [];
   const passageParam = searchParams.get('passage');
+  const listeningPartsQuery = useListeningPracticeParts(listeningPart, Boolean(listeningPart));
+  const listeningParts = listeningPartsQuery.data?.parts ?? [];
+  const recordingParam = searchParams.get('recording');
 
   // The practice list is a page: these learners get it (mocks, mistakes and admins do not).
   const drawerShown = readingList || (!isAdmin(user) && !mistakeId && !isMockMode);
@@ -288,10 +297,10 @@ function PracticePageContent() {
   }, [activeExam, selectedSkill, typeParam, mistakeId, searchParams, queryClient]);
 
   useEffect(() => {
-    if (!isTestMockMode && (isDrawerOpen || Boolean(typeParam)) && !mistakeId && questions.length === 0 && !loadFailed) {
+    if (!isTestMockMode && !listeningPart && (isDrawerOpen || Boolean(typeParam)) && !mistakeId && questions.length === 0 && !loadFailed) {
       void loadQuestionsForSubtask();
     }
-  }, [isDrawerOpen, typeParam, mistakeId, questions.length, loadFailed, loadQuestionsForSubtask, isTestMockMode]);
+  }, [isDrawerOpen, typeParam, mistakeId, questions.length, loadFailed, loadQuestionsForSubtask, isTestMockMode, listeningPart]);
 
   const handleSelectQuestionFromDrawer = async (question: Question) => {
     closeTutorialVideo?.();
@@ -322,8 +331,6 @@ function PracticePageContent() {
   const [blankResponses, setBlankResponses] = useState<Record<string, string>>({});
   const [recording, setRecording] = useState<Blob | null>(null);
   // The recorder's phase and mic action, for the recording pill in the action bar.
-  const [recorderStatus, setRecorderStatus] = useState<RecorderStatus | null>(null);
-  const recorderControl = useRef<(() => void) | null>(null);
   // The question whose prompt audio has played through. Keyed by id, so moving
   // to the next question starts out not heard.
   const [heardPromptFor, setHeardPromptFor] = useState<string | null>(null);
@@ -797,6 +804,8 @@ function PracticePageContent() {
     goToIndex(0);
   };
 
+  const writingSideBySide = grading === 'ai' && selectedSkill === 'writing';
+
   return (
     <div
       data-practice-workspace
@@ -843,6 +852,45 @@ function PracticePageContent() {
         <Suspense fallback={<PracticePageSkeleton />}>
           <SkillMockPanel key={`${activeExam}-${selectedSkill}`} skill={selectedSkill} exam={activeExam} />
         </Suspense>
+      ) : listeningPart ? (
+        <>
+          {listPage && (
+            <QuestionDrawer
+              exam={activeExam}
+              skill={selectedSkill}
+              typeKey={typeParam}
+              isMock={false}
+              questions={listeningParts.map(recording => ({
+                id: recording.id,
+                title: recording.testTitle,
+                prompt: recording.setting,
+              }))}
+              currentQuestionId={recordingParam}
+              completedIds={listeningParts.filter(recording => recording.practisedAt).map(recording => recording.id)}
+              isLoading={listeningPartsQuery.isPending || (listeningPartsQuery.isFetching && listeningParts.length === 0)}
+              onRetry={listeningPartsQuery.isError ? () => void listeningPartsQuery.refetch() : undefined}
+              onClose={recordingParam ? hideList : undefined}
+              onSelectQuestion={recording => {
+                const next = new URLSearchParams(searchParams);
+                next.set('recording', recording.id);
+                next.delete('drawer');
+                setSearchParams(next);
+              }}
+            />
+          )}
+          {/* Stays mounted behind the list, so a part in progress keeps its answers. */}
+          <div className={listPage ? 'hidden' : 'contents'}>
+            <Suspense fallback={<PracticePageSkeleton />}>
+              <ListeningPartPanel
+                key={`listening-part-${listeningPart}`}
+                partNo={listeningPart}
+                partId={recordingParam ?? undefined}
+                listOpen={isDrawerOpen}
+                onBackToList={showList}
+              />
+            </Suspense>
+          </div>
+        </>
       ) : readingList ? (
         <>
           {listPage && (
@@ -884,7 +932,6 @@ function PracticePageContent() {
                 mistakeId={mistakeId}
                 exam={activeExam}
                 passageId={passageParam ?? undefined}
-                passageIds={readingPassages.map(passage => passage.id)}
                 listOpen={isDrawerOpen}
                 onBackToList={showList}
               />
@@ -899,7 +946,6 @@ function PracticePageContent() {
             mistakeId={mistakeId}
             exam={activeExam}
             passageId={passageParam ?? undefined}
-            passageIds={readingPassages.map(passage => passage.id)}
             listOpen={isDrawerOpen}
           />
         </Suspense>
@@ -1095,7 +1141,9 @@ function PracticePageContent() {
 
               {/* The question straight on the page's white, with no card of its own: its number and title, then its content */}
               {/* Only the heading, prompt and passage open the dictionary: not the audio player or help boxes. */}
-              <div>
+              {/* Writing: the task on the left, the response beside it on a wide screen, as on the computer-delivered test. */}
+              <div className={writingSideBySide ? 'space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5 lg:space-y-0' : 'space-y-4'}>
+              <div className={writingSideBySide ? 'lg:rounded-2xl lg:border lg:border-border/70 lg:bg-slate-50/70 lg:px-5 lg:pb-2 lg:pt-3 dark:lg:bg-white/[0.03]' : undefined}>
               {(questionHeading || (!isPteListening && currentIndex >= 0)) && (
                 <div className="flex items-center gap-3 pt-2">
                   {!isPteListening && currentIndex >= 0 && <span className="rounded-md bg-primary px-2.5 py-1 text-sm font-bold tabular-nums text-primary-foreground">#{currentIndex + 1}</span>}
@@ -1221,7 +1269,7 @@ function PracticePageContent() {
               </div>
               </div>
 
-              <div className="space-y-3">
+              <div className={writingSideBySide ? 'space-y-3 lg:sticky lg:top-20 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card lg:p-5 lg:shadow-sm' : 'space-y-3'}>
                 {/* Question Inputs */}
                 {grading === 'speech' && (
                   <div className="space-y-3 pt-2">
@@ -1255,8 +1303,6 @@ function PracticePageContent() {
                       // PTE's microphone closes after 3 seconds of silence; an IELTS examiner waits.
                       stopAfterSilence={currentQuestion.exam === 'PTE'}
                       disabled={submitting || result !== null}
-                      controlRef={recorderControl}
-                      onStatus={setRecorderStatus}
                       onRecorded={(blob, transcript, measured) => {
                         setRecording(blob);
                         setSpokenTranscript(transcript ?? '');
@@ -1267,23 +1313,25 @@ function PracticePageContent() {
                 )}
 
                 {grading === 'ai' && (
-                  <div className="space-y-3 pt-2">
-                    <span className="block text-sm font-bold text-foreground">Your response</span>
+                  <div className={writingSideBySide ? 'space-y-3' : 'space-y-3 pt-2'}>
+                    {/* The word count sits by the title, where the eye checks it while writing. */}
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-bold text-foreground">Your response</span>
+                      <Badge variant={wordCount >= (wordTarget ?? minWords) ? 'success' : 'warning'} className="shrink-0 tabular-nums">
+                        {wordTarget ? `${wordCount} / ${wordTarget} words` : `${wordCount} words`}
+                      </Badge>
+                    </div>
                     <Textarea
                       rows={8}
                       value={textAnswer}
                       onChange={e => setTextAnswer(e.target.value)}
                       placeholder="Write your response here…"
-                      className="border-2 border-primary bg-background px-4 py-3 text-[15px] leading-7 text-foreground placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-primary/30"
+                      // Beside the task it fills the screen's height, so a whole essay is in view.
+                      className={`rounded-xl border border-border bg-background px-4 py-3 text-[0.9375rem] leading-7 text-foreground shadow-inner placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 ${writingSideBySide ? 'lg:min-h-[calc(100dvh-20rem)] lg:resize-none' : ''}`}
                     />
-                    <div className="flex items-center justify-between gap-3 text-xs">
-                      <p className="leading-relaxed text-foreground/75">
-                        {currentQuestion ? writingLengthNote(currentQuestion) : ''}
-                      </p>
-                      <Badge variant={wordCount >= (wordTarget ?? minWords) ? 'success' : 'warning'} className="shrink-0">
-                        {wordTarget ? `${wordCount} / ${wordTarget} words` : `${wordCount} words`}
-                      </Badge>
-                    </div>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {currentQuestion ? writingLengthNote(currentQuestion) : ''}
+                    </p>
                   </div>
                 )}
 
@@ -1374,6 +1422,7 @@ function PracticePageContent() {
                   </div>
                 )}
               </div>
+              </div>
 
             </div>
 
@@ -1394,24 +1443,11 @@ function PracticePageContent() {
             )}
 
             <PracticeActionBar
-              index={mistakeId ? -1 : currentIndex}
-              total={mistakeId ? 0 : questions.length}
-              onJump={mistakeId ? undefined : i => openQuestion(questions[i])}
               onShuffle={mistakeId || questions.length < 2 ? undefined : () => {
                 const others = questions.filter(q => q.id !== currentQuestion.id);
                 openQuestion(others[Math.floor(Math.random() * others.length)]);
               }}
               disabled={isStarting || submitting}
-              hideMiddleOnPhone={recording === null}
-              middle={grading === 'speech' ? (
-                <RecordingPlayback
-                  recording={recording}
-                  status={recorderStatus}
-                  maxSeconds={currentQuestion.timeLimitSeconds}
-                  onControl={() => recorderControl.current?.()}
-                  disabled={submitting || result !== null}
-                />
-              ) : undefined}
               actions={
                 <>
                   {result && mistakeId ? (

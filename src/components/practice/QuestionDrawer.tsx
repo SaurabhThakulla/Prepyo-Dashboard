@@ -14,9 +14,18 @@ import {
   Play,
   RefreshCw,
   WifiOff,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { EXAM_LABELS, EXAM_MAX_SCORE, ExamType, SkillType } from '@/lib/types';
-import { taskInstruction } from '@/lib/syllabus';
+import { SYLLABUS, taskInstruction } from '@/lib/syllabus';
 import { getTaskMetadata } from '@/lib/taskMetadata';
 import {
   formatQuestionDisplayNumber,
@@ -32,6 +41,71 @@ export interface DrawerItem {
   title: string;
   prompt?: string;
   difficulty?: string;
+  imageKind?: string;
+  typeName?: string;
+}
+
+const LEVELS = ['easy', 'medium', 'hard'];
+const IMAGE_KINDS: Record<string, string> = {
+  bar: 'Bar chart',
+  line: 'Line graph',
+  pie: 'Pie chart',
+  table: 'Table',
+  process: 'Process',
+  map: 'Map',
+  mixed: 'Mixed',
+  diagram: 'Diagram',
+};
+
+/** The values of a field present in the list, in the given order, with how many have each. */
+function present(items: DrawerItem[], field: 'difficulty' | 'imageKind' | 'typeName', order: string[]) {
+  return order
+    .map(value => [value, items.filter(item => item[field] === value).length] as const)
+    .filter(([, count]) => count > 0);
+}
+
+/** One filter as a dropdown in the header; hidden when there is nothing to choose between. */
+function FilterSelect({ label, allLabel, options, value, onChange }: {
+  label: string;
+  allLabel: string;
+  options: (readonly [string, number])[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  if (options.length < 2) return null;
+  const nameOf = (id: string) => IMAGE_KINDS[id] ?? id.charAt(0).toUpperCase() + id.slice(1);
+  const total = options.reduce((sum, [, count]) => sum + count, 0);
+  const item = (id: string, text: string, count: number) => (
+    <DropdownMenuRadioItem
+      key={id}
+      value={id}
+      className="gap-3 py-2.5 pl-3 pr-3 text-sm data-[state=checked]:bg-primary/10 data-[state=checked]:font-semibold data-[state=checked]:text-primary [&>span:first-child]:hidden"
+    >
+      <span className="min-w-0 flex-1 leading-snug">{text}</span>
+      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold tabular-nums text-muted-foreground">{count}</span>
+      <Check className={`h-4 w-4 shrink-0 ${value === id ? 'text-primary' : 'invisible'}`} aria-hidden />
+    </DropdownMenuRadioItem>
+  );
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label={label}
+        className="flex h-10 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-xl bg-white px-3 text-left text-sm shadow-lg shadow-black/10 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-white/30 sm:w-52 sm:flex-none dark:bg-white/10 dark:hover:bg-white/15"
+      >
+        <span className="shrink-0 text-xs font-medium text-slate-400 dark:text-slate-300">{label}</span>
+        <span className="min-w-0 flex-1 truncate font-semibold text-slate-800 dark:text-white">
+          {value === 'all' ? 'All' : nameOf(value)}
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="max-h-96 w-[min(22rem,calc(100vw-2rem))] overflow-y-auto">
+        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
+          {item('all', allLabel, total)}
+          {options.map(([id, count]) => item(id, nameOf(id), count))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 interface QuestionDrawerProps<T extends DrawerItem> {
@@ -72,6 +146,9 @@ export default function QuestionDrawer<T extends DrawerItem>({
 }: QuestionDrawerProps<T>) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
+  const [level, setLevel] = useState('all');
+  const [imageKind, setImageKind] = useState('all');
+  const [taskType, setTaskType] = useState('all');
   const [scoresMap, setScoresMap] = useState<Record<string, QuestionRecord>>(() => getExamQuestionRecords(exam));
 
   // Infinite scroll windowing
@@ -84,10 +161,22 @@ export default function QuestionDrawer<T extends DrawerItem>({
     setScoresMap(getExamQuestionRecords(exam));
   }, [exam, completedIds]);
 
+  // Another task's list starts unfiltered.
+  useEffect(() => {
+    setLevel('all');
+    setImageKind('all');
+    setTaskType('all');
+  }, [exam, skill, typeKey]);
+
   // Reset pagination when filters change
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [searchQuery, activeFilter, questions]);
+  }, [searchQuery, activeFilter, level, imageKind, taskType, questions]);
+
+  const levels = useMemo(() => present(questions, 'difficulty', LEVELS), [questions]);
+  const imageKinds = useMemo(() => present(questions, 'imageKind', Object.keys(IMAGE_KINDS)), [questions]);
+  // Shown when one link holds several task types, as IELTS Writing Task 2 holds the essay types.
+  const taskTypes = useMemo(() => present(questions, 'typeName', SYLLABUS[exam]?.[skill] ?? []), [questions, exam, skill]);
 
   const taskMeta = useMemo(() => getTaskMetadata(exam, skill, typeKey, isMock), [exam, skill, typeKey, isMock]);
   // The exam's own instruction line, where it prints one (EPS-TOPIK's Korean 지시문).
@@ -120,6 +209,9 @@ export default function QuestionDrawer<T extends DrawerItem>({
     } else if (activeFilter === 'remaining') {
       result = result.filter(q => !completedIds.includes(q.id) && (scoresMap[q.id]?.attemptsCount ?? 0) === 0);
     }
+    if (level !== 'all') result = result.filter(q => q.difficulty === level);
+    if (imageKind !== 'all') result = result.filter(q => q.imageKind === imageKind);
+    if (taskType !== 'all') result = result.filter(q => q.typeName === taskType);
 
     // Sorting by question order ascending (1, 2, 3...)
     result.sort((a, b) => {
@@ -131,7 +223,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
     });
 
     return result;
-  }, [questions, searchQuery, activeFilter, completedIds, scoresMap]);
+  }, [questions, searchQuery, activeFilter, level, imageKind, taskType, completedIds, scoresMap]);
 
   // Slice questions for infinite scroll optimization
   const displayedQuestions = useMemo(() => {
@@ -213,8 +305,9 @@ export default function QuestionDrawer<T extends DrawerItem>({
             )}
           </div>
 
-          {/* Search Box */}
-          <div className="relative">
+          {/* Search, with the filters as dropdowns on its right (under it on a phone). */}
+          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="relative min-w-0 flex-1">
             <input
               type="text"
               value={searchQuery}
@@ -232,6 +325,14 @@ export default function QuestionDrawer<T extends DrawerItem>({
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
+          </div>
+          {!isLoading && (taskTypes.length > 1 || levels.length > 1 || imageKinds.length > 1) && (
+            <div className="flex gap-2">
+              <FilterSelect label="Type" allLabel="All types" options={taskTypes} value={taskType} onChange={setTaskType} />
+              <FilterSelect label="Level" allLabel="All levels" options={levels} value={level} onChange={setLevel} />
+              <FilterSelect label="Picture" allLabel="All pictures" options={imageKinds} value={imageKind} onChange={setImageKind} />
+            </div>
+          )}
           </div>
         </div>
 
@@ -284,6 +385,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
               );
             })}
           </div>
+
         </div>
 
         {/* 3. Infinite Scroll Questions List, one card per question */}
@@ -336,12 +438,15 @@ export default function QuestionDrawer<T extends DrawerItem>({
               <p className="text-xs text-slate-500 max-w-xs mx-auto">
                 No questions match your current search or filter criteria.
               </p>
-              {(searchQuery || activeFilter !== 'all') && (
+              {(searchQuery || activeFilter !== 'all' || level !== 'all' || imageKind !== 'all' || taskType !== 'all') && (
                 <button
                   type="button"
                   onClick={() => {
                     setSearchQuery('');
                     setActiveFilter('all');
+                    setLevel('all');
+                    setImageKind('all');
+                    setTaskType('all');
                   }}
                   className="text-xs font-bold text-primary hover:underline pt-1"
                 >

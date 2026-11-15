@@ -509,11 +509,17 @@ export default function AudioRecorder({
         panelStarts ? 'cursor-pointer hover:bg-primary/[0.1]' : panelStops ? 'cursor-pointer hover:bg-rose-500/[0.12]' : ''
       }`}
     >
-      {/* One compact row: what is happening on the left, the time on the right. */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1" aria-live="polite">
-          <p className="inline-flex items-center gap-1.5 text-sm font-bold text-foreground">
-            {phase === 'idle' && <Mic className="h-4 w-4 text-primary" aria-hidden />}
+      {/* One row: what is happening in the middle, the time on the right (an empty column
+          on the left keeps the middle centred). */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <span aria-hidden />
+        <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-3 gap-y-1" aria-live="polite">
+          <p className="inline-flex items-center gap-2 text-sm font-bold text-foreground sm:text-base">
+            {phase === 'idle' && (
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                <Mic className="h-4 w-4" aria-hidden />
+              </span>
+            )}
             {headline}
           </p>
           {phase === 'prep' && (
@@ -529,7 +535,7 @@ export default function AudioRecorder({
             </button>
           )}
         </div>
-        <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
+        <span className="shrink-0 justify-self-end text-xs font-semibold tabular-nums text-muted-foreground">
           {clock(shownElapsed)} / {clock(phaseLength)}
         </span>
       </div>
