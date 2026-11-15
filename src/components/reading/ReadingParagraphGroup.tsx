@@ -49,9 +49,9 @@ export default function ReadingParagraphGroup({
 
   return (
     <div data-dictionary className="rounded-xl bg-muted/20 px-3 py-4 sm:px-6 sm:py-5 space-y-3">
-      {/* leading-loose keeps the lines apart enough that inline controls do not
-          collide once the text wraps. */}
-      <p className="mx-auto max-w-[66ch] font-reading text-[15px] sm:text-[17px] leading-[2.6] text-foreground/90">
+      {/* Just tall enough for a gap box (h-8 plus its margin) on every line, so wrapped
+          lines neither collide nor float apart. rem, so it shrinks with the page. */}
+      <p className="mx-auto max-w-[66ch] font-reading text-[0.9375rem] sm:text-[1.0625rem] leading-[2.15] text-foreground/90">
         {group.questions.map((question, index) => (
           <React.Fragment key={question.id}>
             <SentenceGap

@@ -12,7 +12,7 @@ import { useToast } from '@/components/ui/toast';
 import { useReadingPractice, useReadingTypes } from '@/lib/hooks/useReading';
 import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
-import { READING_TYPES, typeIdsFor, needsParagraphLabels, familyOf } from '@/lib/readingTypes';
+import { READING_TYPES, typeIdsFor, needsParagraphLabels, familyOf, readingPartOf } from '@/lib/readingTypes';
 import { ExamType, isInstitutionStudent, ReadingGroup, ReadingTaskType } from '@/lib/types';
 import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
 import { ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
@@ -31,8 +31,6 @@ interface ReadingPracticePanelProps {
   exam?: ExamType;
   /** A passage chosen from the practice list; Start deals that one. */
   passageId?: string;
-  /** The practice list's passages, in order, for the arrows and number list. */
-  passageIds?: string[];
   /** The practice list is open: the first passage waits until it closes (or one is picked from it). */
   listOpen?: boolean;
   /** Shows a button back to the practice list. */
@@ -98,7 +96,7 @@ function EmptyState({
  * Left pane: Reading passage with centered title and continuous natural paragraphs.
  * Right pane: Question notes completion card with inline inputs and circled numbers.
  */
-export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, passageId, passageIds = [], listOpen = false, onBackToList }: ReadingPracticePanelProps) {
+export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, passageId, listOpen = false, onBackToList }: ReadingPracticePanelProps) {
   const { user, activeExam: contextExam, refreshUser, setIsTutorOpen, setTutorContextPrompt, activeTestSession, setActiveTestSession } = useApp();
   const activeExam = exam ?? contextExam;
   const resolution = useMistakeResolution(mistakeId);
@@ -156,7 +154,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
         return;
       }
 
-      const dealtSet = await deal(targetId ?? '', mistakeId, pickedId);
+      const dealtSet = await deal(targetId ?? '', mistakeId, pickedId, readingPartOf(initialTypeKey));
       if (!dealtSet) {
         return;
       }
@@ -172,7 +170,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
       await refreshUser();
       setActiveTestSession({
         isActive: true,
-        title: `READING: ${dealtSet.groups[0]?.typeName ?? 'Comprehension'}`,
+        title: `READING: ${readingPartOf(initialTypeKey) ? `Part ${readingPartOf(initialTypeKey)}` : dealtSet.groups[0]?.typeName ?? 'Comprehension'}`,
         skill: 'reading',
         onStop: handleStop,
       });
@@ -309,7 +307,6 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
   }
 
   const hasPassage = Boolean(set.passage && displayedGroups[0]?.passageDisplay !== 'hidden');
-  const passageIndex = set.passage ? passageIds.indexOf(set.passage.id) : -1;
   const shownQuestionIds = displayedGroups.flatMap(group => group.questions.map(question => question.id));
   // Redo before checking: blank every answer on this passage, same session.
   const clearAnswers = () =>
@@ -325,7 +322,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
               {loadingNext ? <PaneSkeleton lines={8} /> : <PassageReader
                 passage={set.passage!}
                 scroll={true}
-                passageNumber={1}
+                passageNumber={readingPartOf(initialTypeKey) ?? 1}
                 questionRange={`Questions 1–${displayedQuestionCount || practice.totalQuestions}`}
                 showLabels={displayedGroups.some((group: ReadingGroup) => needsParagraphLabels(group.typeId))}
               />}
@@ -366,9 +363,6 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
 
               {/* Actions sit under the questions, above the score, as on the other skills. */}
               <PracticeActionBar
-                index={passageIndex}
-                total={mistakeId ? 0 : passageIds.length}
-                onJump={mistakeId ? undefined : i => setPendingPassage({ id: passageIds[i] })}
                 onShuffle={mistakeId ? undefined : () => setPendingPassage({})}
                 disabled={practice.checking || loadingNext}
                 actions={
@@ -449,7 +443,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
 }
 
 /** The score after Submit, coloured by how well it went. */
-function ResultCard({ correct, total, note }: { correct: number; total: number; note: string }) {
+export function ResultCard({ correct, total, note }: { correct: number; total: number; note: string }) {
   const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
   const tone = pct === 100
     ? { ring: 'border-emerald-200 dark:border-emerald-900/60', soft: 'bg-emerald-50 dark:bg-emerald-950/40', text: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500', Icon: CheckCircle2, word: 'All correct' }

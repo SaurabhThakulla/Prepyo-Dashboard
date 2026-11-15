@@ -14,12 +14,22 @@ interface PassageReaderProps {
 }
 
 type TextSize = 'sm' | 'base' | 'lg';
-type FontType = 'reading' | 'sans';
+// The passage fonts a learner can pick, in menu order; Arial is the default.
+const FONTS = [
+  { id: 'sans', label: 'Sans', className: 'font-sans' },
+  { id: 'reading', label: 'Serif', className: 'font-reading' },
+  { id: 'georgia', label: 'Georgia', className: "font-['Georgia','Times_New_Roman','Noto_Sans_KR',serif]" },
+  { id: 'arial', label: 'Arial', className: 'font-report' },
+  // Atkinson Hyperlegible: made for readers with low vision (loaded in index.html).
+  { id: 'easy', label: 'Easy read', className: "font-['Atkinson_Hyperlegible',Verdana,'Noto_Sans_KR',sans-serif]" },
+] as const;
+type FontType = (typeof FONTS)[number]['id'];
 
+// rem, not px, so the passage shrinks with the rest of the page on laptop screens (globals.css).
 const FONT_CLASSES: Record<TextSize, { body: string; label: string; line: string }> = {
-  sm: { body: 'text-[13.5px] sm:text-[14.5px] leading-relaxed', label: 'text-[11px]', line: 'space-y-3' },
-  base: { body: 'text-[15px] sm:text-[16px] leading-[1.8]', label: 'text-xs', line: 'space-y-3.5' },
-  lg: { body: 'text-[16.5px] sm:text-[17.5px] leading-[1.85]', label: 'text-sm', line: 'space-y-4' },
+  sm: { body: 'text-[0.84375rem] sm:text-[0.90625rem] leading-relaxed', label: 'text-[11px]', line: 'space-y-3' },
+  base: { body: 'text-[0.9375rem] sm:text-base leading-[1.8]', label: 'text-xs', line: 'space-y-3.5' },
+  lg: { body: 'text-[1.03125rem] sm:text-[1.09375rem] leading-[1.85]', label: 'text-sm', line: 'space-y-4' },
 };
 
 interface TextHighlight {
@@ -132,7 +142,7 @@ export default function PassageReader({
   questionRange = 'Questions 1–13',
 }: PassageReaderProps) {
   const [textSize, setTextSize] = useState<TextSize>('base');
-  const [fontType, setFontType] = useState<FontType>('sans');
+  const [fontType, setFontType] = useState<FontType>('arial');
 
   // Highlights state stored per passage ID
   const [highlightsByPassage, setHighlightsByPassage] = useState<
@@ -533,7 +543,7 @@ export default function PassageReader({
   };
 
   const currentStyles = FONT_CLASSES[textSize];
-  const fontClass = fontType === 'reading' ? 'font-reading' : 'font-sans';
+  const fontClass = FONTS.find(font => font.id === fontType)?.className ?? 'font-sans';
 
   return (
     <Card
@@ -541,27 +551,27 @@ export default function PassageReader({
       data-passage-container="true"
       className="p-3.5 sm:p-4 gap-2.5 bg-card dark:bg-[#0f141f] border-border/80 border-l-0 rounded-l-none rounded-r-lg shadow-2xs flex flex-col h-full overflow-hidden relative"
     >
-      {/* Compact IELTS Top Header Bar */}
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/70 pb-2 shrink-0">
-        <div className="space-y-0.5">
-          <h2 className="font-sans font-bold text-sm sm:text-base text-foreground tracking-wide uppercase">
-            PASSAGE {passageNumber}
-          </h2>
-          <p className="text-[11px] sm:text-xs text-muted-foreground font-normal leading-tight">
-            You should spend about 20 minutes on {questionRange}, which are based on Reading Passage {passageNumber}.
-          </p>
-        </div>
+      {/* One line: which passage, its questions and time, then the text tools. */}
+      <div className="flex items-center justify-between gap-3 border-b border-border/70 pb-2 shrink-0">
+        <h2 className="min-w-0 truncate font-sans text-sm text-muted-foreground">
+          <span className="font-bold tracking-wide text-foreground uppercase">Passage {passageNumber}</span>
+          {' · '}{questionRange} · 20 min
+        </h2>
 
-        {/* Compact Tool Icons */}
-        <div className="flex items-center gap-1 shrink-0 pt-0.5">
-          <button
-            type="button"
-            onClick={() => setFontType(f => (f === 'reading' ? 'sans' : 'reading'))}
-            className="px-1.5 py-0.5 rounded text-[11px] font-mono font-semibold text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400 transition-colors"
-            title={fontType === 'reading' ? 'Switch to Sans-serif font' : 'Switch to Book Serif font'}
+        <div className="flex items-center gap-1 shrink-0">
+          <select
+            aria-label="Passage font"
+            title="Passage font"
+            value={fontType}
+            onChange={event => setFontType(event.target.value as FontType)}
+            className="h-6 cursor-pointer rounded bg-transparent px-1 text-[11px] font-semibold text-emerald-600 hover:bg-emerald-500/10 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 dark:text-emerald-400"
           >
-            {fontType === 'reading' ? 'Serif' : 'Sans'}
-          </button>
+            {FONTS.map(font => (
+              <option key={font.id} value={font.id} className="bg-background text-foreground">
+                {font.label}
+              </option>
+            ))}
+          </select>
 
           <span className="text-border">|</span>
 

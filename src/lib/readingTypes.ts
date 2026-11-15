@@ -31,6 +31,21 @@ export const READING_TYPES = {
   reorderParagraphs: 'reorder-paragraphs',
 } as const;
 
+/** Every IELTS reading type: an IELTS Reading part deals any of them. */
+const IELTS_READING_TYPES = [
+  READING_TYPES.trueFalse, READING_TYPES.yesNoNotGiven, READING_TYPES.matchingInformation,
+  READING_TYPES.findTheParagraph, READING_TYPES.mcqSingle, READING_TYPES.mcqMultiple,
+  READING_TYPES.sentenceCompletion, READING_TYPES.matchingHeadings, READING_TYPES.matchingFeatures,
+  READING_TYPES.sentenceEndings, READING_TYPES.summaryCompletion, READING_TYPES.diagramLabel,
+  READING_TYPES.shortAnswer,
+];
+
+/** The IELTS Reading part (1-3) a `?type=` key names, as the sidebar links "Part 1". */
+export function readingPartOf(syllabusKey?: string | null): number | undefined {
+  const match = /^part([123])$/.exec(syllabusKey ?? '');
+  return match ? Number(match[1]) : undefined;
+}
+
 /**
  * Sidebar task names to server task types, keyed by `typeKey` from
  * `@/lib/syllabus` — which is how the sidebar builds its links.
@@ -77,6 +92,9 @@ export const TYPE_BY_SYLLABUS_KEY: Record<string, string | string[]> = {
   completesentences: READING_TYPES.sentenceCompletion,
   sentencecompletions: READING_TYPES.sentenceCompletion,
   arrangepassage: READING_TYPES.arrangePassage,
+  part1: IELTS_READING_TYPES,
+  part2: IELTS_READING_TYPES,
+  part3: IELTS_READING_TYPES,
 
 
   // PTE Reading tasks. The Reading & Writing keys stay so old links and

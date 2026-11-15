@@ -103,7 +103,7 @@ export default function SentenceGap({ question, answer, result, locked, number, 
         spellCheck={false}
         aria-label={number ? `Question ${number}` : 'Your answer'}
         placeholder="...."
-        className={`h-8 font-sans text-sm px-2.5 rounded-lg border text-center font-semibold placeholder:font-bold placeholder:tracking-widest placeholder:text-primary/50focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-solid focus:border-primary disabled:opacity-100 transition-all ${tone} ${struck}`}
+        className={`h-8 font-sans text-sm px-2.5 rounded-lg border text-center font-semibold placeholder:font-bold placeholder:tracking-widest placeholder:text-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-solid focus:border-primary disabled:opacity-100 transition-all ${tone} ${struck}`}
       />
       {verdictMark}
     </span>
