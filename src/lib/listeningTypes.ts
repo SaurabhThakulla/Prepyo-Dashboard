@@ -13,6 +13,30 @@ export const LISTENING_TYPES = {
   matching: 'ielts-listening-matching',
 } as const;
 
+/**
+ * The single-question clip types practised under each IELTS Listening part:
+ * the parts each type is most often set in (any type may appear in any part;
+ * ielts.org fixes no part per type). Tables run through all four parts.
+ */
+export const LISTENING_PART_TYPES: Record<number, string[]> = {
+  1: ['ielts-listening-fill-blanks', 'ielts-listening-table', 'ielts-listening-short-answer'],
+  2: ['ielts-listening-mcq', 'ielts-listening-map', 'ielts-listening-matching', 'ielts-listening-table', 'ielts-listening-diagram', 'ielts-listening-short-answer'],
+  3: ['ielts-listening-mcq', 'ielts-listening-matching', 'ielts-listening-table'],
+  4: ['ielts-listening-fill-blanks', 'ielts-listening-table', 'ielts-listening-diagram'],
+};
+
+/** The name a part recording's question group goes by in the list's Type filter, after ielts.org's task types. */
+export const LISTENING_GROUP_TYPE_NAMES: Record<string, string> = {
+  'ielts-listening-completion': 'Form / note completion',
+  'ielts-listening-fill-blanks': 'Form / note completion',
+  'ielts-listening-table': 'Table / flow-chart / summary',
+  'ielts-listening-mcq': 'Multiple choice',
+  'ielts-listening-map': 'Map / plan labelling',
+  'ielts-listening-diagram': 'Diagram labelling',
+  'ielts-listening-matching': 'Matching',
+  'ielts-listening-short-answer': 'Short-answer questions',
+};
+
 /** The IELTS Listening part (1-4) a `?type=` key names, as the sidebar links "Part 1". */
 export function listeningPartOf(syllabusKey?: string | null): number | undefined {
   const match = /^part([1-4])$/.exec(syllabusKey ?? '');

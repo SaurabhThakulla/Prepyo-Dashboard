@@ -433,6 +433,8 @@ export interface ReadingPracticePassage {
   wordCount: number;
   /** Questions of the chosen task type on this passage. */
   questionCount: number;
+  /** The chosen task types this passage carries. */
+  typeIds?: string[];
   /** When this learner last practised it, if ever. */
   practisedAt?: string;
 }

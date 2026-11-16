@@ -1,3 +1,5 @@
+import { typeKey } from '@/lib/syllabus';
+
 /**
  * Reading task type ids, and the map from sidebar links to them.
  *
@@ -111,6 +113,11 @@ export const TYPE_BY_SYLLABUS_KEY: Record<string, string | string[]> = {
   multipletypesingleanswer: READING_TYPES.mcqSingle,
 };
 
+
+/** The sidebar task names behind server type ids, in syllabus order: the reading list's type filter. */
+export function readingTypeNames(names: string[], typeIds: string[] = []): string[] {
+  return names.filter(name => typeIdsFor(typeKey(name)).some(id => typeIds.includes(id)));
+}
 
 /**
  * The server task types a dashboard entry covers, widest first.
