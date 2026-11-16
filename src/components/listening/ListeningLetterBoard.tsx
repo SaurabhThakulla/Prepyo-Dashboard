@@ -25,6 +25,8 @@ interface ListeningLetterBoardProps {
   /** After marking: the right letter for each slot, and whether the placed one was it. */
   review?: Record<string, { correct?: string; right: boolean }>;
   boxTitle?: string;
+  /** The questions first and the box of options under them (part practice), not beside. */
+  stacked?: boolean;
 }
 
 /**
@@ -35,7 +37,7 @@ interface ListeningLetterBoardProps {
  * placing it again moves it; a box whose instruction says "more than once"
  * never runs out.
  */
-function LetterDrag({ options, items, values, reuse, disabled, onChange, review, boxTitle = 'Options' }: ListeningLetterBoardProps) {
+function LetterDrag({ options, items, values, reuse, disabled, onChange, review, boxTitle = 'Options', stacked = false }: ListeningLetterBoardProps) {
   const entries: MatchEntry[] = options.map(option => ({ id: option.id, label: option.id, text: option.text }));
   const byId = new Map(entries.map(entry => [entry.id, entry]));
   const slots = items.map(item => item.slot);
@@ -53,10 +55,14 @@ function LetterDrag({ options, items, values, reuse, disabled, onChange, review,
 
   return (
     <MatchDnd entries={entries} disabled={locked} onPlace={place}>
-      <div className="grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
-        <section aria-label={boxTitle} className="rounded-2xl bg-muted/50 p-3.5 lg:sticky lg:top-20 lg:order-last">
+      {/* Stacked: centred and narrow, so each question sits close to its answer box. */}
+      <div className={stacked ? 'mx-auto grid w-fit max-w-3xl gap-4' :'grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start'}>
+        <section
+          aria-label={boxTitle}
+          className={`rounded-2xl bg-muted/50 p-3.5 ${stacked ? 'order-last' : 'lg:sticky lg:top-20 lg:order-last'}`}
+        >
           <h4 className="mb-3 text-sm font-bold text-foreground">{boxTitle}</h4>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+          <div className={`grid gap-2 sm:grid-cols-2 ${stacked ? 'lg:grid-cols-3' : 'lg:grid-cols-1'}`}>
             {entries.map(entry => (
               <MatchChip key={entry.id} entry={entry} spent={used.has(entry.id)} />
             ))}
@@ -77,9 +83,9 @@ function LetterDrag({ options, items, values, reuse, disabled, onChange, review,
               <li
                 key={item.slot}
                 id={`lq-${item.number}`}
-                className="flex scroll-mt-24 flex-col gap-2 rounded-xl px-2 py-2.5 transition-colors hover:bg-muted/30 sm:flex-row sm:items-center sm:gap-4"
+                className={`flex scroll-mt-24 flex-col gap-2 rounded-xl px-2 transition-colors hover:bg-muted/30 sm:flex-row sm:items-center sm:gap-4 ${stacked ? 'py-1.5' : 'py-2.5'}`}
               >
-                <div className="flex min-w-0 flex-1 items-start gap-3">
+                <div className={`flex min-w-0 items-start gap-3 ${stacked ? 'sm:w-64 sm:shrink-0' : 'flex-1'}`}>
                   <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold tabular-nums text-primary-foreground">
                     {item.number}
                   </span>

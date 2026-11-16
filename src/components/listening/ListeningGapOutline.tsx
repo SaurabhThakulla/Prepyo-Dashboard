@@ -11,6 +11,8 @@ interface ListeningGapOutlineProps {
   disabled?: boolean;
   /** The marked key, after submission. */
   reviewBlanks?: Blank[];
+  /** As on the test's form: a rounded box holding its question number, no badge beside it. */
+  paper?: boolean;
   onChange: (responses: Record<string, string>) => void;
 }
 
@@ -28,6 +30,7 @@ export default function ListeningGapOutline({
   responses,
   disabled = false,
   reviewBlanks,
+  paper = false,
   onChange,
 }: ListeningGapOutlineProps) {
   const blocks = outlineBlocks(passage);
@@ -42,6 +45,7 @@ export default function ListeningGapOutline({
           responses={responses}
           disabled={disabled}
           review={reviewBlanks ? blankFor(reviewBlanks, piece.gap) : undefined}
+          paper={paper}
           onChange={onChange}
         />
       ) : (
@@ -97,6 +101,14 @@ export default function ListeningGapOutline({
         return (
           <div key={blockIndex} className="space-y-1.5">
             {block.lines.map((line, lineIndex) => {
+              // A subheading in the notes ("## Further developments").
+              if (line.startsWith('## ')) {
+                return (
+                  <h5 key={lineIndex} className="pt-2 font-bold text-foreground first:pt-0">
+                    {line.slice(3)}
+                  </h5>
+                );
+              }
               if (/^[↓⬇]$/.test(line)) {
                 return (
                   <div key={lineIndex} className="text-center text-lg leading-none text-primary" aria-hidden>
@@ -129,10 +141,11 @@ interface GapBoxProps {
   responses: Record<string, string>;
   disabled: boolean;
   review?: Blank;
+  paper?: boolean;
   onChange: (responses: Record<string, string>) => void;
 }
 
-function GapBox({ number, blankId, responses, disabled, review, onChange }: GapBoxProps) {
+function GapBox({ number, blankId, responses, disabled, review, paper = false, onChange }: GapBoxProps) {
   const value = responses[blankId] ?? '';
   const marked = Boolean(review?.correctAnswer);
   const right = marked && gapAccepts(review, value);
@@ -144,20 +157,29 @@ function GapBox({ number, blankId, responses, disabled, review, onChange }: GapB
       : 'border-rose-500 bg-rose-500/10 text-rose-800 dark:text-rose-200';
   return (
     <span id={`lq-${number}`} className="mx-1 inline-flex scroll-mt-24 flex-wrap items-center gap-1 align-middle">
-      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1 text-xs font-bold text-primary-foreground tabular-nums">
-        {number}
-      </span>
+      {!paper && (
+        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1 text-xs font-bold text-primary-foreground tabular-nums">
+          {number}
+        </span>
+      )}
       <input
         type="text"
         value={value}
         disabled={disabled || marked}
         onChange={event => onChange({ ...responses, [blankId]: event.target.value })}
         aria-label={`Question ${number}`}
+        placeholder={paper ? number : undefined}
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck={false}
-        className={`h-9 w-36 rounded-t-md border-0 border-b-2 bg-transparent px-1 text-center text-base font-semibold outline-none transition-colors disabled:opacity-100 sm:w-44 ${tone}`}
+        className={
+          paper
+            ? `h-8 w-36 rounded-full border-2 bg-background px-3 text-sm font-semibold outline-none transition-colors placeholder:font-normal placeholder:text-muted-foreground/70 disabled:opacity-100 sm:w-44 ${
+              !marked ? 'border-slate-400 text-foreground hover:border-primary/60 focus:border-primary dark:border-slate-500' : tone
+            }`
+            : `h-9 w-36 rounded-t-md border-0 border-b-2 bg-transparent px-1 text-center text-base font-semibold outline-none transition-colors disabled:opacity-100 sm:w-44 ${tone}`
+        }
       />
       {marked &&
         (right ? (
