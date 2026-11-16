@@ -41,6 +41,8 @@ export interface ListeningGroup {
   instructions: string;
   heading?: string;
   imageUrl?: string;
+  /** The notes as printed: "## " subheadings, "- " bullets, given lines, the group's k-th question at [[k]]. */
+  outline?: string;
   firstNumber: number;
   questions: Question[];
 }
@@ -185,6 +187,9 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
   // A reopened paper continues with the next recording, never replays one.
   const [partIndex, setPartIndex] = useState(() => Math.min(session.partsPlayed, session.parts.length - 1));
   const [partsPlayed, setPartsPlayed] = useState(session.partsPlayed);
+  // The part on screen while the recordings play. As in the computer-delivered test, the
+  // learner may look at any part and come back; the recording plays on regardless.
+  const [viewIndex, setViewIndex] = useState(() => Math.min(session.partsPlayed, session.parts.length - 1));
   // The part on screen during the checking time: one part at a time, as in the test.
   const [checkIndex, setCheckIndex] = useState(0);
   // One question group on screen at a time (Questions 11–15, then 16–20). Kept
@@ -326,6 +331,8 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
     void save(answers, played);
     if (partIndex + 1 < session.parts.length) {
       setPartIndex(partIndex + 1);
+      // A new recording brings its part on screen, as in the test.
+      setViewIndex(partIndex + 1);
       setCountdown(session.parts[partIndex + 1].readingSeconds);
       setPhase('reading');
     } else {
@@ -361,7 +368,7 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
   const answered = Object.values(answers).filter(
     a => Boolean(a.textResponse?.trim()) || Boolean(a.selectedOptions?.length),
   ).length;
-  const shownPart = phase === 'review' || phase === 'submitting' ? session.parts[checkIndex] : part;
+  const shownPart = phase === 'review' || phase === 'submitting' ? session.parts[checkIndex] : session.parts[viewIndex] ?? part;
   const visibleParts = shownPart ? [shownPart] : [];
   const answeredIn = (p: ListeningPart) =>
     p.groups.reduce(
@@ -394,11 +401,12 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
   ) : null;
 
   const isAnswered = (q: Question) => Boolean(answers[q.id]?.textResponse?.trim()) || Boolean(answers[q.id]?.selectedOptions?.length);
-  // Before the checking time only the part being heard is open; then any part.
-  const canOpen = (index: number) => checking || index === partIndex;
+  // Any part may be opened at any time, as in the computer-delivered test; only the recordings are fixed.
+  const canOpen = (index: number) => index >= 0 && index < session.parts.length;
   const jump = (index: number, number?: number) => {
     if (!canOpen(index)) return;
     if (checking) setCheckIndex(index);
+    else setViewIndex(index);
     if (number) setCurrent(number);
     const target = session.parts[index];
     const holding = number ? target.groups.findIndex(g => number >= g.firstNumber && number < g.firstNumber + g.questions.length) : 0;
@@ -447,7 +455,7 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
                   type="button"
                   disabled={!open}
                   onClick={() => jump(index)}
-                  title={open ? `Go to Part ${p.partNo}` : index < partIndex ? 'Already played' : 'Opens when its recording starts'}
+                  title={open ? `Go to Part ${p.partNo}` : undefined}
                   className="flex shrink-0 flex-col gap-1 rounded-xl bg-muted/60 px-3 py-1.5 text-left text-xs transition-colors enabled:hover:border-primary/50 enabled:hover:bg-primary/[0.04] disabled:opacity-50"
                 >
                   <span className="flex items-center gap-2">
@@ -592,11 +600,18 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
               {(() => {
                 const gi = groupPage.partNo === p.partNo ? Math.min(groupPage.index, p.groups.length - 1) : 0;
                 const group = p.groups[gi];
+                // A form, notes, a table or a matching set is drawn in its box with the title across the top,
+                // so the heading above leaves it out.
+                const boxedForm = Boolean(
+                  group && !group.imageUrl &&
+                    ((TYPED_GROUPS.includes(group.typeId) && group.questions.every(question => !question.options?.length)) ||
+                      (LETTER_GROUPS.includes(group.typeId) && (group.questions[0]?.options?.length ?? 0) > 0)),
+                );
                 // One question group at a time (Next in the bar moves on): which questions, the recording, then the questions.
                 return (
                   <>
                     {!checking && p.partNo === part?.partNo && audioNote}
-                    {group && <GroupHeading group={group} />}
+                    {group && <GroupHeading group={boxedForm ? { ...group, heading: '' } : group} />}
                     {/* The recording sits above the questions, or under the map where there is one. */}
                     {!checking && p.partNo === part?.partNo && !group?.imageUrl && audioStatus}
                     {group && (
@@ -607,6 +622,7 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
                         disabled={phase === 'submitting'}
                         onAnswer={answer}
                         showHeading={false}
+                        paper
                         afterFigure={!checking && p.partNo === part?.partNo ? audioStatus : null}
                       />
                     )}
@@ -675,19 +691,23 @@ const outlineLine = (prompt: string, number: number) => {
  * heading, the instructions, then the paper.
  */
 /** A group's question numbers, heading and instructions: "Questions 31–40 · Lecture: … · Complete the notes…". */
-function GroupHeading({ group }: { group: ListeningGroup }) {
+function GroupHeading({ group, showRange = true, showInstructions = true }: { group: ListeningGroup; showRange?: boolean; showInstructions?: boolean }) {
   // The word limit in capitals ("ONE WORD ONLY") is the part students must not miss.
   const pieces = group.instructions.split(/([A-Z]{2,}(?:[ /][A-Z]+)*)/);
   // As on the paper: which questions on their own line, what to do, then the title of what follows.
   return (
     <div className="space-y-2">
-      <span className="inline-block rounded-md bg-primary px-2.5 py-1 text-sm font-bold tabular-nums text-primary-foreground">
-        Questions {group.firstNumber}–{group.firstNumber + group.questions.length - 1}
-      </span>
-      <p className="text-lg font-medium leading-relaxed text-foreground">
-        {pieces.map((piece, i) => (i % 2 ? <strong key={i} className="font-bold text-foreground">{piece}</strong> : piece))}
-      </p>
-      {group.heading && <h4 className="pt-2 text-xl font-bold leading-snug text-foreground">{group.heading}</h4>}
+      {showRange && (
+        <span className="inline-block rounded-md bg-primary px-2.5 py-1 text-sm font-bold tabular-nums text-primary-foreground">
+          Questions {group.firstNumber}–{group.firstNumber + group.questions.length - 1}
+        </span>
+      )}
+      {showInstructions && (
+        <p className="text-lg font-medium leading-relaxed text-foreground">
+          {pieces.map((piece, i) => (i % 2 ? <strong key={i} className="font-bold text-foreground">{piece}</strong> : piece))}
+        </p>
+      )}
+      {group.heading && <h4 className={`${showInstructions ? 'pt-2 ' : ''}text-xl font-bold leading-snug text-foreground`}>{group.heading}</h4>}
     </div>
   );
 }
@@ -699,7 +719,10 @@ export function ListeningGroupView({
   disabled,
   onAnswer,
   showHeading = true,
+  showRange = true,
+  showInstructions = true,
   afterFigure,
+  paper = false,
 }: {
   group: ListeningGroup;
   answers: Record<string, AnswerSubmission>;
@@ -707,18 +730,95 @@ export function ListeningGroupView({
   onAnswer: (question: Question, patch: Partial<AnswerSubmission>) => void;
   /** False where the part card already shows the heading at its top. */
   showHeading?: boolean;
+  /** False where the page's own header already says which questions these are. */
+  showRange?: boolean;
+  /** False in part practice, which leaves out the instruction line. */
+  showInstructions?: boolean;
   /** Shown under the group's map or diagram, where it has one. */
   afterFigure?: React.ReactNode;
+  /**
+   * Part practice: a form, notes or a table drawn as on the test, in a box
+   * with its title across the top and the question number inside each field.
+   */
+  paper?: boolean;
 }) {
   const box = group.questions[0]?.options ?? [];
-  const dragged = LETTER_GROUPS.includes(group.typeId) && box.length > 0;
+  // Part practice: a diagram labelled with letters is answered like a map, a letter picked beside each part.
+  const letterPick = paper && group.typeId === LISTENING_TYPES.diagram && box.length > 0;
+  const dragged = LETTER_GROUPS.includes(group.typeId) && box.length > 0 && !letterPick;
   const typed = TYPED_GROUPS.includes(group.typeId) && group.questions.every(question => !question.options?.length);
   const numberOf = (question: Question) => group.firstNumber + group.questions.indexOf(question);
+  // Practice and the mocks: a form, notes, a table or a matching set sits in one box with its title across the top.
+  const boxed = paper && !group.imageUrl && (typed || dragged);
+
+  const board = dragged && (
+    <ListeningLetterBoard
+      options={box}
+      items={group.questions.map((question, index) => ({
+        slot: question.id,
+        number: group.firstNumber + index,
+        text: question.prompt,
+      }))}
+      values={Object.fromEntries(group.questions.map(question => [question.id, answers[question.id]?.selectedOptions?.[0]]))}
+      // A letter answers several questions where the box is shorter than the list, or the instruction says so.
+      reuse={box.length < group.questions.length || lettersMayRepeat(group.instructions)}
+      disabled={disabled}
+      boxTitle={group.typeId === LISTENING_TYPES.diagram ? 'Letters on the diagram' : 'Options'}
+      stacked={paper}
+      onChange={patch => {
+        for (const [id, letter] of Object.entries(patch)) {
+          const question = group.questions.find(q => q.id === id);
+          if (question) onAnswer(question, { selectedOptions: letter ? [letter] : [] });
+        }
+      }}
+    />
+  );
+
+  const outline = typed && (
+    // Notes, forms, tables and short answers: the outline with a numbered box at each gap.
+    <ListeningGapOutline
+      passage={
+        group.outline
+          ? // The printed notes, their gaps renumbered as on this paper (the group's k-th question).
+            group.outline.replace(/\[\[(\d+)\]\]/g, (_, k: string) => `[[${group.firstNumber + Number(k) - 1}]]`)
+          : group.questions.map(question => outlineLine(question.prompt, numberOf(question))).join('\n')
+      }
+      blanks={group.questions.map(question => ({ id: String(numberOf(question)) }))}
+      responses={Object.fromEntries(
+        group.questions.map(question => [String(numberOf(question)), answers[question.id]?.textResponse ?? '']),
+      )}
+      disabled={disabled}
+      paper={paper}
+      onChange={responses => {
+        for (const question of group.questions) {
+          const value = responses[String(numberOf(question))] ?? '';
+          if (value !== (answers[question.id]?.textResponse ?? '')) onAnswer(question, { textResponse: value });
+        }
+      }}
+    />
+  );
+
+  if (boxed) {
+    return (
+      <div className="space-y-3 py-4 first:pt-0 last:pb-0">
+        {showHeading && (showRange || showInstructions) && <GroupHeading group={{ ...group, heading: '' }} showRange={showRange} showInstructions={showInstructions} />}
+        {/* A matching set is centred, its questions and options under one title. */}
+        <div className={`${dragged ? 'mx-auto ' : ''}w-fit max-w-full overflow-hidden border border-foreground/80 bg-background`}>
+          {group.heading && (
+            <h4 className="border-b border-foreground/80 px-4 py-3 text-center text-base font-bold uppercase tracking-wide text-foreground">
+              {group.heading}
+            </h4>
+          )}
+          <div className={dragged ? 'p-3 sm:p-4' : 'px-3 py-2 sm:px-4'}>{typed ? outline : board}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="py-4 first:pt-0 last:pb-0">
       <div className="space-y-3">
-        {showHeading && <GroupHeading group={group} />}
+        {showHeading && <GroupHeading group={group} showRange={showRange} showInstructions={showInstructions} />}
 
         {group.imageUrl && (
           // The same figure as in practice: drawn large enough to read, with zoom and a full view.
@@ -727,49 +827,41 @@ export function ListeningGroupView({
         {group.imageUrl && afterFigure}
 
         {dragged ? (
-          <div>
-            <ListeningLetterBoard
-              options={box}
-              items={group.questions.map((question, index) => ({
-                slot: question.id,
-                number: group.firstNumber + index,
-                text: question.prompt,
-              }))}
-              values={Object.fromEntries(group.questions.map(question => [question.id, answers[question.id]?.selectedOptions?.[0]]))}
-              // A letter answers several questions where the box is shorter than the list, or the instruction says so.
-              reuse={box.length < group.questions.length || lettersMayRepeat(group.instructions)}
-              disabled={disabled}
-              boxTitle={group.typeId === LISTENING_TYPES.diagram ? 'Letters on the diagram' : 'Options'}
-              onChange={patch => {
-                for (const [id, letter] of Object.entries(patch)) {
-                  const question = group.questions.find(q => q.id === id);
-                  if (question) onAnswer(question, { selectedOptions: letter ? [letter] : [] });
-                }
-              }}
-            />
-          </div>
+          <div>{board}</div>
         ) : typed ? (
-          // Notes, forms, tables and short answers: the outline with a numbered box at each gap.
-          <ListeningGapOutline
-            passage={group.questions.map(question => outlineLine(question.prompt, numberOf(question))).join('\n')}
-            blanks={group.questions.map(question => ({ id: String(numberOf(question)) }))}
-            responses={Object.fromEntries(
-              group.questions.map(question => [String(numberOf(question)), answers[question.id]?.textResponse ?? '']),
-            )}
-            disabled={disabled}
-            onChange={responses => {
-              for (const question of group.questions) {
-                const value = responses[String(numberOf(question))] ?? '';
-                if (value !== (answers[question.id]?.textResponse ?? '')) onAnswer(question, { textResponse: value });
-              }
-            }}
-          />
+          outline
         ) : (
           <ol className="space-y-4">
             {group.questions.map(question => {
               const number = numberOf(question);
               const current = answers[question.id];
-              const compact = group.typeId === 'ielts-listening-map';
+              const compact = group.typeId === 'ielts-listening-map' || letterPick;
+              // Practice, as the test's plan labelling: the place, then a box, empty until a letter (A-H) is picked.
+              if (compact && paper) {
+                return (
+                  <li key={question.id} id={`lq-${number}`} className="scroll-mt-24 text-sm text-foreground sm:text-base">
+                    <label className="inline-flex flex-wrap items-center gap-2">
+                      <span>
+                        <span className="font-bold tabular-nums">{number}.</span> {question.prompt}
+                      </span>
+                      <select
+                        value={current?.selectedOptions?.[0] ?? ''}
+                        disabled={disabled}
+                        onChange={event => onAnswer(question, { selectedOptions: event.target.value ? [event.target.value] : [] })}
+                        aria-label={`Question ${number}`}
+                        className={`h-8 w-24 cursor-pointer rounded-full border-2 bg-background px-3 text-sm font-semibold outline-none transition-colors hover:border-primary/60 focus:border-primary disabled:cursor-default ${
+                          current?.selectedOptions?.[0] ? 'border-primary text-foreground' : 'border-slate-400 text-muted-foreground dark:border-slate-500'
+                        }`}
+                      >
+                        <option value="" aria-label="No letter chosen" />
+                        {(question.options ?? []).map(option => (
+                          <option key={option.id} value={option.id}>{option.id}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </li>
+                );
+              }
               return (
                 <li key={question.id} id={`lq-${number}`} className="scroll-mt-24 space-y-2.5">
                   <p className="flex items-start gap-2 text-sm sm:text-base text-foreground">

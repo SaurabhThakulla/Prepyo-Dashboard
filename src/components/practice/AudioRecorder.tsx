@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { announceRecording, onPromptPlaying } from '@/lib/audioFocus';
-import { Mic, MicOff, AlertCircle, Info } from 'lucide-react';
+import { Mic, MicOff, AlertCircle, Info, Square } from 'lucide-react';
 import { canRecord, formatDuration, pickRecorderMimeType, beep } from '@/lib/audio';
 import { startTranscribing, type TranscriptSession } from '@/lib/speech';
 import { createDeliveryMeter, type Delivery, type DeliveryMeter } from '@/lib/delivery';
@@ -514,14 +514,21 @@ export default function AudioRecorder({
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <span aria-hidden />
         <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-3 gap-y-1" aria-live="polite">
-          <p className="inline-flex items-center gap-2 text-sm font-bold text-foreground sm:text-base">
-            {phase === 'idle' && (
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-                <Mic className="h-4 w-4" aria-hidden />
+          {phase === 'idle' || phase === 'recording' ? (
+            // To start and to stop: one big round button in the middle, what it does under it.
+            <p className="flex flex-col items-center gap-1.5 py-1 text-sm font-bold text-foreground sm:text-base">
+              <span
+                className={`inline-flex h-14 w-14 items-center justify-center rounded-full text-white shadow-md ring-4 transition-colors ${
+                  phase === 'recording' ? 'animate-pulse bg-rose-500 ring-rose-500/20' : 'bg-primary ring-primary/15'
+                }`}
+              >
+                {phase === 'recording' ? <Square className="h-5 w-5 fill-current" aria-hidden /> : <Mic className="h-6 w-6" aria-hidden />}
               </span>
-            )}
-            {headline}
-          </p>
+              {headline}
+            </p>
+          ) : (
+            <p className="inline-flex items-center gap-2 text-sm font-bold text-foreground sm:text-base">{headline}</p>
+          )}
           {phase === 'prep' && (
             <button
               type="button"

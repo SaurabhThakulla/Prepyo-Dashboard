@@ -43,7 +43,11 @@ export interface DrawerItem {
   difficulty?: string;
   imageKind?: string;
   typeName?: string;
+  /** Several task types (a reading passage); the type filter matches any of them. */
+  typeNames?: string[];
 }
+
+const typesOf = (item: DrawerItem) => item.typeNames ?? (item.typeName ? [item.typeName] : []);
 
 const LEVELS = ['easy', 'medium', 'hard'];
 const IMAGE_KINDS: Record<string, string> = {
@@ -59,22 +63,25 @@ const IMAGE_KINDS: Record<string, string> = {
 
 /** The values of a field present in the list, in the given order, with how many have each. */
 function present(items: DrawerItem[], field: 'difficulty' | 'imageKind' | 'typeName', order: string[]) {
+  const has = (item: DrawerItem, value: string) => (field === 'typeName' ? typesOf(item).includes(value) : item[field] === value);
   return order
-    .map(value => [value, items.filter(item => item[field] === value).length] as const)
+    .map(value => [value, items.filter(item => has(item, value)).length] as const)
     .filter(([, count]) => count > 0);
 }
 
 /** One filter as a dropdown in the header; hidden when there is nothing to choose between. */
-function FilterSelect({ label, allLabel, options, value, onChange }: {
+function FilterSelect({ label, allLabel, options, value, onChange, total: allCount }: {
   label: string;
   allLabel: string;
   options: (readonly [string, number])[];
   value: string;
   onChange: (value: string) => void;
+  /** The count beside "All": the list's length where one item can hold several values (a recording's task types). */
+  total?: number;
 }) {
   if (options.length < 2) return null;
   const nameOf = (id: string) => IMAGE_KINDS[id] ?? id.charAt(0).toUpperCase() + id.slice(1);
-  const total = options.reduce((sum, [, count]) => sum + count, 0);
+  const total = allCount ?? options.reduce((sum, [, count]) => sum + count, 0);
   const item = (id: string, text: string, count: number) => (
     <DropdownMenuRadioItem
       key={id}
@@ -176,7 +183,12 @@ export default function QuestionDrawer<T extends DrawerItem>({
   const levels = useMemo(() => present(questions, 'difficulty', LEVELS), [questions]);
   const imageKinds = useMemo(() => present(questions, 'imageKind', Object.keys(IMAGE_KINDS)), [questions]);
   // Shown when one link holds several task types, as IELTS Writing Task 2 holds the essay types.
-  const taskTypes = useMemo(() => present(questions, 'typeName', SYLLABUS[exam]?.[skill] ?? []), [questions, exam, skill]);
+  // Names outside the syllabus (IELTS Listening's whole-part recordings) come first.
+  const taskTypes = useMemo(() => {
+    const syllabus = SYLLABUS[exam]?.[skill] ?? [];
+    const extra = questions.flatMap(typesOf).filter(name => !syllabus.includes(name));
+    return present(questions, 'typeName', [...new Set(extra), ...syllabus]);
+  }, [questions, exam, skill]);
 
   const taskMeta = useMemo(() => getTaskMetadata(exam, skill, typeKey, isMock), [exam, skill, typeKey, isMock]);
   // The exam's own instruction line, where it prints one (EPS-TOPIK's Korean 지시문).
@@ -211,7 +223,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
     }
     if (level !== 'all') result = result.filter(q => q.difficulty === level);
     if (imageKind !== 'all') result = result.filter(q => q.imageKind === imageKind);
-    if (taskType !== 'all') result = result.filter(q => q.typeName === taskType);
+    if (taskType !== 'all') result = result.filter(q => typesOf(q).includes(taskType));
 
     // Sorting by question order ascending (1, 2, 3...)
     result.sort((a, b) => {
@@ -305,8 +317,8 @@ export default function QuestionDrawer<T extends DrawerItem>({
             )}
           </div>
 
-          {/* Search, with the filters as dropdowns on its right (under it on a phone). */}
-          <div className="flex flex-col gap-2 sm:flex-row">
+          {/* Search, with All/Done/Remaining and the filters on its right (under it on a smaller screen). */}
+          <div className="flex flex-col gap-2 lg:flex-row">
           <div className="relative min-w-0 flex-1">
             <input
               type="text"
@@ -326,17 +338,25 @@ export default function QuestionDrawer<T extends DrawerItem>({
               </button>
             )}
           </div>
-          {!isLoading && (taskTypes.length > 1 || levels.length > 1 || imageKinds.length > 1) && (
-            <div className="flex gap-2">
-              <FilterSelect label="Type" allLabel="All types" options={taskTypes} value={taskType} onChange={setTaskType} />
+          {!isLoading && (
+            <div className="flex flex-wrap gap-2">
               <FilterSelect label="Level" allLabel="All levels" options={levels} value={level} onChange={setLevel} />
+              <FilterSelect label="Type" allLabel="All types" options={taskTypes} value={taskType} onChange={setTaskType} total={questions.length} />
               <FilterSelect label="Picture" allLabel="All pictures" options={imageKinds} value={imageKind} onChange={setImageKind} />
+              {/* Done or not, last: in the row's corner. */}
+              <FilterSelect
+                label="Show"
+                allLabel="All questions"
+                options={[['done', doneCount], ['remaining', questions.length - doneCount]]}
+                value={activeFilter}
+                onChange={value => setActiveFilter(value as FilterTab)}
+              />
             </div>
           )}
           </div>
         </div>
 
-        {/* 2. Progress and filter tabs */}
+        {/* 2. Progress */}
         <div className="px-4 sm:px-5 pt-4 pb-3 space-y-3 bg-white dark:bg-[#111622] border-b border-slate-100 dark:border-white/5 shrink-0">
           {isLoading ? (
             <div className="flex items-center gap-2 text-xs font-medium text-slate-400 dark:text-slate-500">
@@ -361,30 +381,6 @@ export default function QuestionDrawer<T extends DrawerItem>({
               </div>
             </div>
           )}
-
-          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-none bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10">
-            {[
-              { id: 'all' as const, label: 'All', fullLabel: 'All Questions' },
-              { id: 'done' as const, label: 'Done', fullLabel: 'Done' },
-              { id: 'remaining' as const, label: 'Remaining', fullLabel: 'Remaining' },
-            ].map(tab => {
-              const active = activeFilter === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveFilter(tab.id)}
-                  className={`h-10 sm:h-11 px-2 rounded-none text-xs sm:text-sm font-semibold tracking-wide transition-all flex items-center justify-center gap-1.5 cursor-pointer ${active
-                    ? 'bg-primary text-white shadow-xs font-bold'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-white/10'
-                    }`}
-                >
-                  <span className="sm:hidden">{tab.label}</span>
-                  <span className="hidden sm:inline truncate">{tab.fullLabel}</span>
-                </button>
-              );
-            })}
-          </div>
 
         </div>
 
@@ -573,21 +569,7 @@ export default function QuestionDrawer<T extends DrawerItem>({
 }
 
 /** Takes the learner from an open question back to the task's question list. */
-/** Back to the list. `round` draws only the arrow, as the first thing in a task's header row. */
-export function BackToQuestions({ onClick, label = 'All questions', round = false }: { onClick: () => void; label?: string; round?: boolean }) {
-  if (round) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={label}
-        title={label}
-        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted/70 text-foreground transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer"
-      >
-        <ArrowLeft className="h-5 w-5" />
-      </button>
-    );
-  }
+export function BackToQuestions({ onClick, label = 'All questions' }: { onClick: () => void; label?: string }) {
   return (
     <button
       type="button"
