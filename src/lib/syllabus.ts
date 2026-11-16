@@ -1,5 +1,6 @@
 import syllabusData from '@/data/syllabus-topics.json';
 import { ExamType, IELTSModule, SkillType } from '@/lib/types';
+import { LISTENING_PART_TYPES } from '@/lib/listeningTypes';
 
 export const SYLLABUS: Record<ExamType, Partial<Record<SkillType, string[]>>> = {
   IELTS: {
@@ -90,9 +91,9 @@ export const matchesTypeKey = (name?: string | null, key?: string | null): boole
 
   if (normName === normKey) return true;
 
-  // IELTS Listening's "Question types" link lists every single-question clip, by type id
-  // (ielts-listening-map); the list then filters by type.
-  if (normKey === 'questiontypes' && normName.startsWith('ieltslistening')) return true;
+  // An IELTS Listening part ("part2") takes the clip types set in it, by type id: ielts-listening-map.
+  const listeningPart = /^part([1-4])$/.exec(normKey)?.[1];
+  if (listeningPart && LISTENING_PART_TYPES[Number(listeningPart)].some(id => normalizeTypeKey(id) === normName)) return true;
 
   // An IELTS Writing part ("task1") takes every task in it, by type id: ielts-writing-task1-figure.
   if (/^task[12]$/.test(normKey) && normName.includes(`writing${normKey}`)) return true;

@@ -140,23 +140,19 @@
           "parts": [
             {
               "name": "Part 1",
-              "simpleDescription": "A conversation about everyday life, such as a booking, and 10 questions: mostly form and note completion"
+              "simpleDescription": "A conversation about everyday life, such as a booking: form, note and table completion, short answers"
             },
             {
               "name": "Part 2",
-              "simpleDescription": "One speaker on an everyday topic, such as a tour or a radio talk, and 10 questions: multiple choice, maps, matching"
+              "simpleDescription": "One speaker on an everyday topic, such as a tour or a radio talk: multiple choice, maps, matching, diagrams"
             },
             {
               "name": "Part 3",
-              "simpleDescription": "Two to four people discussing study or training, and 10 questions: multiple choice and matching"
+              "simpleDescription": "Two to four people discussing study or training: multiple choice, matching, flow-charts"
             },
             {
               "name": "Part 4",
-              "simpleDescription": "A university lecture and 10 questions: mostly note completion"
-            },
-            {
-              "name": "Question types",
-              "simpleDescription": "Short single-question clips, filtered by question type"
+              "simpleDescription": "A university lecture: note and summary completion, diagrams"
             }
           ],
           "topics": [

@@ -489,3 +489,12 @@ html[data-dictionary-hover] [data-dictionary] * {
   }
   body.print-report #score-report .no-print { display: none !important; }
 }
+
+/* Reading practice: the sentence a question's answer comes from (LocateAnswer.tsx). */
+::highlight(answer-locate) {
+  background-color: rgb(250 204 21 / 0.55);
+  color: inherit;
+}
+.dark ::highlight(answer-locate) {
+  background-color: rgb(202 138 4 / 0.55);
+}
