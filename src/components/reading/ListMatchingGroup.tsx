@@ -5,6 +5,7 @@ import { ReadingAnswerResult } from '@/lib/hooks/useReading';
 import { READING_TYPES, listAllowsReuse } from '@/lib/readingTypes';
 import MatchDnd, { MatchChip, MatchEntry, MatchSlot } from '@/components/reading/MatchDnd';
 import { placeEntry, placedEntries } from '@/components/reading/matchRules';
+import { LocateButton } from '@/components/reading/LocateAnswer';
 
 interface ListMatchingGroupProps {
   group: ReadingGroup;
@@ -120,6 +121,7 @@ export default function ListMatchingGroup({
                     <p className="text-xs text-muted-foreground">{result.review.explanation}</p>
                   )}
                 </div>
+                <LocateButton questionId={question.id} number={number} />
               </li>
             );
           })}

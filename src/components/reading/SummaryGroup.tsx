@@ -6,6 +6,7 @@ import SentenceGap from '@/components/reading/renderers/SentenceGap';
 import MatchDnd, { MatchEntry, MatchChip, MatchSlot } from '@/components/reading/MatchDnd';
 import { SetScore } from '@/components/reading/ListMatchingGroup';
 import { placeEntry, placedEntries } from '@/components/reading/matchRules';
+import { LocateButton } from '@/components/reading/LocateAnswer';
 
 interface SummaryGroupProps {
   group: ReadingGroup;
@@ -105,6 +106,17 @@ export default function SummaryGroup({ group, startNumber, answers, results, dis
     return { question, index, cell, text };
   });
 
+  // At the right of a row; inline after the gap in a running summary.
+  const locate = (question: Question, index: number) => (
+    <LocateButton questionId={question.id} number={startNumber + index} />
+  );
+  const withLocate = (question: Question, index: number, text: string) => (
+    <div className="flex items-start gap-2">
+      <div className="min-w-0 flex-1">{gap(question, index, text)}</div>
+      {locate(question, index)}
+    </div>
+  );
+
   let body: React.ReactNode;
   if (form === 'table') {
     body = (
@@ -114,6 +126,7 @@ export default function SummaryGroup({ group, startNumber, answers, results, dis
             <tr key={question.id} className="align-top">
               <th scope="row" className="w-[34%] py-2.5 pr-3 text-left font-semibold text-foreground">{cell}</th>
               <td className="py-2.5 font-reading leading-loose text-foreground/90">{gap(question, index, text)}</td>
+              <td className="w-px py-2.5 pl-2 text-right">{locate(question, index)}</td>
             </tr>
           ))}
         </tbody>
@@ -125,7 +138,7 @@ export default function SummaryGroup({ group, startNumber, answers, results, dis
         {rows.map(({ question, index, text }) => (
           <li key={question.id} className="flex flex-col items-center gap-1">
             <div className="w-full rounded-lg bg-muted/50 px-3 py-2 text-center font-reading text-[15px] leading-loose text-foreground/90">
-              {gap(question, index, text)}
+              {withLocate(question, index, text)}
             </div>
             {index < rows.length - 1 && <ArrowDown className="h-4 w-4 text-muted-foreground" aria-hidden />}
           </li>
@@ -136,15 +149,15 @@ export default function SummaryGroup({ group, startNumber, answers, results, dis
     body = (
       <ul className="list-disc space-y-1.5 pl-5 font-reading text-[15px] leading-loose text-foreground/90">
         {rows.map(({ question, index, text }) => (
-          <li key={question.id}>{gap(question, index, text)}</li>
+          <li key={question.id}>{withLocate(question, index, text)}</li>
         ))}
       </ul>
     );
   } else {
     body = (
-      <p className="mx-auto max-w-[66ch] font-reading text-[15px] sm:text-[17px] leading-[2.6] text-foreground/90">
+      <p className="font-reading text-[15px] sm:text-[17px] leading-[2.1] text-foreground/90">
         {rows.map(({ question, index, text }) => (
-          <React.Fragment key={question.id}>{gap(question, index, text)} </React.Fragment>
+          <React.Fragment key={question.id}>{gap(question, index, text)}{locate(question, index)} </React.Fragment>
         ))}
       </p>
     );

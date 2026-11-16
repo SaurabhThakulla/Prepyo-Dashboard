@@ -3,6 +3,7 @@ import { AnswerSubmission, ReadingGroup } from '@/lib/types';
 import { ReadingAnswerResult } from '@/lib/hooks/useReading';
 import SentenceGap from '@/components/reading/renderers/SentenceGap';
 import { SetScore } from '@/components/reading/ListMatchingGroup';
+import { LocateButton } from '@/components/reading/LocateAnswer';
 
 interface DiagramGroupProps {
   group: ReadingGroup;
@@ -63,6 +64,7 @@ export default function DiagramGroup({ group, startNumber, answers, results, dis
                   onChange={patch => onAnswer(question.id, patch)}
                 />
               </p>
+              <LocateButton questionId={question.id} number={number} />
             </li>
           );
         })}

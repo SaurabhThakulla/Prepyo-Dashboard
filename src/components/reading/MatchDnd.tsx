@@ -220,8 +220,9 @@ export function MatchSlot({ id, placed, verdict, correct, label, placeholder = '
         disabled={disabled}
         aria-label={placed ? `${label}: ${placed.label ?? ''} ${placed.text}. Tap to remove.` : `${label}: empty`}
         onClick={() => (armed ? placeArmed(id) : placed ? onClear() : undefined)}
-        className={`inline-flex min-h-9 items-start gap-2 rounded-lg border-2 px-2.5 py-1 text-left text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-100 ${
-          inline ? 'min-w-[7rem] align-middle' : 'w-full sm:min-w-[16rem]'
+        className={`inline-flex items-start gap-2 rounded-lg border-2 px-2.5 text-left text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-100 ${
+          // A slot inside a sentence stays the height of the line, so the paragraph keeps its spacing.
+          inline ? 'min-h-7 min-w-[6rem] py-0.5 align-middle' : 'min-h-9 w-full py-1 sm:min-w-[16rem]'
         } ${tone} ${isOver || armed ? 'ring-2 ring-primary/30' : ''}`}
       >
         {placed ? (
