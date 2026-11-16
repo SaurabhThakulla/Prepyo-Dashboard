@@ -12,12 +12,15 @@ export function NavNumber({
   flagged,
   current,
   onClick,
+  light = false,
 }: {
   number: number;
   answered: boolean;
   flagged: boolean;
   current: boolean;
   onClick: () => void;
+  /** On a dark bar (part practice): an unanswered number is white. */
+  light?: boolean;
 }) {
   return (
     <button
@@ -26,7 +29,11 @@ export function NavNumber({
       aria-label={`Question ${number}${answered ? ', answered' : ''}${flagged ? ', flagged' : ''}`}
       aria-current={current ? 'step' : undefined}
       className={`inline-flex h-8 min-w-8 shrink-0 items-center justify-center gap-0.5 rounded-full px-1.5 text-xs font-bold tabular-nums transition-colors ${
-        answered ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted text-foreground hover:bg-primary/10 hover:text-primary'
+        answered
+          ? 'bg-primary text-primary-foreground shadow-sm'
+          : light
+            ? 'bg-white text-slate-900 hover:bg-white/85'
+            : 'bg-muted text-foreground hover:bg-primary/10 hover:text-primary'
       } ${current ? 'ring-2 ring-inset ring-amber-400' : ''}`}
     >
       {number}
