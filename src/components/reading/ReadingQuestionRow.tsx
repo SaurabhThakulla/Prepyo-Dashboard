@@ -4,6 +4,7 @@ import { AnswerSubmission, Question, ReadingParagraph } from '@/lib/types';
 import { ReadingAnswerResult } from '@/lib/hooks/useReading';
 import { READING_TYPES, isGapFill } from '@/lib/readingTypes';
 import { rendererFor } from '@/components/reading/renderers';
+import { LocateButton } from '@/components/reading/LocateAnswer';
 
 interface ReadingQuestionRowProps {
   question: Question;
@@ -69,7 +70,8 @@ export default function ReadingQuestionRow({
 
   return (
     <div data-dictionary className="px-3 py-3 sm:px-4 sm:py-3.5 transition-colors hover:bg-muted/25">
-      <div className={inline ? 'flex flex-wrap items-center gap-x-4 gap-y-2.5' : 'space-y-2.5'}>
+      <div className="flex items-start gap-2">
+      <div className={`min-w-0 flex-1 ${inline ? 'flex flex-wrap items-center gap-x-4 gap-y-2.5' : 'space-y-2.5'}`}>
         <div className="flex flex-1 items-start gap-3 min-w-[13rem]">
           {!hideNumber && <span
             className={`shrink-0 w-6 h-6 rounded-full border text-[11px] font-bold tabular-nums flex items-center justify-center transition-colors ${badge}`}
@@ -90,6 +92,8 @@ export default function ReadingQuestionRow({
         {!ownsPrompt && (
           <div className={inline ? 'shrink-0 pl-9 sm:pl-0' : hideNumber ? '' : 'pl-9'}>{control}</div>
         )}
+      </div>
+      <LocateButton questionId={question.id} number={hideNumber ? undefined : number} />
       </div>
 
       {result && (

@@ -1,6 +1,7 @@
 import { subTestsLeft } from '@/lib/subscriptions';
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { AlertCircle, Bot, CheckCircle2, RefreshCw, RotateCcw, Send, Shuffle, Square, Play } from 'lucide-react';
+import { AlertCircle, Bot, CheckCircle2, RefreshCw, RotateCcw, Send, Shuffle, Square, Play, Trophy } from 'lucide-react';
+import ListeningPartResult from '@/components/listening/ListeningPartResult';
 import PracticeUnavailable from '@/components/practice/PracticeUnavailable';
 import { api, ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import PracticeActionBar, { notesFor, ON_BAR, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
 import MyScore from '@/components/practice/flow/MyScore';
 import { BackToQuestions } from '@/components/practice/QuestionDrawer';
+import { LocateProvider } from '@/components/reading/LocateAnswer';
 
 const PILL = 'h-9 gap-1.5 rounded-full px-3 text-xs font-bold sm:px-4';
 
@@ -35,6 +37,8 @@ interface ReadingPracticePanelProps {
   listOpen?: boolean;
   /** Shows a button back to the practice list. */
   onBackToList?: () => void;
+  /** The next passage in the practice list, after the one on screen. */
+  onNext?: (currentId: string | undefined) => void;
 }
 
 /**
@@ -96,12 +100,13 @@ function EmptyState({
  * Left pane: Reading passage with centered title and continuous natural paragraphs.
  * Right pane: Question notes completion card with inline inputs and circled numbers.
  */
-export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, passageId, listOpen = false, onBackToList }: ReadingPracticePanelProps) {
+export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, passageId, listOpen = false, onBackToList, onNext }: ReadingPracticePanelProps) {
   const { user, activeExam: contextExam, refreshUser, setIsTutorOpen, setTutorContextPrompt, activeTestSession, setActiveTestSession } = useApp();
   const activeExam = exam ?? contextExam;
   const resolution = useMistakeResolution(mistakeId);
   const toast = useToast();
   const queryClient = useQueryClient();
+  const passagePane = useRef<HTMLDivElement>(null);
 
   const typesQuery = useReadingTypes(activeExam);
   const types = typesQuery.data?.types ?? [];
@@ -112,6 +117,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
   const currentTypeId = set?.groups[0]?.typeId;
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [showResult, setShowResult] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
 
@@ -194,6 +200,8 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
   const handleCheck = async () => {
     try {
       const graded = await practice.check();
+      // The result opens as the Listening one does: score, numbers, then each answer beside the key.
+      if (graded) setShowResult(true);
       void queryClient.invalidateQueries({ queryKey: ['practice-history'] });
       if (mistakeId && graded) {
         const outcome = Object.values(graded)[0];
@@ -308,6 +316,20 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
 
   const hasPassage = Boolean(set.passage && displayedGroups[0]?.passageDisplay !== 'hidden');
   const shownQuestionIds = displayedGroups.flatMap(group => group.questions.map(question => question.id));
+  // Each question's locate button needs a passage on screen to point into.
+  const groupCards = displayedGroups.map((group: ReadingGroup, index: number) => (
+    <ReadingGroupCard
+      key={group.id}
+      group={group}
+      startNumber={
+        displayedGroups.slice(0, index).reduce((sum: number, earlier: ReadingGroup) => sum + earlier.questions.length, 1)
+      }
+      answers={practice.answers}
+      results={practice.results}
+      disabled={practice.checking}
+      onAnswer={practice.answer}
+    />
+  ));
   // Redo before checking: blank every answer on this passage, same session.
   const clearAnswers = () =>
     shownQuestionIds.forEach(id => practice.answer(id, { textResponse: '', selectedOptions: [], blankResponses: {} }));
@@ -318,7 +340,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
         <div className="transition-all duration-300 flex-1 w-full px-0 py-1 flex flex-col lg:flex-row gap-1.5 min-h-0 overflow-hidden">
           {/* Left Pane: Reading Passage (Independent scroll only) */}
           {hasPassage && (
-            <div className="w-full lg:w-1/2 lg:h-full min-h-0 flex flex-col lg:overflow-hidden">
+            <div ref={passagePane} className="w-full lg:w-1/2 lg:h-full min-h-0 flex flex-col lg:overflow-hidden">
               {loadingNext ? <PaneSkeleton lines={8} /> : <PassageReader
                 passage={set.passage!}
                 scroll={true}
@@ -338,25 +360,22 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
                 </div>
               )}
               {loadingNext ? <PaneSkeleton lines={4} tall /> : <>
-              {displayedGroups.map((group: ReadingGroup, index: number) => (
-                <ReadingGroupCard
-                  key={group.id}
-                  group={group}
-                  startNumber={
-                    displayedGroups.slice(0, index).reduce((sum: number, earlier: ReadingGroup) => sum + earlier.questions.length, 1)
-                  }
-                  answers={practice.answers}
-                  results={practice.results}
-                  disabled={practice.checking}
-                  onAnswer={practice.answer}
-                />
-              ))}
+              {hasPassage ? <LocateProvider passageRef={passagePane} resetKey={set.passage?.id}>{groupCards}</LocateProvider> : groupCards}
 
               {practice.checked && (
-                <ResultCard
-                  correct={practice.partsCorrect}
-                  total={practice.partsTotal}
-                  note={resolution.resolved ? 'Mistake resolved' : 'Anything you got wrong stays in your Mistake Bank.'}
+                <ListeningPartResult
+                  open={showResult}
+                  onOpenChange={setShowResult}
+                  title={`Passage ${readingPartOf(initialTypeKey) ?? 1} · Questions 1–${displayedQuestionCount || practice.totalQuestions}`}
+                  groups={displayedGroups.map((group: ReadingGroup, index: number) => ({
+                    id: group.id,
+                    heading: group.boxTitle || group.typeName,
+                    typeId: group.typeId,
+                    firstNumber: displayedGroups.slice(0, index).reduce((sum: number, earlier: ReadingGroup) => sum + earlier.questions.length, 1),
+                    questions: group.questions,
+                  }))}
+                  answers={practice.answers}
+                  marked={practice.results}
                 />
               )}
               </>}
@@ -364,6 +383,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
               {/* Actions sit under the questions, above the score, as on the other skills. */}
               <PracticeActionBar
                 onShuffle={mistakeId ? undefined : () => setPendingPassage({})}
+                onNext={onNext ? () => onNext(set.passage?.id) : undefined}
                 disabled={practice.checking || loadingNext}
                 actions={
                   <>
@@ -371,6 +391,10 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
                       <Button disabled={resolution.saving} onClick={() => void resolution.finish(true)}>Retry saving resolution</Button>
                     ) : practice.checked ? (
                       <>
+                        <Button variant="outline" onClick={() => setShowResult(true)} className={PILL}>
+                          <Trophy className="w-3.5 h-3.5" />
+                          <span>See your result ({practice.partsCorrect}/{practice.partsTotal})</span>
+                        </Button>
                         {!mistakeId && set.passage?.id && (
                           <Button variant="outline" onClick={() => void handleStart(set.passage?.id)} className={PILL}>
                             <RotateCcw className="w-3.5 h-3.5" />
