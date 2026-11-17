@@ -1306,7 +1306,7 @@ function AddStudentDialog({
   };
 
   return (
-    <DialogContent className="gap-5 sm:max-w-xl">
+    <DialogContent className="gap-5 sm:max-w-2xl">
       <DialogHeader className="space-y-1 text-left">
         <DialogTitle className="font-sans text-lg font-semibold">Add a student</DialogTitle>
         <DialogDescription>
