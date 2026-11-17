@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { beep } from '@/lib/audio';
 import { announcePromptPlaying, onRecordingStarted } from '@/lib/audioFocus';
 import { Volume2, Play, Square, Pause, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -60,6 +61,8 @@ interface PromptAudioProps {
    * do ("Beginning in 3 seconds"). Pressing play first starts it sooner.
    */
   autoPlayAfter?: number;
+  /** With autoPlayAfter: a short beep when the countdown ends, then the recording (listening practice). */
+  beepFirst?: boolean;
   /**
    * 'full': play, signal and speed (listening). 'button': a small play button at
    * the bottom right (Read Aloud, where the audio is optional). 'bar': play,
@@ -71,11 +74,15 @@ interface PromptAudioProps {
 type PlayerLayout = 'full' | 'button' | 'bar';
 // Read by VoicePanel, so the three ways of playing (recording, server voice, browser voice) all look alike.
 const PlayerLayoutContext = React.createContext<PlayerLayout>('full');
+// Read by useAutoPlay, so each way of playing beeps the same way before an auto-play.
+const BeepFirstContext = React.createContext(false);
 
-export default function PromptAudio({ layout = 'full', ...props }: PromptAudioProps) {
+export default function PromptAudio({ layout = 'full', beepFirst = false, ...props }: PromptAudioProps) {
   return (
     <PlayerLayoutContext.Provider value={layout}>
-      <PromptAudioPlayer {...props} />
+      <BeepFirstContext.Provider value={beepFirst}>
+        <PromptAudioPlayer {...props} />
+      </BeepFirstContext.Provider>
     </PlayerLayoutContext.Provider>
   );
 }
@@ -90,6 +97,7 @@ function useAutoPlay(seconds: number | undefined, start: () => void, key?: strin
   const [left, setLeft] = useState<number | null>(null);
   const startRef = useRef(start);
   startRef.current = start;
+  const beepFirst = useContext(BeepFirstContext);
 
   useEffect(() => {
     const activation = (navigator as { userActivation?: { hasBeenActive: boolean } }).userActivation;
@@ -97,6 +105,8 @@ function useAutoPlay(seconds: number | undefined, start: () => void, key?: strin
       setLeft(null);
       return;
     }
+    // Left on a new question or once answering began: a beep still sounding must not start the recording.
+    let stopped = false;
     let remaining = seconds;
     setLeft(remaining);
     const tick = setInterval(() => {
@@ -107,18 +117,26 @@ function useAutoPlay(seconds: number | undefined, start: () => void, key?: strin
       }
       clearInterval(tick);
       setLeft(null);
-      startRef.current();
+      if (!beepFirst) {
+        startRef.current();
+        return;
+      }
+      void beep().then(() => {
+        if (!stopped) startRef.current();
+      });
     }, 1000);
     // Answering before the audio began: it must not start over the recording.
     const cancel = onRecordingStarted(() => {
+      stopped = true;
       clearInterval(tick);
       setLeft(null);
     });
     return () => {
+      stopped = true;
       clearInterval(tick);
       cancel();
     };
-  }, [seconds, key]);
+  }, [seconds, key, beepFirst]);
 
   return left;
 }

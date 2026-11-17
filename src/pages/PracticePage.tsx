@@ -33,9 +33,7 @@ import { answerMark, OPTION_MARK_CLASS, OPTION_MARK_LABEL } from '@/lib/answerMa
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import OptionContent, { hasPictureOptions, MarkedText } from '@/components/practice/OptionContent';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
-import ListeningGapOutline from '@/components/listening/ListeningGapOutline';
-import { ListeningLetterPractice } from '@/components/listening/ListeningLetterBoard';
-import { isListeningGapTask, isListeningLetterTask, LISTENING_GROUP_TYPE_NAMES, listeningPartOf } from '@/lib/listeningTypes';
+import { LISTENING_GROUP_TYPE_NAMES, listeningPartOf } from '@/lib/listeningTypes';
 import ConversationPassage, { conversationTurns } from '@/components/practice/ConversationPassage';
 import { isAiRatedListening, isReadAloudTask, isRepeatSentenceTask, isWordHighlightTask, passageText } from '@/lib/listening';
 import { allowsMultipleChoices } from '@/lib/choices';
@@ -61,7 +59,7 @@ import { listeningPartName, useListeningPracticeParts } from '@/lib/hooks/useLis
 import { fetchAllQuestions } from '@/lib/hooks/useResources';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
-import { familyOf, readingPartOf, readingTypeNames, typeIdsFor } from '@/lib/readingTypes';
+import { readingPartOf, readingTypeNames, typeIdsFor } from '@/lib/readingTypes';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { answeredContext, questionContext } from '@/lib/tutorContext';
 import { encodeForUpload } from '@/lib/audio';
@@ -203,7 +201,7 @@ function PracticePageContent() {
   // Reading is practised by passage, not by single question, so its list is
   // the passages practice deals for the task (and its family).
   const readingFamily = useMemo(
-    () => [...new Set(typeIdsFor(typeParam).flatMap(familyOf))],
+    () => typeIdsFor(typeParam),
     [typeParam],
   );
   const readingPassagesQuery = useReadingPracticePassages(activeExam, readingFamily, readingList, readingPartOf(typeParam));
@@ -1200,13 +1198,14 @@ function PracticePageContent() {
                   repeat={listeningPlays(currentQuestion)}
                   // The recording plays on its own after the test's lead-in; speaking recording follows it.
                   autoPlayAfter={result === null ? audioDelayFor(currentQuestion) : undefined}
+                  // Listening recordings start with a beep; speaking prompts keep their own cue.
+                  beepFirst={currentQuestion.skill === 'listening'}
                   title={currentQuestion.title}
                   // Speaking tasks answered from what they hear (Repeat Sentence, Re-tell Lecture...): one bar with time, speed and volume.
                   layout={currentQuestion.skill === 'speaking' ? 'bar' : undefined}
                   // IELTS speaking shows its question on screen; the recording only reads it aloud.
                   allowTranscript={!(currentQuestion.exam === 'IELTS' && currentQuestion.skill === 'speaking')}
-                  // A matching key is a letter, not words said in the recording.
-                  highlights={isListeningLetterTask(currentQuestion) ? undefined : result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
+                  highlights={result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
                   onFinished={() => setHeardPromptFor(currentQuestion.id)}
                 />}
 
@@ -1225,27 +1224,8 @@ function PracticePageContent() {
                   />
                 )}
 
-                {/* IELTS Listening matching and lettered diagrams: letters dragged from a box. */}
                 <div data-dictionary className="empty:hidden">
-                {isListeningLetterTask(currentQuestion) ? (
-                  <ListeningLetterPractice
-                    question={currentQuestion}
-                    responses={blankResponses}
-                    disabled={submitting || result !== null}
-                    reviewBlanks={result?.review?.blanks}
-                    onChange={setBlankResponses}
-                  />
-                ) : isListeningGapTask(currentQuestion) && currentQuestion.contextPassage ? (
-                  // Table, flow-chart, summary, notes, typed diagram labels and short answers.
-                  <ListeningGapOutline
-                    passage={currentQuestion.contextPassage}
-                    blanks={currentQuestion.blanks}
-                    responses={blankResponses}
-                    disabled={submitting || result !== null}
-                    reviewBlanks={result?.review?.blanks}
-                    onChange={setBlankResponses}
-                  />
-                ) : currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && !isRepeatSentenceTask(currentQuestion) && (
+                {currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && !isRepeatSentenceTask(currentQuestion) && (
                   passageHasGaps(currentQuestion.contextPassage) ? (
                     <InlineBlankPassage
                       passage={currentQuestion.contextPassage}
@@ -1357,7 +1337,7 @@ function PracticePageContent() {
                   correctAnswers={result?.review?.correctAnswers ?? null}
                 />
 
-                {!isWordHighlightTask(currentQuestion) && !isListeningLetterTask(currentQuestion) && currentQuestion.options && currentQuestion.options.length > 0 && (
+                {!isWordHighlightTask(currentQuestion) && currentQuestion.options && currentQuestion.options.length > 0 && (
                   <div className="space-y-2.5 pt-2">
                     <h4 className="text-xs font-bold text-foreground">Choose your answer:</h4>
                     <div className={hasPictureOptions(currentQuestion.options) ? 'grid grid-cols-2 gap-2.5' : 'space-y-2.5'}>
