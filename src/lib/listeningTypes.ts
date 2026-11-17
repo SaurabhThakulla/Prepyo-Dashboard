@@ -13,22 +13,9 @@ export const LISTENING_TYPES = {
   matching: 'ielts-listening-matching',
 } as const;
 
-/**
- * The single-question clip types practised under each IELTS Listening part:
- * the parts each type is most often set in (any type may appear in any part;
- * ielts.org fixes no part per type). Tables run through all four parts.
- */
-export const LISTENING_PART_TYPES: Record<number, string[]> = {
-  1: ['ielts-listening-fill-blanks', 'ielts-listening-table', 'ielts-listening-short-answer'],
-  2: ['ielts-listening-mcq', 'ielts-listening-map', 'ielts-listening-matching', 'ielts-listening-table', 'ielts-listening-diagram', 'ielts-listening-short-answer'],
-  3: ['ielts-listening-mcq', 'ielts-listening-matching', 'ielts-listening-table'],
-  4: ['ielts-listening-fill-blanks', 'ielts-listening-table', 'ielts-listening-diagram'],
-};
-
 /** The name a part recording's question group goes by in the list's Type filter, after ielts.org's task types. */
 export const LISTENING_GROUP_TYPE_NAMES: Record<string, string> = {
   'ielts-listening-completion': 'Form / note completion',
-  'ielts-listening-fill-blanks': 'Form / note completion',
   'ielts-listening-table': 'Table / flow-chart / summary',
   'ielts-listening-mcq': 'Multiple choice',
   'ielts-listening-map': 'Map / plan labelling',
@@ -41,35 +28,6 @@ export const LISTENING_GROUP_TYPE_NAMES: Record<string, string> = {
 export function listeningPartOf(syllabusKey?: string | null): number | undefined {
   const match = /^part([1-4])$/.exec(syllabusKey ?? '');
   return match ? Number(match[1]) : undefined;
-}
-
-const GAP_TYPES: string[] = [LISTENING_TYPES.table, LISTENING_TYPES.diagram, LISTENING_TYPES.shortAnswer];
-const LETTER_TYPES: string[] = [LISTENING_TYPES.matching, LISTENING_TYPES.diagram];
-
-const isIeltsListening = (question: Question | null | undefined): question is Question =>
-  Boolean(question && question.exam === 'IELTS' && question.skill === 'listening');
-
-/**
- * A practice item answered by dragging letters from a box onto its numbered
- * questions: matching, and a diagram labelled with letters.
- */
-export function isListeningLetterTask(question: Question | null | undefined): boolean {
-  return (
-    isIeltsListening(question) &&
-    LETTER_TYPES.includes(question.typeId) &&
-    (question.options?.length ?? 0) > 0 &&
-    (question.blanks?.length ?? 0) > 0
-  );
-}
-
-/** A practice item whose numbered gaps are typed: table, notes, flow-chart, summary, diagram, short answer. */
-export function isListeningGapTask(question: Question | null | undefined): boolean {
-  return (
-    isIeltsListening(question) &&
-    GAP_TYPES.includes(question.typeId) &&
-    !isListeningLetterTask(question) &&
-    (question.blanks?.length ?? 0) > 0
-  );
 }
 
 /** A box allows a letter twice only when the instruction says so, as IELTS does. */

@@ -289,7 +289,8 @@ export default function ListeningPartPanel({ partNo, partId, listOpen, onBackToL
 
       {/* Above every page, so the recording plays on while the learner moves between them.
           Speaking's player; key: a new recording loads from the start. */}
-      <PromptAudio key={part.id} audioUrl={part.audioUrl} title={`Part ${part.partNo} recording`} layout="bar" />
+      {/* It starts on its own 3 seconds after the part opens, with a beep first. */}
+      <PromptAudio key={part.id} audioUrl={part.audioUrl} title={`Part ${part.partNo} recording`} layout="bar" autoPlayAfter={3} beepFirst />
       {showScript && script && (
         <div className="rounded-2xl border border-border/70 bg-slate-50/70 p-4 dark:bg-white/[0.03]">
           <h3 className="mb-2 text-sm font-bold">Transcript</h3>

@@ -2,7 +2,6 @@ import React from 'react';
 import { Blank, Question, QuestionOption } from '@/lib/types';
 import MatchDnd, { MatchChip, MatchEntry, MatchSlot } from '@/components/reading/MatchDnd';
 import { placeEntry, placedEntries } from '@/components/reading/matchRules';
-import { blankFor, gapAccepts, gapPieces, lettersMayRepeat } from '@/lib/listeningTypes';
 
 export interface LetterItem {
   /** Where the answer is kept: a blank id (practice) or a question id (mock). */
@@ -213,70 +212,6 @@ function LetterGrid({
         </table>
       </div>
       {!locked && !reuse && <p className="text-xs text-muted-foreground">Each letter can be used only once.</p>}
-    </div>
-  );
-}
-
-interface ListeningLetterPracticeProps {
-  question: Question;
-  responses: Record<string, string>;
-  disabled?: boolean;
-  reviewBlanks?: Blank[];
-  onChange: (responses: Record<string, string>) => void;
-}
-
-/**
- * A practice item answered from a box: its outline's lines with a gap are the
- * questions (the words before the gap name the item), other lines are printed
- * as they are, and the answers go into the item's blanks like typed gaps, so
- * the server marks them the same way.
- */
-export function ListeningLetterPractice({ question, responses, disabled, reviewBlanks, onChange }: ListeningLetterPracticeProps) {
-  const lines = (question.contextPassage ?? '').replace(/\r\n/g, '\n').split('\n').map(line => line.trim());
-  const items: LetterItem[] = [];
-  const notes: string[] = [];
-  for (const line of lines) {
-    const gap = gapPieces(line).find(piece => piece.gap)?.gap;
-    if (!gap) {
-      if (line && items.length === 0) notes.push(line);
-      continue;
-    }
-    const text = gapPieces(line)
-      .filter(piece => piece.text)
-      .map(piece => piece.text)
-      .join(' ')
-      .trim();
-    items.push({ slot: blankFor(question.blanks, gap)?.id ?? gap, number: Number(gap), text });
-  }
-
-  const review = reviewBlanks
-    ? Object.fromEntries(
-      items.map(item => {
-        const key = blankFor(reviewBlanks, String(item.number));
-        return [item.slot, { correct: key?.correctAnswer, right: gapAccepts(key, responses[item.slot]) }];
-      }),
-    )
-    : undefined;
-
-  return (
-    <div data-dictionary className="space-y-3">
-      {notes.map((note, index) =>
-        index === 0 ? (
-          <h4 key={index} className="font-display text-base font-bold text-foreground">{note}</h4>
-        ) : (
-          <p key={index} className="text-sm text-foreground">{note}</p>
-        ),
-      )}
-      <ListeningLetterBoard
-        options={question.options ?? []}
-        items={items}
-        values={responses}
-        reuse={lettersMayRepeat(question.prompt)}
-        disabled={disabled}
-        review={review}
-        boxTitle={question.typeId === 'ielts-listening-diagram' ? 'Letters on the diagram' : 'Options'}
-        onChange={patch => onChange({ ...responses, ...patch })}
-      />
     </div>
   );
 }
