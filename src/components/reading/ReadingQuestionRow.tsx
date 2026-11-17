@@ -137,7 +137,6 @@ export default function ReadingQuestionRow({
 /** A single dropdown fits beside the statement; wider controls go under it. */
 const INLINE_TYPES = new Set<string>([
   READING_TYPES.matchingInformation,
-  READING_TYPES.findTheParagraph,
 ]);
 
 /** Whether the learner has put anything down for this question yet. */

@@ -6,7 +6,7 @@ import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
 import { loadMistakeTask, mistakeReadingSet } from '@/lib/mistakePractice';
 import { useToast } from '@/components/ui/toast';
 import { useApp } from '@/context/AppContext';
-import { READING_TYPES, familyOf, typeIdsFor } from '@/lib/readingTypes';
+import { READING_TYPES, typeIdsFor } from '@/lib/readingTypes';
 import {
   AnswerSubmission,
   ExamType,
@@ -104,7 +104,7 @@ export function useReadingPractice(exam: ExamType) {
           typeId,
           // The whole heading, so a passage hands over every set behind it;
           // an IELTS part takes every type, and the server deals a part's worth.
-          typeIds: part ? typeIdsFor(`part${part}`) : familyOf(typeId),
+          typeIds: part ? typeIdsFor(`part${part}`) : [typeId],
           ...(part ? { part } : {}),
           // A passage chosen from the practice list; otherwise the server
           // deals the one practised least recently.

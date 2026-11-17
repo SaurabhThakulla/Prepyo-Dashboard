@@ -138,7 +138,7 @@ export function LocateProvider({
  * The "Locate" pill at the right of a question (inline after the gap in running
  * text). Renders nothing outside reading practice.
  */
-export function LocateButton({ questionId, number }: { questionId: string; number?: number }) {
+export function LocateButton({ questionId, number, className = '' }: { questionId: string; number?: number; className?: string }) {
   const state = useContext(LocateContext);
   if (!state) return null;
   const on = state.active === questionId;
@@ -152,14 +152,14 @@ export function LocateButton({ questionId, number }: { questionId: string; numbe
       aria-pressed={on}
       aria-label={label}
       title={label}
-      className={`mx-1 inline-flex h-7 shrink-0 items-center gap-1 rounded-full border px-2.5 align-middle font-sans text-xs font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+      className={`mx-1 inline-flex h-7 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 align-middle font-sans text-xs font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
         on
           ? 'border-amber-500 bg-amber-400 text-amber-950'
           : 'border-primary/40 bg-primary/5 text-primary hover:border-primary hover:bg-primary/10'
-      }`}
+      } ${className}`}
     >
-      <LocateFixed className="h-3.5 w-3.5" aria-hidden />
-      {on ? 'Hide' : 'Locate'}
+      <LocateFixed className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span className="whitespace-nowrap">{on ? 'Hide' : 'Locate'}</span>
     </button>
   );
 }

@@ -9,7 +9,6 @@ import TypedAnswer from './TypedAnswer';
 import MCQSingle from './MCQSingle';
 import MCQMultiple from './MCQMultiple';
 import SentenceCompletion from './SentenceCompletion';
-import OrderedChoice from './OrderedChoice';
 import PTEFillBlanksDropdown from './PTEFillBlanksDropdown';
 import PTEFillBlanksDrag from './PTEFillBlanksDrag';
 import ReorderParagraph from './ReorderParagraph';
@@ -32,9 +31,7 @@ export const RENDERERS: Record<string, ComponentType<AnswerProps>> = {
   [READING_TYPES.trueFalse]: VerdictTriad,
   [READING_TYPES.yesNoNotGiven]: VerdictTriad,
   [READING_TYPES.matchingInformation]: ParagraphMatcher,
-  [READING_TYPES.findTheParagraph]: ParagraphMatcher,
   [READING_TYPES.sentenceCompletion]: SentenceCompletion,
-  [READING_TYPES.arrangePassage]: OrderedChoice,
   // A whole set of these is laid out by ReadingGroupCard, with drag and drop.
   // These are the one-question forms, as the mistake bank deals them.
   [READING_TYPES.matchingHeadings]: ListChoice,

@@ -1,11 +1,11 @@
 import { subTestsLeft } from '@/lib/subscriptions';
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { AlertCircle, Bot, CheckCircle2, RefreshCw, RotateCcw, Send, Shuffle, Square, Play, Trophy } from 'lucide-react';
+import { AlertCircle, Bot, RefreshCw, RotateCcw, Send, Shuffle, Square, Play, Trophy } from 'lucide-react';
 import ListeningPartResult from '@/components/listening/ListeningPartResult';
 import PracticeUnavailable from '@/components/practice/PracticeUnavailable';
 import { api, ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Card, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { useApp } from '@/context/AppContext';
 import { errorMessage } from '@/lib/api';
 import { readingContext } from '@/lib/tutorContext';
@@ -13,7 +13,7 @@ import { useToast } from '@/components/ui/toast';
 import { useReadingPractice, useReadingTypes } from '@/lib/hooks/useReading';
 import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
-import { READING_TYPES, typeIdsFor, needsParagraphLabels, familyOf, readingPartOf } from '@/lib/readingTypes';
+import { READING_TYPES, typeIdsFor, needsParagraphLabels, readingPartOf } from '@/lib/readingTypes';
 import { ExamType, isInstitutionStudent, ReadingGroup, ReadingTaskType } from '@/lib/types';
 import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
 import { ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
@@ -463,38 +463,6 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
         </div>
       </div>
     </div>
-  );
-}
-
-/** The score after Submit, coloured by how well it went. */
-export function ResultCard({ correct, total, note }: { correct: number; total: number; note: string }) {
-  const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
-  const tone = pct === 100
-    ? { ring: 'border-emerald-200 dark:border-emerald-900/60', soft: 'bg-emerald-50 dark:bg-emerald-950/40', text: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500', Icon: CheckCircle2, word: 'All correct' }
-    : pct >= 50
-      ? { ring: 'border-amber-200 dark:border-amber-900/60', soft: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-500', Icon: CheckCircle2, word: 'Nearly there' }
-      : { ring: 'border-rose-200 dark:border-rose-900/60', soft: 'bg-rose-50 dark:bg-rose-950/40', text: 'text-rose-600 dark:text-rose-400', bar: 'bg-rose-500', Icon: AlertCircle, word: 'Keep practising' };
-  const Icon = tone.Icon;
-
-  return (
-    <Card role="status" className={`rounded-2xl border ${tone.ring} bg-card p-4 shadow-xs`}>
-      <div className="flex items-center gap-3">
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${tone.soft} ${tone.text}`}>
-          <Icon className="h-5 w-5" aria-hidden />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className={`text-xs font-semibold uppercase tracking-wide ${tone.text}`}>{tone.word}</p>
-          <CardTitle className="text-lg font-bold tabular-nums">
-            {correct} of {total} correct
-          </CardTitle>
-        </div>
-        <span className={`text-2xl font-black tabular-nums ${tone.text}`}>{pct}%</span>
-      </div>
-      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
-        <div className={`h-full rounded-full ${tone.bar} transition-[width] duration-500`} style={{ width: `${pct}%` }} />
-      </div>
-      <p className="mt-2 text-xs text-muted-foreground">{note}</p>
-    </Card>
   );
 }
 
