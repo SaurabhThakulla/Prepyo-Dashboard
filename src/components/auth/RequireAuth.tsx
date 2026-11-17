@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { signedOutPath } from '@/lib/signOutPath';
 import { useApp } from '@/context/AppContext';
 import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
+import ChooseStudentPassword from './ChooseStudentPassword';
 
 /**
  * Blocks app pages until the session check has resolved.
@@ -45,6 +46,20 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
   // Both branches are genuinely transient: either the session check is still
   // running, or it has failed and the redirect above is already on its way.
   if (loading || !user) return <AppPageSkeleton />;
+
+  // A consultancy's student with a generated password chooses their own first.
+  // shortcut: enforced here in the web app only, not on every API route; enforce server-side if it must hold for API clients too.
+  // The app stays behind it, blurred by the overlay and inert, so nothing else can be used.
+  if (user.institution?.mustChangePassword) {
+    return (
+      <>
+        <div inert aria-hidden className="pointer-events-none select-none">
+          {children}
+        </div>
+        <ChooseStudentPassword />
+      </>
+    );
+  }
 
   return <>{children}</>;
 }

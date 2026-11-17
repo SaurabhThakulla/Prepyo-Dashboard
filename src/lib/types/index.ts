@@ -135,6 +135,10 @@ export interface InstitutionMembership {
   /** The institution's admin login. */
   email: string;
   username: string;
+  /** Signed in with a generated password: must choose their own before anything else. */
+  mustChangePassword?: boolean;
+  /** When the credit the consultancy activated them with ends; null if never activated. */
+  accessUntil?: string | null;
 }
 
 export interface UserProfile {
