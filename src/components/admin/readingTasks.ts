@@ -15,7 +15,7 @@ import { ExamType } from '@/lib/types';
  * validates all of this again, because a form cannot be trusted with an answer
  * key.
  */
-export type AnswerStyle = 'choice' | 'multi' | 'verdict' | 'paragraph' | 'text' | 'blanks' | 'reorder' | 'boxes' | 'list';
+export type AnswerStyle = 'choice' | 'multi' | 'verdict' | 'paragraph' | 'text' | 'blanks' | 'reorder' | 'list';
 
 export interface TaskType {
   id: string;
@@ -39,7 +39,6 @@ export interface TaskType {
   hint?: string;
   /** The instruction line as the real paper words it, shown as a placeholder. */
   instructionsHint?: string;
-  mockOnly?: boolean;
 }
 
 export const examsFor = (type: TaskType): ExamType[] =>
@@ -84,7 +83,7 @@ export const TASK_TYPES: TaskType[] = [
     instructionsHint: 'Do the following statements agree with the views of the writer?',
   },
   {
-    id: 'reading-find-the-paragraph',
+    id: 'reading-matching-information',
     name: 'Matching Information',
     style: 'paragraph',
     exam: 'IELTS',
@@ -193,15 +192,6 @@ export const TASK_TYPES: TaskType[] = [
     hint: 'Choose the single best answer option from four choices.',
     instructionsHint: 'Read the text and answer the multiple-choice question by selecting the correct response.',
   },
-  {
-    id: 'reading-arrange-passage',
-    name: 'Sequence the Summary (legacy practice)',
-    style: 'boxes',
-    exam: 'IELTS',
-    mockOnly: true,
-    hint: 'Write each box as its own line. The questions name the positions in order, and each one is answered with the box that belongs there.',
-    instructionsHint: 'The boxes below summarise stages in the passage but are printed out of order.',
-  },
 ];
 
 export interface DraftBlank {
@@ -226,7 +216,6 @@ export interface DraftGroup {
   questions: DraftQuestion[];
   wordBank: string[];
   exams: ExamType[];
-  boxes: string[];
   /** The diagram of a diagram-label set. */
   imageUrl: string;
 }
@@ -255,7 +244,6 @@ export const emptyGroup = (typeId: string, exams: ExamType[] = []): DraftGroup =
     questions: [emptyQuestion()],
     wordBank: [],
     exams: wanted.length > 0 ? wanted : allowed,
-    boxes: ['', ''],
     imageUrl: '',
   };
 };
@@ -294,7 +282,6 @@ export const groupPayload = (group: DraftGroup) => ({
   instructions: group.instructions,
   boxTitle: group.boxTitle,
   exams: group.exams,
-  boxes: group.boxes.map(box => box.trim()).filter(Boolean),
   wordBank: group.wordBank.map(word => word.trim()).filter(Boolean),
   imageUrl: group.imageUrl.trim(),
   questions: group.questions.map(question => {
@@ -345,10 +332,10 @@ export const PASSAGE_SLOT_TEMPLATES: Record<'A' | 'B' | 'C', PassageSlotTemplate
     slot: 'B',
     label: 'Passage B (Part 2)',
     totalQuestions: 13,
-    description: "Find the Writer's View (6) + Match the Heading (4) + Yes / No / Not Given (3)",
+    description: 'Matching Information (6) + Matching Headings (4) + Yes / No / Not Given (3)',
     groups: [
-      { typeId: 'reading-find-the-paragraph', typeName: "Find the Writer's View", questionCount: 6 },
-      { typeId: 'reading-arrange-passage', typeName: 'Match the Heading', questionCount: 4 },
+      { typeId: 'reading-matching-information', typeName: 'Matching Information', questionCount: 6 },
+      { typeId: 'reading-matching-headings', typeName: 'Matching Headings', questionCount: 4 },
       { typeId: 'reading-yes-no-not-given', typeName: 'Yes / No / Not Given', questionCount: 3 },
     ],
   },
@@ -359,7 +346,7 @@ export const PASSAGE_SLOT_TEMPLATES: Record<'A' | 'B' | 'C', PassageSlotTemplate
     description: 'Sentence Completion (6) + Matching Information (4) + Yes / No / Not Given (4)',
     groups: [
       { typeId: 'reading-sentence-completion', typeName: 'Sentence Completion', questionCount: 6 },
-      { typeId: 'reading-find-the-paragraph', typeName: 'Matching Information', questionCount: 4 },
+      { typeId: 'reading-matching-information', typeName: 'Matching Information', questionCount: 4 },
       { typeId: 'reading-yes-no-not-given', typeName: 'Yes / No / Not Given', questionCount: 4 },
     ],
   },
@@ -379,7 +366,6 @@ export const createGroupsFromSlotTemplate = (slot: 'A' | 'B' | 'C'): DraftGroup[
       questions,
       wordBank: [],
       exams: ['IELTS'],
-      boxes: g.typeId === 'reading-arrange-passage' ? ['', '', '', ''] : ['', ''],
       imageUrl: '',
     };
   });

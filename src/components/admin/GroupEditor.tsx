@@ -43,9 +43,6 @@ export default function GroupEditor({
     onChange({ questions: group.questions.map((q, j) => (j === qi ? { ...q, ...patch } : q)) });
 
   const allowedExams = examsFor(type);
-  const boxLabels = group.boxes
-    .map((box, index) => (box.trim() ? labelFor(index) : ''))
-    .filter(Boolean);
 
   const toggleExam = (exam: ExamType) => {
     const next = group.exams.includes(exam)
@@ -109,18 +106,6 @@ export default function GroupEditor({
                   </p>
                 )}
               </div>
-
-              {type.style === 'boxes' && (
-                <Field label="Boxes to order — one per line, lettered A, B, C… in the order you type them">
-                  <textarea
-                    value={group.boxes.join('\n')}
-                    onChange={e => onChange({ boxes: e.target.value.split(/\r?\n/) })}
-                    rows={6}
-                    placeholder={'The earliest use of the bean.\nThe bean reaches Europe.\nThe press is invented.'}
-                    className="w-full rounded-xl border border-input bg-card p-3 text-xs font-mono"
-                  />
-                </Field>
-              )}
 
               {type.image && (
                 <Field label="Diagram — an image URL (https: or data:), labels numbered 1, 2, 3… in question order">
@@ -190,7 +175,7 @@ export default function GroupEditor({
                     key={qi}
                     number={qi + 1}
                     type={type}
-                    labels={type.style === 'boxes' ? boxLabels : labels}
+                    labels={labels}
                     wordBank={group.wordBank.map(word => word.trim()).filter(Boolean)}
                     question={question}
                     onChange={patch => patchQuestion(qi, patch)}
@@ -486,13 +471,11 @@ function QuestionEditor({ number, type, labels, wordBank, question, onChange, on
         </Field>
       )}
 
-      {(type.style === 'paragraph' || type.style === 'boxes') && (
-        <Field label={type.style === 'boxes' ? 'The box that belongs here' : 'Correct paragraph'}>
+      {type.style === 'paragraph' && (
+        <Field label="Correct paragraph">
           {labels.length === 0 ? (
             <p className="text-[11px] text-amber-600 dark:text-amber-400">
-              {type.style === 'boxes'
-                ? 'Write the boxes above — they become the answers.'
-                : 'Paste the passage first — its paragraphs become the answers.'}
+              Paste the passage first — its paragraphs become the answers.
             </p>
           ) : (
             <select

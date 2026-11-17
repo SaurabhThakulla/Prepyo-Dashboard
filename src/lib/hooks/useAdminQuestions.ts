@@ -4,7 +4,7 @@ import { ExamType, SkillType } from '@/lib/types';
 
 export type FieldUse = '' | 'optional' | 'required';
 // gaps, matching and gaps-or-letters: IELTS Listening practice items, one numbered gap per question.
-export type AnswerKind = 'rubric' | 'single' | 'multiple' | 'blanks' | 'dictation' | 'gaps' | 'matching' | 'gaps-or-letters';
+export type AnswerKind = 'rubric' | 'single' | 'multiple' | 'blanks' | 'dictation';
 
 export interface QuestionTypeSpec {
   exam: ExamType;
