@@ -5,7 +5,6 @@ import {
   Check,
   ChevronRight,
   Copy,
-  CreditCard,
   Crop,
   ExternalLink,
   GraduationCap,
@@ -22,21 +21,18 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { formatExamDate } from '@/lib/dates';
 import { ApiError, errorMessage } from '@/lib/api';
 import {
   ExamCode,
   fetchSignature,
   InstitutionAccount,
   InstitutionProfile,
-  PLANS,
   ReceiptSignature,
   removeSignatureImage,
   saveBrandColor,
   saveProfile,
   saveSigner,
   SIGNATURE_IMAGE_URL,
-  STUDENT_ALLOWANCE,
   uploadLogo,
   uploadSignature,
 } from './api';
@@ -59,10 +55,9 @@ import {
 
 const CONTACT = 'contact@prepyo.online';
 const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
-const STATUS_LABEL = { active: 'Active', expired: 'Ended', none: 'No plan yet' } as const;
 const FIELD = 'h-10 rounded-lg text-sm font-normal';
 
-type PanelId = 'details' | 'exams' | 'branding' | 'signature' | 'signin' | 'plan' | 'account';
+type PanelId = 'details' | 'exams' | 'branding' | 'signature' | 'signin' | 'account';
 
 /** The saved profile as a form starts from: an institution Prepyo created may have gaps. */
 function draftOf(profile: InstitutionProfile): InstitutionProfile {
@@ -78,8 +73,8 @@ function draftOf(profile: InstitutionProfile): InstitutionProfile {
 /**
  * The institution's settings: one card per setting, each opening a panel
  * with just that setting. Details, exams and colour are saved from their
- * panel; a logo is stored as soon as it is chosen; plan and account are
- * shown, as Prepyo changes them.
+ * panel; a logo is stored as soon as it is chosen; the account is shown,
+ * as Prepyo changes it. Credits live on the Subscription page.
  */
 export default function SettingsSection({
   account,
@@ -99,7 +94,6 @@ export default function SettingsSection({
       .catch(() => setSignature(null));
   }, []);
   const profile = draftOf(institution.profile);
-  const plan = institution.plan ? PLANS[institution.plan] : null;
   const signInAddress = window.location.origin + LOGIN_PATH;
 
   const place = [profile.city, institution.profile.city ? branchesLabel(profile.branches) : '', studentRangeLabel(profile.monthlyStudents) && `${studentRangeLabel(profile.monthlyStudents)} students a month`]
@@ -132,14 +126,6 @@ export default function SettingsSection({
             : 'Sign your fee receipts',
     },
     { id: 'signin', icon: Link2, title: 'Sign-in page', summary: signInAddress.replace(/^https?:\/\//, '') },
-    {
-      id: 'plan',
-      icon: CreditCard,
-      title: 'Plan',
-      summary: plan
-        ? `${plan.name} · ${STATUS_LABEL[institution.status] ?? STATUS_LABEL.none}${institution.validUntil ? ` until ${formatExamDate(institution.validUntil)}` : ''}`
-        : 'No plan yet',
-    },
     { id: 'account', icon: UserRound, title: 'Your account', summary: admin.email },
   ];
 
@@ -177,7 +163,6 @@ export default function SettingsSection({
               {open === 'branding' && <BrandingPanel account={account} onSaved={onSaved} onClose={() => setOpen(null)} />}
               {open === 'signature' && <SignaturePanel signature={signature ?? null} onChanged={setSignature} onClose={() => setOpen(null)} />}
               {open === 'signin' && <SignInPanel address={signInAddress} />}
-              {open === 'plan' && <PlanPanel account={account} />}
               {open === 'account' && <AccountPanel account={account} />}
             </SheetPrimitive.Content>
           )}
@@ -756,36 +741,6 @@ function SignInPanel({ address }: { address: string }) {
         <Button asChild variant="outline" className="h-9 rounded-lg font-medium">
           <a href={address} target="_blank" rel="noreferrer">
             <ExternalLink className="mr-1.5 h-4 w-4" /> Open the page
-          </a>
-        </Button>
-      </PanelBody>
-    </>
-  );
-}
-
-function PlanPanel({ account }: { account: InstitutionAccount }) {
-  const { institution } = account;
-  const plan = institution.plan ? PLANS[institution.plan] : null;
-  const planExams = institution.planExams?.length ? institution.planExams : EXAM_CHOICES.map(exam => exam.id);
-  return (
-    <>
-      <PanelHeader title="Plan" description="Set by Prepyo. Write to us to change it." />
-      <PanelBody>
-        <dl className="divide-y divide-border rounded-lg border border-border">
-          <Fact label="Plan" value={plan ? plan.name : 'No plan yet'} />
-          <Fact label="Students" value={`${institution.seatLimit} seats`} />
-          <Fact
-            label="Status"
-            value={`${STATUS_LABEL[institution.status] ?? STATUS_LABEL.none}${
-              institution.validUntil ? ` · ${institution.status === 'expired' ? 'ended' : 'until'} ${formatExamDate(institution.validUntil)}` : ''
-            }`}
-          />
-          <Fact label="Exams" value={planExams.map(examName).join(', ')} />
-        </dl>
-        <p className="text-muted-foreground">Each student gets {STUDENT_ALLOWANCE}.</p>
-        <Button asChild variant="outline" className="h-9 rounded-lg font-medium">
-          <a href={`mailto:${CONTACT}?subject=${encodeURIComponent(`Plan for ${institution.name}`)}`}>
-            <Mail className="mr-1.5 h-4 w-4" /> Contact Prepyo
           </a>
         </Button>
       </PanelBody>

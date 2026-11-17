@@ -101,7 +101,7 @@ export default function DashboardPage() {
       {page === 'mocks' && <InstituteMocksSection account={account} />}
       {page === 'subscription' && (
         <div className="space-y-6">
-          <PageHero eyebrow="Plan" eyebrowIcon={CreditCard} title="Subscription" subtitle={`${institution.name} · your plan, seats and renewal`} />
+          <PageHero eyebrow="Plan" eyebrowIcon={CreditCard} title="Subscription" subtitle={`${institution.name} · your credits, packs and credit history`} />
           <SubscriptionSection account={account} />
         </div>
       )}

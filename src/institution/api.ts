@@ -2,18 +2,50 @@
 import { api } from '@/lib/api';
 import type { Evaluation } from '@/lib/types';
 
-// none = no plan yet (no seats); expired = students get reading and listening only.
+// none = no credits bought yet; active = credits left or students with access;
+// expired = every credit used and every student's access ended.
 export type InstitutionStatus = 'none' | 'active' | 'expired';
 
-export type InstitutionPlan = 'basic' | 'extended' | 'ultimate' | 'custom';
+// Credits are bought per exam group, priced apart: IELTS and PTE, and EPS-TOPIK and JLPT.
+export interface Credits {
+  ieltsPte: number;
+  epsJlpt: number;
+}
+export type CreditGroup = keyof Credits;
 
-// Seats per plan; every student gets the same allowance on all of them. A custom
-// plan has the seats Prepyo agrees with the institution (its seatLimit), so 0 here.
-export const PLANS: Record<InstitutionPlan, { name: string; seats: number }> = {
-  basic: { name: 'Basic', seats: 10 },
-  extended: { name: 'Extended', seats: 25 },
-  ultimate: { name: 'Ultimate', seats: 50 },
-  custom: { name: 'Custom', seats: 0 },
+// The API's name for each group (institution_credits.exam_group) and how it reads.
+export const CREDIT_GROUPS: { key: CreditGroup; api: 'ielts_pte' | 'eps_jlpt'; label: string }[] = [
+  { key: 'ieltsPte', api: 'ielts_pte', label: 'IELTS, PTE' },
+  { key: 'epsJlpt', api: 'eps_jlpt', label: 'EPS-TOPIK, JLPT' },
+];
+
+/** The credit group a student on this exam uses. */
+export const creditGroupOf = (exam: string): CreditGroup => (exam === 'EPS_TOPIK' || exam === 'JLPT' ? 'epsJlpt' : 'ieltsPte');
+
+// One credit gives one student this many days of access.
+export const ACCESS_DAYS = 30;
+
+// What one credit costs by how many are bought at once, in rupees: the more,
+// the cheaper. `to` null is open-ended. Keep in step with creditTiers and
+// MinCredits (Prepyo-Backend/internal/institution/institution.go).
+export const MIN_CREDITS = 5;
+export const CREDIT_TIERS: { from: number; to: number | null; perCredit: Credits }[] = [
+  { from: MIN_CREDITS, to: 25, perCredit: { ieltsPte: 400, epsJlpt: 200 } },
+  { from: 26, to: 50, perCredit: { ieltsPte: 350, epsJlpt: 180 } },
+  { from: 51, to: null, perCredit: { ieltsPte: 300, epsJlpt: 150 } },
+];
+
+/** The price tier `count` credits bought at once fall in; undefined under MIN_CREDITS. */
+export const creditTier = (count: number) => [...CREDIT_TIERS].reverse().find(t => count >= t.from);
+
+/** The credits left in both groups, in a few words. */
+export const creditSummary = (credits?: Credits) =>
+  `${credits?.ieltsPte ?? 0} IELTS/PTE · ${credits?.epsJlpt ?? 0} EPS/JLPT`;
+
+/** What `count` credits for the group cost bought at once, in rupees; 0 under MIN_CREDITS. */
+export const creditsPrice = (group: CreditGroup, count: number) => {
+  const tier = creditTier(count);
+  return tier ? count * tier.perCredit[group] : 0;
 };
 
 export const STUDENT_ALLOWANCE =
@@ -24,10 +56,6 @@ export const AI_GRADINGS_PER_MONTH = 1100;
 /** When AI gradings next reset: the 1st of next month (UTC), as the server counts them. YYYY-MM-DD. */
 export const nextGradingReset = (now = new Date()) =>
   new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
-
-// What Prepyo charges per student seat a month, in rupees. Keep in step with
-// PricePerTenSeatsNPR (Prepyo-Backend/internal/institution/institution.go), which is 10 seats.
-export const PRICE_PER_STUDENT_NPR = 300;
 
 export type ExamCode = 'IELTS' | 'PTE' | 'EPS_TOPIK' | 'JLPT';
 
@@ -46,9 +74,10 @@ export interface InstitutionAccount {
     name: string;
     code: string;
     status: InstitutionStatus;
-    plan: InstitutionPlan | '';
-    validUntil?: string;
-    seatLimit: number;
+    // Credits left to give students, per exam group.
+    credits: Credits;
+    // Students whose credit-paid access is running now.
+    studentsWithAccess: number;
     // The exams Prepyo's plan includes: students can be given only these.
     planExams?: ExamCode[];
     profile: InstitutionProfile;
@@ -74,6 +103,8 @@ export interface Student {
   email?: string;
   createdAt: string;
   disabled: boolean;
+  // When the student's credit-paid access ends; after it they are off until given another credit.
+  accessUntil?: string | null;
   exam: ExamCode;
   batchId: string | null;
   usage: StudentUsage;
@@ -227,21 +258,41 @@ export const uploadSignature = (file: Blob) => api.upload<{ signature: ReceiptSi
 export const removeSignatureImage = () => api.delete<{ signature: ReceiptSignature }>('/institution/signature/image');
 
 // The admin's students. A password comes back only when it is created or reset.
+/** A student is off when turned off, or when their credit-paid access has ended. */
+export const accessEnded = (student: Pick<Student, 'accessUntil'>, now = Date.now()) =>
+  !student.accessUntil || new Date(student.accessUntil).getTime() <= now;
+
+// One change to the institution's credits: a pack added (+size) or a credit given to a student (-1).
+export interface CreditEntry {
+  group: 'ielts_pte' | 'eps_jlpt';
+  change: number;
+  priceNpr?: number;
+  studentName?: string;
+  at: string;
+}
+
+export const fetchCreditLog = () => api.get<{ credits: CreditEntry[] }>('/institution/credits');
+
 export const fetchStudents = (days: number) => api.get<{ students: Student[] }>(`/institution/students?days=${days}`);
 
 export const fetchStudentActivity = (id: string, days: number) =>
   api.get<StudentActivity>(`/institution/students/${id}/activity?days=${days}`);
 
 // A disabled student cannot sign in; their history and seat are kept.
+/** Uses a credit of the student's exam group: 30 more days of AI marking and full access. */
+export const activateStudent = (id: string) => api.post<{ accessUntil: string }>(`/institution/students/${id}/activate`);
+
 export const setStudentDisabled = (id: string, disabled: boolean) =>
   api.put(`/institution/students/${id}/disabled`, { disabled });
 
-export const addStudent = (name: string, exam: ExamCode, batchId = '', email = '') =>
+/** Adds a student; with no password one is generated, which they must change at first sign-in. */
+export const addStudent = (name: string, exam: ExamCode, batchId = '', email = '', password = '') =>
   api.post<{ student: Student; password: string }>('/institution/students', {
     name,
     exam,
     ...(batchId ? { batchId } : {}),
     ...(email ? { email } : {}),
+    ...(password ? { password } : {}),
   });
 
 // An empty batchId takes the student out of their batch.
@@ -289,8 +340,9 @@ export const saveTargets = (targets: Partial<Record<TargetExam, number | null>>)
 // Switches the exam the student practises; their target score is cleared.
 export const setStudentExam = (id: string, exam: ExamCode) => api.put(`/institution/students/${id}/exam`, { exam });
 
-export const resetStudentPassword = (id: string) =>
-  api.post<{ password: string }>(`/institution/students/${id}/reset-password`);
+/** Gives a student a new password: the one typed, or a generated one they must change at next sign-in. */
+export const resetStudentPassword = (id: string, password = '') =>
+  api.post<{ password: string }>(`/institution/students/${id}/reset-password`, password ? { password } : undefined);
 
 export const removeStudent = (id: string) => api.delete(`/institution/students/${id}`);
 

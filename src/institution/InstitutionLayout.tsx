@@ -19,7 +19,7 @@ import {
   SidebarProvider,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { InstitutionAccount, PLANS } from './api';
+import { creditSummary, InstitutionAccount } from './api';
 import { sectionPath } from './paths';
 import BrandMark from './BrandMark';
 import { brandGradient, useBrandColor } from './brand';
@@ -87,7 +87,6 @@ function InstitutionSidebar({ account, signingOut, onSignOut }: { account: Insti
   const { institution, admin } = account;
   const { pathname } = useLocation();
   const { isMobile, setOpenMobile, open, toggleSidebar } = useSidebar();
-  const plan = institution.plan ? PLANS[institution.plan] : null;
 
   // Picking a page closes the phone menu.
   useEffect(() => {
@@ -144,13 +143,9 @@ function InstitutionSidebar({ account, signingOut, onSignOut }: { account: Insti
 
         <SidebarFooter className="gap-2 p-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
           <div className="rounded-2xl border border-white/15 bg-white/10 p-3 text-xs group-data-[collapsible=icon]:hidden">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-white/60">Plan</p>
-            <p className="mt-0.5 font-display text-sm font-bold">{plan ? `${plan.name} · ${institution.seatLimit} students` : 'No plan yet'}</p>
-            {institution.validUntil && (
-              <p className="mt-0.5 text-white/70">
-                {institution.status === 'expired' ? 'Ended' : 'Until'} {formatExamDate(institution.validUntil)}
-              </p>
-            )}
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-white/60">Credits left</p>
+            <p className="mt-0.5 font-display text-sm font-bold">{creditSummary(institution.credits)}</p>
+            <p className="mt-0.5 text-white/70">{institution.studentsWithAccess ?? 0} students with access</p>
           </div>
           <SidebarMenu>
             <SidebarMenuItem>
@@ -188,7 +183,6 @@ function InstitutionSidebar({ account, signingOut, onSignOut }: { account: Insti
 function TopBar({ account, title, signingOut, onSignOut }: { account: InstitutionAccount; title: string; signingOut: boolean; onSignOut: () => void }) {
   const { institution, admin } = account;
   const { toggleSidebar } = useSidebar();
-  const plan = institution.plan ? PLANS[institution.plan] : null;
   const expired = institution.status !== 'active';
 
   return (
@@ -213,9 +207,9 @@ function TopBar({ account, title, signingOut, onSignOut }: { account: Institutio
       </div>
 
       <div className="flex min-w-0 shrink-0 items-center gap-3">
-        {plan && (
+        {institution.status !== 'none' && (
           <div
-            title="Your plan"
+            title="Credits left"
             className={`hidden h-9 items-center gap-1.5 rounded-full border pl-1 pr-3 shadow-sm md:flex ${
               expired ? 'border-rose-500/30 bg-rose-500/10' : 'border-border bg-card'
             }`}
@@ -228,13 +222,8 @@ function TopBar({ account, title, signingOut, onSignOut }: { account: Institutio
               <Building2 className="h-3.5 w-3.5 text-white" />
             </span>
             <span className={`whitespace-nowrap text-xs font-bold ${expired ? 'text-rose-600 dark:text-rose-400' : 'text-foreground'}`}>
-              {plan.name} plan
-              {institution.validUntil && (
-                <span className="font-medium text-muted-foreground">
-                  {' '}
-                  · {institution.status === 'expired' ? 'ended' : 'until'} {formatExamDate(institution.validUntil)}
-                </span>
-              )}
+              Credits
+              <span className="font-medium text-muted-foreground"> · {creditSummary(institution.credits)}</span>
             </span>
           </div>
         )}

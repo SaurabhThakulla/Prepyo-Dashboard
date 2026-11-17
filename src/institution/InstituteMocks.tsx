@@ -44,6 +44,7 @@ import {
   saveInstituteMock,
   saveMockReview,
   Student,
+  accessEnded,
 } from './api';
 import { FormError } from './FormField';
 import IeltsReviewScreen, { bandText } from './IeltsReview';
@@ -1249,7 +1250,7 @@ function StudentsPicker({
   onOpensAt: (v: string) => void;
   onClosesAt: (v: string) => void;
 }) {
-  const pte = useMemo(() => students.filter(s => s.exam === exam && !s.disabled), [students, exam]);
+  const pte = useMemo(() => students.filter(s => s.exam === exam && !s.disabled && !accessEnded(s)), [students, exam]);
   const others = students.filter(s => s.exam !== exam);
   const toggle = (id: string) => onSelect(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
   const addAll = (ids: string[]) => onSelect([...new Set([...selected, ...ids])]);
