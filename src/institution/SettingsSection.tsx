@@ -5,7 +5,7 @@ import {
   Check,
   ChevronRight,
   Copy,
-  CreditCard,
+  Crop,
   ExternalLink,
   GraduationCap,
   ImagePlus,
@@ -21,26 +21,24 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { formatExamDate } from '@/lib/dates';
 import { ApiError, errorMessage } from '@/lib/api';
 import {
   ExamCode,
   fetchSignature,
   InstitutionAccount,
   InstitutionProfile,
-  PLANS,
   ReceiptSignature,
   removeSignatureImage,
   saveBrandColor,
   saveProfile,
   saveSigner,
   SIGNATURE_IMAGE_URL,
-  STUDENT_ALLOWANCE,
   uploadLogo,
   uploadSignature,
 } from './api';
-import { dashboardPath } from './paths';
+import { LOGIN_PATH } from './paths';
 import BrandMark from './BrandMark';
+import LogoAdjuster from './LogoAdjuster';
 import { useConfirm } from './ui';
 import {
   BRAND_COLORS,
@@ -57,10 +55,9 @@ import {
 
 const CONTACT = 'contact@prepyo.online';
 const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
-const STATUS_LABEL = { active: 'Active', expired: 'Ended', none: 'No plan yet' } as const;
 const FIELD = 'h-10 rounded-lg text-sm font-normal';
 
-type PanelId = 'details' | 'exams' | 'branding' | 'signature' | 'signin' | 'plan' | 'account';
+type PanelId = 'details' | 'exams' | 'branding' | 'signature' | 'signin' | 'account';
 
 /** The saved profile as a form starts from: an institution Prepyo created may have gaps. */
 function draftOf(profile: InstitutionProfile): InstitutionProfile {
@@ -76,8 +73,8 @@ function draftOf(profile: InstitutionProfile): InstitutionProfile {
 /**
  * The institution's settings: one card per setting, each opening a panel
  * with just that setting. Details, exams and colour are saved from their
- * panel; a logo is stored as soon as it is chosen; plan and account are
- * shown, as Prepyo changes them.
+ * panel; a logo is stored as soon as it is chosen; the account is shown,
+ * as Prepyo changes it. Credits live on the Subscription page.
  */
 export default function SettingsSection({
   account,
@@ -97,8 +94,7 @@ export default function SettingsSection({
       .catch(() => setSignature(null));
   }, []);
   const profile = draftOf(institution.profile);
-  const plan = institution.plan ? PLANS[institution.plan] : null;
-  const signInAddress = window.location.origin + dashboardPath(institution.code);
+  const signInAddress = window.location.origin + LOGIN_PATH;
 
   const place = [profile.city, institution.profile.city ? branchesLabel(profile.branches) : '', studentRangeLabel(profile.monthlyStudents) && `${studentRangeLabel(profile.monthlyStudents)} students a month`]
     .filter(Boolean)
@@ -129,15 +125,7 @@ export default function SettingsSection({
             ? [signature.signerName, signature.signerTitle].filter(Boolean).join(' · ') || 'Signature added'
             : 'Sign your fee receipts',
     },
-    { id: 'signin', icon: Link2, title: 'Student sign-in page', summary: signInAddress.replace(/^https?:\/\//, '') },
-    {
-      id: 'plan',
-      icon: CreditCard,
-      title: 'Plan',
-      summary: plan
-        ? `${plan.name} · ${STATUS_LABEL[institution.status] ?? STATUS_LABEL.none}${institution.validUntil ? ` until ${formatExamDate(institution.validUntil)}` : ''}`
-        : 'No plan yet',
-    },
+    { id: 'signin', icon: Link2, title: 'Sign-in page', summary: signInAddress.replace(/^https?:\/\//, '') },
     { id: 'account', icon: UserRound, title: 'Your account', summary: admin.email },
   ];
 
@@ -174,8 +162,7 @@ export default function SettingsSection({
               {open === 'exams' && <ExamsPanel account={account} onSaved={onSaved} onClose={() => setOpen(null)} />}
               {open === 'branding' && <BrandingPanel account={account} onSaved={onSaved} onClose={() => setOpen(null)} />}
               {open === 'signature' && <SignaturePanel signature={signature ?? null} onChanged={setSignature} onClose={() => setOpen(null)} />}
-              {open === 'signin' && <SignInPanel account={account} address={signInAddress} />}
-              {open === 'plan' && <PlanPanel account={account} />}
+              {open === 'signin' && <SignInPanel address={signInAddress} />}
               {open === 'account' && <AccountPanel account={account} />}
             </SheetPrimitive.Content>
           )}
@@ -463,13 +450,17 @@ function PanelFooter({
   error,
   onCancel,
   onSave,
+  savedAlready = false,
 }: {
   dirty: boolean;
   saving: boolean;
   error: string | null;
   onCancel: () => void;
   onSave: () => void;
+  /** Something in the panel saved on its own (the logo): with nothing else changed, the button closes it. */
+  savedAlready?: boolean;
 }) {
+  const done = savedAlready && !dirty;
   return (
     <div className="space-y-2 px-5 pb-5 pt-2">
       {error && (
@@ -478,12 +469,14 @@ function PanelFooter({
         </p>
       )}
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={saving} className="h-9 rounded-lg font-medium">
-          Cancel
-        </Button>
-        <Button type="button" onClick={onSave} disabled={!dirty || saving} className="h-9 rounded-lg font-medium">
+        {!done && (
+          <Button type="button" variant="outline" onClick={onCancel} disabled={saving} className="h-9 rounded-lg font-medium">
+            Cancel
+          </Button>
+        )}
+        <Button type="button" onClick={done ? onCancel : onSave} disabled={(!dirty && !done) || saving} className="h-9 rounded-lg font-medium">
           {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-          Save
+          {done ? 'Done' : 'Save'}
         </Button>
       </div>
     </div>
@@ -666,6 +659,8 @@ function ExamsPanel({ account, onSaved, onClose }: { account: InstitutionAccount
 
 function BrandingPanel({ account, onSaved, onClose }: { account: InstitutionAccount; onSaved: (a: InstitutionAccount) => void; onClose: () => void }) {
   const { draft, update, problems, saving, error, save, dirty } = useProfileDraft(account, onSaved, onClose);
+  // A new or adjusted logo is saved the moment it is chosen, unlike the colour.
+  const [logoSaved, setLogoSaved] = useState(false);
   const check = (p: InstitutionProfile) => {
     const found: Record<string, string> = {};
     if (!validColor(p.brandColor)) found.brandColor = 'Choose a brand colour.';
@@ -674,9 +669,17 @@ function BrandingPanel({ account, onSaved, onClose }: { account: InstitutionAcco
 
   return (
     <>
-      <PanelHeader title="Logo & colour" description="How your students' sign-in page looks." />
+      <PanelHeader title="Logo & colour" description="Shown on your dashboard, fee receipts and the emails your students get." />
       <PanelBody>
-        <LogoField account={account} color={draft.brandColor} onSaved={onSaved} />
+        <LogoField
+          account={account}
+          color={draft.brandColor}
+          saved={logoSaved}
+          onSaved={next => {
+            setLogoSaved(true);
+            onSaved(next);
+          }}
+        />
         <div className="space-y-2">
           <p className="font-medium text-foreground">Brand colour</p>
           <div className="flex flex-wrap items-center gap-2">
@@ -712,16 +715,22 @@ function BrandingPanel({ account, onSaved, onClose }: { account: InstitutionAcco
         </div>
         <SignInPreview name={account.institution.name} logoUrl={account.institution.logoUrl} color={draft.brandColor} exams={draft.exams} />
       </PanelBody>
-      <PanelFooter dirty={dirty} saving={saving} error={error} onCancel={onClose} onSave={() => void save(check, p => saveBrandColor(p.brandColor))} />
+      <PanelFooter
+        dirty={dirty}
+        saving={saving}
+        error={error}
+        savedAlready={logoSaved}
+        onCancel={onClose}
+        onSave={() => void save(check, p => saveBrandColor(p.brandColor))}
+      />
     </>
   );
 }
 
-function SignInPanel({ account, address }: { account: InstitutionAccount; address: string }) {
-  const { institution } = account;
+function SignInPanel({ address }: { address: string }) {
   return (
     <>
-      <PanelHeader title="Student sign-in page" description="Where your students sign in, with the username and password you give them." />
+      <PanelHeader title="Sign-in page" description="Where you and your students sign in, with email and password." />
       <PanelBody>
         <Field label="Address">
           <div className="flex gap-2">
@@ -732,37 +741,6 @@ function SignInPanel({ account, address }: { account: InstitutionAccount; addres
         <Button asChild variant="outline" className="h-9 rounded-lg font-medium">
           <a href={address} target="_blank" rel="noreferrer">
             <ExternalLink className="mr-1.5 h-4 w-4" /> Open the page
-          </a>
-        </Button>
-        <SignInPreview name={institution.name} logoUrl={institution.logoUrl} color={draftOf(institution.profile).brandColor} exams={institution.profile.exams} />
-      </PanelBody>
-    </>
-  );
-}
-
-function PlanPanel({ account }: { account: InstitutionAccount }) {
-  const { institution } = account;
-  const plan = institution.plan ? PLANS[institution.plan] : null;
-  const planExams = institution.planExams?.length ? institution.planExams : EXAM_CHOICES.map(exam => exam.id);
-  return (
-    <>
-      <PanelHeader title="Plan" description="Set by Prepyo. Write to us to change it." />
-      <PanelBody>
-        <dl className="divide-y divide-border rounded-lg border border-border">
-          <Fact label="Plan" value={plan ? plan.name : 'No plan yet'} />
-          <Fact label="Students" value={`${institution.seatLimit} seats`} />
-          <Fact
-            label="Status"
-            value={`${STATUS_LABEL[institution.status] ?? STATUS_LABEL.none}${
-              institution.validUntil ? ` · ${institution.status === 'expired' ? 'ended' : 'until'} ${formatExamDate(institution.validUntil)}` : ''
-            }`}
-          />
-          <Fact label="Exams" value={planExams.map(examName).join(', ')} />
-        </dl>
-        <p className="text-muted-foreground">Each student gets {STUDENT_ALLOWANCE}.</p>
-        <Button asChild variant="outline" className="h-9 rounded-lg font-medium">
-          <a href={`mailto:${CONTACT}?subject=${encodeURIComponent(`Plan for ${institution.name}`)}`}>
-            <Mail className="mr-1.5 h-4 w-4" /> Contact Prepyo
           </a>
         </Button>
       </PanelBody>
@@ -867,11 +845,22 @@ function CopyButton({ text }: { text: string }) {
 }
 
 /** The logo, stored as soon as it is chosen, so it never waits on the colour. */
-function LogoField({ account, color, onSaved }: { account: InstitutionAccount; color: string; onSaved: (account: InstitutionAccount) => void }) {
+function LogoField({
+  account,
+  color,
+  saved = false,
+  onSaved,
+}: {
+  account: InstitutionAccount;
+  color: string;
+  saved?: boolean;
+  onSaved: (account: InstitutionAccount) => void;
+}) {
   const { institution } = account;
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirm, confirmDialog] = useConfirm();
+  const [adjusting, setAdjusting] = useState(false);
   const inputId = useId();
 
   const choose = async (file: File | undefined) => {
@@ -880,7 +869,7 @@ function LogoField({ account, color, onSaved }: { account: InstitutionAccount; c
     if (institution.logoUrl) {
       const ok = await confirm({
         title: 'Replace your logo?',
-        description: 'The new logo shows on your sign-in page and fee receipts straight away.',
+        description: 'The new logo shows on your dashboard and fee receipts straight away.',
         confirmLabel: 'Replace logo',
       });
       if (!ok) return;
@@ -916,10 +905,17 @@ function LogoField({ account, color, onSaved }: { account: InstitutionAccount; c
           <BrandMark name={institution.name} logoUrl={institution.logoUrl} color={color} className="h-14 w-14 rounded-xl text-base" />
         )}
         <div className="min-w-0 space-y-1">
-          <label htmlFor={inputId} className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-input bg-background px-3 font-medium text-foreground hover:bg-muted/50">
-            <ImagePlus className="mr-1.5 h-4 w-4" />
-            {institution.logoUrl ? 'Change logo' : 'Upload logo'}
-          </label>
+          <div className="flex flex-wrap gap-2">
+            <label htmlFor={inputId} className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-input bg-background px-3 font-medium text-foreground hover:bg-muted/50">
+              <ImagePlus className="mr-1.5 h-4 w-4" />
+              {institution.logoUrl ? 'Change logo' : 'Upload logo'}
+            </label>
+            {institution.logoUrl && (
+              <Button type="button" variant="outline" className="h-9 rounded-lg font-medium" disabled={uploading} onClick={() => setAdjusting(true)}>
+                <Crop className="mr-1.5 h-4 w-4" /> Adjust logo
+              </Button>
+            )}
+          </div>
           <input
             id={inputId}
             type="file"
@@ -931,11 +927,25 @@ function LogoField({ account, color, onSaved }: { account: InstitutionAccount; c
               event.target.value = '';
             }}
           />
-          <p className="text-xs text-muted-foreground">PNG, JPEG or WebP, up to 2 MB. Saved straight away.</p>
+          {saved && !uploading ? (
+            <p className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400" role="status">
+              <Check className="h-3.5 w-3.5" strokeWidth={3} /> Logo saved
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">PNG, JPEG or WebP, up to 2 MB. Saved straight away.</p>
+          )}
         </div>
       </div>
       {error && <FieldError message={error} />}
       {confirmDialog}
+      {institution.logoUrl && (
+        <LogoAdjuster
+          open={adjusting}
+          logoUrl={institution.logoUrl}
+          onClose={() => setAdjusting(false)}
+          onSaved={logoUrl => onSaved({ ...account, institution: { ...institution, logoUrl } })}
+        />
+      )}
     </div>
   );
 }

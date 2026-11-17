@@ -7,7 +7,19 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { api, errorMessage } from '@/lib/api';
-import { PLANS, type ExamCode, type InstitutionPlan, type InstitutionProfile } from '@/institution/api';
+import {
+  CREDIT_GROUPS,
+  creditSummary,
+  CREDIT_TIERS,
+  creditTier,
+  creditsPrice,
+  MIN_CREDITS,
+  type CreditEntry,
+  type CreditGroup,
+  type Credits,
+  type ExamCode,
+  type InstitutionProfile,
+} from '@/institution/api';
 import { branchesLabel, EXAM_CHOICES, examName, STUDENT_RANGES, studentRangeLabel } from '@/institution/profile';
 
 interface Usage {
@@ -24,9 +36,12 @@ export interface Consultancy {
   code: string;
   phone: string;
   status: 'none' | 'active' | 'expired';
-  plan: InstitutionPlan | '';
-  validUntil: string | null;
-  seatLimit: number;
+  // Credits left to give its students, per exam group.
+  credits: Credits;
+  // Students whose credit-paid access is running now.
+  studentsWithAccess: number;
+  // What the packs added this calendar month cost, in rupees.
+  packSalesNpr: number;
   // The exams the plan includes: the consultancy can give its students only these.
   planExams: ExamCode[];
   createdAt: string;
@@ -38,8 +53,6 @@ export interface Consultancy {
   students: number;
   activeStudents: number;
   usage: Usage;
-  // What the plan costs a month, at NPR 3,000 per 10 seats.
-  monthlyPriceNpr: number;
   // AI gradings each calendar month: per student, and for all students together (null: no cap).
   aiGradingsPerStudent: number;
   aiGradingsTotal: number | null;
@@ -175,17 +188,17 @@ export default function AdminConsultanciesPage() {
 
       {list.length > 0 && (
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
-          <Stat label="Consultancies" value={String(list.length)} hint={`${list.filter(c => c.status === 'none').length} without a plan`} />
-          <Stat label="Active plans" value={String(list.filter(c => c.status === 'active').length)} hint={`${list.filter(c => c.status === 'expired').length} expired`} />
+          <Stat label="Consultancies" value={String(list.length)} hint={`${list.filter(c => c.status === 'none').length} without credits yet`} />
+          <Stat label="Active" value={String(list.filter(c => c.status === 'active').length)} hint={`${list.filter(c => c.status === 'expired').length} used up`} />
           <Stat
             label="Students"
             value={String(list.reduce((n, c) => n + c.students, 0))}
             hint={`${list.reduce((n, c) => n + c.activeStudents, 0)} active in ${period.toLowerCase()}`}
           />
           <Stat
-            label="Monthly revenue"
-            value={`NPR ${list.filter(c => c.status === 'active').reduce((n, c) => n + c.monthlyPriceNpr, 0).toLocaleString()}`}
-            hint="from active plans"
+            label="Packs this month"
+            value={`NPR ${list.reduce((n, c) => n + (c.packSalesNpr ?? 0), 0).toLocaleString()}`}
+            hint="credit packs added"
           />
           <Stat
             label="AI cost"
@@ -246,7 +259,7 @@ export default function AdminConsultanciesPage() {
 
 /** One consultancy as a full-width row of the list; opens its dialog. */
 function ConsultancyCard({ consultancy: c, onOpen }: { consultancy: Consultancy; onOpen: () => void }) {
-  const seatsUsed = c.seatLimit > 0 ? Math.min(100, (c.students / c.seatLimit) * 100) : 0;
+  const withAccess = c.students > 0 ? Math.min(100, ((c.studentsWithAccess ?? 0) / c.students) * 100) : 0;
   return (
     <button
       type="button"
@@ -276,13 +289,13 @@ function ConsultancyCard({ consultancy: c, onOpen }: { consultancy: Consultancy;
         <div className="flex items-baseline justify-between text-xs max-w-[7.5rem]">
           <span className="text-[11px] font-medium text-muted-foreground">Students</span>
           <span className="font-semibold text-foreground tabular-nums">
-            {c.students} / {c.seatLimit}
+            {c.studentsWithAccess ?? 0} / {c.students}
           </span>
         </div>
         <div className="h-1 max-w-[7.5rem] overflow-hidden rounded-full bg-muted">
-          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${seatsUsed}%` }} />
+          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${withAccess}%` }} />
         </div>
-        <div className="text-[11px] text-muted-foreground">{c.activeStudents} active</div>
+        <div className="text-[11px] text-muted-foreground">with access · {c.activeStudents} active</div>
       </div>
 
       {/* AI gradings */}
@@ -310,14 +323,8 @@ function ConsultancyCard({ consultancy: c, onOpen }: { consultancy: Consultancy;
       {/* Plan */}
       <div className="flex items-center justify-between gap-2 text-xs lg:block lg:text-right">
         <div>
-          {c.plan ? (
-            <>
-              <div className="text-xs font-bold text-foreground">{PLANS[c.plan].name}</div>
-              <div className="text-[11px] text-muted-foreground">NPR {c.monthlyPriceNpr.toLocaleString()}/month</div>
-            </>
-          ) : (
-            <div className="text-xs font-medium text-muted-foreground">No plan</div>
-          )}
+          <div className="text-xs font-bold text-foreground">Credits left</div>
+          <div className="text-[11px] text-muted-foreground">{creditSummary(c.credits)}</div>
         </div>
         <div className="text-[10px] text-muted-foreground lg:mt-0.5">Active {date(c.usage.lastActiveAt)}</div>
       </div>
@@ -468,8 +475,8 @@ function ConsultancyDialog({
                 <Stat
                   icon={Users}
                   label="Students"
-                  value={`${c.students} of ${c.seatLimit}`}
-                  hint={`${c.activeStudents} active in ${period.toLowerCase()}`}
+                  value={`${c.studentsWithAccess ?? 0} of ${c.students}`}
+                  hint={`with access · ${c.activeStudents} active in ${period.toLowerCase()}`}
                 />
                 <Stat
                   icon={Sparkles}
@@ -481,16 +488,15 @@ function ConsultancyDialog({
                 <Stat
                   icon={CalendarDays}
                   tone="emerald"
-                  label="Plan"
-                  value={c.plan ? PLANS[c.plan].name : 'None'}
-                  hint={c.validUntil ? `until ${date(c.validUntil)}` : 'not set'}
+                  label="Credits left"
+                  value={String((c.credits?.ieltsPte ?? 0) + (c.credits?.epsJlpt ?? 0))}
+                  hint={creditSummary(c.credits)}
                 />
                 <Stat
                   icon={Wallet}
                   tone="amber"
-                  label="Price"
-                  value={c.plan ? `NPR ${c.monthlyPriceNpr.toLocaleString()}` : '—'}
-                  hint={c.plan ? 'per month' : undefined}
+                  label="Packs this month"
+                  value={`NPR ${(c.packSalesNpr ?? 0).toLocaleString()}`}
                 />
                 <Stat icon={Cpu} tone="rose" label="AI cost" value={npr(c.aiCostNpr)} hint={costHint(c.aiCostEstimatedNpr)} />
               </div>
@@ -504,10 +510,14 @@ function ConsultancyDialog({
                     <Detail icon={CalendarDays} label="Created" value={date(c.createdAt)} />
                   </div>
                 </Section>
-                <Section icon={CalendarDays} title="Plan" hint="Renew, upgrade or set custom seats">
+                <Section icon={BookOpen} title="Exams" hint="Students can be given only these exams">
                   <PlanForm consultancy={c} onSaved={onSaved} />
                 </Section>
               </div>
+
+              <Section icon={Wallet} title="Credits" hint="Add credits once they are paid. One credit gives one student 30 days">
+                <CreditsForm consultancy={c} onSaved={onSaved} />
+              </Section>
 
               <Section icon={Users} title="Students a month" hint="Roughly how many they prepare. Only Prepyo sets this; the consultancy sees it read-only">
                 <MonthlyStudentsForm consultancy={c} onSaved={onSaved} />
@@ -520,7 +530,7 @@ function ConsultancyDialog({
               <Section
                 icon={Users}
                 title="Students"
-                hint={`${c.students} of ${c.seatLimit} seats · usage over ${period.toLowerCase()}`}
+                hint={`${c.studentsWithAccess ?? 0} of ${c.students} with access · usage over ${period.toLowerCase()}`}
               >
                 <StudentsList consultancyId={c.id} days={days} perStudent={c.aiGradingsPerStudent} />
               </Section>
@@ -531,13 +541,6 @@ function ConsultancyDialog({
     </Dialog>
   );
 }
-
-// A month from today, the usual end date for a new plan.
-const nextMonth = () => {
-  const d = new Date();
-  d.setMonth(d.getMonth() + 1);
-  return d.toISOString().slice(0, 10);
-};
 
 const EMPTY_FORM = { institutionName: '', name: '', email: '', phone: '', password: '' };
 const DEFAULT_GRADINGS = { perStudent: '1100', total: '' };
@@ -552,7 +555,7 @@ const ADMIN_FIELDS: readonly TextField[] = [
   ['password', 'Password (10+ characters)', 'text'],
 ];
 
-/** Adds a consultancy with its admin login, on the plan, end date and AI gradings chosen. */
+/** Adds a consultancy with its admin login and AI gradings; credits are added once it pays. */
 function CreateConsultancyDialog({
   open,
   onOpenChange,
@@ -564,7 +567,6 @@ function CreateConsultancyDialog({
 }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [exams, setExams] = useState<ExamCode[]>([]);
-  const [plan, setPlan] = useState<PlanValue>(newPlan);
   const [aiGradings, setAIGradings] = useState(DEFAULT_GRADINGS);
   const [saving, setSaving] = useState(false);
   const toast = useToast();
@@ -574,7 +576,6 @@ function CreateConsultancyDialog({
     if (open) {
       setForm(EMPTY_FORM);
       setExams([]);
-      setPlan(newPlan());
       setAIGradings(DEFAULT_GRADINGS);
     }
   }, [open]);
@@ -585,12 +586,15 @@ function CreateConsultancyDialog({
       toast.error('Consultancy not created', 'Choose at least one exam the consultancy teaches.');
       return;
     }
+    if (form.password.length < 10) {
+      toast.error('Consultancy not created', 'The admin password needs at least 10 characters.');
+      return;
+    }
     setSaving(true);
     try {
       const made = await api.post<{ name: string; code: string }>('/admin/consultancies', {
         ...form,
         exams,
-        ...planBody(plan),
         // What it teaches is also what its plan includes, until changed on the Plan card.
         planExams: exams,
         aiGradings: gradingsBody(aiGradings.perStudent, aiGradings.total),
@@ -612,7 +616,6 @@ function CreateConsultancyDialog({
           required
           value={form[key]}
           onChange={e => setForm({ ...form, [key]: e.target.value })}
-          minLength={key === 'password' ? 10 : undefined}
         />
       </label>
     ));
@@ -633,11 +636,6 @@ function CreateConsultancyDialog({
           </Section>
           <Section icon={UserRound} title="Admin login">
             <div className="grid gap-3 sm:grid-cols-2">{fields(ADMIN_FIELDS)}</div>
-          </Section>
-          <Section icon={CalendarDays} title="Plan">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <PlanFields value={plan} onChange={setPlan} />
-            </div>
           </Section>
           <Section icon={Sparkles} title="AI gradings" hint="You can change these later">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -705,60 +703,6 @@ function ExamPicker({
   );
 }
 
-/** A plan as the forms hold it; seats is only used on a custom plan. */
-interface PlanValue {
-  plan: string;
-  validUntil: string;
-  seats: string;
-}
-
-const newPlan = (): PlanValue => ({ plan: 'basic', validUntil: nextMonth(), seats: '' });
-
-/** The plan request body: seats go only with a custom plan. */
-const planBody = ({ plan, validUntil, seats }: PlanValue) =>
-  plan === 'custom' ? { plan, validUntil, seats: Number(seats) } : { plan, validUntil };
-
-/** Plan select, students on a custom plan, and end date; shared by the create form and the change-plan form. */
-function PlanFields({ value, onChange }: { value: PlanValue; onChange: (value: PlanValue) => void }) {
-  return (
-    <>
-      <label className="space-y-1 text-[11px] font-bold text-muted-foreground">
-        <span>Plan</span>
-        <select
-          required
-          value={value.plan}
-          onChange={e => onChange({ ...value, plan: e.target.value })}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
-        >
-          {Object.entries(PLANS).map(([id, p]) => (
-            <option key={id} value={id}>
-              {id === 'custom' ? 'Custom · you choose the students' : `${p.name} · ${p.seats} students`}
-            </option>
-          ))}
-        </select>
-      </label>
-      {value.plan === 'custom' && (
-        <label className="space-y-1 text-[11px] font-bold text-muted-foreground">
-          <span>Number of students</span>
-          <Input
-            type="number"
-            min={1}
-            max={10000}
-            required
-            value={value.seats}
-            placeholder="e.g. 40"
-            onChange={e => onChange({ ...value, seats: e.target.value })}
-          />
-        </label>
-      )}
-      <label className="space-y-1 text-[11px] font-bold text-muted-foreground">
-        <span>Plan ends on</span>
-        <Input type="date" required value={value.validUntil} onChange={e => onChange({ ...value, validUntil: e.target.value })} />
-      </label>
-    </>
-  );
-}
-
 /** The AI gradings request body; an empty total means no cap. */
 const gradingsBody = (perStudent: string, total: string) => ({
   perStudent: Number(perStudent),
@@ -801,13 +745,8 @@ function SaveRow({ saving, label }: { saving: boolean; label: string }) {
   );
 }
 
-/** Changes a consultancy's plan or end date, to renew or upgrade it. */
+/** Changes the exams a consultancy's plan includes. */
 function PlanForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved: () => void }) {
-  const [plan, setPlan] = useState<PlanValue>({
-    plan: consultancy.plan || 'basic',
-    validUntil: consultancy.validUntil?.slice(0, 10) || nextMonth(),
-    seats: consultancy.plan === 'custom' ? String(consultancy.seatLimit) : '',
-  });
   const [planExams, setPlanExams] = useState<ExamCode[]>(consultancy.planExams ?? []);
   const [saving, setSaving] = useState(false);
   const toast = useToast();
@@ -820,7 +759,7 @@ function PlanForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved:
     }
     setSaving(true);
     try {
-      await api.put(`/admin/consultancies/${consultancy.id}/plan`, { ...planBody(plan), planExams });
+      await api.put(`/admin/consultancies/${consultancy.id}/plan`, { planExams });
       toast.success('Plan saved', 'The plan has been updated successfully.');
       onSaved();
     } catch {
@@ -832,10 +771,6 @@ function PlanForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved:
 
   return (
     <form onSubmit={save} className="space-y-3">
-      {/* One column: it sits in half the dialog */}
-      <div className="grid gap-3">
-        <PlanFields value={plan} onChange={setPlan} />
-      </div>
       <div className="space-y-1.5">
         <p className="text-[11px] font-bold text-muted-foreground">Exams in the plan</p>
         <ExamPicker value={planExams} onChange={setPlanExams} compact />
@@ -843,6 +778,98 @@ function PlanForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved:
       </div>
       <SaveRow saving={saving} label="Save plan" />
     </form>
+  );
+}
+
+/** Adds paid credits, priced by how many at once, and lists the credits added and used. */
+function CreditsForm({ consultancy, onSaved }: { consultancy: Consultancy; onSaved: () => void }) {
+  const [group, setGroup] = useState<CreditGroup>('ieltsPte');
+  const [count, setCount] = useState(String(MIN_CREDITS));
+  const [log, setLog] = useState<CreditEntry[] | null>(null);
+  const [saving, setSaving] = useState(false);
+  const toast = useToast();
+
+  const load = useCallback(() => {
+    api
+      .get<{ credits: CreditEntry[] }>(`/admin/consultancies/${consultancy.id}?days=30`)
+      .then(data => setLog(data.credits ?? []))
+      .catch(() => setLog([]));
+  }, [consultancy.id]);
+  useEffect(load, [load]);
+
+  const label = CREDIT_GROUPS.find(g => g.key === group)?.label ?? '';
+  const size = Number(count);
+  const tier = creditTier(size);
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tier) {
+      toast.error('Credits not added', `Add at least ${MIN_CREDITS} credits.`);
+      return;
+    }
+    if (!window.confirm(`Add ${size} ${label} credits for NPR ${creditsPrice(group, size).toLocaleString()}? Do this only once it is paid.`)) return;
+    setSaving(true);
+    try {
+      await api.post(`/admin/consultancies/${consultancy.id}/credits`, { group: CREDIT_GROUPS.find(g => g.key === group)?.api, size });
+      toast.success('Credits added', `${size} ${label} credits added.`);
+      load();
+      onSaved();
+    } catch (err) {
+      toast.error('Credits not added', errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const SELECT = 'flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground';
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-2 sm:grid-cols-2">
+        {CREDIT_GROUPS.map(g => (
+          <Detail key={g.key} icon={Wallet} label={`${g.label} credits left`} value={String(consultancy.credits?.[g.key] ?? 0)} />
+        ))}
+      </div>
+      <form onSubmit={add} className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
+        <label className="space-y-1 text-[11px] font-bold text-muted-foreground">
+          <span>Exams</span>
+          <select value={group} onChange={e => setGroup(e.target.value as CreditGroup)} className={SELECT}>
+            {CREDIT_GROUPS.map(g => (
+              <option key={g.key} value={g.key}>
+                {g.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1 text-[11px] font-bold text-muted-foreground">
+          <span>Credits</span>
+          <Input type="number" min={MIN_CREDITS} max={10000} required value={count} onChange={e => setCount(e.target.value)} />
+        </label>
+        <Button type="submit" size="sm" disabled={saving} className="h-10 font-bold text-xs">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+          Add credits
+        </Button>
+      </form>
+      <p className="text-[11px] text-muted-foreground">
+        {tier
+          ? `NPR ${creditsPrice(group, size).toLocaleString()} · NPR ${tier.perCredit[group]} a credit (${CREDIT_TIERS.map(t => `${t.to ? `${t.from}-${t.to}` : `${t.from - 1}+`}: ${t.perCredit[group]}`).join(', ')})`
+          : `At least ${MIN_CREDITS} credits.`}
+      </p>
+      {log && log.length > 0 && (
+        <ul className="max-h-56 divide-y divide-border overflow-y-auto rounded-lg border border-border bg-card text-xs">
+          {log.map((entry, i) => (
+            <li key={i} className="flex items-center justify-between gap-2 px-3 py-1.5">
+              <span className="text-foreground">
+                {entry.change > 0
+                  ? `${entry.change} ${CREDIT_GROUPS.find(g => g.api === entry.group)?.label} credits added · NPR ${(entry.priceNpr ?? 0).toLocaleString()}`
+                  : `${entry.studentName} · ${CREDIT_GROUPS.find(g => g.api === entry.group)?.label}`}
+              </span>
+              <span className="text-muted-foreground tabular-nums">
+                {date(entry.at)} · {entry.change > 0 ? `+${entry.change}` : entry.change}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

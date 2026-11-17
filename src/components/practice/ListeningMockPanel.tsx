@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Clock, Headphones, RefreshCw, RotateCcw, Send } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Flag, Headphones, LogOut, RefreshCw, RotateCcw, Send } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
@@ -9,15 +9,19 @@ import { useToast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AnswerSubmission, MockAttempt, Question, isInstitutionStudent, isPremiumUser } from '@/lib/types';
 import { subTestsLeft } from '@/lib/subscriptions';
 import { Playback, playClips, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
+import { beep } from '@/lib/audio';
+import RecordingStatus from '@/components/mocks/RecordingStatus';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import SectionMockIntro from '@/components/mocks/SectionMockIntro';
 import ListeningLetterBoard from '@/components/listening/ListeningLetterBoard';
 import ListeningGapOutline from '@/components/listening/ListeningGapOutline';
-import { VoicePanel } from '@/components/practice/PromptAudio';
 import MockHeader from '@/components/mocks/MockHeader';
+import ConfirmSubmit from '@/components/mocks/ConfirmSubmit';
+import { FlagToggle, NavNumber, toggled } from '@/components/mocks/QuestionNav';
 import { LISTENING_TYPES, lettersMayRepeat } from '@/lib/listeningTypes';
 import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
 import QuestionFigure from '@/components/practice/QuestionFigure';
@@ -37,6 +41,8 @@ export interface ListeningGroup {
   instructions: string;
   heading?: string;
   imageUrl?: string;
+  /** The notes as printed: "## " subheadings, "- " bullets, given lines, the group's k-th question at [[k]]. */
+  outline?: string;
   firstNumber: number;
   questions: Question[];
 }
@@ -107,7 +113,7 @@ export default function ListeningMockPanel() {
   };
 
   if (!isPremiumUser(user)) return <PracticeMockPaywall skill="listening" exam={activeExam} institution={isInstitutionStudent(user)} />;
-  if (outcome) return <ListeningResult outcome={outcome} onBack={() => navigate('/practice?skill=listening')} onRedo={() => { setOutcome(null); void start(); }} />;
+  if (outcome) return <ListeningResult outcome={outcome} onBack={() => navigate('/mocks')} onRedo={() => { setOutcome(null); void start(); }} />;
   if (session) {
     return (
       <ListeningMockRunner
@@ -118,7 +124,7 @@ export default function ListeningMockPanel() {
           void refreshUser();
           refreshPapers();
         }}
-        onLeave={() => navigate('/practice?skill=listening')}
+        onLeave={() => navigate('/mocks')}
         onClosed={message => {
           toast.warning('This paper is closed', message);
           setSession(null);
@@ -181,11 +187,20 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
   // A reopened paper continues with the next recording, never replays one.
   const [partIndex, setPartIndex] = useState(() => Math.min(session.partsPlayed, session.parts.length - 1));
   const [partsPlayed, setPartsPlayed] = useState(session.partsPlayed);
+  // The part on screen while the recordings play. As in the computer-delivered test, the
+  // learner may look at any part and come back; the recording plays on regardless.
+  const [viewIndex, setViewIndex] = useState(() => Math.min(session.partsPlayed, session.parts.length - 1));
   // The part on screen during the checking time: one part at a time, as in the test.
   const [checkIndex, setCheckIndex] = useState(0);
   // One question group on screen at a time (Questions 11–15, then 16–20). Kept
   // with its part number, so a new part opens on its first group.
   const [groupPage, setGroupPage] = useState({ partNo: 0, index: 0 });
+  // The part Next part was pressed on: it asks before moving on, as a part's recording never plays again.
+  const [confirmPart, setConfirmPart] = useState<number | null>(null);
+  const [confirmSubmit, setConfirmSubmit] = useState(false);
+  // Flagged question numbers, and the question last opened or worked on (the one Flag acts on).
+  const [flags, setFlags] = useState<Set<number>>(() => new Set());
+  const [current, setCurrent] = useState<number | undefined>();
   // The paper opens straight into the reading time, and each recording then
   // plays by itself, as in the test. The learner arrives here with a tap
   // (Start, Continue), which lets the browser play the sound.
@@ -265,6 +280,8 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
     setAudioError(null);
     setPhase('playing');
     setProgress(0);
+    // The test's cue that the recording is about to begin.
+    await beep();
     // Once started, a recording counts as heard: leaving now does not earn a replay.
     const played = Math.max(partsPlayed, part.partNo);
     setPartsPlayed(played);
@@ -314,6 +331,8 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
     void save(answers, played);
     if (partIndex + 1 < session.parts.length) {
       setPartIndex(partIndex + 1);
+      // A new recording brings its part on screen, as in the test.
+      setViewIndex(partIndex + 1);
       setCountdown(session.parts[partIndex + 1].readingSeconds);
       setPhase('reading');
     } else {
@@ -349,7 +368,7 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
   const answered = Object.values(answers).filter(
     a => Boolean(a.textResponse?.trim()) || Boolean(a.selectedOptions?.length),
   ).length;
-  const shownPart = phase === 'review' || phase === 'submitting' ? session.parts[checkIndex] : part;
+  const shownPart = phase === 'review' || phase === 'submitting' ? session.parts[checkIndex] : session.parts[viewIndex] ?? part;
   const visibleParts = shownPart ? [shownPart] : [];
   const answeredIn = (p: ListeningPart) =>
     p.groups.reduce(
@@ -362,70 +381,33 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
 
   const checking = phase === 'review' || phase === 'submitting';
 
-  const player = (
-    <VoicePanel
-      label={`Part ${part?.partNo} of 4 recording`}
-      playing={phase === 'playing'}
-      progress={phase === 'playing' ? progress : 0}
-      status={
-        phase === 'reading'
-          ? `Starts in ${countdown}s · plays once`
-          : phase === 'playing'
-            ? `Playing · ${Math.round(progress * 100)}%`
-            : phase === 'heard'
-              ? 'Recording finished'
-              : ''
-      }
-      // Nothing to press: the recording starts by itself, once.
-      disabled
-      onToggle={() => undefined}
-      toggleLabel={phase === 'playing' ? 'Recording playing' : 'The recording starts by itself'}
-      toggleIcon={phase === 'playing' ? 'pause' : 'play'}
-      footer={
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" aria-live="polite">
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">{part?.setting}</p>
-            {phase === 'reading' && (
-              <p className="text-xs text-muted-foreground">
-                You now have <strong>{countdown} seconds</strong> to look at Questions {part?.firstNumber}–{part?.lastNumber}. The recording then starts by itself.
-              </p>
-            )}
-            {phase === 'playing' && (
-              <p className="text-xs text-muted-foreground">Listen carefully and answer Questions {part?.firstNumber}–{part?.lastNumber}.</p>
-            )}
-            {phase === 'heard' && (
-              <p className="text-xs text-muted-foreground">
-                The recording has finished. Check Questions {part?.firstNumber}–{part?.lastNumber}, then press{' '}
-                <strong>{partIndex + 1 < session.parts.length ? 'Next part' : 'Go to checking time'}</strong> when you are ready.
-              </p>
-            )}
-            {audioError && <p role="alert" className="text-sm text-destructive">{audioError}</p>}
-          </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            {audioError && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  unlockAudio();
-                  void play();
-                }}
-                className="font-bold gap-1.5"
-              >
-                <RefreshCw className="w-3.5 h-3.5" /> Try the audio again
-              </Button>
-            )}
-          </div>
-        </div>
-      }
-    />
-  );
+  const audioStatus = <RecordingStatus state={phase === 'reading' ? 'waiting' : phase === 'playing' ? 'playing' : 'done'} countdown={countdown} />;
+
+  // Under the bar, only when the recording could not play: why, and a retry.
+  const audioNote = audioError ? (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p role="alert" className="text-sm text-destructive">{audioError}</p>
+      <Button
+        variant="outline"
+        onClick={() => {
+          unlockAudio();
+          void play();
+        }}
+        className="font-bold gap-1.5"
+      >
+        <RefreshCw className="w-3.5 h-3.5" /> Try the audio again
+      </Button>
+    </div>
+  ) : null;
 
   const isAnswered = (q: Question) => Boolean(answers[q.id]?.textResponse?.trim()) || Boolean(answers[q.id]?.selectedOptions?.length);
-  // Before the checking time only the part being heard is open; then any part.
-  const canOpen = (index: number) => checking || index === partIndex;
+  // Any part may be opened at any time, as in the computer-delivered test; only the recordings are fixed.
+  const canOpen = (index: number) => index >= 0 && index < session.parts.length;
   const jump = (index: number, number?: number) => {
     if (!canOpen(index)) return;
     if (checking) setCheckIndex(index);
+    else setViewIndex(index);
+    if (number) setCurrent(number);
     const target = session.parts[index];
     const holding = number ? target.groups.findIndex(g => number >= g.firstNumber && number < g.firstNumber + g.questions.length) : 0;
     setGroupPage({ partNo: target.partNo, index: Math.max(0, holding) });
@@ -437,6 +419,16 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
       target?.querySelector<HTMLElement>('input')?.focus({ preventScroll: true });
     }, 50);
   };
+  // Next and back move through a part's question groups (21-25, then 26-30) before changing part.
+  const shownGroup = shownPart && groupPage.partNo === shownPart.partNo ? Math.min(groupPage.index, shownPart.groups.length - 1) : 0;
+  const nextGroup = shownPart && shownGroup < shownPart.groups.length - 1 ? shownGroup + 1 : null;
+  const showGroup = (index: number) => {
+    if (!shownPart) return;
+    setGroupPage({ partNo: shownPart.partNo, index });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  // Flag acts only on a question of the part on screen.
+  const flaggable = shownPart && current !== undefined && current >= shownPart.firstNumber && current <= shownPart.lastNumber ? current : undefined;
   const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.max(0, s) % 60).padStart(2, '0')}`;
 
   // The bar along the bottom of the computer-delivered test: every part, the
@@ -444,10 +436,16 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
   const navigator = (
     <nav
       aria-label="Question navigator"
-      className="sticky bottom-0 z-30 -mx-4 border-t border-border bg-card/95 px-4 py-2.5 shadow-[0_-6px_16px_-8px_rgba(0,0,0,0.15)] backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+      className="sticky bottom-0 z-30 -mx-4 dark test-bar px-4 py-2.5 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.35)] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
     >
-      <div className="mx-auto flex max-w-6xl flex-col gap-2 lg:flex-row lg:items-center lg:gap-4">
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-0.5">
+      <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:gap-4">
+        <div className="flex shrink-0 items-center gap-4">
+          <Button variant="ghost" onClick={onLeave} className="test-leave h-10 shrink-0 gap-2 rounded-full px-4 text-sm font-semibold">
+            <LogOut className="h-4 w-4" /> Save and Exit
+          </Button>
+          <span className="hidden h-8 w-px bg-border lg:block" aria-hidden />
+        </div>
+        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto py-0.5 scrollbar-thin">
           {session.parts.map((p, index) => {
             const open = canOpen(index);
             if (p.partNo !== shownPart?.partNo) {
@@ -457,33 +455,37 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
                   type="button"
                   disabled={!open}
                   onClick={() => jump(index)}
-                  title={open ? `Go to Part ${p.partNo}` : index < partIndex ? 'Already played' : 'Opens when its recording starts'}
-                  className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs transition-colors enabled:hover:border-primary/50 disabled:opacity-50"
+                  title={open ? `Go to Part ${p.partNo}` : undefined}
+                  className="flex shrink-0 flex-col gap-1 rounded-xl bg-muted/60 px-3 py-1.5 text-left text-xs transition-colors enabled:hover:border-primary/50 enabled:hover:bg-primary/[0.04] disabled:opacity-50"
                 >
-                  <span className="font-bold text-foreground">Part {p.partNo}</span>
-                  <span className="tabular-nums text-muted-foreground">{answeredIn(p)} of {partCount(p)}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="font-bold text-foreground">Part {p.partNo}</span>
+                    <span className="tabular-nums text-muted-foreground">{answeredIn(p)}/{partCount(p)}</span>
+                    {[...flags].some(n => n >= p.firstNumber && n <= p.lastNumber) && (
+                      <Flag aria-label="has flagged questions" className="h-3 w-3 fill-amber-400 text-amber-500" />
+                    )}
+                  </span>
+                  <span className="h-1 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
+                    <span className="block h-full rounded-full bg-primary" style={{ width: `${(answeredIn(p) / Math.max(1, partCount(p))) * 100}%` }} />
+                  </span>
                 </button>
               );
             }
             return (
-              <div key={p.partNo} className="flex shrink-0 items-center gap-1 rounded-lg bg-primary/[0.07] px-2 py-1 ring-1 ring-primary/30">
-                <span className="pr-1 text-xs font-bold text-primary">Part {p.partNo}</span>
+              <div key={p.partNo} className="flex shrink-0 items-center gap-1 rounded-xl bg-primary/[0.07] px-2 py-1.5 ring-1 ring-primary/30">
+                <span className="px-1.5 text-xs font-bold text-primary">Part {p.partNo}</span>
                 {p.groups.flatMap(group =>
                   group.questions.map((q, i) => {
                     const number = group.firstNumber + i;
-                    const done = isAnswered(q);
                     return (
-                      <button
+                      <NavNumber
                         key={q.id}
-                        type="button"
+                        number={number}
+                        answered={isAnswered(q)}
+                        flagged={flags.has(number)}
+                        current={current === number}
                         onClick={() => jump(index, number)}
-                        aria-label={`Question ${number}${done ? ', answered' : ''}`}
-                        className={`h-7 min-w-7 rounded-md px-1 text-xs font-bold tabular-nums transition-colors ${
-                          done ? 'bg-primary text-primary-foreground' : 'border border-border bg-background text-foreground hover:border-primary'
-                        }`}
-                      >
-                        {number}
-                      </button>
+                      />
                     );
                   }),
                 )}
@@ -492,13 +494,18 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
           })}
         </div>
         <div className="flex shrink-0 items-center justify-between gap-3" aria-live="polite">
+          <FlagToggle
+            number={flaggable}
+            flagged={flaggable !== undefined && flags.has(flaggable)}
+            onToggle={() => flaggable !== undefined && setFlags(previous => toggled(previous, flaggable))}
+          />
           {phase === 'reading' && (
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+            <span className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-foreground">
               <Clock className="h-4 w-4 text-primary" /> Recording starts in <span className="tabular-nums">{countdown}s</span>
             </span>
           )}
           {phase === 'playing' && (
-            <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
+            <span className="flex items-center gap-2 rounded-full bg-primary/[0.07] px-3 py-1.5 text-xs font-semibold text-foreground">
               <Headphones className="h-4 w-4 animate-pulse text-primary" /> Part {part?.partNo} playing
               <span className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
                 <span className="block h-full bg-primary transition-[width]" style={{ width: `${Math.round(progress * 100)}%` }} />
@@ -507,36 +514,36 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
           )}
           {(phase === 'reading' || phase === 'playing' || phase === 'heard') && (
             <Button
-              onClick={nextPart}
-              className="h-8 gap-1.5 font-bold"
-              title={phase === 'heard' ? undefined : "This part's recording will not play again"}
+              onClick={() => (nextGroup !== null ? showGroup(nextGroup) : setConfirmPart(partIndex))}
+              className="test-next h-10 gap-2 rounded-full px-6 font-bold tracking-wide"
+              title={nextGroup !== null || phase === 'heard' ? undefined : "This part's recording will not play again"}
             >
-              {partIndex + 1 < session.parts.length ? 'Next part' : 'Go to checking time'}
+              {nextGroup !== null ? 'Next' : partIndex + 1 < session.parts.length ? 'Next part' : 'Go to checking time'}
               <ChevronRight className="h-4 w-4" />
             </Button>
           )}
           {checking && (
             <>
               {partsPlayed >= session.parts.length && phase === 'review' && (
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <span className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-foreground">
                   <Clock className="h-4 w-4 text-primary" /> <span className="tabular-nums">{clock(countdown)}</span> to check
                 </span>
               )}
               <div className="flex items-center gap-1.5">
-                <Button variant="outline" size="icon" aria-label="Previous part" disabled={checkIndex === 0} onClick={() => jump(checkIndex - 1)} className="h-8 w-8">
+                <Button variant="outline" size="icon" aria-label="Previous" disabled={checkIndex === 0 && shownGroup === 0} onClick={() => (shownGroup > 0 ? showGroup(shownGroup - 1) : jump(checkIndex - 1))} className="h-9 w-9 rounded-full">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  aria-label="Next part"
-                  disabled={checkIndex >= session.parts.length - 1}
-                  onClick={() => jump(checkIndex + 1)}
-                  className="h-8 w-8"
+                  aria-label="Next"
+                  disabled={nextGroup === null && checkIndex >= session.parts.length - 1}
+                  onClick={() => (nextGroup !== null ? showGroup(nextGroup) : jump(checkIndex + 1))}
+                  className="h-9 w-9 rounded-full"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-                <Button onClick={() => void submit()} disabled={phase === 'submitting'} className="h-8 gap-1.5 font-bold">
+                <Button onClick={() => setConfirmSubmit(true)} disabled={phase === 'submitting'} className="h-9 gap-1.5 rounded-full px-5 font-bold shadow-md">
                   <Send className="h-3.5 w-3.5" /> {phase === 'submitting' ? 'Marking…' : 'Submit'}
                 </Button>
               </div>
@@ -548,16 +555,16 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
   );
 
   return (
-    <div className="w-full min-h-[calc(100dvh-4rem)] px-4 sm:px-6 lg:px-8 pt-5 bg-background">
-      <div className="mx-auto max-w-6xl space-y-3.5 pb-6">
+    <div className="flex w-full min-h-dvh flex-col px-4 sm:px-6 lg:px-8 bg-card">
       <MockHeader
+        className="-mx-4 mb-3.5 sm:-mx-6 lg:-mx-8"
         code={checking ? 'L' : `P${part?.partNo ?? 1}`}
         title={title ?? session.testTitle}
         subtitle={`${checking ? 'All four parts' : `Part ${part?.partNo} of 4`} • 40 questions • each recording plays once`}
         secondsLeft={secondsLeft}
         answered={{ done: answered, total: 40 }}
-        onLeave={onLeave}
       />
+      <div className="flex-1 space-y-3.5 pb-6">
 
       {session.reusedTest && (
         <p className="text-[11px] text-amber-700 dark:text-amber-400">
@@ -567,7 +574,7 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
 
       {/* Once every recording has played, the bar to check and submit sits above the paper. */}
       {checking && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4" aria-live="polite">
+        <div className="flex flex-col gap-3 rounded-2xl bg-primary/[0.06] p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4" aria-live="polite">
           <p className="text-sm text-foreground">
             {phase === 'submitting'
               ? 'Marking your paper…'
@@ -578,50 +585,35 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
         </div>
       )}
 
-      {/* Each part is one card, as a practice item is: its bar, the recording, then its questions. */}
-      <div className="space-y-5">
+      {/* Each part: its questions' heading, the recording, then the questions.
+          Clicking or typing in a question makes it the one Flag acts on. */}
+      <div
+        className="space-y-5"
+        onFocusCapture={event => {
+          const id = (event.target as HTMLElement).closest('[id^="lq-"]')?.id;
+          if (id) setCurrent(Number(id.slice(3)));
+        }}
+      >
         {visibleParts.map(p => (
-          <section key={p.partNo} className="rounded-2xl border border-border bg-card shadow-sm">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-t-2xl bg-gradient-to-r from-primary to-primary/75 px-4 py-3 text-primary-foreground dark:!bg-muted dark:!text-foreground sm:px-5">
-              <span className="rounded-lg bg-white/15 px-2.5 py-0.5 font-bold">Part {p.partNo}</span>
-              <span className="h-5 w-px bg-white/40" aria-hidden />
-              <h3 className="text-sm sm:text-base font-semibold">Questions {p.firstNumber}–{p.lastNumber}</h3>
-            </div>
-            <div className="p-3 sm:p-4 space-y-4">
+          <section key={p.partNo} className="rounded-2xl bg-card">
+            <div className="space-y-6 py-6 sm:px-2 sm:py-8">
               {(() => {
                 const gi = groupPage.partNo === p.partNo ? Math.min(groupPage.index, p.groups.length - 1) : 0;
                 const group = p.groups[gi];
-                const range = (g: ListeningGroup) => `Questions ${g.firstNumber}–${g.firstNumber + g.questions.length - 1}`;
-                const show = (index: number) => {
-                  setGroupPage({ partNo: p.partNo, index });
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                };
+                // A form, notes, a table or a matching set is drawn in its box with the title across the top,
+                // so the heading above leaves it out.
+                const boxedForm = Boolean(
+                  group && !group.imageUrl &&
+                    ((TYPED_GROUPS.includes(group.typeId) && group.questions.every(question => !question.options?.length)) ||
+                      (LETTER_GROUPS.includes(group.typeId) && (group.questions[0]?.options?.length ?? 0) > 0)),
+                );
+                // One question group at a time (Next in the bar moves on): which questions, the recording, then the questions.
                 return (
                   <>
-                    {group && <GroupHeading group={group} />}
-                    {p.groups.length > 1 && (
-                      <div role="tablist" aria-label={`Part ${p.partNo} questions`} className="flex flex-wrap gap-1.5">
-                        {p.groups.map((g, index) => (
-                          <button
-                            key={g.id}
-                            type="button"
-                            role="tab"
-                            aria-selected={index === gi}
-                            onClick={() => show(index)}
-                            className={`rounded-lg border px-3 py-1.5 text-xs font-bold tabular-nums transition-colors ${
-                              index === gi ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-foreground hover:border-primary/50'
-                            }`}
-                          >
-                            {range(g)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {!checking && p.partNo === part?.partNo ? (
-                      player
-                    ) : (
-                      <p className="text-sm text-muted-foreground leading-relaxed">{p.setting}</p>
-                    )}
+                    {!checking && p.partNo === part?.partNo && audioNote}
+                    {group && <GroupHeading group={boxedForm ? { ...group, heading: '' } : group} />}
+                    {/* The recording sits above the questions, or under the map where there is one. */}
+                    {!checking && p.partNo === part?.partNo && !group?.imageUrl && audioStatus}
                     {group && (
                       <ListeningGroupView
                         key={group.id}
@@ -630,17 +622,9 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
                         disabled={phase === 'submitting'}
                         onAnswer={answer}
                         showHeading={false}
+                        paper
+                        afterFigure={!checking && p.partNo === part?.partNo ? audioStatus : null}
                       />
-                    )}
-                    {p.groups.length > 1 && (
-                      <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
-                        <Button variant="outline" disabled={gi === 0} onClick={() => show(gi - 1)} className="h-9 gap-1.5">
-                          <ChevronLeft className="h-4 w-4" /> {gi > 0 ? range(p.groups[gi - 1]) : 'Previous'}
-                        </Button>
-                        <Button variant="outline" disabled={gi >= p.groups.length - 1} onClick={() => show(gi + 1)} className="h-9 gap-1.5">
-                          {gi < p.groups.length - 1 ? range(p.groups[gi + 1]) : 'Next'} <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
                     )}
                   </>
                 );
@@ -651,6 +635,46 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
       </div>
       </div>
       {navigator}
+
+      <ConfirmSubmit
+        open={confirmSubmit}
+        onCancel={() => setConfirmSubmit(false)}
+        onConfirm={() => void submit()}
+        description={(() => {
+          const unanswered = session.parts.flatMap(p => p.groups.flatMap(g => g.questions)).filter(q => !isAnswered(q)).length;
+          return unanswered
+            ? `${unanswered} question${unanswered === 1 ? ' is' : 's are'} unanswered and will be marked wrong. You cannot change your answers after this.`
+            : undefined;
+        })()}
+      />
+
+      <Dialog open={confirmPart === partIndex && !checking} onOpenChange={open => !open && setConfirmPart(null)}>
+        <DialogContent centered>
+          <DialogHeader>
+            <DialogTitle>
+              {partIndex + 1 < session.parts.length ? 'Do you want to go to the next part?' : 'Do you want to go to the checking time?'}
+            </DialogTitle>
+            <DialogDescription>
+              {phase === 'heard'
+                ? 'You can still change your answers to this part in the checking time.'
+                : "This part's recording stops now and will not play again."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmPart(null)} className="min-w-[96px]">No</Button>
+            <Button
+              autoFocus
+              onClick={() => {
+                setConfirmPart(null);
+                nextPart();
+              }}
+              className="min-w-[96px]"
+            >
+              Yes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -667,23 +691,27 @@ const outlineLine = (prompt: string, number: number) => {
  * heading, the instructions, then the paper.
  */
 /** A group's question numbers, heading and instructions: "Questions 31–40 · Lecture: … · Complete the notes…". */
-function GroupHeading({ group }: { group: ListeningGroup }) {
+function GroupHeading({ group, showRange = true, showInstructions = true }: { group: ListeningGroup; showRange?: boolean; showInstructions?: boolean }) {
   // The word limit in capitals ("ONE WORD ONLY") is the part students must not miss.
-  const pieces = group.instructions.split(/([A-Z]{2,}(?:[ /][A-Z]+)*)/);
+  const pieces = group.instructions.split(/([A-Z]{2,}(?:[ /][A-Z]+)*)/);
+  // As on the paper: which questions on their own line, what to do, then the title of what follows.
   return (
-    <div className="rounded-xl border border-primary/15 bg-primary/[0.04] px-4 py-3">
-      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-        <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-bold tabular-nums text-primary-foreground">
+    <div className="space-y-2">
+      {showRange && (
+        <span className="inline-block rounded-md bg-primary px-2.5 py-1 text-sm font-bold tabular-nums text-primary-foreground">
           Questions {group.firstNumber}–{group.firstNumber + group.questions.length - 1}
         </span>
-        {group.heading && <h4 className="text-base font-bold leading-snug text-foreground">{group.heading}</h4>}
-      </div>
-      <p className="mt-1.5 text-sm leading-relaxed text-foreground/80">
-        {pieces.map((piece, i) => (i % 2 ? <strong key={i} className="font-bold text-foreground">{piece}</strong> : piece))}
-      </p>
+      )}
+      {showInstructions && (
+        <p className="text-lg font-medium leading-relaxed text-foreground">
+          {pieces.map((piece, i) => (i % 2 ? <strong key={i} className="font-bold text-foreground">{piece}</strong> : piece))}
+        </p>
+      )}
+      {group.heading && <h4 className={`${showInstructions ? 'pt-2 ' : ''}text-xl font-bold leading-snug text-foreground`}>{group.heading}</h4>}
     </div>
   );
 }
+
 
 export function ListeningGroupView({
   group,
@@ -691,6 +719,10 @@ export function ListeningGroupView({
   disabled,
   onAnswer,
   showHeading = true,
+  showRange = true,
+  showInstructions = true,
+  afterFigure,
+  paper = false,
 }: {
   group: ListeningGroup;
   answers: Record<string, AnswerSubmission>;
@@ -698,66 +730,138 @@ export function ListeningGroupView({
   onAnswer: (question: Question, patch: Partial<AnswerSubmission>) => void;
   /** False where the part card already shows the heading at its top. */
   showHeading?: boolean;
+  /** False where the page's own header already says which questions these are. */
+  showRange?: boolean;
+  /** False in part practice, which leaves out the instruction line. */
+  showInstructions?: boolean;
+  /** Shown under the group's map or diagram, where it has one. */
+  afterFigure?: React.ReactNode;
+  /**
+   * Part practice: a form, notes or a table drawn as on the test, in a box
+   * with its title across the top and the question number inside each field.
+   */
+  paper?: boolean;
 }) {
   const box = group.questions[0]?.options ?? [];
-  const dragged = LETTER_GROUPS.includes(group.typeId) && box.length > 0;
+  // Part practice: a diagram labelled with letters is answered like a map, a letter picked beside each part.
+  const letterPick = paper && group.typeId === LISTENING_TYPES.diagram && box.length > 0;
+  const dragged = LETTER_GROUPS.includes(group.typeId) && box.length > 0 && !letterPick;
   const typed = TYPED_GROUPS.includes(group.typeId) && group.questions.every(question => !question.options?.length);
   const numberOf = (question: Question) => group.firstNumber + group.questions.indexOf(question);
+  // Practice and the mocks: a form, notes, a table or a matching set sits in one box with its title across the top.
+  const boxed = paper && !group.imageUrl && (typed || dragged);
+
+  const board = dragged && (
+    <ListeningLetterBoard
+      options={box}
+      items={group.questions.map((question, index) => ({
+        slot: question.id,
+        number: group.firstNumber + index,
+        text: question.prompt,
+      }))}
+      values={Object.fromEntries(group.questions.map(question => [question.id, answers[question.id]?.selectedOptions?.[0]]))}
+      // A letter answers several questions where the box is shorter than the list, or the instruction says so.
+      reuse={box.length < group.questions.length || lettersMayRepeat(group.instructions)}
+      disabled={disabled}
+      boxTitle={group.typeId === LISTENING_TYPES.diagram ? 'Letters on the diagram' : 'Options'}
+      stacked={paper}
+      onChange={patch => {
+        for (const [id, letter] of Object.entries(patch)) {
+          const question = group.questions.find(q => q.id === id);
+          if (question) onAnswer(question, { selectedOptions: letter ? [letter] : [] });
+        }
+      }}
+    />
+  );
+
+  const outline = typed && (
+    // Notes, forms, tables and short answers: the outline with a numbered box at each gap.
+    <ListeningGapOutline
+      passage={
+        group.outline
+          ? // The printed notes, their gaps renumbered as on this paper (the group's k-th question).
+            group.outline.replace(/\[\[(\d+)\]\]/g, (_, k: string) => `[[${group.firstNumber + Number(k) - 1}]]`)
+          : group.questions.map(question => outlineLine(question.prompt, numberOf(question))).join('\n')
+      }
+      blanks={group.questions.map(question => ({ id: String(numberOf(question)) }))}
+      responses={Object.fromEntries(
+        group.questions.map(question => [String(numberOf(question)), answers[question.id]?.textResponse ?? '']),
+      )}
+      disabled={disabled}
+      paper={paper}
+      onChange={responses => {
+        for (const question of group.questions) {
+          const value = responses[String(numberOf(question))] ?? '';
+          if (value !== (answers[question.id]?.textResponse ?? '')) onAnswer(question, { textResponse: value });
+        }
+      }}
+    />
+  );
+
+  if (boxed) {
+    return (
+      <div className="space-y-3 py-4 first:pt-0 last:pb-0">
+        {showHeading && (showRange || showInstructions) && <GroupHeading group={{ ...group, heading: '' }} showRange={showRange} showInstructions={showInstructions} />}
+        {/* A matching set is centred, its questions and options under one title. */}
+        <div className={`${dragged ? 'mx-auto ' : ''}w-fit max-w-full overflow-hidden border border-foreground/80 bg-background`}>
+          {group.heading && (
+            <h4 className="border-b border-foreground/80 px-4 py-3 text-center text-base font-bold uppercase tracking-wide text-foreground">
+              {group.heading}
+            </h4>
+          )}
+          <div className={dragged ? 'p-3 sm:p-4' : 'px-3 py-2 sm:px-4'}>{typed ? outline : board}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="py-4 first:pt-0 last:pb-0">
       <div className="space-y-3">
-        {showHeading && <GroupHeading group={group} />}
+        {showHeading && <GroupHeading group={group} showRange={showRange} showInstructions={showInstructions} />}
 
         {group.imageUrl && (
           // The same figure as in practice: drawn large enough to read, with zoom and a full view.
-          <QuestionFigure src={group.imageUrl} alt={group.heading || 'Map'} className="border border-border" />
+          <QuestionFigure src={group.imageUrl} alt={group.heading || 'Map'} />
         )}
+        {group.imageUrl && afterFigure}
 
         {dragged ? (
-          <div className="rounded-xl border border-border bg-background p-3 sm:p-4">
-            <ListeningLetterBoard
-              options={box}
-              items={group.questions.map((question, index) => ({
-                slot: question.id,
-                number: group.firstNumber + index,
-                text: question.prompt,
-              }))}
-              values={Object.fromEntries(group.questions.map(question => [question.id, answers[question.id]?.selectedOptions?.[0]]))}
-              // A letter answers several questions where the box is shorter than the list, or the instruction says so.
-              reuse={box.length < group.questions.length || lettersMayRepeat(group.instructions)}
-              disabled={disabled}
-              boxTitle={group.typeId === LISTENING_TYPES.diagram ? 'Letters on the diagram' : 'Options'}
-              onChange={patch => {
-                for (const [id, letter] of Object.entries(patch)) {
-                  const question = group.questions.find(q => q.id === id);
-                  if (question) onAnswer(question, { selectedOptions: letter ? [letter] : [] });
-                }
-              }}
-            />
-          </div>
+          <div>{board}</div>
         ) : typed ? (
-          // Notes, forms, tables and short answers: the outline with a numbered box at each gap.
-          <ListeningGapOutline
-            passage={group.questions.map(question => outlineLine(question.prompt, numberOf(question))).join('\n')}
-            blanks={group.questions.map(question => ({ id: String(numberOf(question)) }))}
-            responses={Object.fromEntries(
-              group.questions.map(question => [String(numberOf(question)), answers[question.id]?.textResponse ?? '']),
-            )}
-            disabled={disabled}
-            onChange={responses => {
-              for (const question of group.questions) {
-                const value = responses[String(numberOf(question))] ?? '';
-                if (value !== (answers[question.id]?.textResponse ?? '')) onAnswer(question, { textResponse: value });
-              }
-            }}
-          />
+          outline
         ) : (
           <ol className="space-y-4">
             {group.questions.map(question => {
               const number = numberOf(question);
               const current = answers[question.id];
-              const compact = group.typeId === 'ielts-listening-map';
+              const compact = group.typeId === 'ielts-listening-map' || letterPick;
+              // Practice, as the test's plan labelling: the place, then a box, empty until a letter (A-H) is picked.
+              if (compact && paper) {
+                return (
+                  <li key={question.id} id={`lq-${number}`} className="scroll-mt-24 text-sm text-foreground sm:text-base">
+                    <label className="inline-flex flex-wrap items-center gap-2">
+                      <span>
+                        <span className="font-bold tabular-nums">{number}.</span> {question.prompt}
+                      </span>
+                      <select
+                        value={current?.selectedOptions?.[0] ?? ''}
+                        disabled={disabled}
+                        onChange={event => onAnswer(question, { selectedOptions: event.target.value ? [event.target.value] : [] })}
+                        aria-label={`Question ${number}`}
+                        className={`h-8 w-24 cursor-pointer rounded-full border-2 bg-background px-3 text-sm font-semibold outline-none transition-colors hover:border-primary/60 focus:border-primary disabled:cursor-default ${
+                          current?.selectedOptions?.[0] ? 'border-primary text-foreground' : 'border-slate-400 text-muted-foreground dark:border-slate-500'
+                        }`}
+                      >
+                        <option value="" aria-label="No letter chosen" />
+                        {(question.options ?? []).map(option => (
+                          <option key={option.id} value={option.id}>{option.id}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </li>
+                );
+              }
               return (
                 <li key={question.id} id={`lq-${number}`} className="scroll-mt-24 space-y-2.5">
                   <p className="flex items-start gap-2 text-sm sm:text-base text-foreground">
@@ -776,9 +880,9 @@ export function ListeningGroupView({
                       return (
                         <label
                           key={option.id}
-                          className={`flex items-start gap-2.5 rounded-xl border cursor-pointer text-xs sm:text-sm transition-colors ${
+                          className={`flex items-start gap-2.5 rounded-xl cursor-pointer text-base transition-colors ${
                             compact ? 'px-3.5 py-2' : 'p-3.5'
-                          } ${selected ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40'}`}
+                          } ${selected ? 'bg-primary/15' : 'bg-muted/50 hover:bg-primary/[0.08]'}`}
                         >
                           <input
                             type="radio"
@@ -822,7 +926,7 @@ export function ListeningResult({
       <IeltsTestReport
         attemptId={outcome.attempt.id}
         xpAwarded={outcome.xpAwarded}
-        backLabel="Back to listening practice"
+        backLabel="Back to mock tests"
         onBack={onBack}
         onRedo={onRedo}
       />
@@ -831,7 +935,7 @@ export function ListeningResult({
   const answersById = new Map((outcome.submitted ?? []).map(a => [a.questionId, a]));
   return (
     <div className={embedded ? 'space-y-4' : 'w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 space-y-4'}>
-      <Card className="p-5 text-center space-y-1.5">
+      <Card className="border-0 p-5 text-center space-y-1.5">
         <span className="text-xs font-bold text-muted-foreground uppercase">Estimated Listening band</span>
         <div className="font-display text-4xl font-black text-foreground">{outcome.attempt.userScore.toFixed(1)}</div>
         <p className="text-xs text-muted-foreground">
@@ -840,7 +944,7 @@ export function ListeningResult({
         {outcome.xpAwarded > 0 && <Badge variant="default">+{outcome.xpAwarded} XP</Badge>}
       </Card>
 
-      <Card className="p-4 space-y-2">
+      <Card className="border-0 p-4 space-y-2">
         <h2 className="font-display text-sm font-bold text-foreground">Answers</h2>
         <ol className="space-y-1.5">
           {outcome.review.map((question, index) => {
@@ -862,7 +966,7 @@ export function ListeningResult({
         </ol>
       </Card>
 
-      <Card className="p-4 space-y-2">
+      <Card className="border-0 p-4 space-y-2">
         <Button variant="ghost" size="sm" onClick={() => setShowScripts(open => !open)} className="font-bold -ml-2">
           {showScripts ? 'Hide transcripts' : 'Show transcripts'}
         </Button>
@@ -877,7 +981,7 @@ export function ListeningResult({
 
       {!embedded && (
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="outline" onClick={onBack}>Back to listening practice</Button>
+        <Button variant="outline" onClick={onBack}>Back to mock tests</Button>
         {onRedo && (
           <Button onClick={onRedo} className="gap-1.5">
             <RotateCcw className="h-4 w-4" />

@@ -76,7 +76,7 @@ export default function InstitutionAuthLayout({ title, subtitle, children }: Pro
 
           <div className="space-y-2 max-w-lg pt-2">
             <h2 className="font-display text-2xl xl:text-3xl font-black text-white leading-tight tracking-tight drop-shadow-md">
-              Empower your students with authentic AI test prep
+              Exam practice with your institute, in one place
             </h2>
             <p className="text-sm text-slate-300 leading-relaxed font-normal">
               Nepal’s premier realistic exam simulator tuned with authentic Pearson, Cambridge &amp; HRD Korea scoring rubrics.
@@ -93,10 +93,10 @@ export default function InstitutionAuthLayout({ title, subtitle, children }: Pro
             <HeroCard
               icon={<Building2 className="w-4 h-4 text-blue-400" />}
               iconClass="bg-blue-500/20 text-blue-400"
-              title="Partner Portal"
+              title="Practice & Mocks"
               badge={<Badge variant="secondary" className="text-xs py-0 font-bold shrink-0">INSTITUTE</Badge>}
               tickClass="text-primary"
-              points={['Live Batch Analytics', 'PTE, IELTS & EPS-TOPIK', 'Centralized Mock Tracking']}
+              points={['PTE, IELTS & EPS-TOPIK', 'Mock tests from your institute', 'AI feedback on every answer']}
             />
             <HeroCard
               icon={<ShieldCheck className="w-4 h-4 text-primary" />}
@@ -104,7 +104,7 @@ export default function InstitutionAuthLayout({ title, subtitle, children }: Pro
               title="Privacy & Security"
               badge={<Badge variant="indigo" className="text-xs py-0 font-bold uppercase shrink-0">256-Bit</Badge>}
               tickClass="text-primary"
-              points={['Dedicated Admin Access', 'Instant Seat Provisioning', '100% Student Data Safety']}
+              points={['One sign-in for students and staff', 'Results shared only with your institute', '100% Student Data Safety']}
             />
           </div>
 

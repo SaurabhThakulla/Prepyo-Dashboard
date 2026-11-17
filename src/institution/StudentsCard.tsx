@@ -9,9 +9,11 @@ import {
   BadgeCheck,
   Clock,
   LineChart,
+  Mail,
   Trophy,
   UserCog,
   Check,
+  Coins,
   ChevronDown,
   Copy,
   KeyRound,
@@ -26,6 +28,7 @@ import {
   Users,
   Wallet,
   X,
+  Zap,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -45,6 +48,12 @@ import {
   ExamCode,
   fetchBatches,
   fetchFees,
+  ACCESS_DAYS,
+  accessEnded,
+  activateStudent,
+  CREDIT_GROUPS,
+  creditGroupOf,
+  creditSummary,
   fetchStudents,
   fetchTargets,
   InstitutionAccount,
@@ -58,6 +67,7 @@ import {
   setStudentFee,
   setStudentBatch,
   setStudentDisabled,
+  setStudentEmail,
   setStudentExam,
   Student,
   STUDENT_ALLOWANCE,
@@ -66,7 +76,7 @@ import {
   TargetExam,
 } from './api';
 import { EXAM_CHOICES } from './profile';
-import { dashboardPath, sectionPath } from './paths';
+import { LOGIN_PATH, sectionPath } from './paths';
 import { FormError } from './FormField';
 import { EXAM_TONE, FilterTabs, Kpi, TONES, useConfirm } from './ui';
 import StudentActivityPanel from './StudentActivity';
@@ -82,7 +92,7 @@ interface Props {
 // A password is shown once, right after it is made.
 interface Credentials {
   name: string;
-  username: string;
+  email: string;
   password: string;
   // Set when the student was added but their fee or payment could not be saved.
   warning?: string;
@@ -102,6 +112,30 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const shortDate = (value: string | null) =>
   value ? new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
+/** A student's credit: until when it runs, or the button that activates them with one. */
+function AccessCell({ student, actions }: { student: Student; actions: StudentActions }) {
+  if (!accessEnded(student)) {
+    return (
+      <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400" title="AI marking, full mocks and the tutor">
+        Until {shortDate(student.accessUntil ?? null)}
+      </span>
+    );
+  }
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      disabled={actions.busy}
+      onClick={() => actions.activate(student)}
+      className="h-7 rounded-lg border-primary/40 px-2.5 text-xs font-semibold text-primary"
+      title={student.accessUntil ? `Ended ${shortDate(student.accessUntil)}. Uses 1 credit.` : 'Uses 1 credit: 30 days of AI marking and full mocks'}
+    >
+      <Zap className="mr-1 h-3.5 w-3.5" /> {student.accessUntil ? 'Renew' : 'Activate'}
+    </Button>
+  );
+}
+
 /** "today", "3d ago", "5w ago". */
 function ago(value: string | null, now: number): string {
   if (!value) return 'Never';
@@ -112,6 +146,11 @@ function ago(value: string | null, now: number): string {
   if (days < 60) return `${Math.floor(days / 7)}w ago`;
   return shortDate(value);
 }
+
+const creditGroupLabel = (exam: string) => CREDIT_GROUPS.find(g => g.key === creditGroupOf(exam))?.label ?? '';
+
+// A student without a running credit signs in but gets no AI marking until activated.
+const activateLabel = (student: Student) => (accessEnded(student) ? 'Activate · 1 credit' : 'Add 30 days · 1 credit');
 
 const isIdle = (student: Student, now: number) =>
   !student.disabled && (!student.usage.lastActiveAt || now - new Date(student.usage.lastActiveAt).getTime() > IDLE_DAYS * DAY_MS);
@@ -125,11 +164,15 @@ const initialsOf = (name: string) =>
     .join('');
 
 const STATUS_TEXT = {
-  none: { title: 'Your plan is not set up yet', text: 'Contact Prepyo to choose a plan. You can add students once it is active.', tone: 'sky' },
-  active: { title: 'Your plan is active', text: `Each student gets ${STUDENT_ALLOWANCE}.`, tone: 'emerald' },
+  none: {
+    title: 'No credits yet',
+    text: 'You can add students now: they sign in and practise reading and listening. Buy a pack of credits from Prepyo to activate them for AI marking and full mocks.',
+    tone: 'sky',
+  },
+  active: { title: 'You have credits', text: `Each activated student gets ${STUDENT_ALLOWANCE}.`, tone: 'emerald' },
   expired: {
-    title: 'Your plan has ended',
-    text: 'Students can still practise reading and listening. AI scoring and full mocks are off until you renew with Prepyo.',
+    title: 'Your credits are used up',
+    text: 'Every activation has ended. Students still sign in for reading and listening; buy a pack from Prepyo to activate them again.',
     tone: 'rose',
   },
 } as const;
@@ -140,11 +183,15 @@ export default function StudentsPage({ account, exams }: Props) {
   const [confirm, confirmDialog] = useConfirm();
   const days = PERIOD_DAYS;
   const [students, setStudents] = useState<Student[] | null>(null);
+  // Credits left, kept here so an activation shows at once without reloading the account.
+  const [credits, setCredits] = useState(institution.credits ?? { ieltsPte: 0, epsJlpt: 0 });
   const [batches, setBatches] = useState<Batch[]>([]);
   const [fees, setFees] = useState<Map<string, StudentFee> | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<Credentials | null>(null);
+  // The student whose password is being reset, in its own dialog.
+  const [resetting, setResetting] = useState<Student | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [settingTargets, setSettingTargets] = useState(false);
@@ -166,7 +213,10 @@ export default function StudentsPage({ account, exams }: Props) {
   }, [studentParam]);
   const now = Date.now();
 
-  const loginAddress = window.location.origin + dashboardPath(institution.code);
+  // Every consultancy's students and admins sign in on this one page, with their email.
+  const loginAddress = window.location.origin + LOGIN_PATH;
+  // The student whose sign-in email is being changed.
+  const [editingEmail, setEditingEmail] = useState<Student | null>(null);
 
   const load = useCallback(
     () =>
@@ -187,7 +237,7 @@ export default function StudentsPage({ account, exams }: Props) {
     void load();
   }, [load]);
 
-  // run does one change, then reloads the list; any failure is shown on the page.
+  // run does one change, then reloads the list; a failure is shown as a toast.
   const run = async (change: () => Promise<void>) => {
     if (busy) return;
     setBusy(true);
@@ -196,7 +246,7 @@ export default function StudentsPage({ account, exams }: Props) {
       await change();
       await load();
     } catch (err) {
-      setError(errorMessage(err));
+      toast.error("That didn't work", errorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -204,23 +254,16 @@ export default function StudentsPage({ account, exams }: Props) {
 
   const actions: StudentActions = {
     busy,
-    reset: async student => {
-      const ok = await confirm({
-        title: `Make a new password for ${student.name}?`,
-        description: 'Their current password stops working straight away. You get the new one to give them.',
-        confirmLabel: 'Make new password',
-      });
-      if (!ok) return;
-      await run(async () => {
-        const { password } = await resetStudentPassword(student.id);
-        setCredentials({ name: student.name, username: student.username, password });
-      });
-    },
+    reset: student => setResetting(student),
+    editEmail: student => setEditingEmail(student),
     changeExam: async (student, next) => {
       if (next === student.exam) return;
       const ok = await confirm({
         title: `Switch ${student.name} to ${examLabel(next)}?`,
-        description: 'Their practice moves to the new exam, and the target score they set for themselves is cleared.',
+        description:
+          creditGroupOf(next) !== creditGroupOf(student.exam) && !accessEnded(student)
+            ? `Their practice moves to the new exam, and the target score they set for themselves is cleared. This uses 1 ${creditGroupLabel(next)} credit and gives ${ACCESS_DAYS} days from today.`
+            : 'Their practice moves to the new exam, and the target score they set for themselves is cleared.',
         confirmLabel: 'Switch exam',
       });
       if (ok) void run(() => setStudentExam(student.id, next).then(() => undefined));
@@ -240,6 +283,16 @@ export default function StudentsPage({ account, exams }: Props) {
         if (!ok) return;
       }
       void run(() => setStudentDisabled(student.id, !student.disabled).then(() => undefined));
+    },
+    activate: async student => {
+      const group = creditGroupOf(student.exam);
+      const ok = await confirm({
+        title: accessEnded(student) ? `Activate ${student.name}?` : `Add ${ACCESS_DAYS} days for ${student.name}?`,
+        description: `This uses 1 ${creditGroupLabel(student.exam)} credit (you have ${credits[group] ?? 0} left) and gives ${ACCESS_DAYS} days of AI marking, full mocks and the tutor.`,
+        confirmLabel: 'Use 1 credit',
+      });
+      if (!ok) return;
+      void run(() => activateStudent(student.id).then(() => setCredits(prev => ({ ...prev, [group]: Math.max(0, (prev[group] ?? 0) - 1) }))));
     },
     remove: async student => {
       const ok = await confirm({
@@ -300,7 +353,7 @@ export default function StudentsPage({ account, exams }: Props) {
   const activeInPeriod = (s: Student) => s.usage.practiceAttempts + s.usage.mocksCompleted + s.usage.aiEvaluations + s.usage.tutorMessages > 0;
   const needle = query.trim().toLowerCase();
   const list = inBatch.filter(s => {
-    if (needle && !s.name.toLowerCase().includes(needle) && !s.username.toLowerCase().includes(needle)) return false;
+    if (needle && !s.name.toLowerCase().includes(needle) && !(s.email ?? '').toLowerCase().includes(needle)) return false;
     if (status === 'active') return !s.disabled && activeInPeriod(s);
     if (status === 'ready') return isReady(s);
     if (status === 'idle') return isIdle(s, now);
@@ -321,7 +374,8 @@ export default function StudentsPage({ account, exams }: Props) {
   const toggleAll = () => setSelected(allPicked ? new Set() : new Set(list.map(s => s.id)));
   const openStudent = everyone.find(s => s.id === openId) ?? null;
   const seatsUsed = everyone.length;
-  const full = seatsUsed >= institution.seatLimit;
+  const withAccess = everyone.filter(s => !accessEnded(s)).length;
+  const creditsLeft = (credits.ieltsPte ?? 0) + (credits.epsJlpt ?? 0);
   const period = `${PERIOD_DAYS} days`;
   const idleCount = inBatch.filter(s => isIdle(s, now)).length;
   const batchFees = fees ? inBatch.map(s => fees.get(s.id)).filter((f): f is StudentFee => !!f) : [];
@@ -354,16 +408,26 @@ export default function StudentsPage({ account, exams }: Props) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Kpi
           icon={Users}
           tone="blue"
           label="Students"
           value={students ? seatsUsed : '…'}
-          note={`${seatsUsed} of ${institution.seatLimit} seats used`}
-          progress={institution.seatLimit ? (seatsUsed / institution.seatLimit) * 100 : 0}
-          action={full ? undefined : 'Add'}
-          onClick={full ? undefined : () => setAdding(true)}
+          note={`${withAccess} of ${seatsUsed} activated`}
+          progress={seatsUsed ? (withAccess / seatsUsed) * 100 : 0}
+          action="Add"
+          onClick={() => setAdding(true)}
+        />
+        <Kpi
+          icon={Coins}
+          tone={creditsLeft === 0 ? 'rose' : 'violet'}
+          label="Credits"
+          value={`${creditsLeft} left`}
+          note={`${withAccess} in use · ${creditSummary(credits)} left`}
+          progress={withAccess + creditsLeft ? (withAccess / (withAccess + creditsLeft)) * 100 : 0}
+          action="Buy"
+          to={sectionPath(institution.code, 'subscription')}
         />
         <Kpi
           icon={UserCheck}
@@ -414,7 +478,7 @@ export default function StudentsPage({ account, exams }: Props) {
               className="h-9 pl-9"
             />
           </div>
-          <Button size="sm" className="h-9" onClick={() => setAdding(true)} disabled={full} title={full ? 'All seats are in use' : undefined}>
+          <Button size="sm" className="h-9" onClick={() => setAdding(true)}>
             <UserPlus className="mr-1.5 h-4 w-4" /> Add student
           </Button>
           <DropdownMenu>
@@ -506,6 +570,7 @@ export default function StudentsPage({ account, exams }: Props) {
                   )}
                   <th className="w-full px-4 py-3">Student</th>
                   <th className="px-5 py-3">Exam</th>
+                  <th className="px-5 py-3">Access</th>
                   {batches.length > 0 && <th className="px-5 py-3">Batch</th>}
                   <th className="px-5 py-3">Latest mock</th>
                   <th className="px-5 py-3">Booking</th>
@@ -543,12 +608,15 @@ export default function StudentsPage({ account, exams }: Props) {
                           <Avatar name={student.name} exam={student.exam} />
                           <span className="min-w-0">
                             <span className="block truncate font-medium text-foreground">{student.name}</span>
-                            <span className="block font-mono text-xs text-foreground/60">{student.username}</span>
+                            <span className="block text-xs text-foreground/60">{student.email || 'No email: cannot sign in'}</span>
                           </span>
                         </button>
                       </td>
                       <td className="whitespace-nowrap px-5 py-3" onClick={event => event.stopPropagation()}>
                         <ExamMenu student={student} exams={exams} actions={actions} />
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-3" onClick={event => event.stopPropagation()}>
+                        <AccessCell student={student} actions={actions} />
                       </td>
                       {batches.length > 0 && <td className="whitespace-nowrap px-5 py-3 text-foreground/75">{batchName(student.batchId) || '—'}</td>}
                       <td className="whitespace-nowrap px-5 py-3 tabular-nums">
@@ -613,6 +681,18 @@ export default function StudentsPage({ account, exams }: Props) {
         actions={actions}
       />
 
+      <Dialog open={resetting !== null} onOpenChange={open => !open && setResetting(null)}>
+        {resetting && (
+          <ResetPasswordDialog
+            student={resetting}
+            onDone={password => {
+              setCredentials({ name: resetting.name, email: resetting.email ?? '', password });
+              setResetting(null);
+            }}
+          />
+        )}
+      </Dialog>
+
       <Dialog open={adding} onOpenChange={open => !open && setAdding(false)}>
         {adding && (
           <AddStudentDialog
@@ -649,18 +729,32 @@ export default function StudentsPage({ account, exams }: Props) {
       <Dialog open={!!credentials} onOpenChange={open => !open && setCredentials(null)}>
         {credentials && <CredentialsDialog credentials={credentials} loginAddress={loginAddress} />}
       </Dialog>
+
+      <Dialog open={!!editingEmail} onOpenChange={open => !open && setEditingEmail(null)}>
+        {editingEmail && (
+          <EmailDialog
+            student={editingEmail}
+            onSaved={() => {
+              setEditingEmail(null);
+              void load();
+            }}
+          />
+        )}
+      </Dialog>
     </div>
   );
 }
 
 interface StudentActions {
   busy: boolean;
-  reset: (student: Student) => Promise<void>;
+  reset: (student: Student) => void;
+  editEmail: (student: Student) => void;
   changeExam: (student: Student, exam: ExamCode) => void;
   changeBatch: (student: Student, batchId: string) => void;
   // Opens the "Move to batch" dialog for one student.
   move: (student: Student) => void;
   toggleDisabled: (student: Student) => void;
+  activate: (student: Student) => void;
   remove: (student: Student) => void;
 }
 
@@ -797,8 +891,14 @@ function RowMenu({ student, actions, onOpen, canMove }: { student: Student; acti
             <ArrowRightLeft className="mr-2 h-3.5 w-3.5" /> Move to batch
           </DropdownMenuItem>
         )}
+        <DropdownMenuItem onSelect={() => actions.editEmail(student)}>
+          <Mail className="mr-2 h-3.5 w-3.5" /> {student.email ? 'Edit email' : 'Add email'}
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => void actions.reset(student)}>
           <KeyRound className="mr-2 h-3.5 w-3.5" /> New password
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => actions.activate(student)}>
+          <Zap className="mr-2 h-3.5 w-3.5" /> {activateLabel(student)}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => actions.toggleDisabled(student)}>
           {student.disabled ? <RotateCcw className="mr-2 h-3.5 w-3.5" /> : <Ban className="mr-2 h-3.5 w-3.5" />}
@@ -853,7 +953,6 @@ function StudentSheet({
                 <div className="min-w-0 flex-1 pt-0.5">
                   <SheetPrimitive.Title className="break-words font-display text-xl font-semibold leading-tight text-foreground">{student.name}</SheetPrimitive.Title>
                   <SheetPrimitive.Description className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                    <span className="font-mono text-xs">@{student.username}</span>
                     {student.email && (
                       <a href={`mailto:${student.email}`} className="truncate hover:text-foreground hover:underline">
                         {student.email}
@@ -873,6 +972,9 @@ function StudentSheet({
                         Turned off
                       </Badge>
                     )}
+                    <span className={`text-xs ${accessEnded(student) ? 'text-amber-700 dark:text-amber-300' : 'text-muted-foreground'}`}>
+                      {accessEnded(student) ? 'Not activated: no AI marking' : `Activated until ${shortDate(student.accessUntil ?? null)}`}
+                    </span>
                   </div>
                 </div>
                 <SheetPrimitive.Close className="rounded-full bg-card/70 p-1.5 text-muted-foreground shadow-sm hover:bg-card hover:text-foreground">
@@ -980,6 +1082,9 @@ function StudentSheet({
                     <Button type="button" variant="outline" size="sm" disabled={actions.busy} onClick={() => void actions.reset(student)} className="rounded-xl text-xs font-medium">
                       <KeyRound className="mr-1.5 h-3.5 w-3.5" /> New password
                     </Button>
+                    <Button type="button" size="sm" disabled={actions.busy} onClick={() => actions.activate(student)} className="rounded-xl text-xs font-medium">
+                      <Zap className="mr-1.5 h-3.5 w-3.5" /> {activateLabel(student)}
+                    </Button>
                     <Button type="button" variant="outline" size="sm" disabled={actions.busy} onClick={() => actions.toggleDisabled(student)} className="rounded-xl text-xs font-medium">
                       {student.disabled ? <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> : <Ban className="mr-1.5 h-3.5 w-3.5" />}
                       {student.disabled ? 'Turn on' : 'Turn off'}
@@ -1011,6 +1116,114 @@ const FIELD_LABEL = 'text-sm font-medium text-foreground';
 // Whole rupees typed in a box: '' counts as 0, anything else that is not digits is NaN.
 const amountOf = (value: string) => (value.trim() === '' ? 0 : /^\d+$/.test(value.trim()) ? Number(value.trim()) : NaN);
 
+// The fewest characters a typed student password may have, as the server checks.
+const MIN_PASSWORD = 10;
+const passwordTooShort = (value: string) => value.length > 0 && value.length < MIN_PASSWORD;
+
+/**
+ * An optional student password with a live hint under it, in place of the
+ * browser's own length popup. `checked` turns a too-short password red once
+ * the form was sent with it.
+ */
+function PasswordField({
+  id,
+  value,
+  onChange,
+  disabled,
+  checked,
+  autoFocus,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+  checked: boolean;
+  autoFocus?: boolean;
+}) {
+  const short = passwordTooShort(value);
+  const tone = short ? (checked ? 'text-rose-600 dark:text-rose-400' : 'text-amber-700 dark:text-amber-300') : 'text-muted-foreground';
+  return (
+    <div className="space-y-1.5">
+      <Input
+        id={id}
+        type="text"
+        autoComplete="new-password"
+        maxLength={72}
+        placeholder="Leave empty to generate one"
+        value={value}
+        onChange={event => onChange(event.target.value)}
+        disabled={disabled}
+        autoFocus={autoFocus}
+        aria-invalid={short && checked}
+        aria-describedby={`${id}-hint`}
+        className={`h-10 text-sm ${short && checked ? 'border-rose-500 focus-visible:ring-rose-500/30' : ''}`}
+      />
+      <p id={`${id}-hint`} className={`flex items-center gap-1.5 text-xs ${tone}`}>
+        {value === '' ? (
+          <>
+            <KeyRound className="h-3.5 w-3.5 shrink-0" /> A password will be generated; they change it at first sign-in.
+          </>
+        ) : short ? (
+          <>
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> At least {MIN_PASSWORD} characters: {MIN_PASSWORD - value.length} more to go.
+          </>
+        ) : (
+          <>
+            <Check className="h-3.5 w-3.5 shrink-0" /> Good. They can keep this password.
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
+/** Gives a student a new password: one the admin types, or a generated one they must change at next sign-in. */
+function ResetPasswordDialog({ student, onDone }: { student: Student; onDone: (password: string) => void }) {
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [checked, setChecked] = useState(false);
+
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    setChecked(true);
+    if (passwordTooShort(password)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { password: given } = await resetStudentPassword(student.id, password);
+      onDone(given);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <DialogContent className="gap-5 sm:max-w-md">
+      <DialogHeader className="space-y-1 text-left">
+        <DialogTitle className="font-sans text-lg font-semibold">New password for {student.name}</DialogTitle>
+        <DialogDescription>
+          Their current password stops working straight away. Type one, or leave it empty to generate one they must change at their next sign-in.
+        </DialogDescription>
+      </DialogHeader>
+      <form onSubmit={save} className="space-y-4">
+        <label htmlFor="reset-password" className="sr-only">
+          New password
+        </label>
+        <PasswordField id="reset-password" value={password} onChange={setPassword} disabled={busy} checked={checked} autoFocus />
+        {error && <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>}
+        <Button type="submit" disabled={busy} className="w-full">
+          {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+          {password ? 'Set this password' : 'Generate a password'}
+        </Button>
+      </form>
+    </DialogContent>
+  );
+}
+
 function AddStudentDialog({
   exams,
   batches,
@@ -1024,6 +1237,9 @@ function AddStudentDialog({
 }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  // Empty: a password is generated, which the student must change at first sign-in.
+  const [password, setPassword] = useState('');
+  const [passwordChecked, setPasswordChecked] = useState(false);
   const [exam, setExam] = useState<ExamCode>(exams[0] ?? 'IELTS');
   const [batch, setBatch] = useState(initialBatch);
   const [total, setTotal] = useState('');
@@ -1044,8 +1260,8 @@ function AddStudentDialog({
       setError("Enter the student's name.");
       return;
     }
-    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError('Enter an email like name@example.com, or leave it empty.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Enter the student's email, like name@example.com. They sign in with it.");
       return;
     }
     if ([totalNpr, discountNpr, paidNpr].some(Number.isNaN)) {
@@ -1060,11 +1276,13 @@ function AddStudentDialog({
       setError('Enter the course fee first.');
       return;
     }
+    setPasswordChecked(true);
+    if (passwordTooShort(password)) return;
     setBusy(true);
     setError(null);
     let created: { student: Student; password: string };
     try {
-      created = await addStudent(name.trim(), exam, batch, email.trim());
+      created = await addStudent(name.trim(), exam, batch, email.trim(), password);
     } catch (err) {
       setError(errorMessage(err));
       setBusy(false);
@@ -1080,7 +1298,7 @@ function AddStudentDialog({
     }
     onAdded({
       name: created.student.name,
-      username: created.student.username,
+      email: created.student.email ?? '',
       password: created.password,
       warning,
       movedIn: created.student.movedIn,
@@ -1088,10 +1306,12 @@ function AddStudentDialog({
   };
 
   return (
-    <DialogContent className="gap-5 sm:max-w-xl">
+    <DialogContent className="gap-5 sm:max-w-2xl">
       <DialogHeader className="space-y-1 text-left">
         <DialogTitle className="font-sans text-lg font-semibold">Add a student</DialogTitle>
-        <DialogDescription>They get a username and password to sign in at your page.</DialogDescription>
+        <DialogDescription>
+          They sign in with their email and password. Leave the password empty to generate one: they must change it at first sign-in.
+        </DialogDescription>
       </DialogHeader>
       <form onSubmit={add} className="space-y-5">
         <section className="space-y-3">
@@ -1113,7 +1333,7 @@ function AddStudentDialog({
           </div>
           <div className="space-y-1.5">
             <label htmlFor="new-student-email" className={FIELD_LABEL}>
-              Email <span className="font-normal text-muted-foreground">(optional)</span>
+              Email
             </label>
             <Input
               id="new-student-email"
@@ -1126,6 +1346,12 @@ function AddStudentDialog({
               disabled={busy}
               className="h-10 text-sm"
             />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="new-student-password" className={FIELD_LABEL}>
+              Password (optional)
+            </label>
+            <PasswordField id="new-student-password" value={password} onChange={setPassword} disabled={busy} checked={passwordChecked} />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -1344,17 +1570,21 @@ function CredentialsDialog({ credentials, loginAddress }: { credentials: Credent
         <DialogDescription>The password is shown this once, so copy it now.</DialogDescription>
       </DialogHeader>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm">
-        <dt className="text-muted-foreground">Address</dt>
-        <dd className="break-all font-mono text-xs font-semibold text-foreground">{loginAddress}</dd>
-        <dt className="text-muted-foreground">Username</dt>
-        <dd className="font-mono font-semibold text-foreground">{credentials.username}</dd>
+        <dt className="text-muted-foreground">Sign-in page</dt>
+        <dd className="break-all font-mono text-xs font-semibold text-foreground">
+          <a href={loginAddress} target="_blank" rel="noreferrer" className="hover:underline">
+            {loginAddress}
+          </a>
+        </dd>
+        <dt className="text-muted-foreground">Email</dt>
+        <dd className="break-all font-mono font-semibold text-foreground">{credentials.email || 'None yet: add one to let them sign in'}</dd>
         <dt className="text-muted-foreground">Password</dt>
         <dd className="font-mono font-semibold text-foreground">{credentials.password}</dd>
       </dl>
       {credentials.movedIn && (
         <p className="rounded-lg border border-sky-500/30 bg-sky-500/10 p-3 text-sm text-sky-800 dark:text-sky-300">
           This email already had a Prepyo account. It is now part of your consultancy, with its practice history. From now on
-          they sign in with this username, not Google.
+          they sign in with this email and password, not Google.
         </p>
       )}
       {credentials.warning && (
@@ -1362,7 +1592,59 @@ function CredentialsDialog({ credentials, loginAddress }: { credentials: Credent
           {credentials.warning}
         </p>
       )}
-      <CopyButton text={`${loginAddress}\nUsername: ${credentials.username}\nPassword: ${credentials.password}`} label="Copy details" />
+      <CopyButton text={`Sign-in page: ${loginAddress}\nEmail: ${credentials.email}\nPassword: ${credentials.password}`} label="Copy details" />
+    </DialogContent>
+  );
+}
+
+/** Changes the email a student signs in with. */
+function EmailDialog({ student, onSaved }: { student: Student; onSaved: () => void }) {
+  const [email, setEmail] = useState(student.email ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Enter an email like name@example.com.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await setStudentEmail(student.id, email.trim());
+      onSaved();
+    } catch (err) {
+      setError(errorMessage(err));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <DialogContent className="gap-5 sm:max-w-sm">
+      <DialogHeader className="space-y-1 text-left">
+        <DialogTitle className="font-sans text-lg font-semibold">{student.email ? 'Edit email' : 'Add email'}</DialogTitle>
+        <DialogDescription>{student.name} signs in with this email and their password.</DialogDescription>
+      </DialogHeader>
+      <form onSubmit={save} className="space-y-4" noValidate>
+        <Input
+          type="email"
+          inputMode="email"
+          aria-label="Student email"
+          autoComplete="off"
+          placeholder="name@example.com"
+          value={email}
+          onChange={event => setEmail(event.target.value)}
+          disabled={busy}
+          autoFocus
+          className="h-10 text-sm"
+        />
+        <FormError message={error} />
+        <Button type="submit" disabled={busy} className="w-full">
+          {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save email
+        </Button>
+      </form>
     </DialogContent>
   );
 }

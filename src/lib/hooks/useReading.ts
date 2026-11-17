@@ -6,7 +6,7 @@ import { useRefreshMockPapers } from '@/lib/hooks/useMockPapers';
 import { loadMistakeTask, mistakeReadingSet } from '@/lib/mistakePractice';
 import { useToast } from '@/components/ui/toast';
 import { useApp } from '@/context/AppContext';
-import { READING_TYPES, familyOf } from '@/lib/readingTypes';
+import { READING_TYPES, typeIdsFor } from '@/lib/readingTypes';
 import {
   AnswerSubmission,
   ExamType,
@@ -33,12 +33,13 @@ import {
  * The passages practice can deal for a family of task types, for the practice
  * list. Re-order Paragraphs has none, so its list is empty.
  */
-export function useReadingPracticePassages(exam: ExamType, typeIds: string[], enabled = true) {
+export function useReadingPracticePassages(exam: ExamType, typeIds: string[], enabled = true, part?: number) {
   return useQuery({
-    queryKey: queryKeys.readingPracticePassages(exam, typeIds),
+    queryKey: queryKeys.readingPracticePassages(exam, typeIds, part),
     queryFn: () => {
       const params = new URLSearchParams({ exam });
       for (const id of typeIds) params.append('typeId', id);
+      if (part) params.set('part', String(part));
       return api.get<{ passages: ReadingPracticePassage[] }>(`/reading/practice/passages?${params}`);
     },
     enabled: enabled && typeIds.length > 0,
@@ -92,7 +93,7 @@ export function useReadingPractice(exam: ExamType) {
   const [startedAt, setStartedAt] = useState(() => Date.now());
 
   const deal = useCallback(
-    async (typeId: string, mistakeId?: string, passageId?: string): Promise<ReadingSet | null> => {
+    async (typeId: string, mistakeId?: string, passageId?: string, part?: number): Promise<ReadingSet | null> => {
       setDealing(true);
       setDealError(null);
       try {
@@ -101,8 +102,10 @@ export function useReadingPractice(exam: ExamType) {
           : await api.post<{ set: ReadingSet }>('/reading/practice', {
           exam,
           typeId,
-          // The whole heading, so a passage hands over every set behind it.
-          typeIds: familyOf(typeId),
+          // The whole heading, so a passage hands over every set behind it;
+          // an IELTS part takes every type, and the server deals a part's worth.
+          typeIds: part ? typeIdsFor(`part${part}`) : [typeId],
+          ...(part ? { part } : {}),
           // A passage chosen from the practice list; otherwise the server
           // deals the one practised least recently.
           ...(passageId ? { passageId } : {}),

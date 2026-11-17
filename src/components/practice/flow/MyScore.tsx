@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from 'react';
-import { ChevronRight, History, Loader2, TrendingDown, TrendingUp } from 'lucide-react';
+import { CheckCircle2, ChevronRight, History, Loader2, TrendingDown, TrendingUp, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, dialogBand } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import type { PracticeAttempt } from '@/lib/types';
-import PracticeResultCard, { SCALE } from '../PracticeResultCard';
+import { SCALE } from '../PracticeResultCard';
 import PracticeResultDialog from '../PracticeResultDialog';
 import { TONE, toneFor, type Tone } from '../ResultParts';
 import { pastTries, usePracticeHistory, type PastTry } from './history';
@@ -189,23 +189,47 @@ function summarise(entry: PastTry): Summary {
   return { score: String(round(score)), value: round(score), outOf: round(outOf), fraction, tone: toneFor(fraction), breakdown };
 }
 
-/** A passage sitting: each question's own result, as it was marked then. */
+/**
+ * A sitting (a reading passage, a listening part): one result, not a card per
+ * question. The score on a ring, then a row for each question with the learner's
+ * answer, right or wrong. No answer key: history never carries one.
+ */
 function SittingDialog({ entry, onClose }: { entry: Extract<PastTry, { kind: 'sitting' }>; onClose: () => void }) {
+  const s = summarise(entry);
   return (
     <Dialog open onOpenChange={o => !o && onClose()}>
-      <DialogContent band className="max-w-5xl gap-5">
+      <DialogContent band className="max-h-[90vh] max-w-3xl gap-5 overflow-y-auto">
         <div className={cn('space-y-1', dialogBand)}>
           <DialogTitle className="text-lg font-semibold">Your result · {when(entry.at)}</DialogTitle>
-          <DialogDescription className="text-sm">How each question you answered on this passage was marked.</DialogDescription>
+          <DialogDescription className="text-sm">How the questions you answered in this sitting were marked.</DialogDescription>
         </div>
-        <div className="space-y-4">
+        <div className="flex items-center gap-4 rounded-2xl border border-border p-4">
+          <MiniRing fraction={s.fraction ?? 0} tone={s.tone}>
+            <span className={cn('font-display text-xl font-black leading-none tabular-nums', TONE[s.tone].text)}>{s.score}</span>
+            <span className="text-[10px] font-semibold leading-none text-muted-foreground">of {s.outOf}</span>
+          </MiniRing>
+          <p className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            {s.breakdown.map(b => <span key={b}>{b}</span>)}
+          </p>
+        </div>
+        <ol className="divide-y divide-border rounded-2xl border border-border">
           {entry.attempts.map((a: PracticeAttempt, i: number) => (
-            <div key={a.id} className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Question {i + 1}</p>
-              <PracticeResultCard result={{ attempt: a, xpAwarded: 0 }} />
-            </div>
+            <li key={a.id} className="flex items-start gap-3 px-4 py-3 text-sm">
+              {a.isCorrect ? (
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-label="Correct" />
+              ) : (
+                <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-label="Wrong" />
+              )}
+              <span className="w-6 shrink-0 font-bold tabular-nums text-foreground">{i + 1}</span>
+              <span className="min-w-0 flex-1 space-y-0.5">
+                {a.prompt && <span className="block text-foreground line-clamp-2">{a.prompt.replace(/_{2,}|\[\[b?\d+\]\]/g, '_____')}</span>}
+                <span className="block text-xs text-muted-foreground">
+                  Your answer: <span className={cn('font-semibold', a.isCorrect ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400')}>{shown(a.userResponse)}</span>
+                </span>
+              </span>
+            </li>
           ))}
-        </div>
+        </ol>
         <div className="flex justify-end ml-2 border-t border-border pt-4">
           <Button variant="ghost" className="h-10 rounded-xl px-5 text-xs font-bold" onClick={onClose}>Close</Button>
         </div>
@@ -215,6 +239,12 @@ function SittingDialog({ entry, onClose }: { entry: Extract<PastTry, { kind: 'si
 }
 
 const verdict = (a: PracticeAttempt) => (a.isCorrect ? 'Correct' : a.score > 0 ? 'Partly right' : 'Not quite');
+/** An answer as the learner saw it: NOT_GIVEN as "Not given", nothing as "Not answered". */
+const shown = (response?: string) => {
+  const r = (response ?? '').trim();
+  if (!r) return 'Not answered';
+  return /^[A-Z_]{2,}$/.test(r) ? r.replace(/_/g, ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase()) : r;
+};
 const round = (n: number) => Math.round(n * 100) / 100;
 /** "Today, 8:10 PM", "Yesterday, 4:59 PM", or the full date for anything older. */
 const when = (at: string) => {

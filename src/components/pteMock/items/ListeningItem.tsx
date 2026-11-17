@@ -45,11 +45,7 @@ const ListeningItem = forwardRef<ItemHandle, ItemProps>(function ListeningItem({
   const inlineGaps = Boolean(question.contextPassage && passageHasGaps(question.contextPassage));
   return (
     <div className="space-y-5">
-      <AudioStatusPanel phase={playback.phase} countdown={playback.countdown} progress={playback.progress} />
-
-      {question.prompt && (
-        <p className="text-base font-semibold text-foreground leading-relaxed whitespace-pre-line">{question.prompt}</p>
-      )}
+      <AudioStatusPanel phase={playback.phase} countdown={playback.countdown} />
 
       {inlineGaps && (
         <InlineBlankPassage

@@ -22,6 +22,8 @@ export interface PteReportFormProps {
   overall: number | null;
   /** Each skill the paper scored, out of 90. A skill left out was not in the test. */
   skills: Partial<Record<string, number | null>>;
+  /** A sectional test's own skill: its headline, while its integrated tasks may score others too. */
+  mainSkill?: string;
 }
 
 /** A position on the 10–90 scale as a share of the bar. */
@@ -32,14 +34,15 @@ const onScale = (score: number) => ((Math.min(90, Math.max(10, score)) - 10) / 8
  * overall score and the four communicative skills on the 10–90 scale. It says
  * on its face that it is a practice estimate, never an official report.
  */
-export default function PteReportForm({ candidateName, testDate, reportId, testType, overall, skills }: PteReportFormProps) {
+export default function PteReportForm({ candidateName, testDate, reportId, testType, overall, skills, mainSkill }: PteReportFormProps) {
   const date = new Date(testDate);
   const dateText = Number.isNaN(date.getTime())
     ? '—'
     : date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
   const taken = SKILLS.filter(s => s in skills);
-  const headline = overall ?? (taken.length === 1 ? skills[taken[0]] ?? null : null);
-  const headlineLabel = overall != null || taken.length !== 1 ? 'Overall score' : `${SKILL_LABEL[taken[0]]} score`;
+  const main = taken.find(skill => skill === mainSkill) ?? (taken.length === 1 ? taken[0] : undefined);
+  const headline = overall ?? (main ? skills[main] ?? null : null);
+  const headlineLabel = overall != null || !main ? 'Overall score' : `${SKILL_LABEL[main]} score`;
 
   return (
     <section

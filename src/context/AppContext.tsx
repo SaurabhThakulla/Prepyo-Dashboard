@@ -77,7 +77,7 @@ interface AppContextType {
   clearTutorQuestion: () => void;
 
   activeTestSession: ActiveTestSession | null;
-  setActiveTestSession: (session: ActiveTestSession | null) => void;
+  setActiveTestSession: React.Dispatch<React.SetStateAction<ActiveTestSession | null>>;
   theme: 'light' | 'dark';
   setTheme: (theme: 'light' | 'dark') => void;
   toggleTheme: () => void;

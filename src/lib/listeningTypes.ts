@@ -13,33 +13,21 @@ export const LISTENING_TYPES = {
   matching: 'ielts-listening-matching',
 } as const;
 
-const GAP_TYPES: string[] = [LISTENING_TYPES.table, LISTENING_TYPES.diagram, LISTENING_TYPES.shortAnswer];
-const LETTER_TYPES: string[] = [LISTENING_TYPES.matching, LISTENING_TYPES.diagram];
+/** The name a part recording's question group goes by in the list's Type filter, after ielts.org's task types. */
+export const LISTENING_GROUP_TYPE_NAMES: Record<string, string> = {
+  'ielts-listening-completion': 'Form / note completion',
+  'ielts-listening-table': 'Table / flow-chart / summary',
+  'ielts-listening-mcq': 'Multiple choice',
+  'ielts-listening-map': 'Map / plan labelling',
+  'ielts-listening-diagram': 'Diagram labelling',
+  'ielts-listening-matching': 'Matching',
+  'ielts-listening-short-answer': 'Short-answer questions',
+};
 
-const isIeltsListening = (question: Question | null | undefined): question is Question =>
-  Boolean(question && question.exam === 'IELTS' && question.skill === 'listening');
-
-/**
- * A practice item answered by dragging letters from a box onto its numbered
- * questions: matching, and a diagram labelled with letters.
- */
-export function isListeningLetterTask(question: Question | null | undefined): boolean {
-  return (
-    isIeltsListening(question) &&
-    LETTER_TYPES.includes(question.typeId) &&
-    (question.options?.length ?? 0) > 0 &&
-    (question.blanks?.length ?? 0) > 0
-  );
-}
-
-/** A practice item whose numbered gaps are typed: table, notes, flow-chart, summary, diagram, short answer. */
-export function isListeningGapTask(question: Question | null | undefined): boolean {
-  return (
-    isIeltsListening(question) &&
-    GAP_TYPES.includes(question.typeId) &&
-    !isListeningLetterTask(question) &&
-    (question.blanks?.length ?? 0) > 0
-  );
+/** The IELTS Listening part (1-4) a `?type=` key names, as the sidebar links "Part 1". */
+export function listeningPartOf(syllabusKey?: string | null): number | undefined {
+  const match = /^part([1-4])$/.exec(syllabusKey ?? '');
+  return match ? Number(match[1]) : undefined;
 }
 
 /** A box allows a letter twice only when the instruction says so, as IELTS does. */

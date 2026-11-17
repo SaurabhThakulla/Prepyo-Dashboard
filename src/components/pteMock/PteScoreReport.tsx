@@ -75,8 +75,13 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
     );
   }
 
+  // The test's own skills, then any skill its integrated tasks also scored (a
+  // Listening section's Write from Dictation counts towards Writing too).
   const skills: Partial<Record<string, number | null>> = {};
   for (const skill of report.skills) skills[skill] = result.skills[skill] ?? null;
+  for (const [skill, score] of Object.entries(result.skills)) if (!(skill in skills)) skills[skill] = score;
+  const mainSkill = report.kind === 'full' ? undefined : report.skills[0];
+  const alsoScored = mainSkill ? Object.keys(skills).filter(skill => skill !== mainSkill) : [];
   const openIndex = open == null ? -1 : report.review.findIndex(r => r.position === open);
   const openItem = openIndex >= 0 ? report.review[openIndex] : null;
 
@@ -91,6 +96,7 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
             {hadSpeaking && ' Speaking is judged from what was transcribed, so pronunciation is only partly assessed.'}
             {result.unscored > 0 && ` ${result.unscored} item${result.unscored === 1 ? '' : 's'} could not be rated and ${result.unscored === 1 ? 'is' : 'are'} left out rather than counted as zero.`}
             {report.missing.length > 0 && ` ${report.missing.length} task type(s) were not in the bank.`}
+            {alsoScored.length > 0 && ` ${alsoScored.map(s => s[0].toUpperCase() + s.slice(1)).join(' and ')} ${alsoScored.length === 1 ? 'is' : 'are'} scored from this section's integrated tasks only.`}
           </span>
         </p>
         <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
@@ -116,6 +122,7 @@ export default function PteScoreReport({ report, onBack, onRetake }: Props) {
         testType={report.kind === 'full' ? 'Full mock test' : `${meta.shortLabel} sectional`}
         overall={result.overall}
         skills={skills}
+        mainSkill={mainSkill}
       />
 
       {showReview && (

@@ -6,6 +6,7 @@ import SentenceGap from '@/components/reading/renderers/SentenceGap';
 import MatchDnd, { MatchEntry, MatchChip, MatchSlot } from '@/components/reading/MatchDnd';
 import { SetScore } from '@/components/reading/ListMatchingGroup';
 import { placeEntry, placedEntries } from '@/components/reading/matchRules';
+import { LocateButton } from '@/components/reading/LocateAnswer';
 
 interface SummaryGroupProps {
   group: ReadingGroup;
@@ -105,15 +106,35 @@ export default function SummaryGroup({ group, startNumber, answers, results, dis
     return { question, index, cell, text };
   });
 
+  // At the right of a row; inline after the gap in a running summary.
+  const locate = (question: Question, index: number) => (
+    <LocateButton questionId={question.id} number={startNumber + index} />
+  );
+  const withLocate = (question: Question, index: number, text: string) => (
+    <div className="flex items-start gap-2">
+      <div className="min-w-0 flex-1">{gap(question, index, text)}</div>
+      {locate(question, index)}
+    </div>
+  );
+
   let body: React.ReactNode;
   if (form === 'table') {
     body = (
       <table className="w-full border-collapse text-[14px] sm:text-[15px]">
         <tbody>
           {rows.map(({ question, index, cell, text }) => (
-            <tr key={question.id} className="border-b border-border/70 last:border-0 align-top">
-              <th scope="row" className="w-[34%] py-2.5 pr-3 text-left font-semibold text-foreground">{cell}</th>
-              <td className="py-2.5 font-reading leading-loose text-foreground/90">{gap(question, index, text)}</td>
+            <tr key={question.id} className="align-middle">
+              {cell && (
+                <th scope="row" className="w-[34%] py-2.5 pr-3 text-left font-semibold text-foreground">
+                  {cell}
+                </th>
+              )}
+              <td className="py-2.5 font-reading leading-loose text-foreground/90">
+                {gap(question, index, text)}
+              </td>
+              <td className="w-auto whitespace-nowrap py-2.5 pl-3 text-right">
+                {locate(question, index)}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -124,8 +145,8 @@ export default function SummaryGroup({ group, startNumber, answers, results, dis
       <ol className="mx-auto max-w-xl space-y-1">
         {rows.map(({ question, index, text }) => (
           <li key={question.id} className="flex flex-col items-center gap-1">
-            <div className="w-full rounded-lg border border-border bg-background px-3 py-2 text-center font-reading text-[15px] leading-loose text-foreground/90">
-              {gap(question, index, text)}
+            <div className="w-full rounded-lg bg-muted/50 px-3 py-2 text-center font-reading text-[15px] leading-loose text-foreground/90">
+              {withLocate(question, index, text)}
             </div>
             {index < rows.length - 1 && <ArrowDown className="h-4 w-4 text-muted-foreground" aria-hidden />}
           </li>
@@ -136,15 +157,15 @@ export default function SummaryGroup({ group, startNumber, answers, results, dis
     body = (
       <ul className="list-disc space-y-1.5 pl-5 font-reading text-[15px] leading-loose text-foreground/90">
         {rows.map(({ question, index, text }) => (
-          <li key={question.id}>{gap(question, index, text)}</li>
+          <li key={question.id}>{withLocate(question, index, text)}</li>
         ))}
       </ul>
     );
   } else {
     body = (
-      <p className="mx-auto max-w-[66ch] font-reading text-[15px] sm:text-[17px] leading-[2.6] text-foreground/90">
+      <p className="font-reading text-[15px] sm:text-[17px] leading-[2.1] text-foreground/90">
         {rows.map(({ question, index, text }) => (
-          <React.Fragment key={question.id}>{gap(question, index, text)} </React.Fragment>
+          <React.Fragment key={question.id}>{gap(question, index, text)}{locate(question, index)} </React.Fragment>
         ))}
       </p>
     );
@@ -157,7 +178,7 @@ export default function SummaryGroup({ group, startNumber, answers, results, dis
     <div data-dictionary className="space-y-4 p-3 sm:p-4">
       <div className="rounded-xl bg-muted/20 px-3 py-4 sm:px-5">{body}</div>
       {box.length > 0 && (
-        <section aria-label="List of words" className="rounded-xl border border-border bg-muted/30 p-3">
+        <section aria-label="List of words" className="rounded-xl bg-muted/50 p-3">
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
             {box.map(entry => (
               <MatchChip key={entry.id} entry={entry} spent={used.has(entry.id)} />

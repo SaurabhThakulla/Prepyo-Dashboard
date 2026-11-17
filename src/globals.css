@@ -78,6 +78,112 @@
   border-color: hsl(var(--border));
 }
 
+/* The blue bar along the bottom of every mock test. Used with `dark` beside it
+   (so the light dark: tints apply), it re-points the theme colours for whatever
+   sits on it: the main action turns white, everything else is light on blue. */
+.test-bar {
+  --background: 224 62% 44%;
+  --foreground: 0 0% 100%;
+  --card: 224 62% 44%;
+  --primary: 0 0% 100%;
+  --primary-foreground: 224 72% 34%;
+  --muted: 224 58% 48%;
+  --muted-foreground: 220 80% 90%;
+  --accent: 224 60% 52%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 92% 84%;
+  --destructive-foreground: 0 70% 26%;
+  --border: 222 75% 66%;
+  --input: 222 75% 66%;
+  --ring: 0 0% 100%;
+  color: hsl(var(--foreground));
+  background: linear-gradient(90deg, hsl(226 78% 28%), hsl(224 72% 38%) 55%, hsl(221 80% 46%));
+  border-top: 1px solid hsl(0 0% 100% / 0.14);
+}
+
+/* Every button on the bar answers the pointer the same way: it lifts a little. */
+.test-bar button {
+  transition: background-color 150ms, color 150ms, border-color 150ms, transform 150ms, box-shadow 150ms;
+}
+.test-bar button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px -8px rgb(2 12 50 / 0.7);
+}
+.test-bar button:not(:disabled):active {
+  transform: none;
+  box-shadow: none;
+}
+
+/* The bar's main forward action: a lit pearl pill whose arrow leans forward on hover. */
+.test-bar button.test-next {
+  background-image: linear-gradient(180deg, #fff 0%, hsl(218 100% 95%) 100%);
+  color: hsl(224 76% 30%);
+  box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 hsl(220 60% 86%), 0 0 0 1px hsl(0 0% 100% / 0.55), 0 10px 22px -10px rgb(2 12 50 / 0.8);
+}
+.test-bar button.test-next:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 hsl(220 60% 86%), 0 0 0 4px hsl(0 0% 100% / 0.18), 0 14px 26px -10px rgb(2 12 50 / 0.85);
+}
+.test-bar button.test-next svg:last-child {
+  transition: transform 150ms;
+}
+.test-bar button.test-next:not(:disabled):hover svg:last-child {
+  transform: translateX(3px);
+}
+/* The arrow (or send) icon sits in a deep-blue disc at the pill's right end. */
+.test-bar button.test-next .test-next-chip {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-image: linear-gradient(180deg, hsl(221 83% 55%) 0%, hsl(226 78% 38%) 100%);
+  color: #fff;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.35), 0 3px 8px -3px rgb(2 12 50 / 0.7);
+}
+
+/* The bar's way out (Save and Exit): a soft glass pill that brightens on hover. */
+.test-bar button.test-leave {
+  background-color: hsl(0 0% 100% / 0.14);
+  color: #fff;
+}
+.test-bar button.test-leave:not(:disabled):hover {
+  background-color: hsl(0 0% 100% / 0.24);
+  color: #fff;
+}
+/* Ending a test early: a fainter pill that turns red on hover. */
+.test-bar button.test-end {
+  background-color: hsl(0 0% 100% / 0.08);
+  color: hsl(0 0% 100% / 0.85);
+}
+.test-bar button.test-end:not(:disabled):hover {
+  background-color: hsl(350 89% 60%);
+  color: #fff;
+}
+
+/* SignalBars while a recording plays: each bar rises and falls on its own beat. */
+@keyframes signal-bar {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+.signal-live {
+  animation: signal-bar 1.1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .signal-live { animation: none; }
+}
+
+/* Laptop screens. The app is laid out on a 1920px-wide screen; on 1024-1919px
+   (1366x768, or 1920x1080 at 125% Windows scaling = 1536px) the same 16px rem
+   makes everything look zoomed in. Every rem size follows this: 14px up to
+   1280px, rising to 16px at 1920px. Phones and tablets keep 16px. */
+@media (min-width: 1024px) {
+  html {
+    font-size: clamp(14px, calc(10px + 0.3125vw), 16px);
+  }
+}
+
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
@@ -382,4 +488,13 @@ html[data-dictionary-hover] [data-dictionary] * {
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   body.print-report #score-report .no-print { display: none !important; }
+}
+
+/* Reading practice: the sentence a question's answer comes from (LocateAnswer.tsx). */
+::highlight(answer-locate) {
+  background-color: rgb(250 204 21 / 0.55);
+  color: inherit;
+}
+.dark ::highlight(answer-locate) {
+  background-color: rgb(202 138 4 / 0.55);
 }

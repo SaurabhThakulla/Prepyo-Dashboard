@@ -7,7 +7,6 @@ import { queryKeys } from '@/lib/queryKeys';
 import { useReadingMock } from '@/lib/hooks/useReading';
 import { ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
-import { READING_PRACTICE_HREF } from '@/components/layout/sidebar/navigation';
 import ReadingMockRunner from '@/components/reading/ReadingMockRunner';
 import { isInstitutionStudent, isPremiumUser, ReadingMockSession } from '@/lib/types';
 import { FullMockSection } from '@/lib/fullMock';
@@ -62,7 +61,7 @@ export default function ReadingMockPanel({ section }: { section?: FullMockSectio
   const leave = () => {
     mock.exit();
     if (section) section.onLeave();
-    else navigate(READING_PRACTICE_HREF);
+    else navigate('/mocks');
   };
 
   if (section && !mock.session) return null;

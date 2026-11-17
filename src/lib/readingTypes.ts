@@ -1,3 +1,5 @@
+import { typeKey } from '@/lib/syllabus';
+
 /**
  * Reading task type ids, and the map from sidebar links to them.
  *
@@ -12,8 +14,6 @@ export const READING_TYPES = {
   // IELTS
   sentenceCompletion: 'reading-sentence-completion',
   trueFalse: 'reading-true-false',
-  findTheParagraph: 'reading-find-the-paragraph',
-  arrangePassage: 'reading-arrange-passage',
   yesNoNotGiven: 'reading-yes-no-not-given',
   matchingInformation: 'reading-matching-information',
   matchingHeadings: 'reading-matching-headings',
@@ -31,6 +31,21 @@ export const READING_TYPES = {
   reorderParagraphs: 'reorder-paragraphs',
 } as const;
 
+/** Every IELTS reading type: an IELTS Reading part deals any of them. */
+const IELTS_READING_TYPES = [
+  READING_TYPES.trueFalse, READING_TYPES.yesNoNotGiven, READING_TYPES.matchingInformation,
+  READING_TYPES.mcqSingle, READING_TYPES.mcqMultiple,
+  READING_TYPES.sentenceCompletion, READING_TYPES.matchingHeadings, READING_TYPES.matchingFeatures,
+  READING_TYPES.sentenceEndings, READING_TYPES.summaryCompletion, READING_TYPES.diagramLabel,
+  READING_TYPES.shortAnswer,
+];
+
+/** The IELTS Reading part (1-3) a `?type=` key names, as the sidebar links "Part 1". */
+export function readingPartOf(syllabusKey?: string | null): number | undefined {
+  const match = /^part([123])$/.exec(syllabusKey ?? '');
+  return match ? Number(match[1]) : undefined;
+}
+
 /**
  * Sidebar task names to server task types, keyed by `typeKey` from
  * `@/lib/syllabus` — which is how the sidebar builds its links.
@@ -47,12 +62,9 @@ export const TYPE_BY_SYLLABUS_KEY: Record<string, string | string[]> = {
   multiplechoicesingleanswer: READING_TYPES.mcqSingle,
   multiplechoicemultipleanswers: READING_TYPES.mcqMultiple,
 
-  // Both historical paragraph-location IDs are matching information, not headings.
-  findparagraph: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
-  whichparagraphcontainsfollowinginformation: [
-    READING_TYPES.findTheParagraph,
-    READING_TYPES.matchingInformation,
-  ],
+  // Old paragraph-location links are matching information, not headings.
+  findparagraph: READING_TYPES.matchingInformation,
+  whichparagraphcontainsfollowinginformation: READING_TYPES.matchingInformation,
   // Headings only: never information or sequencing questions, whose names
   // are similar.
   matchheading: READING_TYPES.matchingHeadings,
@@ -67,7 +79,7 @@ export const TYPE_BY_SYLLABUS_KEY: Record<string, string | string[]> = {
   summarycompletion: READING_TYPES.summaryCompletion,
   diagramlabelcompletion: READING_TYPES.diagramLabel,
   shortanswerquestions: READING_TYPES.shortAnswer,
-  matchinginformation: [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
+  matchinginformation: READING_TYPES.matchingInformation,
 
   truefalse: READING_TYPES.trueFalse,
   truefalsenotgiven: READING_TYPES.trueFalse,
@@ -76,7 +88,9 @@ export const TYPE_BY_SYLLABUS_KEY: Record<string, string | string[]> = {
   fillinblanks: READING_TYPES.sentenceCompletion,
   completesentences: READING_TYPES.sentenceCompletion,
   sentencecompletions: READING_TYPES.sentenceCompletion,
-  arrangepassage: READING_TYPES.arrangePassage,
+  part1: IELTS_READING_TYPES,
+  part2: IELTS_READING_TYPES,
+  part3: IELTS_READING_TYPES,
 
 
   // PTE Reading tasks. The Reading & Writing keys stay so old links and
@@ -94,6 +108,11 @@ export const TYPE_BY_SYLLABUS_KEY: Record<string, string | string[]> = {
 };
 
 
+/** The sidebar task names behind server type ids, in syllabus order: the reading list's type filter. */
+export function readingTypeNames(names: string[], typeIds: string[] = []): string[] {
+  return names.filter(name => typeIdsFor(typeKey(name)).some(id => typeIds.includes(id)));
+}
+
 /**
  * The server task types a dashboard entry covers, widest first.
  *
@@ -108,24 +127,6 @@ export function typeIdsFor(syllabusKey?: string | null): string[] {
   return Array.isArray(mapped) ? mapped : [mapped];
 }
 
-/**
- * The task types that share one dashboard heading.
- *
- * Practice deals a whole family at once: a learner who picks Multiple Choice
- * wants every multiple-choice question the passage carries, not whichever of
- * the two server types happened to be dealt. A mock is the other way round and
- * asks for one type at a time, which is why this lives here and not in the
- * request itself.
- */
-const FAMILIES: string[][] = [
-  [READING_TYPES.findTheParagraph, READING_TYPES.matchingInformation],
-];
-
-/** Every type sitting behind the same heading as this one, including itself. */
-export function familyOf(typeId: string): string[] {
-  return FAMILIES.find(family => family.includes(typeId)) ?? [typeId];
-}
-
 /** Tasks answered by filling gaps in a text the question carries itself. */
 export const isGapFill = (typeId: string): boolean =>
   typeId === READING_TYPES.fillBlanksRW || typeId === READING_TYPES.fillBlanksR;
@@ -136,7 +137,6 @@ export const isGapFill = (typeId: string): boolean =>
  */
 export const needsParagraphLabels = (typeId: string): boolean =>
   typeId === READING_TYPES.matchingInformation ||
-  typeId === READING_TYPES.findTheParagraph ||
   typeId === READING_TYPES.matchingHeadings;
 
 /**

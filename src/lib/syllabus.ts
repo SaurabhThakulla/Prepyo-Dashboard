@@ -40,18 +40,26 @@ export function taskInstruction(exam: ExamType, skill: SkillType, key: string): 
 /** What a task asks of the learner, in one plain line, for the practice hub's cards. */
 export function taskSummary(exam: ExamType, skill: SkillType, name: string): string | undefined {
   const topics = (syllabusData.exams[exam]?.skills as Record<string, { topics: (Topic & { simpleDescription?: string })[] }> | undefined)?.[skill]?.topics ?? [];
-  return topics.find(topic => topic.name === name)?.simpleDescription;
+  return topics.find(topic => topic.name === name)?.simpleDescription ?? partsOf(exam, skill).find(part => part.name === name)?.simpleDescription;
 }
 
 type Topic = { name: string; module?: string };
 
+/** The parts a learner picks a skill by (IELTS Writing's Task 1 and 2, Reading's Part 1-3), if any. */
+const partsOf = (exam: ExamType, skill: SkillType): { name: string; simpleDescription?: string }[] =>
+  (syllabusData.exams[exam]?.skills as Record<string, { parts?: { name: string; simpleDescription?: string }[] }> | undefined)?.[skill]?.parts ?? [];
+
 /**
  * The task names a learner is offered: the whole syllabus, less the other
  * IELTS module's own tasks. Academic learners describe a visual in Writing
- * Task 1; General Training learners write a letter.
+ * Task 1; General Training learners write a letter. A skill split into parts
+ * is offered by part instead (IELTS Writing's Task 1 and 2, Reading's Part
+ * 1-3); the question list then filters by task type inside it.
  */
 export function syllabusFor(exam: ExamType, skill: SkillType, module: IELTSModule = 'academic'): string[] {
   const topics = (syllabusData.exams[exam]?.skills as Record<string, { topics: Topic[] }> | undefined)?.[skill]?.topics ?? [];
+  const parts = partsOf(exam, skill);
+  if (parts.length > 0) return parts.map(part => part.name);
   return topics.filter(topic => exam !== 'IELTS' || !topic.module || topic.module === module).map(topic => topic.name);
 }
 
@@ -82,6 +90,9 @@ export const matchesTypeKey = (name?: string | null, key?: string | null): boole
 
   if (normName === normKey) return true;
 
+  // An IELTS Writing part ("task1") takes every task in it, by type id: ielts-writing-task1-figure.
+  if (/^task[12]$/.test(normKey) && normName.includes(`writing${normKey}`)) return true;
+
   // Single vs Multiple must strictly never cross-match
   const nameIsSingle = normName.includes('single') || normName.includes('mcsa');
   const keyIsSingle = normKey.includes('single') || normKey.includes('mcsa');
@@ -103,4 +114,5 @@ export const matchesTypeKey = (name?: string | null, key?: string | null): boole
 
 /** The syllabus name behind a `?type=` key, for headings and empty states. */
 export const typeLabel = (exam: ExamType, skill: SkillType, key: string) =>
-  (SYLLABUS[exam]?.[skill] ?? []).find(name => matchesTypeKey(name, key));
+  (SYLLABUS[exam]?.[skill] ?? []).find(name => matchesTypeKey(name, key)) ??
+  partsOf(exam, skill).find(part => matchesTypeKey(part.name, key))?.name;

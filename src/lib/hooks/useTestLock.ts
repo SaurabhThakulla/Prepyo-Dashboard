@@ -16,7 +16,15 @@ export function useTestLock(title: string, onLeave: () => void) {
   leave.current = onLeave;
 
   useEffect(() => {
-    setActiveTestSession?.({ isActive: true, locked: true, title, onStop: () => leave.current() });
-    return () => setActiveTestSession?.(null);
+    const mine = { isActive: true, locked: true, title, onStop: () => leave.current() };
+    setActiveTestSession?.(mine);
+    // Release only our own lock: the next screen of the test may already hold one.
+    return () => setActiveTestSession?.(current => (current === mine ? null : current));
   }, [title, setActiveTestSession]);
+}
+
+/** useTestLock for a screen that is only sometimes part of a test: render it while the test runs. */
+export function TestLock({ title, onLeave }: { title: string; onLeave: () => void }) {
+  useTestLock(title, onLeave);
+  return null;
 }

@@ -135,6 +135,10 @@ export interface InstitutionMembership {
   /** The institution's admin login. */
   email: string;
   username: string;
+  /** Signed in with a generated password: must choose their own before anything else. */
+  mustChangePassword?: boolean;
+  /** When the credit the consultancy activated them with ends; null if never activated. */
+  accessUntil?: string | null;
 }
 
 export interface UserProfile {
@@ -286,6 +290,8 @@ export interface Question {
   /** An English version exists; premium learners can open it with Help. */
   hasTranslation?: boolean;
   imageUrl?: string;
+  /** What the picture is on a chart task: bar, line, pie, table, process, map, mixed or diagram. */
+  imageKind?: string;
   prepTimeSeconds?: number;
   timeLimitSeconds: number;
   options?: QuestionOption[];
@@ -431,6 +437,8 @@ export interface ReadingPracticePassage {
   wordCount: number;
   /** Questions of the chosen task type on this passage. */
   questionCount: number;
+  /** The chosen task types this passage carries. */
+  typeIds?: string[];
   /** When this learner last practised it, if ever. */
   practisedAt?: string;
 }

@@ -3,27 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Award,
-  BookOpen,
-  CheckCircle2,
-  Circle,
-  CircleDot,
   Clock,
   FileText,
-  Headphones,
   ListChecks,
-  Mic,
-  PenLine,
   Play,
   RefreshCw,
   RotateCcw,
-  XCircle,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { useToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardDescription, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { isInstitutionStudent, MockPaperItem, ReadingMockSession } from '@/lib/types';
 import MockPaperList from '@/components/mocks/MockPaperList';
@@ -43,6 +35,9 @@ import WritingMockPanel, { WritingMockOutcome, WritingMockSession } from '@/comp
 import TestFeedback from '@/components/mocks/TestFeedback';
 import ReadingMockPanel from '@/components/reading/ReadingMockPanel';
 import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
+import PreTestChecks from '@/components/mocks/PreTestChecks';
+import { TestLock } from '@/lib/hooks/useTestLock';
+import MockSectionsCard, { SECTION_ICONS } from '@/components/mocks/MockSectionsCard';
 
 interface ActiveSection {
   skill: FullMockSkill;
@@ -75,8 +70,9 @@ export default function FullMockPanel() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [active, setActive] = useState<ActiveSection | null>(null);
-  const [confirmEnd, setConfirmEnd] = useState(false);
   const [results, setResults] = useState<SectionResults>({});
+  // A new full mock goes through the equipment checks first; a resumed one does not.
+  const [checking, setChecking] = useState<{ number?: number } | null>(null);
   // The numbered Full Mock Tests: Test N is each section's Test N.
   const [tests, setTests] = useState<MockPaperItem[]>([]);
   const [testsLoading, setTestsLoading] = useState(true);
@@ -141,6 +137,7 @@ export default function FullMockPanel() {
     try {
       const data = await api.post<{ session: FullMockSession }>('/full-mocks', number ? { number } : {});
       setFull(data.session);
+      setChecking(null);
       void refreshUser();
     } catch (err) {
       if (err instanceof ApiError && err.isLimitReached) {
@@ -177,7 +174,6 @@ export default function FullMockPanel() {
     try {
       await api.post(`/full-mocks/${full.id}/abandon`, {});
       setFull(null);
-      setConfirmEnd(false);
       toast.info('Full mock ended', 'The sections you finished are in your score reports.');
     } catch (err) {
       toast.error('Could not end the full mock', errorMessage(err));
@@ -194,12 +190,9 @@ export default function FullMockPanel() {
   };
 
   if (active && full) {
-    const index = FULL_MOCK_SECTIONS.findIndex(section => section.skill === active.skill);
     return (
-      <div className="w-full">
-        <div className="px-3 sm:px-6 lg:px-8 pt-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-          IELTS full mock · Section {index + 1} of 4 · {sectionLabel(active.skill)}
-        </div>
+      // The test's own controls (its question bar is a <nav>) must not count as leaving it.
+      <div data-practice-workspace className="w-full">
         {active.skill === 'listening' && (
           <ListeningMockRunner
             key={full.id + active.skill}
@@ -237,6 +230,20 @@ export default function FullMockPanel() {
 
   const left = fullMocksLeft(user?.subscription);
 
+  if (checking && !full) {
+    return (
+      <PreTestChecks
+        exam="IELTS"
+        title={`IELTS Full Mock Test${checking.number ? ` ${checking.number}` : ''}`}
+        skills={FULL_MOCK_SECTIONS.map(section => section.skill)}
+        sections={FULL_MOCK_SECTIONS.map(section => ({ label: section.label, timing: section.timing }))}
+        beginning={busy}
+        onBegin={() => void start(checking.number)}
+        onCancel={() => setChecking(null)}
+      />
+    );
+  }
+
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
       {loading ? (
@@ -252,57 +259,24 @@ export default function FullMockPanel() {
           }}
           onRedo={() => {
             setResults({});
-            void start(full.number);
+            setFull(null);
+            setChecking({ number: full.number });
           }}
           busy={busy}
         />
       ) : full ? (
-        <div className="w-full flex justify-center">
-          <Card className="w-full max-w-2xl p-6 sm:p-8 space-y-5">
-            <div className="space-y-1">
-              <CardTitle className="text-xl">IELTS Full Mock Test{full.number ? ` ${full.number}` : ''}</CardTitle>
-              <CardDescription>
-                Take the sections in order. Your place is kept, so you can stop between sections and come back.
-              </CardDescription>
-            </div>
-            <ol className="space-y-2">
-              {full.sections.map((section, i) => (
-                <SectionRow key={section.skill} index={i} section={section} current={full.stage === section.skill} />
-              ))}
-            </ol>
-            {full.stage && (
-              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
-                <p className="text-sm text-foreground">
-                  {FULL_MOCK_SECTIONS.find(section => section.skill === full.stage)?.about}{' '}
-                  {full.stage === 'listening' && 'Use headphones.'}
-                  {full.stage === 'speaking' && 'You will need a microphone and a quiet room.'}
-                </p>
-                <Button onClick={() => void openSection(full.stage!)} disabled={busy} className="font-bold gap-2">
-                  {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
-                  {full.sections.find(section => section.skill === full.stage)?.status === 'in_progress'
-                    ? `Continue ${sectionLabel(full.stage)}`
-                    : `Start ${sectionLabel(full.stage)}`}
-                </Button>
-              </div>
-            )}
-            <div className="border-t border-border pt-3 text-xs text-muted-foreground">
-              {confirmEnd ? (
-                <span className="flex flex-wrap items-center gap-2">
-                  End this full mock without an overall band? It is not returned to your allowance.
-                  <Button size="sm" variant="destructive" disabled={busy} onClick={() => void end()}>
-                    End it
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setConfirmEnd(false)}>
-                    Keep going
-                  </Button>
-                </span>
-              ) : (
-                <button type="button" className="underline hover:text-foreground" onClick={() => setConfirmEnd(true)}>
-                  End this full mock
-                </button>
-              )}
-            </div>
-          </Card>
+        <div data-practice-workspace className="flex min-h-[calc(100dvh-4rem)] w-full items-center justify-center">
+          {/* Between sections the test is still on: no sidebar, Save and exit is the way out. */}
+          <TestLock title={`IELTS Full Mock Test${full.number ? ` ${full.number}` : ''}`} onLeave={() => navigate('/mocks')} />
+          <MockSectionsCard
+            title={`Full Mock Test${full.number ? ` ${full.number}` : ''}`}
+            sections={full.sections}
+            current={full.stage ?? null}
+            busy={busy}
+            onOpen={skill => void openSection(skill)}
+            onLeave={() => navigate('/mocks')}
+            onEnd={() => void end()}
+          />
         </div>
       ) : (
         <div className="w-full flex flex-col gap-6">
@@ -369,7 +343,7 @@ export default function FullMockPanel() {
               </p>
               {/* With numbered tests the list below starts one; the button is the fallback. */}
               {!testsLoading && tests.length === 0 && (
-                <Button onClick={() => void start()} disabled={busy || left <= 0} className="h-10 shrink-0 gap-2 font-bold">
+                <Button onClick={() => setChecking({})} disabled={busy || left <= 0} className="h-10 shrink-0 gap-2 font-bold">
                   {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 fill-current" />}
                   Start full mock
                 </Button>
@@ -385,9 +359,9 @@ export default function FullMockPanel() {
                 isLoading={testsLoading}
                 exam="IELTS"
                 section="full"
-                onStart={test => void start(test.number)}
+                onStart={test => setChecking({ number: test.number })}
                 onResume={test => void start(test.number)}
-                onRetake={test => void start(test.number)}
+                onRetake={test => setChecking({ number: test.number })}
                 onReview={test => {
                   if (test.attemptId) navigate(`/mocks?review=${test.attemptId}`);
                 }}
@@ -397,39 +371,6 @@ export default function FullMockPanel() {
         </div>
       )}
     </div>
-  );
-}
-
-const SECTION_ICONS: Record<FullMockSkill, typeof Headphones> = {
-  listening: Headphones,
-  reading: BookOpen,
-  writing: PenLine,
-  speaking: Mic,
-};
-
-function SectionRow({ index, section, current }: { index: number; section: FullMockSectionState; current: boolean }) {
-  const meta = FULL_MOCK_SECTIONS[index];
-  const status =
-    section.status === 'submitted'
-      ? { icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />, text: 'Done' }
-      : section.status === 'closed'
-        ? { icon: <XCircle className="w-4 h-4 text-muted-foreground" />, text: 'Closed without a band' }
-        : section.status === 'in_progress'
-          ? { icon: <CircleDot className="w-4 h-4 text-primary" />, text: 'In progress' }
-          : { icon: <Circle className="w-4 h-4 text-muted-foreground" />, text: current ? 'Next' : 'Not started' };
-  return (
-    <li
-      className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
-        current ? 'border-primary/40 bg-primary/5' : 'border-border'
-      }`}
-    >
-      <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-        {status.icon}
-        {index + 1}. {meta.label}
-        <span className="hidden sm:inline text-xs font-normal text-muted-foreground">· {meta.timing}</span>
-      </span>
-      <span className="text-xs text-muted-foreground">{status.text}</span>
-    </li>
   );
 }
 

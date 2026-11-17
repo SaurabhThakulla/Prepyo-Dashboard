@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, Coins, Info, Shuffle } from 'lucide-react';
+import { ChevronRight, Coins, Info, Shuffle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SkillType } from '@/lib/types';
 
@@ -20,11 +20,9 @@ interface Props {
   cost?: number | null;
   /** A speaking answer marked from its recording costs double past a minute (billing.SpeakingUnits). */
   costDoublesWhenLong?: boolean;
-  /** Position in the list, 0-based; navigation is hidden without a list. */
-  index?: number;
-  total?: number;
-  onJump?: (index: number) => void;
   onShuffle?: () => void;
+  /** The next item in the list, in its order (Shuffle picks one at random). */
+  onNext?: () => void;
   disabled?: boolean;
 }
 
@@ -34,12 +32,11 @@ const CHIP = 'inline-flex h-9 shrink-0 items-center rounded-full border border-b
 export const ON_BAR = 'text-white hover:bg-white/15 hover:text-white';
 const ARROW = 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-30';
 
-/** The row under every practice item: actions on the left; cost, shuffle, and pagination in the right corner. */
-export default function PracticeActionBar({ actions, middle, hideMiddleOnPhone, cost, costDoublesWhenLong, index = -1, total = 0, onJump, onShuffle, disabled }: Props) {
-  const nav = onJump && total > 0;
+/** The row under every practice item: actions on the left; cost and shuffle in the right corner. */
+export default function PracticeActionBar({ actions, middle, hideMiddleOnPhone, cost, costDoublesWhenLong, onShuffle, onNext, disabled }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-[#0f2a6b] bg-[#13307f] dark:border-border dark:bg-card p-2.5 shadow-md sm:gap-3 sm:p-3">
-      {/* On a phone: buttons on one row, credits and paging on the next. */}
+      {/* On a phone: buttons on one row, credits and shuffle on the next. */}
       <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:gap-2">{actions}</div>
       {/* The recorder gets its own row above the buttons until there is room for one line.
           min-w-max: xl is the window's width, not the bar's, so in a narrow column the
@@ -49,6 +46,22 @@ export default function PracticeActionBar({ actions, middle, hideMiddleOnPhone, 
       )}
       <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
         {cost != null && <CostChip cost={cost} costDoublesWhenLong={costDoublesWhenLong} />}
+        {onNext && (
+          <button
+            type="button"
+            onClick={() => {
+              onNext();
+              // The next item opens at its top, not where this one was scrolled to.
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            disabled={disabled}
+            aria-label="Next question"
+            title="Next question"
+            className={cn(CHIP, 'gap-1 px-3.5 text-sm font-bold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-30')}
+          >
+            Next <ChevronRight className="h-4 w-4" aria-hidden />
+          </button>
+        )}
         {onShuffle && (
           <button
             type="button"
@@ -60,48 +73,6 @@ export default function PracticeActionBar({ actions, middle, hideMiddleOnPhone, 
           >
             <Shuffle className="h-4 w-4" aria-hidden />
           </button>
-        )}
-        {nav && (
-          <div className={cn(CHIP, 'ml-auto')}>
-            <button
-              type="button"
-              onClick={() => onJump(index - 1)}
-              disabled={disabled || index <= 0}
-              aria-label="Previous question"
-              title="Previous question"
-              className={ARROW}
-            >
-              <ChevronLeft className="h-4 w-4" aria-hidden />
-            </button>
-            <label className="flex h-full cursor-pointer items-center gap-1 border-x border-border px-3 text-sm transition-colors hover:bg-muted/60">
-              <select
-                aria-label={`Question number, of ${total}`}
-                value={index >= 0 ? index : ''}
-                onChange={e => onJump(Number(e.target.value))}
-                disabled={disabled}
-                className="cursor-pointer appearance-none bg-transparent pr-4 font-semibold tabular-nums text-foreground focus:outline-none"
-              >
-                {index < 0 && <option value="">–</option>}
-                {Array.from({ length: total }, (_, i) => (
-                  <option key={i} value={i} className="bg-background text-foreground">
-                    {i + 1}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none -ml-4 h-3 w-3 text-muted-foreground" aria-hidden />
-              <span className="tabular-nums text-muted-foreground select-none">of {total}</span>
-            </label>
-            <button
-              type="button"
-              onClick={() => onJump(index + 1)}
-              disabled={disabled || index >= total - 1}
-              aria-label="Go to next question"
-              title="Go to next question"
-              className={cn(ARROW, 'text-primary hover:bg-primary/10 hover:text-primary')}
-            >
-              <ChevronRight className="h-4 w-4" aria-hidden />
-            </button>
-          </div>
         )}
       </div>
     </div>

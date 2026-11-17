@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CalendarClock, Check, CheckCircle2, ChevronRight, ClipboardCheck, Clock, Download, Hourglass, Loader2, Mic } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronRight, ClipboardCheck, Hourglass, Loader2 } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,17 @@ import WritingMockPanel, { WritingMockSession } from '@/components/practice/Writ
 import ReadingMockPanel from '@/components/reading/ReadingMockPanel';
 import { ReadingMockSession } from '@/lib/types';
 import { TestMicrophone } from '@/lib/pteMock/audio';
-import { pteReportHref } from '@/lib/pteMock/catalog';
-import { PteSession } from '@/lib/pteMock/types';
+import { PART_LABELS } from '@/lib/pteMock/catalog';
+import { PtePart, PteSession } from '@/lib/pteMock/types';
+import { usePteMockReport } from '@/lib/hooks/usePteMock';
+import { FULL_MOCK_SECTIONS } from '@/lib/fullMock';
+import { TestLock } from '@/lib/hooks/useTestLock';
+import PteScoreReport from '@/components/pteMock/PteScoreReport';
+import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
+import MockSectionsCard from '@/components/mocks/MockSectionsCard';
+import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
 import { unlockAudio } from '@/lib/scriptPlayer';
+import PreTestChecks from '@/components/mocks/PreTestChecks';
 
 type Skill = 'listening' | 'reading' | 'writing' | 'speaking';
 
@@ -50,6 +58,8 @@ interface StudentResult extends StudentMock {
   comment: string;
   reviewerName: string;
   comments: { position: number; taskName: string; level: number | null; band?: number | null; comment: string }[];
+  /** IELTS: the normal score report of the released result. */
+  mockAttemptId?: string;
 }
 
 /** A released score on its exam's scale: PTE out of 90, an IELTS band. */
@@ -232,6 +242,23 @@ function MockList({ institution }: { institution: string }) {
   );
 }
 
+// The sections a PTE test is in, as the normal PTE mock names them.
+const PTE_PARTS: Record<StudentMock['kind'], PtePart[]> = {
+  full: ['speaking_writing', 'reading', 'listening'],
+  speaking: ['speaking_writing'],
+  writing: ['speaking_writing'],
+  reading: ['reading'],
+  listening: ['listening'],
+};
+
+const needsMic = (m: StudentMock) => m.exam === 'PTE' && (m.kind === 'full' || m.kind === 'speaking');
+
+/**
+ * One Institute Mock for its student, on the same screens as a normal mock:
+ * the equipment checks, the between-sections card of an IELTS full test, the
+ * test players, and the normal score report once the teacher releases it.
+ * What differs is only that the result waits for the teacher.
+ */
 function MockScreen({ id }: { id: string }) {
   const navigate = useNavigate();
   const { mocks, error, load } = useStudentMocks();
@@ -241,6 +268,10 @@ function MockScreen({ id }: { id: string }) {
   const [startError, setStartError] = useState<string | null>(null);
   const mock = mocks?.find(m => m.id === id);
   const [section, setSection] = useState<{ skill: Skill; session: unknown } | null>(null);
+  const [checked, setChecked] = useState(false);
+  // A test already begun is resumed once, as a normal mock's Resume does.
+  const resumed = useRef(false);
+  const oneSection = mock?.exam === 'IELTS' && (mock.sections?.length ?? 0) === 1;
 
   // The microphone belongs to the test; it is released when the page goes.
   useEffect(() => () => mic?.close(), [mic]);
@@ -256,6 +287,7 @@ function MockScreen({ id }: { id: string }) {
     mic?.close();
     navigate('/institute-mock');
   }, [mic, navigate]);
+  const toList = useCallback(() => navigate('/institute-mock'), [navigate]);
 
   const start = async (checked: TestMicrophone | null) => {
     setStarting(true);
@@ -271,6 +303,28 @@ function MockScreen({ id }: { id: string }) {
     } finally {
       setStarting(false);
     }
+  };
+
+  // A PTE test with speaking opens the microphone first, as the normal PTE mock's Begin test does.
+  const beginPte = async () => {
+    if (!mock || starting) return;
+    setStartError(null);
+    let opened: TestMicrophone | null = null;
+    if (needsMic(mock)) {
+      unlockAudio();
+      if (!TestMicrophone.supported()) {
+        setStartError('This browser cannot record audio. Use Chrome or Edge on a computer.');
+        return;
+      }
+      try {
+        opened = new TestMicrophone();
+        await opened.open();
+      } catch {
+        setStartError('Microphone access was refused. Allow the microphone for this site and try again.');
+        return;
+      }
+    }
+    await start(opened);
   };
 
   // An IELTS section opens in its own player; finishing or leaving it comes back here.
@@ -293,28 +347,43 @@ function MockScreen({ id }: { id: string }) {
     void load();
   }, [load]);
 
+  // Coming back to a test already begun goes straight back into it: the PTE
+  // test, or the one section of a one-section IELTS mock.
+  useEffect(() => {
+    if (!mock || resumed.current || section || session || starting || mock.status !== 'in_progress') return;
+    if (mock.exam === 'PTE') {
+      resumed.current = true;
+      void beginPte();
+    } else if (oneSection && mock.sections) {
+      resumed.current = true;
+      void openSection(mock.sections[0].skill);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mock, section, session, starting]);
+
   if (section) {
-    const label = `${mock?.name ?? 'Institute Mock'} · ${SKILL_NAMES[section.skill]}`;
+    // Leaving a one-section mock leaves the test, as a normal section mock's Save and Exit does.
+    const out = oneSection ? toList : backToTest;
     return (
-      <div className="w-full">
-        <div className="px-3 pt-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground sm:px-6 lg:px-8">{label}</div>
+      // The test's own controls (its question bar is a <nav>) must not count as leaving it.
+      <div data-practice-workspace className="w-full">
         {section.skill === 'listening' && (
           <ListeningMockRunner
             session={section.session as ListeningSession}
-            title={label}
+            title={oneSection ? undefined : 'Full mock: Listening'}
             onDone={backToTest}
             onClosed={backToTest}
-            onLeave={backToTest}
+            onLeave={out}
           />
         )}
         {section.skill === 'reading' && (
-          <ReadingMockPanel section={{ session: section.session as ReadingMockSession, onSubmitted: backToTest, onLeave: backToTest }} />
+          <ReadingMockPanel section={{ session: section.session as ReadingMockSession, onSubmitted: backToTest, onLeave: out }} />
         )}
         {section.skill === 'writing' && (
-          <WritingMockPanel section={{ session: section.session as WritingMockSession, onSubmitted: backToTest, onLeave: backToTest }} />
+          <WritingMockPanel section={{ session: section.session as WritingMockSession, onSubmitted: backToTest, onLeave: out }} />
         )}
         {section.skill === 'speaking' && (
-          <SpeakingMockRunner session={section.session as SpeakingSession} onDone={backToTest} onClosed={backToTest} onLeave={backToTest} />
+          <SpeakingMockRunner session={section.session as SpeakingSession} onDone={backToTest} onClosed={backToTest} onLeave={out} />
         )}
       </div>
     );
@@ -324,8 +393,78 @@ function MockScreen({ id }: { id: string }) {
     return <PteTestRunner initial={session} mic={mic} onFinished={finished} onLeave={leave} />;
   }
 
+  // A test not begun yet goes through the equipment checks first, as a normal mock does.
+  if (mock && mock.status === 'not_started' && mock.state === 'open' && !checked) {
+    const skills: Skill[] =
+      mock.exam === 'IELTS'
+        ? (mock.sections?.map(s => s.skill) ?? ['listening', 'reading', 'writing', 'speaking'])
+        : mock.kind === 'full'
+          ? ['speaking', 'writing', 'reading', 'listening']
+          : [mock.kind];
+    const sections =
+      mock.exam === 'IELTS'
+        ? skills.map(skill => {
+            const meta = FULL_MOCK_SECTIONS.find(s => s.skill === skill)!;
+            return { label: meta.label, timing: meta.timing };
+          })
+        : PTE_PARTS[mock.kind].map(part => ({ label: PART_LABELS[part] }));
+    return (
+      <PreTestChecks
+        exam={mock.exam}
+        title={mock.name}
+        skills={skills}
+        sections={sections}
+        error={startError}
+        beginning={starting}
+        onBegin={() => {
+          if (mock.exam === 'PTE') void beginPte();
+          else if (oneSection && mock.sections) void openSection(mock.sections[0].skill);
+          else setChecked(true);
+        }}
+        onCancel={toList}
+      />
+    );
+  }
+
+  // An IELTS full test between its sections: the full mock's own card.
+  if (mock && mock.exam === 'IELTS' && !oneSection && (mock.status === 'not_started' || mock.status === 'in_progress')) {
+    const sections = (mock.sections ?? []).map(s => ({ skill: s.skill, status: s.status }));
+    const next = sections.find(s => s.status !== 'submitted');
+    const open = mock.state === 'open' || next?.status === 'in_progress';
+    return (
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
+        <div data-practice-workspace className="flex min-h-[calc(100dvh-4rem)] w-full items-center justify-center">
+          {/* Between sections the test is still on: no sidebar, Save and exit is the way out. */}
+          <TestLock title={mock.name} onLeave={toList} />
+          <MockSectionsCard
+            title={mock.name}
+            sections={sections}
+            current={next?.skill ?? null}
+            busy={starting}
+            disabled={!open}
+            onOpen={skill => void openSection(skill)}
+            onLeave={toList}
+            note={mock.closesAt ? `Start before ${when(mock.closesAt)}.` : undefined}
+            notice={
+              (startError || !open) && (
+                <p className={`text-sm ${startError ? 'text-rose-600 dark:text-rose-400' : 'text-muted-foreground'}`}>
+                  {startError ?? (mock.state === 'scheduled' ? `It opens ${when(mock.opensAt)}.` : 'It is closed.')}
+                </p>
+              )
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Released: the normal score report, with the teacher's comments.
+  if (mock && mock.status === 'released') {
+    return mock.exam === 'IELTS' ? <IeltsReleased id={id} mock={mock} /> : <PteReleased mock={mock} />;
+  }
+
   return (
-    <div className={`mx-auto w-full space-y-5 px-4 py-6 sm:px-6 ${mock?.status === 'released' ? 'max-w-5xl' : 'max-w-3xl'}`}>
+    <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 sm:px-6">
       <Link to="/institute-mock" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" /> Institute Mock
       </Link>
@@ -339,13 +478,7 @@ function MockScreen({ id }: { id: string }) {
             <h1 className="font-display text-2xl font-semibold text-foreground">{mock.name}</h1>
             <p className="text-sm text-muted-foreground">{mock.title}</p>
           </div>
-          {mock.exam === 'IELTS' && (mock.status === 'not_started' || mock.status === 'in_progress') && (
-            <IeltsSections mock={mock} starting={starting} error={startError} onOpen={skill => void openSection(skill)} />
-          )}
-          {mock.exam !== 'IELTS' && (mock.status === 'not_started' || mock.status === 'in_progress') && (
-            <StartCard mock={mock} starting={starting} error={startError} onStart={checked => void start(checked)} />
-          )}
-          {mock.status === 'submitted' && (
+          {mock.status === 'submitted' ? (
             <Card className="flex items-start gap-3 p-5">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-300">
                 <Hourglass className="h-5 w-5" />
@@ -357,126 +490,38 @@ function MockScreen({ id }: { id: string }) {
                 </p>
               </div>
             </Card>
+          ) : (
+            // Before it opens, after it closes, or a resume that could not start.
+            <Card className="space-y-3 p-5">
+              <p className="text-sm text-foreground">
+                {startError ??
+                  (mock.status === 'in_progress'
+                    ? 'Your test is waiting where you left it.'
+                    : mock.state === 'scheduled'
+                      ? `It opens ${when(mock.opensAt)}.`
+                      : 'It is closed.')}
+              </p>
+              {mock.status === 'in_progress' && (
+                <Button
+                  disabled={starting}
+                  onClick={() => {
+                    if (mock.exam === 'PTE') void beginPte();
+                    else if (mock.sections) void openSection(mock.sections[0].skill);
+                  }}
+                >
+                  {starting && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                  Continue the test
+                </Button>
+              )}
+            </Card>
           )}
-          {mock.status === 'released' && (mock.exam === 'IELTS' ? <IeltsResultCard id={id} mock={mock} /> : <ResultCard id={id} mock={mock} />)}
         </>
       )}
     </div>
   );
 }
 
-function StartCard({
-  mock,
-  starting,
-  error,
-  onStart,
-}: {
-  mock: StudentMock;
-  starting: boolean;
-  error: string | null;
-  onStart: (mic: TestMicrophone | null) => void;
-}) {
-  const needsMic = mock.kind === 'full' || mock.kind === 'speaking';
-  const [mic, setMic] = useState<TestMicrophone | null>(null);
-  const [peak, setPeak] = useState(0);
-  const [micError, setMicError] = useState<string | null>(null);
-  // A ref, not state: as state, setting it re-ran the cleanup below with the
-  // old value and closed the microphone just as it was handed to the test.
-  const handedOver = useRef(false);
-
-  useEffect(() => {
-    if (!mic) return;
-    const timer = setInterval(() => setPeak(p => Math.max(p, mic.level())), 80);
-    return () => clearInterval(timer);
-  }, [mic]);
-  useEffect(() => () => {
-    if (!handedOver.current) mic?.close();
-  }, [mic]);
-
-  const openMic = async () => {
-    unlockAudio();
-    setMicError(null);
-    if (!TestMicrophone.supported()) {
-      setMicError('This browser cannot record audio. Use Chrome or Edge on a computer.');
-      return;
-    }
-    const m = new TestMicrophone();
-    try {
-      await m.open();
-      setMic(m);
-    } catch {
-      setMicError('Microphone access was refused. Allow the microphone for this site and try again.');
-    }
-  };
-
-  const heard = peak >= TestMicrophone.VOICE_LEVEL;
-  const ready = mock.state === 'open' || mock.status === 'in_progress';
-  const canStart = ready && (!needsMic || (mic !== null && heard));
-
-  return (
-    <Card className="space-y-5 p-5">
-      <ul className="space-y-2 text-sm text-foreground">
-        <li className="flex gap-2">
-          <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /> Timed like the real test. The clock keeps running if you leave.
-        </li>
-        <li className="flex gap-2">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /> One attempt. You cannot go back to a question.
-        </li>
-        <li className="flex gap-2">
-          <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-          {mock.closesAt ? `Hand it in before ${when(mock.closesAt)}.` : 'Your teacher sees it as soon as you finish.'}
-        </li>
-      </ul>
-
-      {needsMic && mock.status === 'not_started' && (
-        <div className="space-y-2 rounded-lg border border-border p-4">
-          <p className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <Mic className="h-4 w-4" /> Check your microphone
-          </p>
-          {!mic ? (
-            <Button variant="outline" size="sm" onClick={() => void openMic()}>
-              Turn on the microphone
-            </Button>
-          ) : (
-            <div className="space-y-1.5">
-              <div className="h-2 overflow-hidden rounded-full bg-muted">
-                <div className={`h-full rounded-full ${heard ? 'bg-emerald-500' : 'bg-primary'}`} style={{ width: `${Math.min(100, peak * 400)}%` }} />
-              </div>
-              <p className="text-xs text-muted-foreground">{heard ? 'We can hear you. You are ready.' : 'Say a few words so we can hear you.'}</p>
-            </div>
-          )}
-          {micError && <p className="text-sm text-rose-600 dark:text-rose-400">{micError}</p>}
-        </div>
-      )}
-
-      {error && <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>}
-      {!ready && <p className="text-sm text-muted-foreground">{mock.state === 'scheduled' ? `It opens ${when(mock.opensAt)}.` : 'It is closed.'}</p>}
-      <Button
-        className="h-10 w-full sm:w-auto"
-        disabled={starting || !(canStart || (mock.status === 'in_progress' && ready))}
-        onClick={() => {
-          handedOver.current = true;
-          onStart(mic);
-        }}
-      >
-        {starting && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-        {mock.status === 'in_progress' ? 'Continue the test' : 'Start the test'}
-      </Button>
-    </Card>
-  );
-}
-
-function ReportField({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-xs font-bold uppercase tracking-widest text-slate-500">{label}</p>
-      <p className={`mt-0.5 break-words ${strong ? 'text-lg font-bold' : 'text-base'}`}>{value}</p>
-    </div>
-  );
-}
-
-function ResultCard({ id, mock }: { id: string; mock: StudentMock }) {
-  const { user } = useApp();
+function useStudentResult(id: string) {
   const [result, setResult] = useState<StudentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -485,188 +530,81 @@ function ResultCard({ id, mock }: { id: string; mock: StudentMock }) {
       .then(data => setResult(data.result))
       .catch(err => setError(errorMessage(err)));
   }, [id]);
+  return { result, error };
+}
 
-  if (error) return <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>;
-  if (!result) return <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />;
-  const order = ['listening', 'reading', 'speaking', 'writing'];
-  const skills = Object.entries(result.result?.skills ?? {}).sort(([a], [b]) => order.indexOf(a) - order.indexOf(b));
-  const overall = result.result?.overall ?? (mock.finalScore != null ? Math.round(mock.finalScore) : null);
-  const candidate = user?.name || 'Candidate';
-  const issued = mock.releasedAt ?? result.releasedAt;
-  const reportNo = mock.id.replace(/-/g, '').slice(0, 10).toUpperCase();
-  const onScale = (score: number) => ((Math.min(90, Math.max(10, score)) - 10) / 80) * 100;
-
-  // Save as PDF through the browser's print dialog; the print styles show only
-  // the report, and the title becomes the file name.
-  const download = () => {
-    const title = document.title;
-    document.title = `Score Report - ${candidate} - ${mock.name}`;
-    document.body.classList.add('print-report');
-    const done = () => {
-      document.body.classList.remove('print-report');
-      document.title = title;
-      window.removeEventListener('afterprint', done);
-    };
-    window.addEventListener('afterprint', done);
-    window.print();
-  };
-
+/** What the teacher wrote, under the normal score report. */
+function TeacherComments({ result, mock }: { result: StudentResult; mock: StudentMock }) {
+  const ielts = mock.exam === 'IELTS';
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button onClick={download} className="gap-2">
-          <Download className="h-4 w-4" /> Download PDF
-        </Button>
+    <Card className="space-y-3 p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="font-display text-base font-semibold text-foreground">Your teacher's comments</p>
+        <p className="text-sm text-muted-foreground">Reviewed by {result.reviewerName || mock.institution}</p>
       </div>
-
-      <div id="score-report" className="overflow-hidden rounded-2xl border border-border bg-white text-slate-900 shadow-lg">
-        {/* Letterhead */}
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-[#13307f] to-[#2b4fd1] px-6 py-5 text-white sm:px-8">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/75">{mock.institution}</p>
-            <h2 className="font-display text-2xl font-bold sm:text-3xl">Score Report</h2>
-            <p className="text-sm text-white/85">PTE Academic practice mock test</p>
-          </div>
-          <div className="text-right text-sm leading-relaxed text-white/90">
-            <p>
-              Report no. <span className="font-mono font-semibold">{reportNo}</span>
-            </p>
-            {issued && <p>Issued {new Date(issued).toLocaleDateString(undefined, { dateStyle: 'long' })}</p>}
-          </div>
+      {!result.comment && result.comments.length === 0 && <p className="text-sm text-muted-foreground">No comments this time.</p>}
+      {result.comment && <p className="whitespace-pre-wrap text-sm text-foreground">{result.comment}</p>}
+      {result.comments.map(c => (
+        <div key={c.position} className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
+          <p className="text-xs text-muted-foreground">
+            {c.taskName}
+            {ielts ? c.band != null && ` · Band ${c.band.toFixed(1)}` : ` · question ${c.position}`}
+          </p>
+          <p className="whitespace-pre-wrap text-foreground">{c.comment}</p>
         </div>
-
-        {/* Candidate and test */}
-        <div className="grid grid-cols-1 gap-x-8 gap-y-4 border-b border-slate-200 px-6 py-6 sm:grid-cols-2 sm:px-8 lg:grid-cols-4">
-          <ReportField label="Candidate name" value={candidate} strong />
-          <ReportField label="Email" value={user?.email || '—'} />
-          <ReportField label="Test" value={mock.name} strong />
-          <ReportField label="Paper" value={mock.title} />
-          <ReportField label="Institution" value={mock.institution} />
-          <ReportField label="Reviewed by" value={result.reviewerName || mock.institution} />
-        </div>
-
-        {/* Scores */}
-        <div className="grid grid-cols-1 gap-8 px-6 py-7 sm:px-8 md:grid-cols-[220px_1fr]">
-          <div className="flex flex-col items-center justify-center rounded-2xl bg-slate-50 px-4 py-6 text-center ring-1 ring-slate-200">
-            <p className="text-sm font-bold uppercase tracking-widest text-slate-500">Overall score</p>
-            <p className="mt-2 font-display text-7xl font-extrabold leading-none text-[#13307f] tabular-nums">{overall ?? '—'}</p>
-            <p className="mt-2 text-base text-slate-500">out of 90</p>
-          </div>
-          <div className="space-y-4">
-            <p className="text-sm font-bold uppercase tracking-widest text-slate-500">Communicative skills</p>
-            {skills.map(([skill, score]) => (
-              <div key={skill} className="grid grid-cols-[100px_1fr_48px] items-center gap-4">
-                <span className="text-base font-semibold">{SKILL_NAMES[skill] ?? skill}</span>
-                <div className="relative h-4 rounded-full bg-slate-100">
-                  <div className="absolute inset-y-0 left-0 rounded-full bg-[#2b4fd1]" style={{ width: `${onScale(score)}%` }} />
-                </div>
-                <span className="text-right text-xl font-bold tabular-nums">{score}</span>
-              </div>
-            ))}
-            {skills.length > 0 && (
-              <div className="grid grid-cols-[100px_1fr_48px] gap-4 text-sm text-slate-500">
-                <span />
-                <div className="flex justify-between"><span>10</span><span>30</span><span>50</span><span>70</span><span>90</span></div>
-                <span />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {(result.comment || result.comments.length > 0) && (
-          <div className="space-y-3 border-t border-slate-200 px-6 py-6 sm:px-8">
-            <p className="text-sm font-bold uppercase tracking-widest text-slate-500">Teacher's comments</p>
-            {result.comment && <p className="whitespace-pre-wrap text-base leading-relaxed">{result.comment}</p>}
-            {result.comments.map(c => (
-              <div key={c.position} className="rounded-lg bg-slate-50 px-4 py-3 ring-1 ring-slate-200">
-                <p className="text-sm text-slate-500">
-                  {c.taskName} · question {c.position}
-                </p>
-                <p className="whitespace-pre-wrap text-base">{c.comment}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <p className="border-t border-slate-200 bg-slate-50 px-6 py-4 text-xs leading-relaxed text-slate-500 sm:px-8">
-          A practice result from a mock test set by {mock.institution} on Prepyo, on the PTE Academic 10–90 scale. It is
-          not an official PTE Academic score and is not issued by Pearson.
+      ))}
+      {mock.purgeAfter && (
+        <p className="text-xs text-muted-foreground">
+          Your answers are kept until {when(mock.purgeAfter)}; the {ielts ? 'bands stay' : 'score stays'}.
         </p>
-      </div>
+      )}
+    </Card>
+  );
+}
 
-      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-        {mock.sessionId && (
-          <Button asChild variant="outline" size="sm">
-            <Link to={pteReportHref(mock.sessionId)}>See every answer</Link>
-          </Button>
-        )}
-        {mock.purgeAfter && <span>Your answers are kept until {when(mock.purgeAfter)}; the score stays.</span>}
+function IeltsReleased({ id, mock }: { id: string; mock: StudentMock }) {
+  const navigate = useNavigate();
+  const { result, error } = useStudentResult(id);
+  if (error) return <p className="px-4 py-6 text-sm text-rose-600 dark:text-rose-400">{error}</p>;
+  if (!result) return <Loader2 className="m-6 h-5 w-5 animate-spin text-muted-foreground" />;
+  // Released before reports were linked to the papers: the short result it had.
+  if (!result.mockAttemptId) {
+    return (
+      <div className="mx-auto w-full max-w-5xl space-y-5 px-4 py-6 sm:px-6">
+        <IeltsResultCard id={id} mock={mock} />
       </div>
+    );
+  }
+  return (
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-10">
+      <IeltsTestReport
+        attemptId={result.mockAttemptId}
+        embedded
+        backLabel="Back to Institute Mocks"
+        onBack={() => navigate('/institute-mock')}
+        notice={<TeacherComments result={result} mock={mock} />}
+      />
     </div>
   );
 }
 
-/** An IELTS mock's sections, sat in order: each opens in the IELTS section player. */
-function IeltsSections({
-  mock,
-  starting,
-  error,
-  onOpen,
-}: {
-  mock: StudentMock;
-  starting: boolean;
-  error: string | null;
-  onOpen: (skill: Skill) => void;
-}) {
-  const sections = mock.sections ?? [];
-  const next = sections.find(s => s.status !== 'submitted');
-  const open = mock.state === 'open' || next?.status === 'in_progress';
+function PteReleased({ mock }: { mock: StudentMock }) {
+  const navigate = useNavigate();
+  const { result } = useStudentResult(mock.id);
+  const { data, isPending, error } = usePteMockReport(mock.sessionId ?? undefined);
+  if (isPending) return <AppPageSkeleton />;
+  if (error || !data?.report) {
+    return <p className="px-4 py-6 text-sm text-rose-600 dark:text-rose-400">This result could not be loaded. Try again in a moment.</p>;
+  }
   return (
-    <Card className="space-y-5 p-5">
-      <ul className="space-y-2 text-sm text-foreground">
-        <li className="flex gap-2">
-          <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /> Each section is timed like the real test. Its clock keeps running if you leave.
-        </li>
-        <li className="flex gap-2">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /> Sections are sat in order, once each. Use headphones and a microphone.
-        </li>
-        <li className="flex gap-2">
-          <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-          {mock.closesAt ? `Start before ${when(mock.closesAt)}.` : 'Your teacher sees it as soon as you finish the last section.'}
-        </li>
-      </ul>
-      <ol className="divide-y divide-border rounded-lg border border-border">
-        {sections.map((s, i) => {
-          const done = s.status === 'submitted';
-          const current = next?.skill === s.skill;
-          return (
-            <li key={s.skill} className="flex items-center gap-3 px-4 py-3">
-              <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                  done ? 'bg-emerald-500 text-white' : current ? 'bg-primary text-primary-foreground' : 'border border-border text-muted-foreground'
-                }`}
-              >
-                {done ? <Check className="h-4 w-4" strokeWidth={3} /> : i + 1}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium text-foreground">{s.name}</span>
-                <span className="block text-xs text-muted-foreground">
-                  {done ? 'Handed in' : s.status === 'in_progress' ? 'Started' : current ? 'Next' : 'Waiting'}
-                </span>
-              </span>
-              {current && (
-                <Button size="sm" className="h-9" disabled={starting || !open} onClick={() => onOpen(s.skill)}>
-                  {starting && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-                  {s.status === 'in_progress' ? 'Continue' : `Start ${s.name}`}
-                </Button>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-      {error && <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>}
-      {!open && <p className="text-sm text-muted-foreground">{mock.state === 'scheduled' ? `It opens ${when(mock.opensAt)}.` : 'It is closed.'}</p>}
-    </Card>
+    <div className="space-y-5 pb-10">
+      <PteScoreReport report={data.report} onBack={() => navigate('/institute-mock')} />
+      {result && (
+        <div className="mx-auto w-full max-w-6xl px-4 sm:px-8">
+          <TeacherComments result={result} mock={mock} />
+        </div>
+      )}
+    </div>
   );
 }
 

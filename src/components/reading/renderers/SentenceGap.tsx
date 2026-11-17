@@ -49,8 +49,8 @@ export default function SentenceGap({ question, answer, result, locked, number, 
   const width = options.length ? `${Math.min(Math.max(widest + 5, 8), 28)}ch` : '11ch';
 
   let tone = filled
-    ? 'border-primary/60 bg-primary/10 text-primary font-semibold shadow-2xs'
-    : 'border-dashed border-primary/45 bg-primary/[0.04] text-foreground hover:border-primary/70';
+    ? 'border-transparent bg-primary/10 text-primary font-semibold'
+    : 'border-transparent bg-primary/[0.07] text-foreground hover:bg-primary/10';
   if (result) {
     tone = isCorrect
       ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 font-semibold'
@@ -103,7 +103,7 @@ export default function SentenceGap({ question, answer, result, locked, number, 
         spellCheck={false}
         aria-label={number ? `Question ${number}` : 'Your answer'}
         placeholder="...."
-        className={`h-8 font-sans text-sm px-2.5 rounded-lg border text-center font-semibold placeholder:font-bold placeholder:tracking-widest placeholder:text-primary/50focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-solid focus:border-primary disabled:opacity-100 transition-all ${tone} ${struck}`}
+        className={`h-8 font-sans text-sm px-2.5 rounded-lg border text-center font-semibold placeholder:font-bold placeholder:tracking-widest placeholder:text-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-solid focus:border-primary disabled:opacity-100 transition-all ${tone} ${struck}`}
       />
       {verdictMark}
     </span>

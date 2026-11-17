@@ -41,6 +41,8 @@ export interface PtePartView {
   first: number;
   last: number;
   items: number;
+  /** The part's time, in the catalogue. */
+  minutes?: number;
 }
 
 export interface PteClockView {

@@ -11,18 +11,18 @@ import {
   AlertCircle,
   Send,
   CheckCircle2,
-  Volume2,
   LayoutList,
   PanelRight,
   RotateCcw,
   Lock,
+  ArrowLeft,
 } from 'lucide-react';
 import { isPteTaskAvailable, getPteTaskLockedReason, findPteTaskConfig } from '@/lib/pteExamConfig';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import AudioRecorder, { type RecorderStatus } from '@/components/practice/AudioRecorder';
+import AudioRecorder from '@/components/practice/AudioRecorder';
 import { audioDelayFor, prepSecondsFor } from '@/components/practice/prepTime';
 import QuestionFigure from '@/components/practice/QuestionFigure';
 import PromptAudio from '@/components/practice/PromptAudio';
@@ -33,9 +33,7 @@ import { answerMark, OPTION_MARK_CLASS, OPTION_MARK_LABEL } from '@/lib/answerMa
 import ListeningAnswerInput from '@/components/practice/ListeningAnswerInput';
 import OptionContent, { hasPictureOptions, MarkedText } from '@/components/practice/OptionContent';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
-import ListeningGapOutline from '@/components/listening/ListeningGapOutline';
-import { ListeningLetterPractice } from '@/components/listening/ListeningLetterBoard';
-import { isListeningGapTask, isListeningLetterTask } from '@/lib/listeningTypes';
+import { LISTENING_GROUP_TYPE_NAMES, listeningPartOf } from '@/lib/listeningTypes';
 import ConversationPassage, { conversationTurns } from '@/components/practice/ConversationPassage';
 import { isAiRatedListening, isReadAloudTask, isRepeatSentenceTask, isWordHighlightTask, passageText } from '@/lib/listening';
 import { allowsMultipleChoices } from '@/lib/choices';
@@ -45,9 +43,9 @@ import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isInstitutio
 import FreePlanNotice from '@/institution/FreePlanNotice';
 import PracticeActionBar, { CostChip, gradingUnits, notesFor, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
 import MyScore from '@/components/practice/flow/MyScore';
-import RecordingPlayback from '@/components/practice/flow/RecordingPlayback';
 
 const ReadingPracticePanel = lazy(() => import('@/components/reading/ReadingPracticePanel'));
+const ListeningPartPanel = lazy(() => import('@/components/listening/ListeningPartPanel'));
 const ReadingMockPanel = lazy(() => import('@/components/reading/ReadingMockPanel'));
 const SkillMockPanel = lazy(() => import('@/components/practice/SkillMockPanel'));
 const WritingMockPanel = lazy(() => import('@/components/practice/WritingMockPanel'));
@@ -57,14 +55,15 @@ const PracticeMockPaywall = lazy(() => import('@/components/practice/PracticeMoc
 const AdminReadingAuthoring = lazy(() => import('@/components/admin/AdminReadingAuthoring'));
 const AdminQuestionAuthoring = lazy(() => import('@/components/admin/AdminQuestionAuthoring'));
 import { useReadingPracticePassages } from '@/lib/hooks/useReading';
+import { listeningPartName, useListeningPracticeParts } from '@/lib/hooks/useListeningPractice';
 import { fetchAllQuestions } from '@/lib/hooks/useResources';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
-import { familyOf, typeIdsFor } from '@/lib/readingTypes';
+import { readingPartOf, readingTypeNames, typeIdsFor } from '@/lib/readingTypes';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { answeredContext, questionContext } from '@/lib/tutorContext';
 import { encodeForUpload } from '@/lib/audio';
-import { matchesTypeKey, typeLabel } from '@/lib/syllabus';
+import { matchesTypeKey, SYLLABUS, typeLabel } from '@/lib/syllabus';
 import { pteMockHref } from '@/lib/pteMock/catalog';
 import { loadMistakeTask } from '@/lib/mistakePractice';
 import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
@@ -72,7 +71,8 @@ import { useAICapabilities } from '@/lib/hooks/useAICapabilities';
 import type { Delivery } from '@/lib/delivery';
 import { useProgressStage } from '@/lib/hooks/useProgressStage';
 import { loadCompleted, saveCompleted } from '@/lib/practiceProgress';
-import QuestionDrawer, { BackToQuestions } from '@/components/practice/QuestionDrawer';
+import QuestionDrawer from '@/components/practice/QuestionDrawer';
+import QuestionHeader from '@/components/practice/QuestionHeader';
 import { useExclusivePanel } from '@/components/layout/sidePanels';
 import ScoringProgress from '@/components/practice/ScoringProgress';
 import { recordQuestionAttempt } from '@/lib/questionStorage';
@@ -175,11 +175,16 @@ function PracticePageContent() {
   // they are dealt one at a time like listening, not from the passage list.
   const readingList =
     selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK' && activeExam !== 'JLPT' && !isMockMode && !mistakeId && !isAdmin(user);
+  // IELTS Listening Part 1-4: one recording and its questions, picked from a list of recordings.
+  const listeningPart =
+    selectedSkill === 'listening' && activeExam === 'IELTS' && !isMockMode && !mistakeId && !isAdmin(user)
+      ? listeningPartOf(typeParam)
+      : undefined;
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [loading, setLoading] = useState(
-    () => !mistakeId && !readingList && Boolean(typeParam || drawerParam === 'open' || drawerParam === '1'),
+    () => !mistakeId && !readingList && !listeningPart && Boolean(typeParam || drawerParam === 'open' || drawerParam === '1'),
   );
   // The list of mock papers opens with the page, so the learner picks one straight away.
   // Practice opens on its first question instead (a start costs a credit), with the list a tap away.
@@ -196,12 +201,15 @@ function PracticePageContent() {
   // Reading is practised by passage, not by single question, so its list is
   // the passages practice deals for the task (and its family).
   const readingFamily = useMemo(
-    () => [...new Set(typeIdsFor(typeParam).flatMap(familyOf))],
+    () => typeIdsFor(typeParam),
     [typeParam],
   );
-  const readingPassagesQuery = useReadingPracticePassages(activeExam, readingFamily, readingList);
+  const readingPassagesQuery = useReadingPracticePassages(activeExam, readingFamily, readingList, readingPartOf(typeParam));
   const readingPassages = readingPassagesQuery.data?.passages ?? [];
   const passageParam = searchParams.get('passage');
+  const listeningPartsQuery = useListeningPracticeParts(listeningPart, Boolean(listeningPart));
+  const listeningParts = listeningPartsQuery.data?.parts ?? [];
+  const recordingParam = searchParams.get('recording');
 
   // The practice list is a page: these learners get it (mocks, mistakes and admins do not).
   const drawerShown = readingList || (!isAdmin(user) && !mistakeId && !isMockMode);
@@ -288,10 +296,10 @@ function PracticePageContent() {
   }, [activeExam, selectedSkill, typeParam, mistakeId, searchParams, queryClient]);
 
   useEffect(() => {
-    if (!isTestMockMode && (isDrawerOpen || Boolean(typeParam)) && !mistakeId && questions.length === 0 && !loadFailed) {
+    if (!isTestMockMode && !listeningPart && (isDrawerOpen || Boolean(typeParam)) && !mistakeId && questions.length === 0 && !loadFailed) {
       void loadQuestionsForSubtask();
     }
-  }, [isDrawerOpen, typeParam, mistakeId, questions.length, loadFailed, loadQuestionsForSubtask, isTestMockMode]);
+  }, [isDrawerOpen, typeParam, mistakeId, questions.length, loadFailed, loadQuestionsForSubtask, isTestMockMode, listeningPart]);
 
   const handleSelectQuestionFromDrawer = async (question: Question) => {
     closeTutorialVideo?.();
@@ -322,8 +330,6 @@ function PracticePageContent() {
   const [blankResponses, setBlankResponses] = useState<Record<string, string>>({});
   const [recording, setRecording] = useState<Blob | null>(null);
   // The recorder's phase and mic action, for the recording pill in the action bar.
-  const [recorderStatus, setRecorderStatus] = useState<RecorderStatus | null>(null);
-  const recorderControl = useRef<(() => void) | null>(null);
   // The question whose prompt audio has played through. Keyed by id, so moving
   // to the next question starts out not heard.
   const [heardPromptFor, setHeardPromptFor] = useState<string | null>(null);
@@ -506,6 +512,45 @@ function PracticePageContent() {
   const isReading = selectedSkill === 'reading' && activeExam !== 'EPS_TOPIK' && activeExam !== 'JLPT';
   const isAdminUser = isAdmin(user);
   const listPage = drawerShown && isDrawerOpen;
+
+  // Next in the bar: the item after this one in the list (recordings, passages), from the top again after the last.
+  const openNext = (ids: string[], currentId: string | undefined, param: 'recording' | 'passage') => {
+    if (ids.length < 2) return;
+    const next = ids[(ids.indexOf(currentId ?? '') + 1) % ids.length];
+    const params = new URLSearchParams(searchParams);
+    params.set(param, next);
+    params.delete('drawer');
+    setSearchParams(params);
+  };
+
+  // An IELTS Listening part's list: its whole recordings, by their short names.
+  const listeningDrawer = listeningPart ? (
+    <QuestionDrawer
+      exam={activeExam}
+      skill={selectedSkill}
+      typeKey={typeParam}
+      isMock={false}
+      questions={listeningParts.map(recording => ({
+        id: recording.id,
+        title: recording.title || listeningPartName(recording.setting),
+        prompt: `${recording.testTitle}, Part ${recording.partNo}`,
+        difficulty: recording.difficulty,
+        // The Type filter matches a recording holding that task type among its questions.
+        typeNames: [...new Set((recording.typeIds ?? []).map(id => LISTENING_GROUP_TYPE_NAMES[id] ?? id))],
+      }))}
+      currentQuestionId={recordingParam}
+      completedIds={listeningParts.filter(recording => recording.practisedAt).map(recording => recording.id)}
+      isLoading={listeningPartsQuery.isPending || (listeningPartsQuery.isFetching && listeningParts.length === 0)}
+      onRetry={listeningPartsQuery.isError ? () => void listeningPartsQuery.refetch() : undefined}
+      onClose={recordingParam ? hideList : undefined}
+      onSelectQuestion={recording => {
+        const next = new URLSearchParams(searchParams);
+        next.set('recording', recording.id);
+        next.delete('drawer');
+        setSearchParams(next);
+      }}
+    />
+  ) : null;
   // A question on screen gets the room: the left menu shuts when it opens (its button still reopens it).
   useExclusivePanel('right', !isAdminUser && !isMockMode && !listPage, () => {});
 
@@ -797,13 +842,15 @@ function PracticePageContent() {
     goToIndex(0);
   };
 
+  const writingSideBySide = grading === 'ai' && selectedSkill === 'writing';
+
   return (
     <div
       data-practice-workspace
       className={`w-full ${isReading && !isAdminUser && !listPage
-          ? 'min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-4rem)] lg:overflow-hidden'
+          ? 'min-h-[calc(100dvh-var(--app-header-h,4rem))] lg:h-[calc(100dvh-var(--app-header-h,4rem))] lg:max-h-[calc(100dvh-var(--app-header-h,4rem))] lg:overflow-hidden'
           : 'min-h-[calc(100vh-4rem)]'
-        } p-0 m-0 max-sm:pb-20 flex flex-col bg-background`}
+        } p-0 m-0 max-sm:pb-20 flex flex-col bg-card`}
     >
       {/* An admin has no reason to sit the paper. They add questions/passages instead. */}
       {user?.subscription?.aiBlocked && (selectedSkill === 'speaking' || selectedSkill === 'writing') ? (
@@ -843,6 +890,23 @@ function PracticePageContent() {
         <Suspense fallback={<PracticePageSkeleton />}>
           <SkillMockPanel key={`${activeExam}-${selectedSkill}`} skill={selectedSkill} exam={activeExam} />
         </Suspense>
+      ) : listeningPart ? (
+        <>
+          {listPage && listeningDrawer}
+          {/* Stays mounted behind the list, so a part in progress keeps its answers. */}
+          <div className={listPage ? 'hidden' : 'contents'}>
+            <Suspense fallback={<PracticePageSkeleton />}>
+              <ListeningPartPanel
+                key={`listening-part-${listeningPart}`}
+                partNo={listeningPart}
+                partId={recordingParam ?? undefined}
+                listOpen={isDrawerOpen}
+                onBackToList={showList}
+                onNext={listeningParts.length > 1 ? currentId => openNext(listeningParts.map(p => p.id), currentId, 'recording') : undefined}
+              />
+            </Suspense>
+          </div>
+        </>
       ) : readingList ? (
         <>
           {listPage && (
@@ -856,6 +920,7 @@ function PracticePageContent() {
                 title: passage.title,
                 prompt: passage.topic,
                 difficulty: passage.difficulty,
+                typeNames: readingTypeNames(SYLLABUS[activeExam]?.reading ?? [], passage.typeIds),
               }))}
               currentQuestionId={passageParam}
               completedIds={readingPassages.filter(passage => passage.practisedAt).map(passage => passage.id)}
@@ -884,9 +949,9 @@ function PracticePageContent() {
                 mistakeId={mistakeId}
                 exam={activeExam}
                 passageId={passageParam ?? undefined}
-                passageIds={readingPassages.map(passage => passage.id)}
                 listOpen={isDrawerOpen}
                 onBackToList={showList}
+                onNext={mistakeId || readingPassages.length < 2 ? undefined : currentId => openNext(readingPassages.map(p => p.id), currentId, 'passage')}
               />
             </Suspense>
           </div>
@@ -899,7 +964,6 @@ function PracticePageContent() {
             mistakeId={mistakeId}
             exam={activeExam}
             passageId={passageParam ?? undefined}
-            passageIds={readingPassages.map(passage => passage.id)}
             listOpen={isDrawerOpen}
           />
         </Suspense>
@@ -1011,7 +1075,6 @@ function PracticePageContent() {
         <div className="w-full flex flex-col flex-1">
           {/* Unified Full-Width Workspace matching Reading layout */}
           <div className="w-full px-4 sm:px-6 lg:px-8 py-5 space-y-4 flex-1 flex flex-col">
-            {drawerShown && <BackToQuestions onClick={showList} />}
             {/* Warning banner when practicing a task locked in current PTE variant */}
             {activeExam === 'PTE' && typeParam && !isPteTaskAvailable(pteVariant, typeParam) && (
               <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/90 dark:bg-amber-950/40 p-4 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
@@ -1036,15 +1099,41 @@ function PracticePageContent() {
                 </Button>
               </div>
             )}
-            <div className="space-y-3.5">
+            <div className="space-y-3.5 first:-mt-5">
               {/* Task type, its instructions, and the time allowed */}
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex items-start gap-3 sm:gap-4">
-                  <span className="inline-flex h-12 min-w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 px-2 text-sm font-bold text-primary-foreground shadow-md sm:h-14 sm:min-w-14">
-                    {taskCode}
-                  </span>
-                  <div className="min-w-0 space-y-1 pt-0.5">
-                    <h2 className="text-xl sm:text-2xl font-bold text-primary leading-tight">{currentQuestion.typeName}</h2>
+              <QuestionHeader
+                code={taskCode}
+                title={currentQuestion.typeName}
+                actions={
+                  <>
+                    {!speakingUnscored && gradingUnits(selectedSkill, currentQuestion.typeId) != null && (
+                      <CostChip
+                        cost={gradingUnits(selectedSkill, currentQuestion.typeId)!}
+                        costDoublesWhenLong={selectedSkill === 'speaking' && gradingUnits(selectedSkill, currentQuestion.typeId) === 5}
+                      />
+                    )}
+                    <Button variant="outline" onClick={handleAskAITutor} className={`${PILL} gap-2`}>
+                      <Bot className="w-4 h-4 text-primary" />
+                      <span><span className="hidden sm:inline">Ask </span>AI Coach</span>
+                    </Button>
+                    {currentQuestion.timeLimitSeconds > 0 && (
+                      <div className="hidden shrink-0 items-center gap-3 rounded-2xl bg-card px-4 py-2.5 sm:flex">
+                        <Clock className="h-6 w-6 text-primary" aria-hidden />
+                        <div className="leading-tight">
+                          <p className="text-xs text-muted-foreground">Time per question</p>
+                          <p className="text-sm font-bold text-primary">{timeAllowed(currentQuestion.timeLimitSeconds)}</p>
+                        </div>
+                      </div>
+                    )}
+                    {drawerShown && (
+                      <Button variant="outline" onClick={showList} className={`${PILL} gap-2`}>
+                        <ArrowLeft className="h-4 w-4" />
+                        <span>Back to questions</span>
+                      </Button>
+                    )}
+                  </>
+                }
+              >
                     {currentQuestion.timeLimitSeconds > 0 && (
                       <p className="flex items-center gap-1.5 text-xs font-semibold text-primary sm:hidden">
                         <Clock className="h-3.5 w-3.5" aria-hidden /> {timeAllowed(currentQuestion.timeLimitSeconds)} per question
@@ -1063,48 +1152,27 @@ function PracticePageContent() {
                           : <p className="text-sm text-muted-foreground leading-relaxed">{currentQuestion.prompt.trim().split(/\s*\n\s*\n\s*/).join(' ')}</p>}
                       </div>
                     )}
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2 self-start">
-                  {!speakingUnscored && gradingUnits(selectedSkill, currentQuestion.typeId) != null && (
-                    <CostChip
-                      cost={gradingUnits(selectedSkill, currentQuestion.typeId)!}
-                      costDoublesWhenLong={selectedSkill === 'speaking' && gradingUnits(selectedSkill, currentQuestion.typeId) === 5}
-                    />
-                  )}
-                  <Button variant="outline" onClick={handleAskAITutor} className={`${PILL} gap-2`}>
-                    <Bot className="w-4 h-4 text-primary" />
-                    <span><span className="hidden sm:inline">Ask </span>AI Coach</span>
-                  </Button>
-                  {currentQuestion.timeLimitSeconds > 0 && (
-                    <div className="hidden shrink-0 items-center gap-3 rounded-2xl bg-primary/[0.07] px-4 py-2.5 sm:flex">
-                      <Clock className="h-6 w-6 text-primary" aria-hidden />
-                      <div className="leading-tight">
-                        <p className="text-xs text-muted-foreground">Time per question</p>
-                        <p className="text-sm font-bold text-primary">{timeAllowed(currentQuestion.timeLimitSeconds)}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+              </QuestionHeader>
 
-              {/* The question: blue bar with its number and title, then its content */}
+              {/* The question straight on the page's white, with no card of its own: its number and title, then its content */}
               {/* Only the heading, prompt and passage open the dictionary: not the audio player or help boxes. */}
-              <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+              {/* Writing: the task on the left, the response beside it on a wide screen, as on the computer-delivered test. */}
+              <div className={writingSideBySide ? 'space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5 lg:space-y-0' : 'space-y-4'}>
+              <div className={writingSideBySide ? 'lg:rounded-2xl lg:border lg:border-border/70 lg:bg-slate-50/70 lg:px-5 lg:pb-2 lg:pt-3 dark:lg:bg-white/[0.03]' : undefined}>
               {(questionHeading || (!isPteListening && currentIndex >= 0)) && (
-                <div className="flex items-center gap-3 bg-gradient-to-r from-primary to-primary/75 px-4 py-3 text-primary-foreground dark:!bg-muted dark:!text-foreground sm:px-5">
-                  {!isPteListening && currentIndex >= 0 && <span className="rounded-lg bg-white/15 px-2.5 py-0.5 font-bold tabular-nums">#{currentIndex + 1}</span>}
-                  {!isPteListening && currentIndex >= 0 && questionHeading && <span className="h-5 w-px bg-white/40" aria-hidden />}
-                  {questionHeading && <h3 data-dictionary className="text-sm sm:text-base font-semibold leading-snug">{questionHeading}</h3>}
+                <div className="flex items-center gap-3 pt-2">
+                  {!isPteListening && currentIndex >= 0 && <span className="rounded-md bg-primary px-2.5 py-1 text-sm font-bold tabular-nums text-primary-foreground">#{currentIndex + 1}</span>}
+                  {questionHeading && <h3 data-dictionary className="text-lg sm:text-xl font-bold leading-snug text-foreground">{questionHeading}</h3>}
                 </div>
               )}
 
-              <div className="p-3 sm:p-4 space-y-3 empty:hidden">
+              <div className="py-4 space-y-4 empty:hidden">
 
                 {/* IELTS Speaking Part 2 shows its task card as the test does; other prompts as text. */}
                 {promptInCard && currentQuestion.prompt && (cueCard ? <CueCard card={cueCard} /> : (
                   // Blank lines between paragraphs become a small gap, not a whole empty line.
-                  <div data-dictionary className={`space-y-1.5 leading-relaxed ${promptIsQuestion ? 'text-base text-foreground' : 'text-sm text-muted-foreground'}`}>
+                  // A task's instruction is small and muted so it does not mix with the question; a writing topic is the question, so it stays full size.
+                  <div data-dictionary className={`space-y-2 leading-relaxed ${promptIsQuestion ? 'text-lg font-medium text-foreground' : currentQuestion.skill === 'writing' ? 'text-base text-foreground/80' : 'text-sm text-muted-foreground'}`}>
                     {currentQuestion.prompt.trim().split(/\n\s*\n/).map((paragraph, i) => (
                       <p key={i} className="whitespace-pre-line">{paragraph.trim()}</p>
                     ))}
@@ -1130,23 +1198,16 @@ function PracticePageContent() {
                   repeat={listeningPlays(currentQuestion)}
                   // The recording plays on its own after the test's lead-in; speaking recording follows it.
                   autoPlayAfter={result === null ? audioDelayFor(currentQuestion) : undefined}
+                  // Listening recordings start with a beep; speaking prompts keep their own cue.
+                  beepFirst={currentQuestion.skill === 'listening'}
                   title={currentQuestion.title}
+                  // Speaking tasks answered from what they hear (Repeat Sentence, Re-tell Lecture...): one bar with time, speed and volume.
+                  layout={currentQuestion.skill === 'speaking' ? 'bar' : undefined}
                   // IELTS speaking shows its question on screen; the recording only reads it aloud.
                   allowTranscript={!(currentQuestion.exam === 'IELTS' && currentQuestion.skill === 'speaking')}
-                  // A matching key is a letter, not words said in the recording.
-                  highlights={isListeningLetterTask(currentQuestion) ? undefined : result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
+                  highlights={result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
                   onFinished={() => setHeardPromptFor(currentQuestion.id)}
                 />}
-
-                {/* Read Aloud: hear the passage. Stored audio when there is some, the browser's voice for now otherwise. */}
-                {isReadAloudTask(currentQuestion) && currentQuestion.contextPassage && (
-                  <PromptAudio
-                    key={`read-aloud-${currentQuestion.id}`}
-                    audioUrl={currentQuestion.audioUrl}
-                    audioTranscript={passageText(currentQuestion)}
-                    title={currentQuestion.title}
-                  />
-                )}
 
                 {(currentQuestion.exam === 'EPS_TOPIK' || currentQuestion.exam === 'JLPT') && (currentQuestion.hasTranslation || result?.review?.audioTranslation) && (
                   <KoreanHelp
@@ -1163,27 +1224,8 @@ function PracticePageContent() {
                   />
                 )}
 
-                {/* IELTS Listening matching and lettered diagrams: letters dragged from a box. */}
                 <div data-dictionary className="empty:hidden">
-                {isListeningLetterTask(currentQuestion) ? (
-                  <ListeningLetterPractice
-                    question={currentQuestion}
-                    responses={blankResponses}
-                    disabled={submitting || result !== null}
-                    reviewBlanks={result?.review?.blanks}
-                    onChange={setBlankResponses}
-                  />
-                ) : isListeningGapTask(currentQuestion) && currentQuestion.contextPassage ? (
-                  // Table, flow-chart, summary, notes, typed diagram labels and short answers.
-                  <ListeningGapOutline
-                    passage={currentQuestion.contextPassage}
-                    blanks={currentQuestion.blanks}
-                    responses={blankResponses}
-                    disabled={submitting || result !== null}
-                    reviewBlanks={result?.review?.blanks}
-                    onChange={setBlankResponses}
-                  />
-                ) : currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && !isRepeatSentenceTask(currentQuestion) && (
+                {currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && !isRepeatSentenceTask(currentQuestion) && (
                   passageHasGaps(currentQuestion.contextPassage) ? (
                     <InlineBlankPassage
                       passage={currentQuestion.contextPassage}
@@ -1210,10 +1252,21 @@ function PracticePageContent() {
                 )}
                 </div>
 
+                {/* Read Aloud: the passage first, then hear it. Stored audio when there is some, the browser's voice for now otherwise. */}
+                {isReadAloudTask(currentQuestion) && currentQuestion.contextPassage && (
+                  <PromptAudio
+                    key={`read-aloud-${currentQuestion.id}`}
+                    audioUrl={currentQuestion.audioUrl}
+                    audioTranscript={passageText(currentQuestion)}
+                    title={currentQuestion.title}
+                    layout="button"
+                  />
+                )}
+
               </div>
               </div>
 
-              <div className="space-y-3">
+              <div className={writingSideBySide ? 'space-y-3 lg:sticky lg:top-20 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card lg:p-5 lg:shadow-sm' : 'space-y-3'}>
                 {/* Question Inputs */}
                 {grading === 'speech' && (
                   <div className="space-y-3 pt-2">
@@ -1230,12 +1283,7 @@ function PracticePageContent() {
                         speech recognition is not available, so use Chrome or Edge.
                       </p>
                     )}
-                    {waitingForPrompt && (
-                      <p role="status" className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                        <Volume2 className="w-3.5 h-3.5" aria-hidden />
-                        Listen to the audio, and recording starts on its own when it ends. Or click below to answer now.
-                      </p>
-                    )}
+                    {/* While the prompt plays, the recorder's own note says to listen first or click to answer now. */}
                     <AudioRecorder
                       key={`${currentQuestion.id}-${answerRound}`}
                       prepSeconds={prepSecondsFor(currentQuestion.typeId, currentQuestion.prepTimeSeconds)}
@@ -1247,8 +1295,6 @@ function PracticePageContent() {
                       // PTE's microphone closes after 3 seconds of silence; an IELTS examiner waits.
                       stopAfterSilence={currentQuestion.exam === 'PTE'}
                       disabled={submitting || result !== null}
-                      controlRef={recorderControl}
-                      onStatus={setRecorderStatus}
                       onRecorded={(blob, transcript, measured) => {
                         setRecording(blob);
                         setSpokenTranscript(transcript ?? '');
@@ -1259,23 +1305,25 @@ function PracticePageContent() {
                 )}
 
                 {grading === 'ai' && (
-                  <div className="space-y-3 pt-2">
-                    <span className="block text-sm font-bold text-foreground">Your response</span>
+                  <div className={writingSideBySide ? 'space-y-3' : 'space-y-3 pt-2'}>
+                    {/* The word count sits by the title, where the eye checks it while writing. */}
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-bold text-foreground">Your response</span>
+                      <Badge variant={wordCount >= (wordTarget ?? minWords) ? 'success' : 'warning'} className="shrink-0 tabular-nums">
+                        {wordTarget ? `${wordCount} / ${wordTarget} words` : `${wordCount} words`}
+                      </Badge>
+                    </div>
                     <Textarea
                       rows={8}
                       value={textAnswer}
                       onChange={e => setTextAnswer(e.target.value)}
                       placeholder="Write your response here…"
-                      className="border-2 border-primary bg-background px-4 py-3 text-[15px] leading-7 text-foreground placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-primary/30"
+                      // Beside the task it fills the screen's height, so a whole essay is in view.
+                      className={`rounded-xl border border-border bg-background px-4 py-3 text-[0.9375rem] leading-7 text-foreground shadow-inner placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 ${writingSideBySide ? 'lg:min-h-[calc(100dvh-20rem)] lg:resize-none' : ''}`}
                     />
-                    <div className="flex items-center justify-between gap-3 text-xs">
-                      <p className="leading-relaxed text-foreground/75">
-                        {currentQuestion ? writingLengthNote(currentQuestion) : ''}
-                      </p>
-                      <Badge variant={wordCount >= (wordTarget ?? minWords) ? 'success' : 'warning'} className="shrink-0">
-                        {wordTarget ? `${wordCount} / ${wordTarget} words` : `${wordCount} words`}
-                      </Badge>
-                    </div>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {currentQuestion ? writingLengthNote(currentQuestion) : ''}
+                    </p>
                   </div>
                 )}
 
@@ -1289,7 +1337,7 @@ function PracticePageContent() {
                   correctAnswers={result?.review?.correctAnswers ?? null}
                 />
 
-                {!isWordHighlightTask(currentQuestion) && !isListeningLetterTask(currentQuestion) && currentQuestion.options && currentQuestion.options.length > 0 && (
+                {!isWordHighlightTask(currentQuestion) && currentQuestion.options && currentQuestion.options.length > 0 && (
                   <div className="space-y-2.5 pt-2">
                     <h4 className="text-xs font-bold text-foreground">Choose your answer:</h4>
                     <div className={hasPictureOptions(currentQuestion.options) ? 'grid grid-cols-2 gap-2.5' : 'space-y-2.5'}>
@@ -1366,6 +1414,7 @@ function PracticePageContent() {
                   </div>
                 )}
               </div>
+              </div>
 
             </div>
 
@@ -1386,24 +1435,12 @@ function PracticePageContent() {
             )}
 
             <PracticeActionBar
-              index={mistakeId ? -1 : currentIndex}
-              total={mistakeId ? 0 : questions.length}
-              onJump={mistakeId ? undefined : i => openQuestion(questions[i])}
+              onNext={mistakeId || isLast ? undefined : () => void goToNextQuestion()}
               onShuffle={mistakeId || questions.length < 2 ? undefined : () => {
                 const others = questions.filter(q => q.id !== currentQuestion.id);
                 openQuestion(others[Math.floor(Math.random() * others.length)]);
               }}
               disabled={isStarting || submitting}
-              hideMiddleOnPhone={recording === null}
-              middle={grading === 'speech' ? (
-                <RecordingPlayback
-                  recording={recording}
-                  status={recorderStatus}
-                  maxSeconds={currentQuestion.timeLimitSeconds}
-                  onControl={() => recorderControl.current?.()}
-                  disabled={submitting || result !== null}
-                />
-              ) : undefined}
               actions={
                 <>
                   {result && mistakeId ? (

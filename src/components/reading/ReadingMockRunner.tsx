@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, RefreshCw, Send } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Flag, RefreshCw, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import QuestionSource from '@/components/mocks/QuestionSource';
 import { Card } from '@/components/ui/card';
@@ -8,8 +8,12 @@ import PassageReader from '@/components/reading/PassageReader';
 import ReadingGroupCard from '@/components/reading/ReadingGroupCard';
 import { useReadingMock } from '@/lib/hooks/useReading';
 import MockHeader from '@/components/mocks/MockHeader';
+import TestFooter from '@/components/mocks/TestFooter';
+import ConfirmSubmit from '@/components/mocks/ConfirmSubmit';
 import { useTestLock } from '@/lib/hooks/useTestLock';
 import { needsParagraphLabels } from '@/lib/readingTypes';
+import { isAnswered } from '@/components/reading/ReadingQuestionRow';
+import { FlagToggle, NavNumber, toggled } from '@/components/mocks/QuestionNav';
 
 interface ReadingMockRunnerProps {
   session: ReadingMockSession;
@@ -28,6 +32,10 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
   useTestLock('Reading test', mock.exit);
   const sets = session.sets ?? [];
   const [activeIndex, setActiveIndex] = useState(0);
+  const [confirmFinish, setConfirmFinish] = useState(false);
+  // Flagged question ids, and the question last opened or answered (the one Flag acts on).
+  const [flags, setFlags] = useState<Set<string>>(() => new Set());
+  const [current, setCurrent] = useState<string | undefined>();
   // The clock is the server's: a reopened paper resumes with the time it has
   // left, not a fresh hour. Counting down to a fixed deadline, rather than
   // subtracting a second per tick, stays right when the tab is throttled.
@@ -87,18 +95,90 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
 
   const activeSet = sets[activeIndex];
 
-  return (
-    <div className="w-full min-h-[calc(100dvh-4rem)] lg:h-[calc(100dvh-4rem)] p-0 m-0 flex flex-col bg-background lg:overflow-hidden px-3 sm:px-6 lg:px-8 py-2.5 space-y-2.5">
-      <div className="shrink-0">
-        <MockHeader
-          code={`R${activeIndex + 1}`}
-          title={session.mockTitle ?? 'Reading Mock'}
-          subtitle={`Passage ${activeIndex + 1} of ${sets.length} • ${session.totalQuestions} questions • marked automatically`}
-          secondsLeft={secondsLeft}
-          answered={{ done: mock.answeredCount, total: session.totalQuestions }}
-          onLeave={mock.exit}
-        />
+  // Every question with its paper-wide number, for the navigator.
+  const items = sets.flatMap((set, setIndex) =>
+    set.groups.flatMap((group, groupIndex) =>
+      group.questions.map((question, i) => ({
+        id: question.id,
+        number: (startNumbers[setIndex]?.[groupIndex] ?? 1) + i,
+        setIndex,
+        groupId: group.id,
+      })),
+    ),
+  );
+  // Flag acts only on a question of the passage on screen.
+  const currentItem = items.find(item => item.id === current && item.setIndex === activeIndex);
+
+  const answer = (questionId: string, patch: Parameters<typeof mock.answer>[1]) => {
+    setCurrent(questionId);
+    mock.answer(questionId, patch);
+  };
+
+  // Opens the question's passage and scrolls to its group (the renderers carry no per-question anchor).
+  const jump = (item: (typeof items)[number]) => {
+    setActiveIndex(item.setIndex);
+    setCurrent(item.id);
+    setTimeout(() => document.getElementById(`rg-${item.groupId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
+
+  // The bar of the computer-delivered test: every passage, the open passage's
+  // question numbers (filled once answered, flagged), and Flag.
+  const navigator = (
+    <nav aria-label="Question navigator" className="mb-2 flex items-center gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto py-0.5 scrollbar-thin">
+        {sets.map((set, index) => {
+          const inSet = items.filter(item => item.setIndex === index);
+          if (index !== activeIndex) {
+            const done = inSet.filter(item => isAnswered(mock.answers[item.id])).length;
+            return (
+              <button
+                key={set.passage?.id ?? index}
+                type="button"
+                onClick={() => setActiveIndex(index)}
+                className="flex shrink-0 items-center gap-2 rounded-xl bg-muted/60 px-3 py-1.5 text-xs transition-colors hover:bg-primary/10"
+              >
+                <span className="font-bold text-foreground">Passage {index + 1}</span>
+                <span className="tabular-nums text-muted-foreground">{done}/{inSet.length}</span>
+                {inSet.some(item => flags.has(item.id)) && <Flag aria-label="has flagged questions" className="h-3 w-3 fill-amber-400 text-amber-500" />}
+              </button>
+            );
+          }
+          return (
+            <div key={set.passage?.id ?? index} className="flex shrink-0 items-center gap-1 rounded-xl bg-primary/[0.07] px-2 py-1 ring-1 ring-primary/30">
+              <span className="px-1.5 text-xs font-bold text-primary">Passage {index + 1}</span>
+              {inSet.map(item => (
+                <NavNumber
+                  key={item.id}
+                  number={item.number}
+                  answered={isAnswered(mock.answers[item.id])}
+                  flagged={flags.has(item.id)}
+                  current={item.id === current}
+                  onClick={() => jump(item)}
+                />
+              ))}
+            </div>
+          );
+        })}
       </div>
+      <FlagToggle
+        number={currentItem?.number}
+        flagged={currentItem !== undefined && flags.has(currentItem.id)}
+        onToggle={() => currentItem && setFlags(previous => toggled(previous, currentItem.id))}
+      />
+    </nav>
+  );
+
+  return (
+    // The whole screen: a running mock has no app header above it.
+    <div className="w-full min-h-dvh lg:h-dvh p-0 m-0 flex flex-col bg-background lg:overflow-hidden px-3 sm:px-6 lg:px-8 space-y-2.5">
+      <MockHeader
+        className="-mx-3 shrink-0 sm:-mx-6 lg:-mx-8"
+        code={`R${activeIndex + 1}`}
+        title={session.mockTitle ?? 'Reading Mock'}
+        subtitle={`Passage ${activeIndex + 1} of ${sets.length} • ${session.totalQuestions} questions • marked automatically`}
+        secondsLeft={secondsLeft}
+        answered={{ done: mock.answeredCount, total: session.totalQuestions }}
+      />
 
       {session.reusedPassages && (
         <Card className="p-2.5 flex items-start gap-2 border-amber-500/40 bg-amber-500/5 shrink-0">
@@ -116,10 +196,10 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
             key={set.passage?.id ?? index}
             type="button"
             onClick={() => setActiveIndex(index)}
-            className={`flex-1 px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors ${
+            className={`flex-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
               index === activeIndex
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border bg-card text-muted-foreground hover:border-primary/40'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-card text-muted-foreground shadow-sm hover:bg-primary/10 hover:text-primary'
             }`}
           >
             Passage {index + 1}
@@ -153,42 +233,64 @@ export default function ReadingMockRunner({ session, mock }: ReadingMockRunnerPr
           <div
             className={`w-full ${
               activeSet.passage ? 'lg:w-1/2 lg:h-full' : 'lg:w-full lg:h-full'
-            } min-h-0 flex flex-col overflow-hidden rounded-xl border border-border/80 bg-card/40 p-2.5 sm:p-3.5`}
+            } min-h-0 flex flex-col overflow-hidden rounded-xl bg-muted/40 p-2.5 sm:p-3.5`}
           >
             <div className="flex-1 min-h-0 lg:overflow-y-auto pr-1.5 space-y-4 scrollbar-thin">
               {activeSet.groups.map((group, groupIndex) => (
-                <ReadingGroupCard
-                  key={group.id}
-                  group={group}
-                  startNumber={startNumbers[activeIndex]?.[groupIndex] ?? 1}
-                  answers={mock.answers}
-                  disabled={submitting}
-                  onAnswer={mock.answer}
-                />
+                <div key={group.id} id={`rg-${group.id}`} className="scroll-mt-2">
+                  <ReadingGroupCard
+                    group={group}
+                    startNumber={startNumbers[activeIndex]?.[groupIndex] ?? 1}
+                    answers={mock.answers}
+                    disabled={submitting}
+                    onAnswer={answer}
+                  />
+                </div>
               ))}
             </div>
           </div>
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-border shrink-0">
-        <p className="text-[11px] text-muted-foreground">
-          Unanswered questions are marked wrong. You can move between passages freely, and your answers are saved as you go.
-        </p>
-        <Button onClick={() => void finish()} disabled={submitting} className="font-bold gap-1.5 shadow-md">
-          {submitting ? (
-            <>
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              <span>Grading…</span>
-            </>
-          ) : (
-            <>
-              <Send className="w-3.5 h-3.5" />
-              <span>Finish and grade</span>
-            </>
-          )}
-        </Button>
-      </div>
+      <TestFooter
+        className="-mx-3 sm:-mx-6 lg:-mx-8"
+        onLeave={mock.exit}
+        navigator={navigator}
+        note="Unanswered questions are marked wrong. You can move between passages freely, and your answers are saved as you go."
+      >
+        {activeIndex < sets.length - 1 ? (
+          <Button
+            onClick={() => setActiveIndex(activeIndex + 1)}
+            disabled={submitting}
+            className="test-next h-11 gap-3 rounded-full pl-6 pr-1.5 font-bold tracking-wide"
+          >
+            Next passage
+            <span className="test-next-chip"><ArrowRight className="h-4 w-4" /></span>
+          </Button>
+        ) : (
+          <Button
+            onClick={() => setConfirmFinish(true)}
+            disabled={submitting}
+            className="test-next h-11 gap-3 rounded-full pl-6 pr-1.5 font-bold tracking-wide"
+          >
+            {submitting ? 'Grading…' : 'Finish and grade'}
+            <span className="test-next-chip">
+              {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </span>
+          </Button>
+        )}
+      </TestFooter>
+
+      <ConfirmSubmit
+        open={confirmFinish}
+        onCancel={() => setConfirmFinish(false)}
+        onConfirm={() => void finish()}
+        description={
+          mock.answeredCount < session.totalQuestions
+            ? `${session.totalQuestions - mock.answeredCount} of ${session.totalQuestions} questions are unanswered and will be marked wrong. You cannot change your answers after this.`
+            : undefined
+        }
+      />
     </div>
   );
 }

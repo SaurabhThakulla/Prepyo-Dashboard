@@ -28,7 +28,7 @@ export default function VerdictTriad({ question, answer, result, locked, onChang
         const isWrong = Boolean(result) && isSelected && !isCorrect;
 
         let classes =
-          'bg-background border-border text-foreground hover:border-primary/40 hover:bg-muted/40';
+          'bg-muted/50 border-transparent text-foreground hover:bg-primary/[0.08]';
         if (result && isCorrect) {
           classes = 'bg-emerald-600 text-white border-emerald-600 font-semibold shadow-sm';
         } else if (isWrong) {
@@ -36,7 +36,7 @@ export default function VerdictTriad({ question, answer, result, locked, onChang
         } else if (isSelected) {
           classes = 'bg-primary text-primary-foreground border-primary font-semibold shadow-sm';
         } else if (result) {
-          classes = 'opacity-50 bg-background border-border text-muted-foreground';
+          classes = 'opacity-50 bg-muted/50 border-transparent text-muted-foreground';
         }
 
         return (

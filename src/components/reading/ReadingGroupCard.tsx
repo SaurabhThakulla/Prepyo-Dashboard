@@ -40,8 +40,8 @@ export default function ReadingGroupCard({
   const ownLayout = isListMatching(group.typeId) || group.typeId === READING_TYPES.summaryCompletion;
 
   const total = group.questions.length;
+  const [showInstructions, setShowInstructions] = React.useState(false);
   const answered = group.questions.filter(question => isAnswered(answers[question.id])).length;
-  const endNumber = startNumber + total - 1;
 
   // The exam's own short code (FIB-D, RO), else the task name's initials.
   const isPte = group.questions[0]?.exam === 'PTE';
@@ -55,39 +55,41 @@ export default function ReadingGroupCard({
   const heading = onlyTitle && !same(onlyTitle, group.instructions) ? onlyTitle : '';
 
   return (
-    <Card className="p-3.5 sm:p-5 space-y-4 bg-card dark:bg-[#0f141f] border-border/80 border-r-0 rounded-r-none rounded-l-lg shadow-2xs">
-      <div className="flex items-start gap-3 sm:gap-4">
-        <span className="inline-flex h-12 min-w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 px-2 text-xs sm:text-sm font-bold text-primary-foreground shadow-md">
-          {code}
-        </span>
-        <div className="min-w-0 flex-1 space-y-1 pt-0.5">
-          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-            <h2 className="text-lg sm:text-xl font-bold text-primary leading-tight">{group.typeName}</h2>
-            <span className="shrink-0 rounded-full bg-primary/[0.07] px-2.5 py-1 text-[11px] font-semibold tabular-nums text-primary">
-              {answered}/{total} answered
-            </span>
-          </div>
-          {group.instructions && (
-            <p className="text-sm text-muted-foreground leading-relaxed">{group.instructions}</p>
-          )}
+    <Card className="overflow-hidden bg-card dark:bg-[#0f141f] border-0 rounded-xl shadow-sm">
+      {/* Two lines on the blue band: the task and its progress, then the instruction,
+          cut to one line until tapped (it can run to 260 characters). */}
+      <div className="bg-gradient-to-r from-primary to-primary/75 px-3.5 py-2.5 sm:px-5 text-primary-foreground dark:!bg-muted dark:!text-foreground">
+        <div className="flex items-center gap-2.5">
+          <span className="inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-full bg-white/15 px-1.5 text-[11px] font-bold">
+            {code}
+          </span>
+          <h2 className="min-w-0 flex-1 truncate text-base sm:text-lg font-bold leading-tight">{group.typeName}</h2>
+          <span className="shrink-0 rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums">
+            {answered}/{total} answered
+          </span>
         </div>
+        {group.instructions && (
+          <button
+            type="button"
+            onClick={() => setShowInstructions(open => !open)}
+            aria-expanded={showInstructions}
+            title={showInstructions ? undefined : group.instructions}
+            className={`mt-1 block w-full text-left text-xs sm:text-sm leading-snug text-white/85 dark:text-muted-foreground ${showInstructions ? '' : 'truncate'}`}
+          >
+            {group.instructions}
+          </button>
+        )}
       </div>
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
-        <div className="flex items-center gap-3 bg-gradient-to-r from-primary to-primary/75 px-4 py-3 text-primary-foreground dark:!bg-muted dark:!text-foreground sm:px-5">
-          <span className="rounded-lg bg-white/15 px-2.5 py-0.5 text-sm font-bold tabular-nums">
-            {total > 1 ? `#${startNumber}–${endNumber}` : `#${startNumber}`}
-          </span>
-          {(heading || group.boxTitle) && <span className="h-5 w-px bg-white/40" aria-hidden />}
-          {(heading || group.boxTitle) && (
-            <h3 className="text-sm sm:text-base font-semibold leading-snug">{heading || group.boxTitle}</h3>
-          )}
-        </div>
+      <div className="bg-card">
+        {(heading || group.boxTitle) && (
+          <h3 className="px-4 pt-3 sm:px-5 text-sm sm:text-base font-semibold leading-snug text-primary">{heading || group.boxTitle}</h3>
+        )}
 
         {!wordBank && !ownLayout && group.resources && group.resources.length > 0 && (
           <div className="space-y-1.5 p-3 sm:p-4 pb-0 sm:pb-0">
             {group.resources.map(resource => (
-              <div key={resource.label} className="p-2.5 rounded-lg bg-muted/30 border border-border space-y-0.5">
+              <div key={resource.label} className="p-2.5 rounded-lg bg-muted/50 space-y-0.5">
                 <span className="text-xs font-bold text-primary">{resource.label}</span>
                 <p className="text-xs text-foreground leading-normal">{resource.text}</p>
               </div>
@@ -136,7 +138,7 @@ export default function ReadingGroupCard({
             />
           </div>
         ) : (
-          <div className="divide-y divide-border/60">
+          <div className="py-1">
             {group.questions.map((question, index) => (
               <ReadingQuestionRow
                 key={question.id}

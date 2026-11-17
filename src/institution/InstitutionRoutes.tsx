@@ -25,7 +25,8 @@ function OldAddress() {
 
 /**
  * Every institution address, placed inside <Routes> in App.tsx.
- * /<name> is the institution's own page: the dashboard for its admin, the sign-in for its students.
+ * /institution/login is the one sign-in for every institution's admins and students.
+ * /<name> is the institution's dashboard, for its signed-in admin only.
  */
 export const institutionRoutes = (
   <Route element={<InstitutionShell />}>

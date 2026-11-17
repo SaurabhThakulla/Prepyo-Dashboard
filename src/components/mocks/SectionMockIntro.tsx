@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Clock, FileText, ListChecks, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { useMockPapers } from '@/lib/hooks/useMockPapers';
 import { pteMockMeta } from '@/lib/pteMock/catalog';
 import { ExamType } from '@/lib/types';
 import AskInstitution from '@/components/common/AskInstitution';
+import PreTestChecks from '@/components/mocks/PreTestChecks';
 
 type Skill = 'speaking' | 'writing' | 'reading' | 'listening';
 
@@ -51,6 +52,22 @@ export default function SectionMockIntro({
   const meta = pteMockMeta(skill);
   const unlimited = !Number.isFinite(subTestsRemaining);
   const hasCredits = unlimited || subTestsRemaining >= credits;
+  // A new attempt goes through the equipment checks first; a resumed one does not.
+  const [checking, setChecking] = useState<{ paperId?: string } | null>(null);
+
+  if (checking) {
+    return (
+      <PreTestChecks
+        exam={exam === 'PTE' ? 'PTE' : 'IELTS'}
+        title={title}
+        skills={[skill]}
+        sections={parts}
+        beginning={isStarting}
+        onBegin={() => onStart(checking.paperId)}
+        onCancel={() => setChecking(null)}
+      />
+    );
+  }
 
   return (
     <div className="w-full pb-10">
@@ -127,9 +144,9 @@ export default function SectionMockIntro({
             selectedPaperId={selectedPaperId}
             exam={exam}
             section={skill}
-            onStart={paper => !isStarting && onStart(paper.id)}
+            onStart={paper => !isStarting && setChecking({ paperId: paper.id })}
             onResume={paper => !isStarting && onStart(paper.id)}
-            onRetake={paper => !isStarting && onStart(paper.id)}
+            onRetake={paper => !isStarting && setChecking({ paperId: paper.id })}
             onReview={paper => {
               if (paper.attemptId) navigate(`/mocks?review=${paper.attemptId}`);
             }}

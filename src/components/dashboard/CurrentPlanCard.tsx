@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronRight, Gift } from 'lucide-react';
+import { ArrowRight, ChevronRight, Gift, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { isInstitutionStudent, UserProfile } from '@/lib/types';
@@ -38,12 +38,24 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
   const sub = user?.subscription;
   if (!sub) return <CurrentPlanCardSkeleton />;
 
-  const planName = formatPlanName(sub.planName || sub.planId);
-  const isActive = sub.isActive;
-  const isFree = sub.planId === 'free';
-  const validity = describeValidUntil(sub.validUntil);
   // A consultancy's student is on its plan: no plan page to open, nothing to upgrade.
+  // Their access is the credit the consultancy activated them with, not a learner plan.
   const institution = isInstitutionStudent(user);
+  const membership = user?.institution;
+  const activated = Boolean(membership?.accessUntil && new Date(membership.accessUntil).getTime() > Date.now());
+  const notActivated = institution && !activated;
+  const planName = membership ? membership.name : formatPlanName(sub.planName || sub.planId);
+  const isActive = institution ? activated : sub.isActive;
+  const isFree = !institution && sub.planId === 'free';
+  const validity = institution
+    ? activated
+      ? describeValidUntil(membership?.accessUntil ?? undefined)
+      : null
+    : describeValidUntil(sub.validUntil);
+  const consultancy = membership?.name ?? 'your consultancy';
+  // What the date line says with no end date.
+  const noDate = notActivated ? `Not activated yet: ask ${consultancy} to activate you for AI marking` : isFree ? 'Free forever' : 'Active subscription';
+  const lockedHint = `Ask ${consultancy} to activate you`;
 
   // Usage is shown as a share of the allowance, never as counts.
   const subTestsPercent = usagePercent(
@@ -59,14 +71,16 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
       planName={planName}
       isActive={isActive}
       isFree={isFree}
+      notActivated={notActivated}
+      noDate={noDate}
       linked={!institution}
       bonusDays={sub.bonusDays}
       validity={validity}
       quotas={[
         { label: 'Practice', percentUsed: subTestsPercent, unlimited: sub.unlimited },
-        { label: 'AI grading', percentUsed: gradingsPercent },
+        { label: 'AI grading', percentUsed: gradingsPercent, locked: notActivated },
         // An institution's full mocks are paid in AI credits, so there is no count to show.
-        ...(sub.fullMocksFromPool ? [] : [{ label: 'Mocks', percentUsed: mocksPercent }]),
+        ...(sub.fullMocksFromPool ? [] : [{ label: 'Mocks', percentUsed: mocksPercent, locked: notActivated }]),
       ]}
     />
     <div className="relative hidden w-full overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs transition-shadow duration-300 hover:shadow-md dark:border-white/10 dark:bg-[#12161c] sm:block sm:p-6">
@@ -91,6 +105,10 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
                       <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
                     </span>
                     Active
+                  </span>
+                ) : notActivated ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/60 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700 dark:border-amber-700/50 dark:bg-amber-950/50 dark:text-amber-300">
+                    <Lock className="h-3 w-3" /> Not activated
                   </span>
                 ) : (
                   <Badge variant="destructive" className="px-2 py-0.5 text-xs">
@@ -118,10 +136,8 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
                       </span>
                     )}
                   </>
-                ) : isFree ? (
-                  'Free forever'
                 ) : (
-                  'Active subscription'
+                  noDate
                 )}
               </p>
             </div>
@@ -164,6 +180,7 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
                   : 'Speaking & writing'
             }
             accent="text-emerald-500"
+            locked={notActivated ? lockedHint : undefined}
           />
 
           {!sub.fullMocksFromPool && (
@@ -173,6 +190,7 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
               period={isFree ? 'in total' : 'this month'}
               hint={isFree ? 'Included with your account' : 'Renews on the 1st'}
               accent="text-violet-500"
+              locked={notActivated ? lockedHint : undefined}
             />
           )}
         </div>
@@ -186,11 +204,15 @@ interface CompactPlanCardProps {
   planName: string;
   isActive: boolean;
   isFree: boolean;
+  /** A consultancy's student it has not activated with a credit. */
+  notActivated: boolean;
+  /** The date line with no end date. */
+  noDate: string;
   /** Opens the plan page when tapped; off for a consultancy's student. */
   linked: boolean;
   bonusDays: number;
   validity: { label: string; daysLeft: number | null } | null;
-  quotas: { label: string; percentUsed: number; unlimited?: boolean }[];
+  quotas: { label: string; percentUsed: number; unlimited?: boolean; locked?: boolean }[];
 }
 
 /**
@@ -198,7 +220,7 @@ interface CompactPlanCardProps {
  * wrapped onto five lines at this width, so here the plan is one tappable
  * row and the three gauges are one strip of numbers.
  */
-function CompactPlanCard({ planName, isActive, isFree, linked, bonusDays, validity, quotas }: CompactPlanCardProps) {
+function CompactPlanCard({ planName, isActive, isFree, notActivated, noDate, linked, bonusDays, validity, quotas }: CompactPlanCardProps) {
   const when = validity
     ? validity.daysLeft === null
       ? `Until ${validity.label}`
@@ -207,9 +229,7 @@ function CompactPlanCard({ planName, isActive, isFree, linked, bonusDays, validi
         : validity.daysLeft === 0
           ? 'Ends today'
           : `${validity.daysLeft} day${validity.daysLeft === 1 ? '' : 's'} left · until ${validity.label}`
-    : isFree
-      ? 'Free forever'
-      : 'Active subscription';
+    : noDate;
   const endingSoon = validity?.daysLeft != null && validity.daysLeft <= 5;
 
   const className =
@@ -227,11 +247,13 @@ function CompactPlanCard({ planName, isActive, isFree, linked, bonusDays, validi
               className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-xs font-bold ${
                 isActive
                   ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                  : notActivated
+                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                    : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
               }`}
             >
-              <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-              {isActive ? 'Active' : 'Expired'}
+              <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-500' : notActivated ? 'bg-amber-500' : 'bg-rose-500'}`} />
+              {isActive ? 'Active' : notActivated ? 'Not activated' : 'Expired'}
             </span>
           </div>
           <p className={`truncate text-xs ${endingSoon ? 'font-semibold text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
@@ -247,7 +269,7 @@ function CompactPlanCard({ planName, isActive, isFree, linked, bonusDays, validi
 
       <div className="mt-3 grid grid-cols-3 divide-x divide-border/70 rounded-xl bg-muted/50 py-2 dark:bg-slate-900/60">
         {quotas.map(quota => {
-          const tone = quota.unlimited ? 'ok' : toneFor(quota.percentUsed);
+          const tone = quota.unlimited || quota.locked ? 'ok' : toneFor(quota.percentUsed);
           return (
             <div key={quota.label} className="min-w-0 px-2 text-center">
               <div
@@ -259,7 +281,13 @@ function CompactPlanCard({ planName, isActive, isFree, linked, bonusDays, validi
                       : 'text-foreground'
                 }`}
               >
-                {quota.unlimited ? '∞' : `${quota.percentUsed}%`}
+                {quota.locked ? (
+                  <Lock className="mx-auto h-3.5 w-3.5 text-amber-600 dark:text-amber-400" aria-label="Not activated" />
+                ) : quota.unlimited ? (
+                  '∞'
+                ) : (
+                  `${quota.percentUsed}%`
+                )}
               </div>
               <div className="truncate text-xs font-medium text-muted-foreground">{quota.label}</div>
             </div>
@@ -293,10 +321,26 @@ interface QuotaGaugeProps {
   accent: string;
   /** No limit: shown as ∞ and never "running low". */
   unlimited?: boolean;
+  /** Not open yet (a consultancy's student not activated): shown locked with this hint, not as used up. */
+  locked?: string;
 }
 
 /** The share used, as the headline, with a ring that fills as it is used. */
-function QuotaGauge({ title, percentUsed, period, hint, accent, unlimited = false }: QuotaGaugeProps) {
+function QuotaGauge({ title, percentUsed, period, hint, accent, unlimited = false, locked }: QuotaGaugeProps) {
+  if (locked) {
+    return (
+      <div className="flex items-center gap-3.5 rounded-xl border border-dashed border-amber-400/50 bg-amber-50/40 p-3 dark:bg-amber-950/10">
+        <div className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-full border-[5px] border-muted-foreground/15 text-amber-600 dark:text-amber-400">
+          <Lock className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-bold text-foreground truncate">{title}</p>
+          <p className="mt-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-300">Not activated</p>
+          <p className="mt-0.5 text-xs sm:text-[11px] font-semibold text-muted-foreground/80 truncate">{locked}</p>
+        </div>
+      </div>
+    );
+  }
   const tone = unlimited ? 'ok' : toneFor(percentUsed);
   // An unlimited allowance is drawn as a full ring that never runs out.
   const fraction = unlimited ? 1 : percentUsed / 100;
