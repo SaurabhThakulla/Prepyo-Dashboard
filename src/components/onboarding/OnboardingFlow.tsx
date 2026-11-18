@@ -59,8 +59,10 @@ import QRPaymentCheckoutDialog from '@/components/subscription/QRPaymentCheckout
 import {
   DEFAULT_PLANS,
   PLAN_TAGLINES,
-  SUBSCRIPTION_TIERS,
+  PLANS_ON_SALE,
+  formatGradings,
   formatPlanName,
+  gradingsPeriodLabel,
   isPaidTier,
   planAccessDays,
   planUsageTier,
@@ -514,7 +516,7 @@ export default function OnboardingFlow({
 
   const plans = useMemo(() => {
     const served = plansQuery.data?.plans ?? [];
-    return SUBSCRIPTION_TIERS.map(
+    return PLANS_ON_SALE.map(
       tier => served.find(plan => plan.id === tier) ?? DEFAULT_PLANS.find(plan => plan.id === tier)!,
     );
   }, [plansQuery.data]);
@@ -1751,7 +1753,12 @@ function PlanCard({
       ? [practice, 'The full Learn Korean course', free ? 'Upgrade any time for Help in English' : 'Help in English on Korean listening', access]
       : exam === 'JLPT'
         ? [practice, 'The full Learn Japanese course', free ? 'Upgrade any time for Help in English' : 'Help in English on Japanese questions', access]
-        : [practice, `${tier} AI gradings for speaking & writing`, `${tier} full mock exams`, access];
+        : [
+            practice,
+            `${formatGradings(plan.aiGradingsPerPeriod ?? 0)} AI gradings per ${gradingsPeriodLabel(plan)} for speaking & writing`,
+            `${plan.mockTestsIncluded} full mock ${plan.mockTestsIncluded === 1 ? 'exam' : 'exams'}${free ? '' : ' per month'}`,
+            access,
+          ];
 
   return (
     <OptionCard
@@ -1790,7 +1797,7 @@ function PlanCard({
             ? `Active until ${formatExamDate(currentUntil)}`
             : free
               ? 'No payment needed'
-              : `One-time · ${days} days`}
+              : `per month · ${days} days access`}
         </span>
       </div>
 
