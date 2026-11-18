@@ -3,6 +3,7 @@ import { CheckCircle2, XCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, dialogBand } from '@/components/ui/dialog';
 import QuestionFigure from '@/components/practice/QuestionFigure';
 import { GAP } from '@/lib/listeningTypes';
+import { READING_TYPES } from '@/lib/readingTypes';
 import { AnswerSubmission, PracticeAttempt, Question } from '@/lib/types';
 
 export interface MarkedAnswer {
@@ -152,6 +153,10 @@ function AnswerReview({ number, question, typeId, answer, result }: {
   const yours = given(answer);
   const prompt = question.prompt.replace(GAP, '______');
 
+  if (typeId === READING_TYPES.reorderParagraphs) {
+    return <ReorderReview number={number} options={question.options ?? []} yours={answer?.selectedOptions ?? []} correct={key} />;
+  }
+
   if (isChoiceList(question, typeId)) {
     const chosen = answer?.selectedOptions ?? [];
     return (
@@ -219,5 +224,72 @@ function AnswerReview({ number, question, typeId, answer, result }: {
         </span>
       )}
     </p>
+  );
+}
+
+const BOX = 40; // px, one lettered box
+const GAP_PX = 10; // px between boxes
+
+/**
+ * Re-order Paragraphs: the correct sequence beside the learner's, in the box
+ * letters the practice screen used (where each box was dealt, never the ids,
+ * which follow the answer). A line spans each adjacent pair of the learner's,
+ * green where the pair is right, red where it is not; lines alternate above and
+ * below so neighbouring pairs never overlap.
+ */
+export function ReorderReview({ number, options, yours, correct }: {
+  /** The question number, when it is one of several. */
+  number?: number;
+  options: NonNullable<Question['options']>;
+  yours: string[];
+  correct: string[];
+}) {
+  const dealt = options.map(option => option.id);
+  const letter = (id: string) => (dealt.includes(id) ? String.fromCharCode(65 + dealt.indexOf(id)) : id);
+  const pairRight = (i: number) => {
+    const at = correct.indexOf(yours[i]);
+    return at !== -1 && correct[at + 1] === yours[i + 1];
+  };
+  const row = (ids: string[], boxClass: string, pairs: boolean) => (
+    <div className="relative flex py-3" style={{ gap: GAP_PX }}>
+      {ids.map(id => (
+        <span key={id} className={`inline-flex shrink-0 items-center justify-center rounded-md text-sm font-semibold ${boxClass}`} style={{ width: BOX, height: BOX }}>
+          {letter(id)}
+        </span>
+      ))}
+      {pairs && ids.slice(1).map((_, i) => (
+        <span
+          key={i}
+          aria-hidden
+          className={`absolute h-0.5 rounded-full ${pairRight(i) ? 'bg-emerald-500' : 'bg-rose-500'}`}
+          style={{ left: i * (BOX + GAP_PX), width: 2 * BOX + GAP_PX, ...(i % 2 === 0 ? { top: 4 } : { bottom: 4 }) }}
+        />
+      ))}
+    </div>
+  );
+  const rightPairs = yours.slice(1).filter((_, i) => pairRight(i)).length;
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-semibold text-foreground sm:text-base">
+        {number !== undefined && <><span className="tabular-nums">{number}.</span>{' '}</>}
+        {yours.length > 0
+          ? `${rightPairs} of ${Math.max(correct.length - 1, 1)} pairs in the right order`
+          : 'Not answered'}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {([['Correct answer', correct, true], ['Your response', yours, false]] as const).map(([title, ids, isKey]) => (
+          <section key={title} className="overflow-hidden rounded-xl border border-border">
+            <h5 className="bg-primary py-2 text-center text-xs font-semibold text-primary-foreground">{title}</h5>
+            <div className="flex justify-center overflow-x-auto px-3 py-4">
+              {ids.length > 0
+                ? row([...ids], isKey ? 'bg-emerald-600 text-white' : 'border border-primary/60 text-primary', !isKey)
+                : <p className="py-3 text-sm text-muted-foreground">No boxes placed.</p>}
+            </div>
+            {!isKey && <p className="sr-only">{yours.map(letter).join(', ')}</p>}
+          </section>
+        ))}
+      </div>
+    </div>
   );
 }

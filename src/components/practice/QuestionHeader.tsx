@@ -14,10 +14,12 @@ export default function QuestionHeader({ code, title, children, actions }: {
   actions?: ReactNode;
 }) {
   return (
-    <div className="-mx-4 flex flex-col gap-3 border-b border-primary/10 bg-primary/[0.06] px-4 py-4 sm:-mx-6 sm:flex-row sm:items-start sm:justify-between sm:px-6 lg:-mx-8 lg:px-8 dark:bg-white/[0.04]">
-      {/* The badge sits centred against the title and instructions beside it. */}
-      <div className="flex items-center gap-3 sm:gap-4">
-        <span className="inline-flex h-12 min-w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 px-2 text-sm font-bold text-primary-foreground shadow-md sm:h-14 sm:min-w-14">
+    <div className="-mx-4 flex flex-col gap-2.5 border-b border-primary/10 bg-primary/[0.06] px-4 py-3 sm:-mx-6 sm:gap-3 sm:py-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:px-6 lg:-mx-8 lg:px-8 dark:bg-white/[0.04]">
+      {/* The badge sits centred against the title and instructions beside it; on a phone,
+          where the instructions run long, it stays level with the title.
+          Never narrower than 24rem: when the actions don't fit beside it, they wrap below. */}
+      <div className="flex items-start gap-3 sm:min-w-[24rem] sm:flex-1 sm:basis-0 sm:items-center sm:gap-4">
+        <span className="inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 px-2 text-xs font-bold sm:text-sm text-primary-foreground shadow-md sm:h-14 sm:min-w-14">
           {code}
         </span>
         <div className="min-w-0 space-y-1">

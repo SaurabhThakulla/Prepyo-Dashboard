@@ -19,7 +19,7 @@ import { useMistakeResolution } from '@/lib/hooks/useMistakeResolution';
 import { ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQueryClient } from '@tanstack/react-query';
-import PracticeActionBar, { notesFor, ON_BAR, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
+import PracticeActionBar, { ON_BAR } from '@/components/practice/flow/PracticeActionBar';
 import MyScore from '@/components/practice/flow/MyScore';
 import { BackToQuestions } from '@/components/practice/QuestionDrawer';
 import { LocateProvider } from '@/components/reading/LocateAnswer';
@@ -454,7 +454,6 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
 
               {!loadingNext && (
                 <div className="space-y-3 px-1 py-3">
-                  <PracticeNotes notes={notesFor('reading')} />
                   <MyScore questionIds={shownQuestionIds} bySitting />
                 </div>
               )}

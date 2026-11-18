@@ -180,7 +180,13 @@ export default function QuestionDrawer<T extends DrawerItem>({
     setVisibleCount(PAGE_SIZE);
   }, [searchQuery, activeFilter, level, imageKind, taskType, questions]);
 
-  const levels = useMemo(() => present(questions, 'difficulty', LEVELS), [questions]);
+  // PTE always offers the level filter, even while a task's bank sits at one level.
+  const levels = useMemo(
+    () => exam === 'PTE'
+      ? LEVELS.map(value => [value, questions.filter(q => q.difficulty === value).length] as const)
+      : present(questions, 'difficulty', LEVELS),
+    [questions, exam],
+  );
   const imageKinds = useMemo(() => present(questions, 'imageKind', Object.keys(IMAGE_KINDS)), [questions]);
   // Shown when one link holds several task types, as IELTS Writing Task 2 holds the essay types.
   // Names outside the syllabus (IELTS Listening's whole-part recordings) come first.

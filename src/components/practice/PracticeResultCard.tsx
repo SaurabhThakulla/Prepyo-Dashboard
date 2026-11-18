@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import type { PracticeResult } from '@/lib/hooks/usePracticeSession';
 import type { Evaluation, PracticeAttempt, Question } from '@/lib/types';
 import EvaluationCard from './EvaluationCard';
+import { ReorderReview } from '@/components/listening/ListeningPartResult';
+import { READING_TYPES } from '@/lib/readingTypes';
 import ExplainMistake from './ExplainMistake';
 import { CONFIDENCE_LABEL, SCALE, MarkedAnswer, onExamScale, AnswerRecording, MarkedAnswerLegend, ResultSection, ResultSummary, xpMeta, type Tone } from './ResultParts';
 
@@ -66,7 +68,16 @@ function DeterministicResult({ attempt, review, xpAwarded, blankAnswers, recordi
         summary={attempt.feedback}
       />
       {recordingUrl && <AnswerRecording src={recordingUrl} />}
-      {review?.options && review.options.length > 0 && <MarkedOptions options={review.options} given={attempt.userResponse} right={review.correctAnswers} />}
+      {review?.typeId === READING_TYPES.reorderParagraphs ? (
+        <ResultSection title="Your answer">
+          {/* Every box is in a re-order key, so the choice list would mark them all right. */}
+          <ReorderReview
+            options={review.options ?? []}
+            yours={(attempt.userResponse ?? '').split('→').map(id => id.trim()).filter(Boolean)}
+            correct={review.correctAnswers ?? []}
+          />
+        </ResultSection>
+      ) : review?.options && review.options.length > 0 && <MarkedOptions options={review.options} given={attempt.userResponse} right={review.correctAnswers} />}
       {review?.blanks && review.blanks.length > 0 && blankAnswers && (
         <ResultSection title="Your answers">
           <BlankAnswers blanks={review.blanks} given={blankAnswers} />
