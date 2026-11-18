@@ -597,7 +597,7 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
                   <ArrowRight className="w-4 h-4" />
                 </Button>
                 <p className="text-[11px] text-muted-foreground font-medium">
-                  Plans start at NPR 99 · Instant access to all premium features
+                  Premium is NPR 499 a month · Instant access to all premium features
                 </p>
               </div>
               )}
