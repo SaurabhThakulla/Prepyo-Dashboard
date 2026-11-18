@@ -43,10 +43,11 @@ export const ROLE_FOR_PLAN: Record<SubscriptionTier, Exclude<UserRole, 'admin'>>
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',
-  suru: 'Suru',
+  suru: 'Basic',
+  // No longer sold; shown for learners still on them.
   abhyas: 'Abhyas',
   taiyari: 'Taiyari',
-  udaan: 'Udaan',
+  udaan: 'Premium',
 };
 /** Tiers that can actually be bought — 'free' is the default, not a purchase. */
 export type PaidTier = Exclude<SubscriptionTier, 'free'>;
