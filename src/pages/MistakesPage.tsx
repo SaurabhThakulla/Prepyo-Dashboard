@@ -36,6 +36,7 @@ import { SCALE } from '@/components/practice/PracticeResultCard';
 import { matchesTypeKey, SYLLABUS, typeKey } from '@/lib/syllabus';
 import { SkillType, ExamType, Evaluation, Mistake, MistakeAnalytics, MockAttempt, PracticeAttempt, isInstitutionStudent, isPremiumUser } from '@/lib/types';
 import { PteHistoryEntry } from '@/lib/pteMock/types';
+import { DEFAULT_PLANS, formatPlanName, premiumPlanIdFor } from '@/lib/subscriptions';
 import AskInstitution from '@/components/common/AskInstitution';
 import PracticeResultDialog from '@/components/practice/PracticeResultDialog';
 
@@ -271,6 +272,8 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
     (analyticsError && 'status' in analyticsError && (analyticsError as { status: number }).status === 403);
 
   const isSuru = Boolean(isForbidden || (user && !isPremiumUser(user)));
+  // The upgrade offered here: NPR 249 on EPS-TOPIK and JLPT, Premium on IELTS and PTE.
+  const offer = DEFAULT_PLANS.find(plan => plan.id === premiumPlanIdFor(activeExam))!;
 
   const rawMistakes = isSuru
     ? (DUMMY_MISTAKES[activeExam] ?? DUMMY_MISTAKES.PTE ?? [])
@@ -597,7 +600,7 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
                   <ArrowRight className="w-4 h-4" />
                 </Button>
                 <p className="text-[11px] text-muted-foreground font-medium">
-                  Premium is NPR 499 a month · Instant access to all premium features
+                  {formatPlanName(offer.id)} is NPR {offer.priceNPR.toLocaleString()} a month · Instant access to all premium features
                 </p>
               </div>
               )}

@@ -62,6 +62,7 @@ import {
   PLANS_ON_SALE,
   formatGradings,
   formatPlanName,
+  premiumPlanIdFor,
   gradingsPeriodLabel,
   isPaidTier,
   planAccessDays,
@@ -558,7 +559,10 @@ export default function OnboardingFlow({
   const unit = chosen === 'IELTS' ? 'band' : 'score';
   const days = examDate && !notBooked ? daysUntil(examDate) : null;
   const dateValid = days !== null && days >= 0;
-  const selectedPlan = plans.find(plan => plan.id === planId) ?? null;
+  // Basic and the Premium plan for the chosen exam (EPS-TOPIK and JLPT have their own).
+  const premiumId = premiumPlanIdFor(chosen, currentPaidPlan);
+  const examPlans = plans.filter(plan => plan.id === 'free' || plan.id === premiumId);
+  const selectedPlan = examPlans.find(plan => plan.id === planId) ?? null;
   const needsPayment = selectedPlan !== null && isPaidTier(selectedPlan.id) && selectedPlan.id !== currentPaidPlan;
 
   const canContinue = (() => {
@@ -578,7 +582,7 @@ export default function OnboardingFlow({
       case 'daily':
         return minutes !== null;
       case 'plan':
-        return planId !== null;
+        return selectedPlan !== null;
       default:
         return true;
     }
@@ -1442,7 +1446,7 @@ export default function OnboardingFlow({
                     />
 
                     <div className="grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      {plans.map((plan, index) => (
+                      {examPlans.map((plan, index) => (
                         <PlanCard
                           key={plan.id}
                           plan={plan}

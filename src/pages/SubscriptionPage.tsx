@@ -7,7 +7,7 @@ import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { isInstitutionStudent, SubscriptionPlan } from '@/lib/types';
 import { errorMessage } from '@/lib/api';
 import { useSubscriptionPlans } from '@/lib/hooks/useResources';
-import { DEFAULT_PLANS, formatGradings, formatPlanName, gradingsPeriodLabel, planAccessDays } from '@/lib/subscriptions';
+import { DEFAULT_PLANS, formatGradings, formatPlanName, gradingsPeriodLabel, planAccessDays, premiumPlanIdFor } from '@/lib/subscriptions';
 import QRPaymentCheckoutDialog from '@/components/subscription/QRPaymentCheckoutDialog';
 import QueuedPlansCard from '@/components/subscription/QueuedPlansCard';
 
@@ -29,7 +29,7 @@ export default function SubscriptionPage() {
 }
 
 function SubscriptionPlans() {
-  const { user } = useApp();
+  const { user, activeExam } = useApp();
 
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
@@ -47,7 +47,9 @@ function SubscriptionPlans() {
   const planFor = (id: SubscriptionPlan['id']) =>
     plans.find(p => p.id === id) ?? DEFAULT_PLANS.find(p => p.id === id)!;
   const freePlan = planFor('free');
-  const premiumPlan = planFor('elite');
+  // EPS-TOPIK and JLPT learners are offered their own NPR 249 plan; IELTS and PTE need Premium.
+  const premiumPlan = planFor(premiumPlanIdFor(activeExam, user?.paidPlanActive ? user.planId : null));
+  const examsOnly = premiumPlan.id === 'elite_asia';
 
   const handleOpenCheckout = (plan: SubscriptionPlan) => {
     setSelectedPlan({ ...plan, name: formatPlanName(plan.name || plan.id) });
@@ -76,11 +78,17 @@ function SubscriptionPlans() {
     {
       plan: premiumPlan,
       title: formatPlanName(premiumPlan.name),
-      blurb: 'For learners aiming for their target score',
+      blurb: examsOnly ? 'Premium for EPS-TOPIK and JLPT' : 'For learners aiming for their target score',
       price: `NPR ${premiumPlan.priceNPR.toLocaleString()}`,
       per: '/ month',
       note: `Paid monthly · ${planAccessDays(premiumPlan)} days access`,
-      features: [
+      features: examsOnly ? [
+        'Everything in Basic',
+        'Unlimited EPS-TOPIK and JLPT practice',
+        'Help in English on every item',
+        'AI tutor',
+        'IELTS and PTE need Premium (NPR 499)',
+      ] : [
         'Everything in Basic',
         'Unlimited practice sub-tests',
         gradings(premiumPlan),

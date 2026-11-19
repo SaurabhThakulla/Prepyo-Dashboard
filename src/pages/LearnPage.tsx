@@ -1,9 +1,7 @@
-import React, { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, Check, Flame, Lock, RotateCcw, Star, Zap } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Check, Lock, RotateCcw, Star } from 'lucide-react';
 import { lessonHref, type Unit } from '@/data/learnKorean';
-import { lessonCount } from '@/data/learnCourses';
 import { useLearnProgress } from '@/lib/hooks/useLearnProgress';
 import { useLearnCourse } from '@/lib/learn/course';
 import { dueCount, learnedWords, lessonState, nextLesson, unitDoneCount } from '@/lib/learn/progress';
@@ -40,24 +38,22 @@ const WIND = [0, 44, 66, 44, 0, -44, -66, -44];
 export default function LearnPage() {
   const [searchParams] = useSearchParams();
   const course = useLearnCourse();
-  const { progress, streak } = useLearnProgress();
+  const { progress } = useLearnProgress();
   const upNext = nextLesson(progress, course.units);
-  const doneCount = Object.keys(progress.completed).length;
   const known = learnedWords(progress, course.units).length;
   const due = dueCount(progress, new Date(), course.units);
   const focusUnit = searchParams.get('unit');
 
-  useEffect(() => {
-    if (!focusUnit) return;
-    // A moment later: a scroll started while the page is still arriving is
-    // dropped by the browser. A timer, not a frame, so a tab that is not being
-    // drawn still ends up in the right place.
-    const timer = setTimeout(
-      () => document.getElementById(`unit-${focusUnit}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-      50,
-    );
-    return () => clearTimeout(timer);
-  }, [focusUnit]);
+  const upNextKey = upNext ? `${upNext.unit.id}/${upNext.index}` : undefined;
+
+  // The path climbs from the bottom: open on the unit asked for (its banner is
+  // at its foot) or else on the lesson up next. Before paint and without
+  // animating, so the page never shows its top first; again if a server sync
+  // moves the next lesson.
+  useLayoutEffect(() => {
+    const target = focusUnit ? document.getElementById(`unit-${focusUnit}`) : document.getElementById('learn-up-next');
+    target?.scrollIntoView({ behavior: 'instant', block: focusUnit ? 'end' : 'center' });
+  }, [focusUnit, upNextKey]);
 
   return (
     <div className="w-full">
@@ -65,23 +61,8 @@ export default function LearnPage() {
       <header className="bg-gradient-to-r from-primary to-primary/75 px-4 py-8 text-primary-foreground sm:px-8 lg:px-10">
         <p className="text-[11px] font-bold uppercase tracking-widest text-white/80">New to {course.language}?</p>
         <h1 className="mt-1 font-display text-3xl font-extrabold sm:text-4xl">{course.heading}</h1>
-        <p className="mt-2 max-w-3xl text-sm text-white/85 sm:text-base">{course.intro}</p>
-        <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold">
-          <HeaderStat icon={<Zap className="h-3.5 w-3.5" />} value={progress.xp} label="XP" />
-          <HeaderStat icon={<Flame className="h-3.5 w-3.5" />} value={streak} label="day streak" />
-          <HeaderStat icon={<Star className="h-3.5 w-3.5" />} value={`${doneCount}/${lessonCount(course)}`} label="lessons" />
-        </div>
-        {(upNext || known >= 4) && (
+        {known >= 4 && (
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            {upNext && (
-              <Button asChild size="lg" className="h-11 rounded-xl bg-white px-6 font-bold text-primary hover:bg-white/90">
-                <Link to={lessonHref(upNext.unit.id, upNext.unit.lessons[upNext.index].id)}>
-                  {doneCount === 0 ? 'Start the first lesson' : `Continue: ${upNext.unit.lessons[upNext.index].title}`}
-                  <ArrowRight className="ml-1 h-4 w-4" />
-                </Link>
-              </Button>
-            )}
-            {known >= 4 && (
               <Link
                 to="/learn/review"
                 className="flex items-center gap-2.5 rounded-xl bg-white/15 px-4 py-2.5 text-sm transition-colors hover:bg-white/25"
@@ -95,33 +76,24 @@ export default function LearnPage() {
                   </span>
                 </span>
               </Link>
-            )}
           </div>
         )}
       </header>
 
-      <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8">
+      {/* Bottom to top, like a game map: Unit 1 at the foot of the page. */}
+      <div className="mx-auto flex w-full max-w-3xl flex-col-reverse gap-8 px-4 py-8">
       {course.units.map(unit => (
         <UnitPath
           key={unit.id}
           unit={unit}
           lang={course.lang}
-          upNextKey={upNext ? `${upNext.unit.id}/${upNext.index}` : undefined}
+          upNextKey={upNextKey}
           states={unit.lessons.map((_, i) => lessonState(progress, unit, i))}
           done={unitDoneCount(progress, unit)}
         />
       ))}
       </div>
     </div>
-  );
-}
-
-function HeaderStat({ icon, value, label }: { icon: React.ReactNode; value: React.ReactNode; label: string }) {
-  return (
-    <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1">
-      {icon}
-      <span className="tabular-nums">{value}</span> {label}
-    </span>
   );
 }
 
@@ -141,7 +113,7 @@ function UnitPath({
   const style = UNIT_STYLE[unit.id] ?? UNIT_STYLE.hangul;
 
   return (
-    <section id={`unit-${unit.id}`} className="scroll-mt-20 space-y-6">
+    <section id={`unit-${unit.id}`} className="flex scroll-mt-20 flex-col-reverse gap-6">
       <div className={`flex items-center gap-4 rounded-2xl bg-gradient-to-r ${style.banner} p-4 sm:p-5 text-white shadow-md`}>
         <div lang={lang} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/20 font-display text-2xl font-bold">
           {unit.emoji}
@@ -156,7 +128,7 @@ function UnitPath({
         </span>
       </div>
 
-      <ol className="flex flex-col items-center gap-5 py-2">
+      <ol className="flex flex-col-reverse items-center gap-5 py-2">
         {unit.lessons.map((lesson, i) => {
           const state = states[i];
           const current = upNextKey === `${unit.id}/${i}`;
@@ -182,7 +154,7 @@ function UnitPath({
           );
 
           return (
-            <li key={lesson.id} style={{ transform: `translateX(${offset}px)` }} className="flex flex-col items-center">
+            <li key={lesson.id} id={current ? 'learn-up-next' : undefined} style={{ transform: `translateX(${offset}px)` }} className="flex flex-col items-center">
               {current && (
                 <span className="mb-2 rounded-xl border-2 border-border bg-card px-3 py-1 text-xs font-bold uppercase tracking-wide text-foreground shadow-sm motion-safe:animate-bounce">
                   Start

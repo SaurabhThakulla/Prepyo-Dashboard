@@ -1,14 +1,25 @@
-import { PaidTier, SubscriptionPlan, SubscriptionState, SubscriptionTier } from './types';
+import { ExamType, PaidTier, SubscriptionPlan, SubscriptionState, SubscriptionTier } from './types';
 
-export const SUBSCRIPTION_TIERS: SubscriptionTier[] = ['free', 'weekly', 'pro', 'elite'];
+export const SUBSCRIPTION_TIERS: SubscriptionTier[] = ['free', 'weekly', 'pro', 'elite', 'elite_asia'];
 
 /** Tiers checkout accepts. Kept in one place so routes can't drift apart —
  *  the weekly plan was previously rejected by one route and allowed by another. */
-export const PAID_TIERS: PaidTier[] = ['weekly', 'pro', 'elite'];
+export const PAID_TIERS: PaidTier[] = ['weekly', 'pro', 'elite', 'elite_asia'];
 
-/** Plans a learner can pick: Basic (free) and Premium (elite). The others are
- *  no longer sold; learners already on them keep them until they end. */
-export const PLANS_ON_SALE: SubscriptionTier[] = ['free', 'elite'];
+/** Plans a learner can pick: Basic (free), Premium (elite, every exam) and
+ *  EPS-TOPIK & JLPT Premium (elite_asia). The others are no longer sold;
+ *  learners already on them keep them until they end. */
+export const PLANS_ON_SALE: SubscriptionTier[] = ['free', 'elite', 'elite_asia'];
+
+/**
+ * The Premium plan offered on an exam: EPS-TOPIK and JLPT have their own at
+ * NPR 249, IELTS and PTE need Premium. A learner who already has Premium is
+ * shown Premium, which covers every exam.
+ */
+export function premiumPlanIdFor(exam: ExamType, currentPlanId?: string | null): PaidTier {
+  if (currentPlanId === 'elite') return 'elite';
+  return exam === 'EPS_TOPIK' || exam === 'JLPT' ? 'elite_asia' : 'elite';
+}
 
 export function isPaidTier(value: unknown): value is PaidTier {
   return typeof value === 'string' && (PAID_TIERS as string[]).includes(value);
@@ -27,6 +38,7 @@ export function formatPlanName(nameOrTier?: string | null): string {
   if (key === 'weekly' || key === 'abhyas') return 'Prepyo Go';
   if (key === 'pro' || key === 'taiyari') return 'Prepyo Plus';
   if (key === 'elite' || key === 'udaan') return 'Premium';
+  if (key === 'elite_asia') return 'EPS-TOPIK & JLPT Premium';
   return nameOrTier;
 }
 
@@ -107,6 +119,27 @@ export const DEFAULT_PLANS: SubscriptionPlan[] = [
     isPopular: true,
     unlimited: true,
   },
+  {
+    id: 'elite_asia',
+    name: 'EPS-TOPIK & JLPT Premium',
+    priceNPR: 249,
+    durationMonths: 1,
+    durationDays: 30,
+    bonusDays: 0,
+    features: [
+      '30 days of EPS-TOPIK and JLPT',
+      'Unlimited EPS-TOPIK and JLPT practice',
+      'Help in English on every item',
+      'AI tutor',
+      'IELTS and PTE need Premium',
+    ],
+    subTestsPerDay: 60,
+    mockTestsIncluded: 0,
+    aiGradingsPerPeriod: 0,
+    aiGradingsPeriod: 'plan',
+    isPopular: false,
+    unlimited: true,
+  },
 ];
 
 /**
@@ -119,6 +152,7 @@ export const PLAN_USAGE_TIERS: Record<SubscriptionTier, string> = {
   weekly: 'Standard',
   pro: 'Extended',
   elite: 'Maximum',
+  elite_asia: 'Maximum',
 };
 
 export function planUsageTier(planId?: string | null): string {
@@ -136,6 +170,7 @@ export const PLAN_TAGLINES: Record<SubscriptionTier, string> = {
   weekly: 'Practice',
   pro: 'Preparation',
   elite: 'Monthly',
+  elite_asia: 'Monthly',
 };
 
 /**

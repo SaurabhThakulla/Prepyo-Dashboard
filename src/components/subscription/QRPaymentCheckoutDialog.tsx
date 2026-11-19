@@ -244,8 +244,10 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
                   <span className="font-semibold text-foreground">{planTitle}</span> · {totalDays} days
                   <span className="max-sm:hidden">
                     {' '}
-                    · {selectedPlan.unlimited ? 'unlimited sub-tests' : `${tier} practice`} ·{' '}
-                    {formatGradings(selectedPlan.aiGradingsPerPeriod ?? 0)} AI gradings · {selectedPlan.mockTestsIncluded} full mocks
+                    · {selectedPlan.unlimited ? 'unlimited sub-tests' : `${tier} practice`}
+                    {/* The EPS-TOPIK & JLPT plan has neither: those exams are marked without AI. */}
+                    {selectedPlan.aiGradingsPerPeriod ? ` · ${formatGradings(selectedPlan.aiGradingsPerPeriod)} AI gradings` : ''}
+                    {selectedPlan.mockTestsIncluded ? ` · ${selectedPlan.mockTestsIncluded} full mocks` : ''}
                   </span>
                 </DialogDescription>
               </div>

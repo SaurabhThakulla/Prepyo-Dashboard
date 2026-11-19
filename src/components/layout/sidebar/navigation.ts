@@ -26,9 +26,13 @@ import {
   PlayCircle,
   BookCopy,
   FileDown,
+  Languages,
   LucideIcon,
 } from 'lucide-react';
 import { lessonHref } from '@/data/learnKorean';
+import { JLPT_SECTIONS, type JlptSection } from '@/data/tutorials';
+
+const JLPT_SECTION_ICON: Record<JlptSection, LucideIcon> = { vocabulary: Languages, 'grammar-reading': BookOpen, listening: Headphones };
 import { hasMaterials, providersFor } from '@/data/materials';
 import { courseForExam, hasLearnCourse, LearnCourse, lessonCount } from '@/data/learnCourses';
 import { dueCount, EMPTY_PROGRESS, LearnProgress, learnedWords, lessonState } from '@/lib/learn/progress';
@@ -312,7 +316,17 @@ export function buildSections(
           sublabel: 'Accent practice, note-taking & trap avoidance',
           group: 'Section Lessons',
         },
-        ].filter(item => skillsFor(activeExam).some(skill => item.href.endsWith(`skill=${skill}`))),
+        ].filter(item => activeExam !== 'JLPT' && skillsFor(activeExam).some(skill => item.href.endsWith(`skill=${skill}`))),
+        // The JLPT's lessons follow its own three sections.
+        ...(activeExam === 'JLPT'
+          ? JLPT_SECTIONS.map(s => ({
+              href: `/tutorials?skill=${s.id}`,
+              label: `${s.label} Lessons`,
+              icon: JLPT_SECTION_ICON[s.id],
+              sublabel: s.sublabel,
+              group: 'Section Lessons',
+            }))
+          : []),
       ],
     },
     ...(hasMaterials(activeExam) ? [materialsSection(activeExam)] : []),
