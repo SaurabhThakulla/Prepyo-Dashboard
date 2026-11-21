@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { BookOpen, Headphones, PenLine, Mic, Languages, Puzzle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { ProgressSummary, SkillType } from '@/lib/types';
+import { ProgressSummary, SkillType, jlptLevelOf } from '@/lib/types';
 
 /** The four skills the API scores, in the order the radar draws them. */
 const SKILL_LABELS: { skill: SkillType; name: string }[] = [
@@ -66,7 +66,7 @@ export default function SkillProfileCard({ progress }: { progress: ProgressSumma
 
   return (
     <SkillProfile
-      title={`Skill profile · ${isIELTS ? 'IELTS Academic' : isJLPT ? 'JLPT N5' : isEPS ? 'EPS-TOPIK' : 'PTE Academic'}`}
+      title={`Skill profile · ${isIELTS ? 'IELTS Academic' : isJLPT ? `JLPT ${jlptLevelOf(user)}` : isEPS ? 'EPS-TOPIK' : 'PTE Academic'}`}
       scaleLabel={isIELTS ? 'Band per skill, 0–9' : isJLPT ? 'Accuracy per section, 0–100%' : isEPS ? 'Score per skill, 0–100' : 'Score per skill, 10–90'}
       overallLabel={isIELTS ? 'Overall band' : isJLPT ? 'Overall score / 180' : 'Overall score'}
       unit={isJLPT ? '%' : ` / ${maxScale}`}
