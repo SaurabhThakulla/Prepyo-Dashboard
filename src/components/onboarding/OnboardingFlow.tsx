@@ -170,9 +170,9 @@ const EXAMS: { id: ExamType; name: string; scale: string; blurb: string }[] = [
   },
   {
     id: 'JLPT',
-    name: 'JLPT / NAT N5',
+    name: 'JLPT / NAT N5 · N4',
     scale: 'Scores 0–180',
-    blurb: 'The Japanese test for study and work in Japan. NAT-TEST 5Q has the same sections.',
+    blurb: 'The Japanese test for study and work in Japan. Pick N5 or N4 on Home; NAT-TEST 5Q and 4Q have the same sections.',
   },
 ];
 
@@ -214,7 +214,7 @@ const EXAM_STYLE: Record<
     bar: 'bg-emerald-600',
   },
   JLPT: {
-    facts: ['All 14 N5 task types', 'Learn Japanese from kana'],
+    facts: ['Every N5 and N4 task type', 'Learn Japanese from kana'],
     tile: 'bg-red-600 text-white',
     soft: 'bg-red-50 text-red-700',
     ring: 'border-red-600 ring-red-600/20',
@@ -471,11 +471,11 @@ const JLPT_FEATURES: Feature[] = [
   {
     ...FEATURES[0],
     tag: 'Reading & listening',
-    text: 'Drill all 14 JLPT N5 task types, one question at a time.',
+    text: 'Drill every JLPT N5 and N4 task type, one question at a time.',
     highlights: [
       'Vocabulary, grammar, reading and listening, as in the test',
       'Marked instantly, with the answer explained',
-      'Good for NAT-TEST 5Q too: the same sections',
+      'Switch between N5 and N4 on Home at any time',
     ],
   },
   {
@@ -708,8 +708,8 @@ export default function OnboardingFlow({
         />
 
         {/* Content Body: Centered Container */}
-        <main className="mx-auto flex w-full max-w-5xl flex-1 items-center justify-center px-4 py-8 sm:px-8 lg:px-12">
-          <div className="flex w-full flex-col items-center justify-center py-4">
+        <main className="mx-auto flex w-full max-w-5xl flex-1 justify-center px-4 py-8 sm:px-8 lg:px-12">
+          <div className="my-auto flex w-full flex-col items-center justify-center py-4">
             <div
               key={step.id}
               className={`flex w-full justify-center motion-safe:animate-in motion-safe:fade-in duration-300 ${slide}`}
@@ -946,9 +946,9 @@ export default function OnboardingFlow({
                                 : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.45)]'
                             }`}
                           >
-                            <div className="flex items-center gap-3.5">
+                            <div className="flex min-w-0 items-center gap-3.5">
                               <DestinationFlag id={option.id} />
-                              <span className={`text-sm font-bold ${selected ? 'text-blue-950' : 'text-slate-800'}`}>
+                              <span className={`truncate text-sm font-bold ${selected ? 'text-blue-950' : 'text-slate-800'}`}>
                                 {option.label}
                               </span>
                             </div>
@@ -2030,7 +2030,7 @@ function ToolkitPanel({ features, index, onNext }: { features: Feature[]; index:
 function DestinationFlag({ id, className }: { id: string; className?: string }) {
   const containerClass =
     className ??
-    'flex h-6 w-8.5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] border border-slate-200/90 bg-slate-50 shadow-[0_1px_2px_rgba(0,0,0,0.06)] ring-1 ring-black/5';
+    'flex h-6 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[5px] border border-slate-200/90 bg-slate-50 shadow-[0_1px_2px_rgba(0,0,0,0.06)] ring-1 ring-black/5';
 
   switch (id) {
     case 'australia':
@@ -2087,7 +2087,7 @@ function DestinationFlag({ id, className }: { id: string; className?: string }) 
         <span
           className={
             className ??
-            'flex h-6 w-8.5 shrink-0 items-center justify-center overflow-hidden rounded-[5px] border border-slate-200/90 bg-slate-100 text-slate-500 shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
+            'flex h-6 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[5px] border border-slate-200/90 bg-slate-100 text-slate-500 shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
           }
           title="Somewhere else"
         >

@@ -1,4 +1,4 @@
-import { EXAM_LABELS, ExamType, SkillType, UserProfile, isAdmin } from '@/lib/types';
+import { EXAM_LABELS, ExamType, SkillType, UserProfile, isAdmin, jlptLevelOf } from '@/lib/types';
 
 export type StudyGoal = NonNullable<UserProfile['studyGoal']>;
 export type Destination = NonNullable<UserProfile['destination']>;
@@ -153,7 +153,7 @@ export const destinationLabel = (destination?: Destination) =>
 export const skillLabel = (skill?: SkillType) => FOCUS_SKILLS.find(item => item.id === skill)?.label;
 
 export function planHeadline(user: UserProfile): string {
-  const exam = EXAM_LABELS[user.targetExam] ?? 'IELTS';
+  const exam = user.targetExam === 'JLPT' ? `JLPT ${jlptLevelOf(user)}` : EXAM_LABELS[user.targetExam] ?? 'IELTS';
   const target = user.targetScore != null ? ` ${formatScore(user.targetExam, user.targetScore)}` : '';
   const place = user.destination && user.destination !== 'other' ? destinationLabel(user.destination) : undefined;
   const parts = [`Aiming for ${exam}${target}`];
