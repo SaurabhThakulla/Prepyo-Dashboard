@@ -64,7 +64,7 @@ interface AppContextType {
   setActiveExam: (exam: ExamType) => Promise<void>;
   pteVariant: PteExamVariant;
   setPteVariant: (variant: PteExamVariant) => void;
-  updateProfile: (updates: Partial<Pick<UserProfile, 'name' | 'targetExam' | 'targetModule' | 'targetScore' | 'examDate' | 'nepalRegion'>>) => Promise<void>;
+  updateProfile: (updates: Partial<Pick<UserProfile, 'name' | 'targetExam' | 'targetModule' | 'jlptLevel' | 'targetScore' | 'examDate' | 'nepalRegion'>>) => Promise<void>;
   completeOnboarding: (answers?: OnboardingAnswers) => Promise<void>;
 
   isTutorOpen: boolean;
@@ -340,7 +340,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient]);
 
   const updateProfile = useCallback(
-    async (updates: Partial<Pick<UserProfile, 'name' | 'targetExam' | 'targetModule' | 'targetScore' | 'examDate' | 'nepalRegion'>>) => {
+    async (updates: Partial<Pick<UserProfile, 'name' | 'targetExam' | 'targetModule' | 'jlptLevel' | 'targetScore' | 'examDate' | 'nepalRegion'>>) => {
       const data = await api.patch<{ user: UserProfile }>('/profile', updates);
       applyUser(data.user);
     },

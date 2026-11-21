@@ -16,8 +16,8 @@ export const EXAM_LABELS: Record<ExamType, string> = {
   IELTS: 'IELTS',
   PTE: 'PTE',
   EPS_TOPIK: 'EPS-TOPIK',
-  // N5, which NAT-TEST 5Q mirrors: one exam prepares for both.
-  JLPT: 'JLPT N5',
+  // N5 or N4 (NAT-TEST 5Q or 4Q), the learner's own pick: see jlptLevelOf.
+  JLPT: 'JLPT',
 };
 
 export const isExamType = (value: unknown): value is ExamType =>
@@ -142,6 +142,8 @@ export interface InstitutionMembership {
   mustChangePassword?: boolean;
   /** When the credit the consultancy activated them with ends; null if never activated. */
   accessUntil?: string | null;
+  logoUrl?: string;
+  brandColor?: string;
 }
 
 export interface UserProfile {
@@ -163,6 +165,8 @@ export interface UserProfile {
    * that predate it, which means Academic.
    */
   targetModule?: IELTSModule;
+  /** The JLPT level practised, N5 or N4. Absent on servers that predate it, which means N5. */
+  jlptLevel?: JLPTLevel;
   targetScore: number | null;
   examDate?: string;
   nepalRegion: string;
@@ -195,6 +199,14 @@ export interface UserProfile {
 }
 
 export type IELTSModule = 'academic' | 'general_training';
+
+export type JLPTLevel = 'N5' | 'N4';
+export const JLPT_LEVELS: JLPTLevel[] = ['N5', 'N4'];
+
+/** The learner's JLPT level: N5 unless they chose N4. */
+export function jlptLevelOf(user?: Pick<UserProfile, 'jlptLevel'> | null): JLPTLevel {
+  return user?.jlptLevel === 'N4' ? 'N4' : 'N5';
+}
 
 /**
  * The learner's IELTS module. Only IELTS Academic is offered (the test Nepali
