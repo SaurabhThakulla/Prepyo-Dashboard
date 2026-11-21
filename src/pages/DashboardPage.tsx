@@ -6,6 +6,7 @@ import SkillQuestionCard from '@/components/dashboard/SkillQuestionCard';
 import CurrentPlanCard from '@/components/dashboard/CurrentPlanCard';
 import DashboardQuickTests from '@/components/dashboard/DashboardQuickTests';
 import SkillProfileCard from '@/components/dashboard/SkillProfileCard';
+import JLPTLevelSwitch from '@/components/dashboard/JLPTLevelSwitch';
 import MistakesPage from '@/pages/MistakesPage';
 import { planHeadline } from '@/components/onboarding/onboarding';
 import { useDashboardSummary } from '@/lib/hooks/useDashboardSummary';
@@ -51,7 +52,8 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="relative">
+        <div className="relative flex flex-col sm:flex-row sm:items-center gap-3">
+          {activeExam === 'JLPT' && <JLPTLevelSwitch />}
           <ExamCountdown
             examDate={examDate}
             daysLeft={daysLeft}

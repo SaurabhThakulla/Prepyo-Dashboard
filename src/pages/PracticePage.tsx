@@ -160,10 +160,12 @@ function PracticePageContent() {
   const resolution = useMistakeResolution(mistakeId);
 
   const skillParam = searchParams.get('skill') as SkillType | null;
+  const examSyllabus = activeExam ? SYLLABUS[activeExam] : undefined;
+  const validSkills = (examSyllabus ? (Object.keys(examSyllabus) as SkillType[]) : ['reading', 'listening', 'writing', 'speaking']) as SkillType[];
   const selectedSkill: SkillType =
-    skillParam && ['speaking', 'writing', 'reading', 'listening'].includes(skillParam)
+    skillParam && validSkills.includes(skillParam)
       ? skillParam
-      : 'reading';
+      : (validSkills[0] ?? 'reading');
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -418,6 +420,7 @@ function PracticePageContent() {
           : all;
 
         if (list.length === 0) {
+          startFailedFor.current = listKey;
           toast.error('No questions available', `No ${selectedSkill} questions found for this task.`);
           return;
         }
@@ -434,6 +437,7 @@ function PracticePageContent() {
       }
 
       if (!targetQuestion) {
+        startFailedFor.current = listKey;
         toast.error('No questions available', `No ${selectedSkill} questions found.`);
         return;
       }
@@ -845,7 +849,7 @@ function PracticePageContent() {
     goToIndex(0);
   };
 
-  const writingSideBySide = grading === 'ai' && selectedSkill === 'writing';
+  const writingSideBySide = (grading === 'ai' && selectedSkill === 'writing') || activeExam === 'JLPT' || currentQuestion?.exam === 'JLPT';
 
   return (
     <div
@@ -1113,6 +1117,7 @@ function PracticePageContent() {
                       <CostChip
                         cost={gradingUnits(selectedSkill, currentQuestion.typeId)!}
                         costDoublesWhenLong={selectedSkill === 'speaking' && gradingUnits(selectedSkill, currentQuestion.typeId) === 5}
+                        side="bottom"
                       />
                     )}
                     <Button variant="outline" onClick={handleAskAITutor} className={`${PILL} gap-2`}>
@@ -1534,10 +1539,14 @@ function timeAllowed(seconds: number): string {
 }
 
 function AutoStart({ ready, onStart }: { ready: boolean; onStart: () => void }) {
+  const hasFired = useRef(false);
   const start = useRef(onStart);
   start.current = onStart;
   useEffect(() => {
-    if (ready) start.current();
+    if (ready && !hasFired.current) {
+      hasFired.current = true;
+      start.current();
+    }
   }, [ready]);
   // Blank while the question list is open; the question itself shows once it starts.
   return <div className="w-full min-h-[calc(100vh-4rem)]" />;
