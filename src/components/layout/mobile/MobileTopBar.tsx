@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import NotificationDrawer from '../NotificationDrawer';
 import AnimatedLogo from '../AnimatedLogo';
+import BrandMark from '@/institution/BrandMark';
 import { buildMobileTabs, getMobileTab, isTabRoot, ME_HREF, mobileTitle } from './mobileNav';
 
 /**
@@ -42,8 +43,21 @@ export default function MobileTopBar() {
     <>
       <header className="lg:hidden sticky top-0 z-30 flex h-14 w-full min-w-0 items-center gap-1 border-b border-border/70 bg-card/85 px-2 backdrop-blur-xl">
         {root ? (
-          <Link to="/dashboard" aria-label="Prepyo home" className="ml-1 flex h-10 w-10 shrink-0 items-center justify-center">
-            <AnimatedLogo size={38} />
+          <Link
+            to="/dashboard"
+            aria-label={user?.institution ? `${user.institution.name} home` : 'Prepyo home'}
+            className="ml-1 flex h-10 w-10 shrink-0 items-center justify-center"
+          >
+            {user?.institution ? (
+              <BrandMark
+                name={user.institution.name}
+                logoUrl={user.institution.logoUrl || `/api/v1/institution/logo/${user.institution.code}`}
+                color={user.institution.brandColor}
+                className="h-9 w-9 rounded-xl text-xs"
+              />
+            ) : (
+              <AnimatedLogo size={38} />
+            )}
           </Link>
         ) : (
           <button

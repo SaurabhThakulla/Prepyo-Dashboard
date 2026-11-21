@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { initials } from './profile';
 
 interface Props {
@@ -10,10 +10,16 @@ interface Props {
 
 /** The institution's logo, or its initials on its brand colour when it has none. */
 export default function BrandMark({ name, logoUrl, color, className = 'h-12 w-12 rounded-2xl text-base' }: Props) {
-  if (logoUrl) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [logoUrl]);
+
+  if (logoUrl && !failed) {
     return (
       <span className={`flex shrink-0 items-center justify-center overflow-hidden border border-border bg-white ${className}`}>
-        <img src={logoUrl} alt={`${name} logo`} className="h-full w-full object-contain p-1" />
+        <img src={logoUrl} alt={`${name} logo`} onError={() => setFailed(true)} className="h-full w-full object-contain p-1" />
       </span>
     );
   }
