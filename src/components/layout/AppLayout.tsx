@@ -46,9 +46,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const toast = useToast();
 
   // A new screen opens at its top, as it does in an app. Going back (POP)
-  // leaves the browser to put you where you were.
+  // leaves the browser to put you where you were. The learning path opens at its
+  // foot (its next lesson) and places itself.
   useEffect(() => {
-    if (navigationType !== 'POP') window.scrollTo(0, 0);
+    if (navigationType !== 'POP' && pathname !== '/learn') window.scrollTo(0, 0);
   }, [pathname, navigationType]);
 
   // Signed-out pages (login, sign-up) and institution pages keep paste for emails and passwords.

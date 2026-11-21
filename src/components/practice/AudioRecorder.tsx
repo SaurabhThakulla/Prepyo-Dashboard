@@ -487,10 +487,12 @@ export default function AudioRecorder({
         : phase === 'recording'
           ? 'Click here to stop'
           : 'Completed';
-  // The whole panel is the button: it starts recording, and while recording it stops it.
+  // The whole panel is the button: it starts recording (also cutting the preparation short),
+  // and while recording it stops it.
   const panelStarts = phase === 'idle' && !disabled && !starting;
+  const panelSkipsPrep = phase === 'prep';
   const panelStops = phase === 'recording';
-  const panelAction = panelStarts ? handleStart : panelStops ? handleStopEarly : undefined;
+  const panelAction = panelStarts ? handleStart : panelSkipsPrep ? handleSkipPrep : panelStops ? handleStopEarly : undefined;
 
   return (
     <div
@@ -504,15 +506,16 @@ export default function AudioRecorder({
           void panelAction();
         }
       }}
-      aria-label={panelStops ? 'Stop recording' : panelStarts ? 'Start recording' : undefined}
+      aria-label={panelStops ? 'Stop recording' : panelStarts || panelSkipsPrep ? 'Start recording' : undefined}
       className={`relative overflow-hidden rounded-xl border border-border px-3 py-2.5 transition-colors duration-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:px-4 ${tone.panel} dark:bg-white/[0.03] ${
-        panelStarts ? 'cursor-pointer hover:bg-primary/[0.1]' : panelStops ? 'cursor-pointer hover:bg-rose-500/[0.12]' : ''
+        panelStarts ? 'cursor-pointer hover:bg-primary/[0.1]' : panelSkipsPrep ? 'cursor-pointer hover:bg-amber-500/[0.12]' : panelStops ? 'cursor-pointer hover:bg-rose-500/[0.12]' : ''
       }`}
     >
       {/* One row: what is happening in the middle, the time on the right (an empty column
-          on the left keeps the middle centred). */}
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <span aria-hidden />
+          on the left keeps the middle centred). On a phone the middle has the row to itself
+          and the time sits in the waveform's corner. */}
+      <div className="flex justify-center sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-3">
+        <span aria-hidden className="hidden sm:block" />
         <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-3 gap-y-1" aria-live="polite">
           {phase === 'idle' || phase === 'recording' ? (
             // To start and to stop: one big round button in the middle, what it does under it.
@@ -542,13 +545,18 @@ export default function AudioRecorder({
             </button>
           )}
         </div>
-        <span className="shrink-0 justify-self-end text-xs font-semibold tabular-nums text-muted-foreground">
+        <span className="hidden shrink-0 justify-self-end whitespace-nowrap text-xs font-semibold tabular-nums text-muted-foreground sm:block">
           {clock(shownElapsed)} / {clock(phaseLength)}
         </span>
       </div>
 
       {/* The answer's waveform: it grows from the cursor and scrolls right while the learner speaks. */}
-      <canvas aria-hidden ref={canvasRef} className="mt-2 block h-10 w-full rounded-md bg-background/80 text-foreground" />
+      <div className="relative mt-2">
+        <canvas aria-hidden ref={canvasRef} className="block h-10 w-full rounded-md bg-background/80 text-foreground" />
+        <span className="pointer-events-none absolute right-1.5 top-0.5 whitespace-nowrap text-[10px] font-semibold tabular-nums text-muted-foreground sm:hidden">
+          {clock(shownElapsed)} / {clock(phaseLength)}
+        </span>
+      </div>
 
       {/* Playback and redo live in the practice action bar, not here. */}
       {status && (

@@ -59,8 +59,11 @@ import QRPaymentCheckoutDialog from '@/components/subscription/QRPaymentCheckout
 import {
   DEFAULT_PLANS,
   PLAN_TAGLINES,
-  SUBSCRIPTION_TIERS,
+  PLANS_ON_SALE,
+  formatGradings,
   formatPlanName,
+  premiumPlanIdFor,
+  gradingsPeriodLabel,
   isPaidTier,
   planAccessDays,
   planUsageTier,
@@ -514,7 +517,7 @@ export default function OnboardingFlow({
 
   const plans = useMemo(() => {
     const served = plansQuery.data?.plans ?? [];
-    return SUBSCRIPTION_TIERS.map(
+    return PLANS_ON_SALE.map(
       tier => served.find(plan => plan.id === tier) ?? DEFAULT_PLANS.find(plan => plan.id === tier)!,
     );
   }, [plansQuery.data]);
@@ -556,7 +559,10 @@ export default function OnboardingFlow({
   const unit = chosen === 'IELTS' ? 'band' : 'score';
   const days = examDate && !notBooked ? daysUntil(examDate) : null;
   const dateValid = days !== null && days >= 0;
-  const selectedPlan = plans.find(plan => plan.id === planId) ?? null;
+  // Basic and the Premium plan for the chosen exam (EPS-TOPIK and JLPT have their own).
+  const premiumId = premiumPlanIdFor(chosen, currentPaidPlan);
+  const examPlans = plans.filter(plan => plan.id === 'free' || plan.id === premiumId);
+  const selectedPlan = examPlans.find(plan => plan.id === planId) ?? null;
   const needsPayment = selectedPlan !== null && isPaidTier(selectedPlan.id) && selectedPlan.id !== currentPaidPlan;
 
   const canContinue = (() => {
@@ -576,7 +582,7 @@ export default function OnboardingFlow({
       case 'daily':
         return minutes !== null;
       case 'plan':
-        return planId !== null;
+        return selectedPlan !== null;
       default:
         return true;
     }
@@ -1440,7 +1446,7 @@ export default function OnboardingFlow({
                     />
 
                     <div className="grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      {plans.map((plan, index) => (
+                      {examPlans.map((plan, index) => (
                         <PlanCard
                           key={plan.id}
                           plan={plan}
@@ -1751,7 +1757,12 @@ function PlanCard({
       ? [practice, 'The full Learn Korean course', free ? 'Upgrade any time for Help in English' : 'Help in English on Korean listening', access]
       : exam === 'JLPT'
         ? [practice, 'The full Learn Japanese course', free ? 'Upgrade any time for Help in English' : 'Help in English on Japanese questions', access]
-        : [practice, `${tier} AI gradings for speaking & writing`, `${tier} full mock exams`, access];
+        : [
+            practice,
+            `${formatGradings(plan.aiGradingsPerPeriod ?? 0)} AI gradings per ${gradingsPeriodLabel(plan)} for speaking & writing`,
+            `${plan.mockTestsIncluded} full mock ${plan.mockTestsIncluded === 1 ? 'exam' : 'exams'}${free ? '' : ' per month'}`,
+            access,
+          ];
 
   return (
     <OptionCard
@@ -1790,7 +1801,7 @@ function PlanCard({
             ? `Active until ${formatExamDate(currentUntil)}`
             : free
               ? 'No payment needed'
-              : `One-time · ${days} days`}
+              : `per month · ${days} days access`}
         </span>
       </div>
 

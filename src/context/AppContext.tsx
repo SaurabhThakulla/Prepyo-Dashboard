@@ -1,7 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { rememberInstitution } from '@/lib/signOutPath';
-import { api, ApiError } from '@/lib/api';
+import { api, ApiError, SESSION_REPLACED_EVENT } from '@/lib/api';
+import SessionReplaced from '@/components/auth/SessionReplaced';
 import '@/lib/google';
 import { ExamType, isExamType, NotificationItem, UserProfile } from '@/lib/types';
 import { PteExamVariant } from '@/lib/pteExamConfig';
@@ -104,6 +105,13 @@ interface NotificationPage {
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  // This account signed in on another device; any request may be the one that learns it.
+  const [sessionReplaced, setSessionReplaced] = useState(false);
+  useEffect(() => {
+    const onReplaced = () => setSessionReplaced(true);
+    window.addEventListener(SESSION_REPLACED_EVENT, onReplaced);
+    return () => window.removeEventListener(SESSION_REPLACED_EVENT, onReplaced);
+  }, []);
   // Cached queries are not keyed by user, so a different account must never
   // see the previous one's data: the cache is dropped on sign-out and switch.
   const queryClient = useQueryClient();
@@ -499,7 +507,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      {children}
+      {sessionReplaced && (
+        <SessionReplaced
+          onLogOut={async () => {
+            await logout();
+            setSessionReplaced(false);
+          }}
+        />
+      )}
+    </AppContext.Provider>
+  );
 }
 
 /** Whether two notification lists would render the same. */

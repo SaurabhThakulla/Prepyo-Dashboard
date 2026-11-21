@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ChevronRight, Coins, Info, Shuffle } from 'lucide-react';
+import { ChevronRight, Coins, Shuffle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SkillType } from '@/lib/types';
 
@@ -36,15 +36,15 @@ const ARROW = 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-
 export default function PracticeActionBar({ actions, middle, hideMiddleOnPhone, cost, costDoublesWhenLong, onShuffle, onNext, disabled }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-[#0f2a6b] bg-[#13307f] dark:border-border dark:bg-card p-2.5 shadow-md sm:gap-3 sm:p-3">
-      {/* On a phone: buttons on one row, credits and shuffle on the next. */}
-      <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:gap-2">{actions}</div>
+      {/* One row when it fits; otherwise the right corner wraps under the buttons, kept to the right. */}
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">{actions}</div>
       {/* The recorder gets its own row above the buttons until there is room for one line.
           min-w-max: xl is the window's width, not the bar's, so in a narrow column the
           slot must not squash under the pill; the right corner wraps to a new row instead. */}
       {middle && (
         <div className={cn('order-first flex w-full justify-center xl:order-none xl:w-auto xl:min-w-max xl:flex-1', hideMiddleOnPhone && 'max-sm:hidden')}>{middle}</div>
       )}
-      <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
+      <div className="ml-auto flex items-center gap-2">
         {cost != null && <CostChip cost={cost} costDoublesWhenLong={costDoublesWhenLong} />}
         {onNext && (
           <button
@@ -91,27 +91,4 @@ export function CostChip({ cost, costDoublesWhenLong }: { cost: number; costDoub
       <span className="sr-only text-muted-foreground sm:not-sr-only">credits</span>
     </div>
   );
-}
-
-/** Short notes under the action row. */
-export function PracticeNotes({ notes }: { notes: string[] }) {
-  if (notes.length === 0) return null;
-  return (
-    <ul className="space-y-1.5">
-      {notes.map(n => (
-        <li key={n} className="flex items-start gap-2 text-xs text-muted-foreground">
-          <Info className="mt-px h-4 w-4 shrink-0 text-primary" aria-hidden /> {n}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/** What to tell the learner about marking, by skill. */
-export function notesFor(skill: SkillType): string[] {
-  if (skill === 'speaking') {
-    return ['AI scoring is available once you submit your response.', 'Use a headset with a microphone to get an accurate AI score.'];
-  }
-  if (skill === 'writing') return ['AI scoring is available once you submit your response.'];
-  return ['Your answer is marked as soon as you submit it.'];
 }

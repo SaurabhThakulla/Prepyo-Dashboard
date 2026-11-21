@@ -41,6 +41,14 @@ export class ApiError extends Error {
   }
 }
 
+/** Fired on window when the server ended this session because the account signed in on another device. */
+export const SESSION_REPLACED_EVENT = 'prepyo:session-replaced';
+
+function failed(status: number, err: ApiErrorBody): ApiError {
+  if (err.code === 'session_replaced') window.dispatchEvent(new Event(SESSION_REPLACED_EVENT));
+  return new ApiError(status, err);
+}
+
 type Query = Record<string, string | number | boolean | undefined | null>;
 
 function buildPath(path: string, query?: Query): string {
@@ -93,7 +101,7 @@ async function request<T>(method: string, path: string, options: { body?: unknow
       code: 'internal_error',
       message: 'Something went wrong. Please try again.',
     };
-    throw new ApiError(res.status, err);
+    throw failed(res.status, err);
   }
 
   return payload as T;
@@ -131,7 +139,7 @@ async function upload<T>(path: string, file: Blob): Promise<T> {
       code: 'internal_error',
       message: 'Something went wrong. Please try again.',
     };
-    throw new ApiError(res.status, err);
+    throw failed(res.status, err);
   }
   return payload as T;
 }
@@ -170,6 +178,7 @@ const MESSAGES: Record<string, string> = {
  */
 const SERVER_WORDED: ReadonlySet<string> = new Set([
   'unauthorized',
+  'session_replaced',
   'forbidden',
   'conflict',
   'limit_reached',

@@ -64,9 +64,9 @@ interface PromptAudioProps {
   /** With autoPlayAfter: a short beep when the countdown ends, then the recording (listening practice). */
   beepFirst?: boolean;
   /**
-   * 'full': play, signal and speed (listening). 'button': a small play button at
+   * 'full': play, signal and speed (the mocks). 'button': a small play button at
    * the bottom right (Read Aloud, where the audio is optional). 'bar': play,
-   * time, progress, speed and volume in one row (speaking tasks built on audio).
+   * time, progress, speed and volume in one row (every practice recording).
    */
   layout?: PlayerLayout;
 }

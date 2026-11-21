@@ -6,6 +6,10 @@ import { cn } from '@/lib/utils';
 import type { PracticeResult } from '@/lib/hooks/usePracticeSession';
 import type { Evaluation, PracticeAttempt, Question } from '@/lib/types';
 import EvaluationCard from './EvaluationCard';
+import { ReorderReview } from '@/components/listening/ListeningPartResult';
+import { READING_TYPES } from '@/lib/readingTypes';
+import { choiceGlosses, englishLines, underlineEnglish } from '@/lib/choices';
+import { MarkedText } from './OptionContent';
 import ExplainMistake from './ExplainMistake';
 import { CONFIDENCE_LABEL, SCALE, MarkedAnswer, onExamScale, AnswerRecording, MarkedAnswerLegend, ResultSection, ResultSummary, xpMeta, type Tone } from './ResultParts';
 
@@ -66,7 +70,17 @@ function DeterministicResult({ attempt, review, xpAwarded, blankAnswers, recordi
         summary={attempt.feedback}
       />
       {recordingUrl && <AnswerRecording src={recordingUrl} />}
-      {review?.options && review.options.length > 0 && <MarkedOptions options={review.options} given={attempt.userResponse} right={review.correctAnswers} />}
+      {review && (review.exam === 'EPS_TOPIK' || review.exam === 'JLPT') && <AskedQuestion review={review} />}
+      {review?.typeId === READING_TYPES.reorderParagraphs ? (
+        <ResultSection title="Your answer">
+          {/* Every box is in a re-order key, so the choice list would mark them all right. */}
+          <ReorderReview
+            options={review.options ?? []}
+            yours={(attempt.userResponse ?? '').split('→').map(id => id.trim()).filter(Boolean)}
+            correct={review.correctAnswers ?? []}
+          />
+        </ResultSection>
+      ) : review?.options && review.options.length > 0 && <MarkedOptions options={review.options} given={attempt.userResponse} right={review.correctAnswers} english={review.audioTranslation} />}
       {review?.blanks && review.blanks.length > 0 && blankAnswers && (
         <ResultSection title="Your answers">
           <BlankAnswers blanks={review.blanks} given={blankAnswers} />
@@ -74,7 +88,7 @@ function DeterministicResult({ attempt, review, xpAwarded, blankAnswers, recordi
       )}
       {review?.explanation && (
         <ResultSection title="Explanation">
-          <p className="text-sm leading-relaxed text-foreground">{review.explanation}</p>
+          <p className="text-sm leading-relaxed text-foreground"><NativeApart text={review.explanation} /></p>
         </ResultSection>
       )}
       {review?.audioTranscript && (written ? (
@@ -130,18 +144,78 @@ function BlankAnswers({ blanks, given }: { blanks: NonNullable<Question['blanks'
   );
 }
 
+// A run of Korean or Japanese, words joined by single spaces as N5 papers space them.
+const CJK = '[\\p{sc=Han}\\p{sc=Hiragana}\\p{sc=Katakana}\\p{sc=Hangul}ー々。、？！（）0-9]';
+const NATIVE_RUN = new RegExp(`(${CJK}*[\\p{sc=Han}\\p{sc=Hiragana}\\p{sc=Katakana}\\p{sc=Hangul}]${CJK}*(?:[ 　]${CJK}+)*)`, 'u');
+
+/** An English explanation with its Korean or Japanese set apart, so the two read separately. */
+function NativeApart({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(NATIVE_RUN).map((part, i) => i % 2 === 1
+        ? <span key={i} className="rounded-md bg-muted px-1.5 py-0.5 font-medium text-foreground">{part}</span>
+        : part)}
+    </>
+  );
+}
+
+/** What was asked, as the paper showed it; premium learners also get its English (the server sends it only to them). */
+function AskedQuestion({ review }: { review: Question }) {
+  const english = englishLines(review.audioTranslation);
+  const of = (label: string) => english.filter(l => l.label === label).map(l => l.text).join(' ');
+  // What was heard on a listening item: its speakers' lines.
+  const heard = english.filter(l => l.label !== 'Question' && l.label !== 'Text').map(l => (l.label === 'Man' || l.label === 'Woman' ? `${l.label}: ${l.text}` : l.text));
+  const passage = review.contextPassage?.trim();
+  const options = review.options ?? [];
+  const right = new Set((review.correctAnswers ?? []).map(optionKey));
+  const answer = choiceGlosses(review.audioTranslation, options.length)[options.findIndex(o => right.has(optionKey(o.id)))];
+  // Each row: what the paper said, beside its English.
+  const rows = [
+    { native: review.prompt, english: of('Question') },
+    { native: passage ?? '', english: underlineEnglish(of('Text'), passage, answer), main: true },
+    // One speaker a line, as the English is.
+    { native: heard.length > 0 ? (review.audioTranscript ?? '').replace(/\s+(?=(?:남|여|男|女)[:：])/g, '\n') : '', english: heard.join('\n') },
+  ].filter(r => r.native || r.english);
+  const withEnglish = english.length > 0;
+  return (
+    <ResultSection title="Question">
+      {review.imageUrl && <img src={review.imageUrl} alt="" loading="lazy" className="max-h-40 rounded-lg object-contain" />}
+      <div className="overflow-x-auto rounded-xl border border-foreground/20">
+        <table className="w-full border-collapse text-left text-sm">
+          <thead>
+            <tr className="border-b border-foreground/20 bg-muted/60 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <th className="px-4 py-2.5">{review.exam === 'JLPT' ? 'Japanese' : 'Korean'}</th>
+              {withEnglish && <th className="w-1/2 border-l border-foreground/15 px-4 py-2.5">English</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} className="border-t border-foreground/15 align-top first:border-t-0">
+                <td className={cn('whitespace-pre-line px-4 py-3 leading-relaxed text-foreground', r.main && 'text-base font-medium')}><MarkedText text={r.native} /></td>
+                {withEnglish && <td className="whitespace-pre-line border-l border-foreground/15 px-4 py-3 leading-relaxed text-foreground"><MarkedText text={r.english} /></td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </ResultSection>
+  );
+}
+
 const optionKey = (s: string) => s.trim().toLowerCase();
 
 /** Each option, with the learner's choice and the right one marked. */
-function MarkedOptions({ options, given, right }: { options: NonNullable<Question['options']>; given?: string; right?: string[] }) {
+function MarkedOptions({ options, given, right, english }: { options: NonNullable<Question['options']>; given?: string; right?: string[]; english?: string }) {
   const chosen = new Set((given ?? '').split(',').map(optionKey).filter(Boolean));
   const correct = new Set((right ?? []).map(optionKey));
   if (chosen.size === 0 && correct.size === 0) return null;
   const has = (set: Set<string>, o: { id: string; text: string }) => set.has(optionKey(o.id)) || set.has(optionKey(o.text));
+  // Korean and Japanese items carry an English version (premium only, as the server sends it).
+  const glosses = choiceGlosses(english, options.length);
   return (
     <ResultSection title="Your answer">
       <ul className="space-y-1.5">
-        {options.map(o => {
+        {options.map((o, i) => {
           const isRight = has(correct, o);
           const isChosen = has(chosen, o);
           return (
@@ -153,7 +227,10 @@ function MarkedOptions({ options, given, right }: { options: NonNullable<Questio
               )}
             >
               <span className="w-4 shrink-0 font-bold text-muted-foreground">{o.id.length === 1 ? o.id : ''}</span>
-              <span className="flex-1 text-foreground">{o.text}</span>
+              <span className="flex-1 text-foreground">
+                <MarkedText text={o.text} />
+                {glosses[i] && <span className="mt-1 block text-xs text-muted-foreground">{glosses[i]}</span>}
+              </span>
               {isChosen && <span className="shrink-0 text-xs font-semibold text-muted-foreground">Your choice</span>}
               {isRight && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-label="Correct answer" />}
             </li>

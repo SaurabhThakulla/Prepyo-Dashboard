@@ -41,7 +41,7 @@ import { minimumWritingWords, writingLengthNote, writingWordCount, writingWordTa
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
 import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isInstitutionStudent, isPremiumUser, listeningPlays, PracticeAttempt, Question, SkillType, ieltsModuleOf } from '@/lib/types';
 import FreePlanNotice from '@/institution/FreePlanNotice';
-import PracticeActionBar, { CostChip, gradingUnits, notesFor, PracticeNotes } from '@/components/practice/flow/PracticeActionBar';
+import PracticeActionBar, { CostChip, gradingUnits } from '@/components/practice/flow/PracticeActionBar';
 import MyScore from '@/components/practice/flow/MyScore';
 
 const ReadingPracticePanel = lazy(() => import('@/components/reading/ReadingPracticePanel'));
@@ -73,6 +73,7 @@ import { useProgressStage } from '@/lib/hooks/useProgressStage';
 import { loadCompleted, saveCompleted } from '@/lib/practiceProgress';
 import QuestionDrawer from '@/components/practice/QuestionDrawer';
 import QuestionHeader from '@/components/practice/QuestionHeader';
+import ClampedPrompt from '@/components/practice/ClampedPrompt';
 import { useExclusivePanel } from '@/components/layout/sidePanels';
 import ScoringProgress from '@/components/practice/ScoringProgress';
 import { recordQuestionAttempt } from '@/lib/questionStorage';
@@ -762,10 +763,12 @@ function PracticePageContent() {
   );
 
   const isPteListening = activeExam === 'PTE' && selectedSkill === 'listening';
-  // Outside reading the prompt goes in the question card, under the blue bar, not in the header.
-  const promptInCard = !!currentQuestion && currentQuestion.skill !== 'reading';
   // An IELTS speaking prompt is the question itself, so it reads larger.
   const promptIsQuestion = currentQuestion?.exam === 'IELTS' && currentQuestion?.skill === 'speaking';
+  // A task's instruction sits in the header band; it goes in the question card, under the bar, when it is the
+  // question itself (a writing topic, an IELTS speaking question) and outside reading on other exams.
+  const promptInCard = !!currentQuestion && currentQuestion.skill !== 'reading' &&
+    (!(currentQuestion.exam === 'PTE' || currentQuestion.exam === 'IELTS') || currentQuestion.skill === 'writing' || promptIsQuestion);
   const cueCard = currentQuestion?.typeId === 'ielts-speaking-part2' && currentQuestion.prompt ? parseCueCard(currentQuestion.prompt) : null;
 
   const currentIndex = currentQuestion ? questions.findIndex(q => q.id === currentQuestion.id) : -1;
@@ -1141,8 +1144,8 @@ function PracticePageContent() {
                     )}
                     {/* Plain sentences flow across the full width; prompts with lists keep their lines. */}
                     {!promptInCard && currentQuestion.prompt && (
-                      // Only the question's own text opens the dictionary (and says the word aloud).
-                      <div data-dictionary className="space-y-1">
+                      // Keyed by question: the next one opens folded again.
+                      <ClampedPrompt key={currentQuestion.id} text={currentQuestion.prompt.trim()}>
                         {/\S\r?\n\S/.test(currentQuestion.prompt.trim())
                           ? currentQuestion.prompt.split(/\n\s*\n/).map((paragraph, i) => (
                             <p key={i} className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
@@ -1150,7 +1153,7 @@ function PracticePageContent() {
                             </p>
                           ))
                           : <p className="text-sm text-muted-foreground leading-relaxed">{currentQuestion.prompt.trim().split(/\s*\n\s*\n\s*/).join(' ')}</p>}
-                      </div>
+                      </ClampedPrompt>
                     )}
               </QuestionHeader>
 
@@ -1161,7 +1164,7 @@ function PracticePageContent() {
               <div className={writingSideBySide ? 'lg:rounded-2xl lg:border lg:border-border/70 lg:bg-slate-50/70 lg:px-5 lg:pb-2 lg:pt-3 dark:lg:bg-white/[0.03]' : undefined}>
               {(questionHeading || (!isPteListening && currentIndex >= 0)) && (
                 <div className="flex items-center gap-3 pt-2">
-                  {!isPteListening && currentIndex >= 0 && <span className="rounded-md bg-primary px-2.5 py-1 text-sm font-bold tabular-nums text-primary-foreground">#{currentIndex + 1}</span>}
+                  {!isPteListening && currentIndex >= 0 && <span className="shrink-0 whitespace-nowrap rounded-md bg-primary px-2.5 py-1 text-sm font-bold tabular-nums text-primary-foreground">#{currentIndex + 1}</span>}
                   {questionHeading && <h3 data-dictionary className="text-lg sm:text-xl font-bold leading-snug text-foreground">{questionHeading}</h3>}
                 </div>
               )}
@@ -1201,8 +1204,8 @@ function PracticePageContent() {
                   // Listening recordings start with a beep; speaking prompts keep their own cue.
                   beepFirst={currentQuestion.skill === 'listening'}
                   title={currentQuestion.title}
-                  // Speaking tasks answered from what they hear (Repeat Sentence, Re-tell Lecture...): one bar with time, speed and volume.
-                  layout={currentQuestion.skill === 'speaking' ? 'bar' : undefined}
+                  // Every practice recording (listening, and speaking answered from what is heard): one bar with time, speed and volume.
+                  layout="bar"
                   // IELTS speaking shows its question on screen; the recording only reads it aloud.
                   allowTranscript={!(currentQuestion.exam === 'IELTS' && currentQuestion.skill === 'speaking')}
                   highlights={result?.review?.blanks?.map(blank => blank.correctAnswer ?? '')}
@@ -1238,7 +1241,7 @@ function PracticePageContent() {
                   ) : (
                     <div
                       lang={currentQuestion.exam === 'JLPT' ? 'ja' : undefined}
-                      className="px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl bg-primary/[0.04] text-[15px] sm:text-[16px] text-foreground leading-relaxed whitespace-pre-line sm:max-h-72 sm:overflow-y-auto"
+                      className={`px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl bg-primary/[0.04] text-[15px] sm:text-[16px] text-foreground leading-relaxed whitespace-pre-line ${writingSideBySide ? '' : 'sm:max-h-72 sm:overflow-y-auto'}`}
                     >
                       {(() => {
                         const text = passageText(currentQuestion);
@@ -1510,8 +1513,6 @@ function PracticePageContent() {
             />
 
             {submitting && grading === 'speech' && <ScoringProgress />}
-
-            <PracticeNotes notes={speakingUnscored ? [] : notesFor(selectedSkill)} />
 
             <MyScore questionIds={[currentQuestion.id]} taskType={activeExam === 'PTE' ? currentQuestion.typeId : undefined} />
           </div>

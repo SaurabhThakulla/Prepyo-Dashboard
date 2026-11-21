@@ -30,7 +30,8 @@ export const EXAM_MAX_SCORE: Record<ExamType, number> = { IELTS: 9, PTE: 90, EPS
 export const listeningPlays = (question: { exam: ExamType; skill: SkillType }): number =>
   question.exam === 'EPS_TOPIK' && question.skill === 'listening' ? 2 : 1;
 
-export type SubscriptionTier = 'free' | 'weekly' | 'pro' | 'elite';
+/** elite_asia is Premium on EPS-TOPIK and JLPT only; elite covers every exam. */
+export type SubscriptionTier = 'free' | 'weekly' | 'pro' | 'elite' | 'elite_asia';
 
 export type UserRole = 'admin' | 'suru' | 'abhyas' | 'taiyari' | 'udaan';
 
@@ -39,14 +40,16 @@ export const ROLE_FOR_PLAN: Record<SubscriptionTier, Exclude<UserRole, 'admin'>>
   weekly: 'abhyas',
   pro: 'taiyari',
   elite: 'udaan',
+  elite_asia: 'udaan',
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',
-  suru: 'Suru',
+  suru: 'Basic',
+  // No longer sold; shown for learners still on them.
   abhyas: 'Abhyas',
   taiyari: 'Taiyari',
-  udaan: 'Udaan',
+  udaan: 'Premium',
 };
 /** Tiers that can actually be bought — 'free' is the default, not a purchase. */
 export type PaidTier = Exclude<SubscriptionTier, 'free'>;
@@ -658,6 +661,8 @@ export interface SkillProgress {
 export interface ProgressSummary {
   estimate: ScoreEstimate;
   skills: SkillProgress[];
+  /** JLPT only: practice accuracy in vocabulary, grammar, reading and listening. */
+  sections?: { section: string; attempts: number; accuracy: number; status: string }[] | null;
 }
 
 export interface DailyMission {

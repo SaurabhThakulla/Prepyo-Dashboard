@@ -4,9 +4,12 @@ export interface TutorialVideo {
   id: string;
   title: string;
   youtubeId: string;
-  exam: 'IELTS' | 'PTE' | 'EPS_TOPIK' | 'both';
+  exam: 'IELTS' | 'PTE' | 'EPS_TOPIK' | 'JLPT' | 'both';
   skill: SkillType;
-  duration: string;
+  /** A JLPT video's test section; its tabs are these, not skills. */
+  section?: JlptSection;
+  /** Absent where it was not checked on YouTube. */
+  duration?: string;
   isFullLength: boolean;
   videoType: 'masterclass' | 'strategy-guide';
   instructor: string;
@@ -17,6 +20,21 @@ export interface TutorialVideo {
   /** Absent where the exam has no mock tests yet, as for EPS-TOPIK. */
   mockUrl?: string;
 }
+
+/** The JLPT's own sections (jlpt.jp/e/guideline/testsections.html). */
+export const JLPT_SECTIONS = [
+  { id: 'vocabulary', label: 'Vocabulary', sublabel: 'Kanji readings, spelling & N5 words' },
+  { id: 'grammar-reading', label: 'Grammar & Reading', sublabel: 'N5 grammar patterns & short passages' },
+  { id: 'listening', label: 'Listening', sublabel: 'Conversations & the listening tasks' },
+] as const;
+export type JlptSection = (typeof JLPT_SECTIONS)[number]['id'];
+
+/** The tab a video is filed under: its JLPT section, else its skill. */
+export const tutorialTab = (video: TutorialVideo): string => video.section ?? video.skill;
+
+/** How that tab is named on a badge. */
+export const tutorialTabLabel = (video: TutorialVideo): string =>
+  JLPT_SECTIONS.find(s => s.id === video.section)?.label ?? video.skill;
 
 export const TUTORIAL_VIDEOS: TutorialVideo[] = [
   // ── IELTS Speaking ──
@@ -600,5 +618,221 @@ export const TUTORIAL_VIDEOS: TutorialVideo[] = [
       'Use it to plan your weeks before the exam.',
     ],
     practiceUrl: '/practice?exam=EPS_TOPIK&skill=reading',
+  },
+
+  // ── JLPT N5: Vocabulary ──
+  {
+    id: 'jlpt-n5-800-vocabulary',
+    title: 'Learn All 800 JLPT N5 Vocabulary (Complete!)',
+    youtubeId: 'nuI4OgsJv_Q',
+    exam: 'JLPT',
+    skill: 'reading',
+    section: 'vocabulary',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'Jp Launch',
+    level: 'N5',
+    description: 'The whole N5 word list in one video, each word read aloud by a native speaker with its meaning.',
+    keyTakeaways: [
+      'Hear how every N5 word is pronounced, not just how it is spelled.',
+      'Long: watch it in parts and pause to say each word back.',
+      'Review the same words in Prepyo\'s Learn Japanese course.',
+    ],
+    practiceUrl: '/practice?exam=JLPT&skill=reading',
+  },
+  {
+    id: 'jlpt-n5-vocabulary-sentences',
+    title: 'JLPT N5 Vocabulary with Example Sentences #1',
+    youtubeId: '_iGa4TOD47k',
+    exam: 'JLPT',
+    skill: 'reading',
+    section: 'vocabulary',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'Jp Launch',
+    level: 'N5',
+    description: 'N5 words such as 会う (to meet) and 上がる (to go up), each used in an example sentence.',
+    keyTakeaways: [
+      'A word in a sentence is easier to remember than a word in a list.',
+      'The test asks which word fits a sentence, so learn words in use.',
+      'Part 1 of a series: carry on with the next parts.',
+    ],
+    practiceUrl: '/practice?exam=JLPT&skill=reading',
+  },
+  {
+    id: 'jlpt-n5-kanji-107',
+    title: 'Kanji Practice for N5: Reading and Writing 107 Characters',
+    youtubeId: 'j8YwW-tj1WQ',
+    exam: 'JLPT',
+    skill: 'reading',
+    section: 'vocabulary',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'Learn Japanese Channel',
+    level: 'N5',
+    description: 'The kanji of the N5 level, how each is read and how it is written.',
+    keyTakeaways: [
+      'The Vocabulary section asks how a kanji word is read in hiragana.',
+      'It also asks which kanji spells a word written in hiragana.',
+      'Pairs with the N5 Kanji unit in Prepyo\'s Learn Japanese course.',
+    ],
+    practiceUrl: '/practice?exam=JLPT&skill=reading',
+  },
+
+  // ── JLPT N5: Grammar & Reading ──
+  {
+    id: 'jlpt-n5-grammar-game-textbook',
+    title: 'The Complete JLPT N5 Grammar Video(Game) Textbook',
+    youtubeId: '_ojVS-KgDEg',
+    exam: 'JLPT',
+    skill: 'reading',
+    section: 'grammar-reading',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'Game Gengo',
+    level: 'N5',
+    description: 'Every N5 grammar point explained in English, with over 100 examples taken from video games.',
+    keyTakeaways: [
+      'Covers all the grammar the N5 test can ask about.',
+      'Each point is shown in real sentences, not just a rule.',
+      'Long: use it as a textbook and come back to a point you miss.',
+    ],
+    practiceUrl: '/practice?exam=JLPT&skill=reading',
+  },
+  {
+    id: 'jlpt-n5-grammar-50-patterns',
+    title: 'JLPT N5 Grammar in One Video: 50 Patterns',
+    youtubeId: 'vRbIElSR9R8',
+    exam: 'JLPT',
+    skill: 'reading',
+    section: 'grammar-reading',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'Japanese With Punam',
+    level: 'N5',
+    description: 'The 50 grammar patterns that come up most at N5, in one video for revision.',
+    keyTakeaways: [
+      'A quick review of the most common N5 patterns before the test.',
+      'Grammar questions ask which pattern completes a sentence.',
+      'Watch it again in the last week before the exam.',
+    ],
+    practiceUrl: '/practice?exam=JLPT&skill=reading',
+  },
+  {
+    id: 'jlpt-n5-reading-question-4',
+    title: 'JLPT N5 Reading Practice: Question 4, Easy Explanation (Vol. 1)',
+    youtubeId: '4Q-vHL2gd_Y',
+    exam: 'JLPT',
+    skill: 'reading',
+    section: 'grammar-reading',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'Japanese with Saki',
+    level: 'N5',
+    description: 'Short N5 reading passages worked through slowly, for beginners learning to read.',
+    keyTakeaways: [
+      'Reading question 4 is a short passage with one question.',
+      'Read the question first, then find the sentence that answers it.',
+      'Practise the same task in Prepyo\'s JLPT reading questions.',
+    ],
+    practiceUrl: '/practice?exam=JLPT&skill=reading',
+  },
+  {
+    id: 'jlpt-n5-reading-mock-explained',
+    title: 'JLPT N5 Reading Practice Test with Answers and Explanation',
+    youtubeId: 'ZOb7V7hr_CA',
+    exam: 'JLPT',
+    skill: 'reading',
+    section: 'grammar-reading',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'あつこせんせい (Atsuko Sensei)',
+    level: 'N5',
+    description: 'A full N5 reading section as a practice test, then its answers explained, to learn the format.',
+    keyTakeaways: [
+      'Shows the format and question patterns of the reading section.',
+      'Try each question yourself before the answer is shown.',
+      'Then time yourself on Prepyo\'s JLPT reading questions.',
+    ],
+    practiceUrl: '/practice?exam=JLPT&skill=reading',
+  },
+
+  // ── JLPT N5: Listening ──
+  {
+    id: 'jlpt-n5-listening-practice-9',
+    title: 'JLPT N5 Listening Practice 9: Test and Answers',
+    youtubeId: 'wjl4mQGu32c',
+    exam: 'JLPT',
+    skill: 'listening',
+    section: 'listening',
+    duration: '23:05',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'Cello Sensei',
+    level: 'N5',
+    description: 'An N5 listening test of everyday conversations at natural speed, with the answers after each one.',
+    keyTakeaways: [
+      'Real-life conversations with clear pronunciation.',
+      'Practises the N5 grammar and phrases you hear in the test.',
+      'Answer before the video does, then check.',
+    ],
+    practiceUrl: '/practice?exam=JLPT&skill=listening',
+  },
+  {
+    id: 'jlpt-n5-listening-conversations',
+    title: 'JLPT N5 Listening Practice: Real Japanese Conversations (With Answers)',
+    youtubeId: 'YPdVu8PQpII',
+    exam: 'JLPT',
+    skill: 'listening',
+    section: 'listening',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'Learning Japanese with Kirin san',
+    level: 'N5',
+    description: 'Beginner-level conversations like those in the N5 listening section, with the answers.',
+    keyTakeaways: [
+      'Listen for who does what, when and where.',
+      'Read the question and choices before the conversation starts.',
+      'Then practise in Prepyo\'s JLPT listening questions.',
+    ],
+    practiceUrl: '/practice?exam=JLPT&skill=listening',
+  },
+  {
+    id: 'jlpt-n5-listening-test-2026',
+    title: 'JLPT N5 Listening Practice Test with Answers (聴解)',
+    youtubeId: 'TaXw3mCphMo',
+    exam: 'JLPT',
+    skill: 'listening',
+    section: 'listening',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'The Nihongo Nook',
+    level: 'N5',
+    description: 'A practice N5 listening test (chōkai) with the answers.',
+    keyTakeaways: [
+      'Sit it like the real test: once through, no pausing.',
+      'Note why each wrong answer was wrong.',
+      'The N5 listening section has four kinds of task.',
+    ],
+    practiceUrl: '/practice?exam=JLPT&skill=listening',
+  },
+  {
+    id: 'jlpt-n5-listening-chokai-test',
+    title: 'JLPT N5 Listening Practice Test with Answers (ちょうかい)',
+    youtubeId: 'REoyJnwy3PU',
+    exam: 'JLPT',
+    skill: 'listening',
+    section: 'listening',
+    isFullLength: true,
+    videoType: 'masterclass',
+    instructor: 'JLPT Test',
+    level: 'N5',
+    description: 'Another N5 listening practice test with answers, for more listening before the exam.',
+    keyTakeaways: [
+      'More practice with the voices and speed of the test.',
+      'Listen for the key words in each question.',
+      'Mix it with Prepyo\'s JLPT listening practice.',
+    ],
+    practiceUrl: '/practice?exam=JLPT&skill=listening',
   },
 ];

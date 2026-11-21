@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useApp } from '@/context/AppContext';
 import { SubscriptionPlan, SubscriptionState } from '@/lib/types';
 import { api, errorMessage } from '@/lib/api';
-import { formatPlanName, planUsageTier } from '@/lib/subscriptions';
+import { formatGradings, formatPlanName, planUsageTier } from '@/lib/subscriptions';
 import { useToast } from '@/components/ui/toast';
 import { PAYMENT_ACCOUNT, PAYMENT_METHODS, PaymentMethod } from '@/lib/paymentMethods';
 import { localPhone } from '@/lib/phone';
@@ -244,8 +244,10 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
                   <span className="font-semibold text-foreground">{planTitle}</span> · {totalDays} days
                   <span className="max-sm:hidden">
                     {' '}
-                    · {selectedPlan.unlimited ? 'unlimited sub-tests' : `${tier} practice`} · {tier} AI gradings
-                    &amp; full mocks
+                    · {selectedPlan.unlimited ? 'unlimited sub-tests' : `${tier} practice`}
+                    {/* The EPS-TOPIK & JLPT plan has neither: those exams are marked without AI. */}
+                    {selectedPlan.aiGradingsPerPeriod ? ` · ${formatGradings(selectedPlan.aiGradingsPerPeriod)} AI gradings` : ''}
+                    {selectedPlan.mockTestsIncluded ? ` · ${selectedPlan.mockTestsIncluded} full mocks` : ''}
                   </span>
                 </DialogDescription>
               </div>

@@ -20,16 +20,23 @@ import {
   PictureInPicture,
   X,
   ChevronDown,
+  Languages,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { TUTORIAL_VIDEOS, TutorialVideo } from '@/data/tutorials';
-import { SkillType, skillsFor } from '@/lib/types';
+import { JLPT_SECTIONS, TUTORIAL_VIDEOS, TutorialVideo, tutorialTab, tutorialTabLabel } from '@/data/tutorials';
+import { skillsFor } from '@/lib/types';
 
 export type PlayerViewMode = 'standard' | 'theater' | 'mini';
+
+const JLPT_ICON: Record<(typeof JLPT_SECTIONS)[number]['id'], React.ReactNode> = {
+  vocabulary: <Languages className="w-3.5 h-3.5" />,
+  'grammar-reading': <BookOpen className="w-3.5 h-3.5" />,
+  listening: <Headphones className="w-3.5 h-3.5" />,
+};
 
 export default function TutorialsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -42,10 +49,11 @@ export default function TutorialsPage() {
     setTutorialViewMode,
   } = useApp();
 
-  const skillParam = searchParams.get('skill') as SkillType | null;
+  // A skill, or a JLPT section.
+  const skillParam = searchParams.get('skill');
   const videoParam = searchParams.get('video');
 
-  const [selectedSkill, setSelectedSkill] = useState<SkillType | 'all'>(skillParam || 'all');
+  const [selectedSkill, setSelectedSkill] = useState<string>(skillParam || 'all');
   const [searchQuery, setSearchQuery] = useState('');
   const viewMode = tutorialViewMode;
   const setViewMode = (mode: PlayerViewMode) => {
@@ -58,7 +66,7 @@ export default function TutorialsPage() {
 
   // Sync skillParam with internal state if query param changes
   useEffect(() => {
-    if (skillParam && ['speaking', 'writing', 'reading', 'listening'].includes(skillParam)) {
+    if (skillParam && ['speaking', 'writing', 'reading', 'listening', ...JLPT_SECTIONS.map(s => s.id)].includes(skillParam)) {
       setSelectedSkill(skillParam);
     } else if (!skillParam) {
       setSelectedSkill('all');
@@ -80,7 +88,7 @@ export default function TutorialsPage() {
         return false;
       }
       // Skill filter
-      if (selectedSkill !== 'all' && video.skill !== selectedSkill) {
+      if (selectedSkill !== 'all' && tutorialTab(video) !== selectedSkill) {
         return false;
       }
       // Query search
@@ -130,7 +138,7 @@ export default function TutorialsPage() {
     }
   };
 
-  const setSkillFilter = (skill: SkillType | 'all') => {
+  const setSkillFilter = (skill: string) => {
     setSelectedSkill(skill);
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
@@ -143,7 +151,7 @@ export default function TutorialsPage() {
     });
   };
 
-  const allSkillTabs: { id: SkillType | 'all'; label: string; icon: React.ReactNode }[] = [
+  const allSkillTabs: { id: string; label: string; icon: React.ReactNode }[] = [
     { id: 'all', label: 'All Lessons', icon: <Layers className="w-3.5 h-3.5" /> },
     { id: 'speaking', label: 'Speaking', icon: <Mic className="w-3.5 h-3.5" /> },
     { id: 'writing', label: 'Writing', icon: <PenTool className="w-3.5 h-3.5" /> },
@@ -151,7 +159,11 @@ export default function TutorialsPage() {
     { id: 'listening', label: 'Listening', icon: <Headphones className="w-3.5 h-3.5" /> },
   ];
   // Only the skills this exam tests: EPS-TOPIK has no speaking or writing.
-  const skillTabs = allSkillTabs.filter(tab => tab.id === 'all' || skillsFor(currentExam).includes(tab.id));
+  // The JLPT is split by its own three sections instead.
+  const skillTabs =
+    currentExam === 'JLPT'
+      ? [allSkillTabs[0], ...JLPT_SECTIONS.map(s => ({ id: s.id, label: s.label, icon: JLPT_ICON[s.id] }))]
+      : allSkillTabs.filter(tab => tab.id === 'all' || skillsFor(currentExam).some(skill => skill === tab.id));
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-8 pb-16 max-w-7xl mx-auto">
@@ -165,7 +177,7 @@ export default function TutorialsPage() {
             const count = TUTORIAL_VIDEOS.filter(
               v =>
                 (v.exam === currentExam || v.exam === 'both') &&
-                (tab.id === 'all' || v.skill === tab.id),
+                (tab.id === 'all' || tutorialTab(v) === tab.id),
             ).length;
 
             return (
@@ -340,12 +352,14 @@ export default function TutorialsPage() {
                           variant="secondary"
                           className="font-bold text-xs uppercase bg-primary/10 text-primary border-primary/20"
                         >
-                          {activeVideo.skill}
+                          {tutorialTabLabel(activeVideo)}
                         </Badge>
+                        {activeVideo.duration && (
                         <Badge variant="outline" className="text-xs text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {activeVideo.duration}
                         </Badge>
+                        )}
                         <Badge variant="outline" className="text-xs text-muted-foreground">
                           {activeVideo.level}
                         </Badge>
@@ -399,12 +413,14 @@ export default function TutorialsPage() {
                           variant="secondary"
                           className="font-bold text-xs uppercase bg-primary/10 text-primary border-primary/20"
                         >
-                          {activeVideo.skill}
+                          {tutorialTabLabel(activeVideo)}
                         </Badge>
+                        {activeVideo.duration && (
                         <Badge variant="outline" className="text-xs text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {activeVideo.duration}
                         </Badge>
+                        )}
                         <Badge variant="outline" className="text-xs text-muted-foreground">
                           {activeVideo.level}
                         </Badge>
@@ -460,7 +476,7 @@ export default function TutorialsPage() {
               <h3 className="font-display text-lg font-bold text-foreground">
                 {selectedSkill === 'all'
                   ? 'All Available Lessons'
-                  : `${selectedSkill.charAt(0).toUpperCase() + selectedSkill.slice(1)} Video Masterclasses`}
+                  : `${skillTabs.find(tab => tab.id === selectedSkill)?.label ?? selectedSkill} Video Masterclasses`}
               </h3>
               <Badge variant="outline" className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5">
                 Full-Length Only (12–25 mins)
@@ -523,9 +539,11 @@ export default function TutorialsPage() {
                       </div>
 
                       {/* Duration pill */}
+                      {video.duration && (
                       <span className="absolute bottom-2 right-2 rounded-md bg-black/80 backdrop-blur-sm px-1.5 py-0.5 text-xs font-mono font-semibold text-white">
                         {video.duration}
                       </span>
+                      )}
 
                       {/* Now Playing badge */}
                       {isActive && (
@@ -540,7 +558,7 @@ export default function TutorialsPage() {
                     <div className="p-4 space-y-2">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <Badge variant="secondary" className="text-xs uppercase font-bold px-1.5 py-0">
-                          {video.skill}
+                          {tutorialTabLabel(video)}
                         </Badge>
                         <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
                           Full Masterclass
