@@ -61,6 +61,8 @@ interface SecondaryNavListProps {
   fallbackIcon: LucideIcon;
   isItemActive: (item: SecondaryNavItem) => boolean;
   onNavigate: () => void;
+  /** Lays the groups out side by side, for the top bar's wide panel. */
+  columns?: boolean;
 }
 
 /** Renders a weight badge (e.g. "16%") with a little space between the number and '%' so they don't merge. */
@@ -145,13 +147,14 @@ interface NavGroup {
   items: SecondaryNavItem[];
 }
 
-/** The list of links inside the blue secondary panel; the open link is a white pill. */
+/** The list of links inside the blue menu panel; the open link is a white pill. */
 export default function SecondaryNavList({
   items,
   fallbackHeading,
   fallbackIcon,
   isItemActive,
   onNavigate,
+  columns = false,
 }: SecondaryNavListProps) {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
@@ -207,7 +210,7 @@ export default function SecondaryNavList({
   return (
     <div className="flex-1 overflow-y-auto px-3 pb-2 [&::-webkit-scrollbar-thumb]:bg-white/20 hover:[&::-webkit-scrollbar-thumb]:bg-white/35">
       <TooltipProvider delayDuration={120}>
-        <div>
+        <div className={columns ? 'grid gap-x-8 gap-y-5 [grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))]' : undefined}>
           {groups.map((group, groupIndex) => {
             if (!group.name) {
               return (
@@ -230,7 +233,7 @@ export default function SecondaryNavList({
             return (
               <div
                 key={`group-${group.name}-${groupIndex}`}
-                className={groupIndex > 0 ? 'mt-5' : ''}
+                className={groupIndex > 0 && !columns ? 'mt-5' : ''}
               >
                 <GroupHeading
                   groupName={group.name}
