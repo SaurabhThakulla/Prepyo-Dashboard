@@ -2,43 +2,21 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
-  Award,
-  BookOpen,
-  Bot,
-  CalendarClock,
-  CalendarDays,
+  Camera,
   Check,
   CheckCircle2,
-  Clock,
   Crown,
-  Flame,
   Globe,
   GraduationCap,
-  Headphones,
-  Languages,
-  Lightbulb,
   Lock,
   LucideIcon,
-  MapPin,
-  Minus,
-  Mic,
-  PenTool,
-  Plus,
-  RotateCcw,
   ShieldCheck,
+  Smartphone,
   Sparkles,
-  Target,
-  TrendingUp,
-  Trophy,
+  Users,
+  Video,
   Zap,
 } from 'lucide-react';
-import AU from 'country-flag-icons/react/3x2/AU';
-import GB from 'country-flag-icons/react/3x2/GB';
-import CA from 'country-flag-icons/react/3x2/CA';
-import US from 'country-flag-icons/react/3x2/US';
-import NZ from 'country-flag-icons/react/3x2/NZ';
-import KR from 'country-flag-icons/react/3x2/KR';
-import JP from 'country-flag-icons/react/3x2/JP';
 import DE from 'country-flag-icons/react/3x2/DE';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,6 +31,8 @@ import {
 } from '@/components/onboarding/OnboardingChrome';
 import { useToast } from '@/components/ui/toast';
 import { useApp } from '@/context/AppContext';
+import { CdsTrack, cdsApi } from '@/cds/cdsApi';
+import { CDS_TRACKS } from '@/cds/cdsShared';
 import { errorMessage } from '@/lib/api';
 import { useSubscriptionPlans } from '@/lib/hooks/useResources';
 import QRPaymentCheckoutDialog from '@/components/subscription/QRPaymentCheckoutDialog';
@@ -68,54 +48,18 @@ import {
   planAccessDays,
   planUsageTier,
 } from '@/lib/subscriptions';
-import { EXAM_LABELS, ExamType, SkillType, SubscriptionPlan, SubscriptionTier, UserProfile, IELTSModule, ieltsModuleOf, skillsFor } from '@/lib/types';
+import { EXAM_LABELS, ExamType, SubscriptionPlan, SubscriptionTier, UserProfile, IELTSModule, ieltsModuleOf, skillsFor } from '@/lib/types';
 import {
-  DAILY_MINUTES,
-  DESTINATIONS,
-  Destination,
-  FOCUS_SKILLS,
   SCORE_SCALE,
-  STUDY_GOALS,
-  StudyGoal,
-  clampScore,
-  dailyLabel,
-  daysUntil,
-  destinationLabel,
   formatExamDate,
-  formatScore,
-  isoDateAfterMonths,
-  practiceHours,
-  runwayAdvice,
-  scoreLabel,
-  skillLabel,
-  toIsoDate,
+  inIndia,
 } from '@/components/onboarding/onboarding';
-import {
-  BriefcaseIcon,
-  FlagIcon,
-  ListeningIcon,
-  PassportIcon,
-  ReadingIcon,
-  RetakeIcon,
-  SpeakingIcon,
-  SproutIcon,
-  UniversityIcon,
-  WritingIcon,
-} from '@/components/onboarding/GoalIcons';
 
 const STEPS = [
   { id: 'welcome', pill: 'Your Exam Copilot', label: 'Welcome', tagline: "Let's build a plan that fits you." },
   { id: 'exam', pill: 'Your Target', label: 'Your exam', tagline: 'Everything in Prepyo adapts to your exam.' },
-  { id: 'goal', pill: 'Your Target', label: 'Your goal', tagline: 'Knowing why keeps you going on the hard days.' },
-  { id: 'destination', pill: 'Your Target', label: 'Destination', tagline: 'Your score is a ticket somewhere. Where to?' },
-  { id: 'experience', pill: 'Experience', label: 'Experience', tagline: 'First try or a comeback, we start where you are.' },
-  { id: 'target', pill: 'Target Score', label: 'Target score', tagline: 'A clear target makes progress measurable.' },
-  { id: 'date', pill: 'Exam Date', label: 'Exam date', tagline: 'A deadline turns a plan into a habit.' },
-  { id: 'focus', pill: 'Focus Skill', label: 'Focus skill', tagline: 'Your hardest skill is your biggest opportunity.' },
-  { id: 'daily', pill: 'Daily Routine', label: 'Daily time', tagline: 'Small daily sessions beat weekend cramming.' },
+  { id: 'referral', pill: 'Discovery', label: 'How you found us', tagline: 'Help us learn how you discovered Prepyo.' },
   { id: 'plan', pill: 'Your Plan', label: 'Choose a plan', tagline: 'Start free, and unlock more whenever you need it.' },
-  { id: 'tour', pill: 'Your Toolkit', label: 'Your toolkit', tagline: 'Everything you need, in one place.' },
-  { id: 'ready', pill: 'All Set', label: 'All set', tagline: "You're ready. Let the practice begin." },
 ] as const;
 
 type StepId = (typeof STEPS)[number]['id'];
@@ -123,31 +67,9 @@ type StepId = (typeof STEPS)[number]['id'];
 const STEP_ICONS: Record<StepId, LucideIcon> = {
   welcome: Sparkles,
   exam: GraduationCap,
-  goal: Target,
-  destination: Globe,
-  experience: RotateCcw,
-  target: Trophy,
-  date: CalendarDays,
-  focus: Zap,
-  daily: Clock,
+  referral: Globe,
   plan: Crown,
-  tour: Award,
-  ready: CheckCircle2,
 };
-
-// EPS-TOPIK is the Korean test for the Employment Permit System: the goal is
-// always work and the destination always South Korea, so those two questions
-// are answered for the learner rather than asked.
-const EPS_ANSWERED: StepId[] = ['goal', 'destination'];
-// JLPT always leads to Japan, but for study or for work, so only the
-// destination is answered.
-const JLPT_ANSWERED: StepId[] = ['destination'];
-const stepsFor = (exam: ExamType | null) =>
-  exam === 'EPS_TOPIK'
-    ? STEPS.filter(step => !EPS_ANSWERED.includes(step.id))
-    : exam === 'JLPT'
-      ? STEPS.filter(step => !JLPT_ANSWERED.includes(step.id))
-      : STEPS;
 
 const EXAMS: { id: ExamType; name: string; scale: string; blurb: string }[] = [
   {
@@ -174,6 +96,12 @@ const EXAMS: { id: ExamType; name: string; scale: string; blurb: string }[] = [
     scale: 'Scores 0–180',
     blurb: 'The Japanese test for study and work in Japan. Pick N5 or N4 on Home; NAT-TEST 5Q and 4Q have the same sections.',
   },
+  {
+    id: 'CDS',
+    name: 'UPSC CDS',
+    scale: 'Scores 0–300',
+    blurb: 'English, General Knowledge and Maths.',
+  },
 ];
 
 /** The ends of each exam's scale, drawn under its card. */
@@ -182,9 +110,10 @@ const SCALE_ENDS: Record<ExamType, [string, string]> = {
   PTE: ['10', '90'],
   EPS_TOPIK: ['0', '100'],
   JLPT: ['0', '180'],
+  CDS: ['0', '300'],
 };
 
-/** Exam-step look, and what Prepyo gives you for each exam (not claims about the exam itself). */
+/** Exam-step look, and what Prepyo gives you for each exam. */
 const EXAM_STYLE: Record<
   ExamType,
   { facts: string[]; tile: string; soft: string; ring: string; wash: string; bar: string }
@@ -221,6 +150,14 @@ const EXAM_STYLE: Record<
     wash: 'from-red-50',
     bar: 'bg-red-600',
   },
+  CDS: {
+    facts: ['UPSC marking'],
+    tile: 'bg-emerald-600 text-white',
+    soft: 'bg-emerald-50 text-emerald-700',
+    ring: 'border-emerald-600 ring-emerald-600/20',
+    wash: 'from-emerald-50',
+    bar: 'bg-emerald-600',
+  },
 };
 
 const UPCOMING_PREPARATIONS: {
@@ -239,265 +176,14 @@ const UPCOMING_PREPARATIONS: {
   },
 ];
 
-const SKILL_ICONS: Record<SkillType, LucideIcon> = {
-  speaking: Mic,
-  writing: PenTool,
-  reading: BookOpen,
-  listening: Headphones,
-};
-
-const GOAL_ICONS: Record<StudyGoal, React.ComponentType<{ className?: string }>> = {
-  university: UniversityIcon,
-  migration: PassportIcon,
-  work: BriefcaseIcon,
-  other: FlagIcon,
-};
-
-/** Per goal: examples to scan, and full class strings so Tailwind keeps them. */
-const GOAL_STYLE: Record<StudyGoal, { examples: string[]; tile: string; soft: string; ring: string; wash: string }> = {
-  university: {
-    examples: ["Bachelor's", "Master's", 'PhD'],
-    tile: 'bg-blue-600 text-white',
-    soft: 'bg-blue-50 text-blue-600',
-    ring: 'border-blue-600 ring-blue-600/20',
-    wash: 'from-blue-50',
-  },
-  migration: {
-    examples: ['PR', 'Skilled visa', 'Partner visa'],
-    tile: 'bg-emerald-600 text-white',
-    soft: 'bg-emerald-50 text-emerald-600',
-    ring: 'border-emerald-600 ring-emerald-600/20',
-    wash: 'from-emerald-50',
-  },
-  work: {
-    examples: ['Nursing', 'Engineering', 'Teaching'],
-    tile: 'bg-violet-600 text-white',
-    soft: 'bg-violet-50 text-violet-600',
-    ring: 'border-violet-600 ring-violet-600/20',
-    wash: 'from-violet-50',
-  },
-  other: {
-    examples: ['Personal goal', 'Not sure yet'],
-    tile: 'bg-amber-500 text-white',
-    soft: 'bg-amber-50 text-amber-600',
-    ring: 'border-amber-500 ring-amber-500/20',
-    wash: 'from-amber-50',
-  },
-};
-
-type Feature = {
-  icon: LucideIcon;
-  title: string;
-  tag: string;
-  text: string;
-  highlights: string[];
-  where?: string;
-  /** Full class strings so Tailwind keeps them: solid tile, soft tint, glow. */
-  accent: { tile: string; soft: string; glow: string };
-};
-
-/** Focus-step look per skill, echoing the skill colours used on the practice hub. */
-const SKILL_STYLE: Record<
-  SkillType,
-  { icon: React.ComponentType<{ className?: string }>; tile: string; soft: string; ring: string; wash: string }
-> = {
-  speaking: {
-    icon: SpeakingIcon,
-    tile: 'bg-rose-500 text-white',
-    soft: 'bg-rose-50 text-rose-600',
-    ring: 'border-rose-500 ring-rose-500/20',
-    wash: 'from-rose-50',
-  },
-  writing: {
-    icon: WritingIcon,
-    tile: 'bg-emerald-600 text-white',
-    soft: 'bg-emerald-50 text-emerald-600',
-    ring: 'border-emerald-600 ring-emerald-600/20',
-    wash: 'from-emerald-50',
-  },
-  reading: {
-    icon: ReadingIcon,
-    tile: 'bg-amber-500 text-white',
-    soft: 'bg-amber-50 text-amber-600',
-    ring: 'border-amber-500 ring-amber-500/20',
-    wash: 'from-amber-50',
-  },
-  listening: {
-    icon: ListeningIcon,
-    tile: 'bg-sky-600 text-white',
-    soft: 'bg-sky-50 text-sky-600',
-    ring: 'border-sky-600 ring-sky-600/20',
-    wash: 'from-sky-50',
-  },
-};
-
-/** A few real tasks per skill, so the choice is concrete for the learner's exam. */
-const SKILL_TASKS: Record<ExamType, Record<SkillType, string[]>> = {
-  PTE: {
-    speaking: ['Read Aloud', 'Describe Image'],
-    writing: ['Write Essay', 'Summarize Written Text'],
-    reading: ['Fill in the Blanks', 'Reorder Paragraph'],
-    listening: ['Write from Dictation', 'Summarize Spoken Text'],
-  },
-  IELTS: {
-    speaking: ['Part 2 cue card', 'Part 3 discussion'],
-    writing: ['Task 1 report', 'Task 2 essay'],
-    reading: ['True / False / Not Given', 'Matching headings'],
-    listening: ['Form completion', 'Multiple choice'],
-  },
-  // No speaking or writing section; the focus step offers only the two below.
-  EPS_TOPIK: {
-    speaking: [],
-    writing: [],
-    reading: ['Signs & safety notices', 'Fill in the blank'],
-    listening: ['Choose the picture', 'Workplace dialogues'],
-  },
-  JLPT: {
-    speaking: [],
-    writing: [],
-    reading: ['Kanji reading', 'Grammar form'],
-    listening: ['Task listening', 'Quick response'],
-  },
-};
-
-/** What each skill means in EPS-TOPIK and JLPT, in place of the IELTS/PTE wording. */
-const LANGUAGE_SKILL_DETAIL: Partial<Record<ExamType, Partial<Record<SkillType, string>>>> = {
-  EPS_TOPIK: {
-    reading: 'Hangul, signs, notices and short workplace texts',
-    listening: 'Everyday and workplace Korean, each recording heard twice',
-  },
-  JLPT: {
-    reading: 'Kanji and kana, vocabulary, grammar and short texts',
-    listening: 'Everyday Japanese conversations, each heard once',
-  },
-};
-
-/** How each daily amount feels, shown under the time. */
-const DAILY_PACE: Record<number, string> = {
-  15: 'Light',
-  30: 'Steady',
-  45: 'Focused',
-  60: 'Serious',
-  90: 'Intensive',
-  120: 'Full sprint',
-};
-
-const FEATURES: Feature[] = [
-  {
-    icon: PenTool,
-    title: 'Practice Studio',
-    tag: 'All four skills',
-    text: 'Drill every task type, one question at a time.',
-    highlights: [
-      'Every task type for speaking, writing, reading and listening',
-      'Reading and listening are marked instantly',
-      'Writing and speaking get rubric-based feedback',
-    ],
-    where: 'Practice, in the sidebar',
-    accent: { tile: 'bg-blue-600 text-white', soft: 'bg-blue-50 text-blue-600', glow: 'from-blue-100' },
-  },
-  {
-    icon: Award,
-    title: 'Mock tests',
-    tag: 'Exam conditions',
-    text: 'Sit a full paper before the real thing.',
-    highlights: ['Timed papers under real exam conditions', 'A full score report at the end'],
-    where: 'Mock Exam, in the sidebar',
-    accent: { tile: 'bg-violet-600 text-white', soft: 'bg-violet-50 text-violet-600', glow: 'from-violet-100' },
-  },
-  {
-    icon: Bot,
-    title: 'AI Coach',
-    tag: 'Help on demand',
-    text: 'Stuck on a question? Ask, right where you are.',
-    highlights: ['Explains any question in plain language', 'Opens alongside your practice, no tab switching'],
-    where: 'AI Coach, in the sidebar',
-    accent: { tile: 'bg-sky-600 text-white', soft: 'bg-sky-50 text-sky-600', glow: 'from-sky-100' },
-  },
-  {
-    icon: RotateCcw,
-    title: 'Mistake bank',
-    tag: 'Learn from misses',
-    text: 'Turn every wrong answer into practice.',
-    highlights: ['Questions you miss are saved automatically', 'Retry them until they stick'],
-    where: 'Home → Mistake Bank',
-    accent: { tile: 'bg-rose-600 text-white', soft: 'bg-rose-50 text-rose-600', glow: 'from-rose-100' },
-  },
-  {
-    icon: Flame,
-    title: 'Streaks & XP',
-    tag: 'Daily habit',
-    text: 'Small daily sessions, rewarded.',
-    highlights: ['Practise a little every day to keep your streak alive', 'Earn XP and climb the levels'],
-    accent: { tile: 'bg-amber-500 text-white', soft: 'bg-amber-50 text-amber-600', glow: 'from-amber-100' },
-  },
+const REFERRAL_OPTIONS: { id: string; label: string; icon: LucideIcon; blurb: string }[] = [
+  { id: 'youtube', label: 'YouTube', icon: Video, blurb: 'Videos, tutorials, or student reviews' },
+  { id: 'instagram', label: 'Instagram', icon: Camera, blurb: 'Posts, reels, or stories' },
+  { id: 'tiktok', label: 'TikTok', icon: Smartphone, blurb: 'Short videos or creator recommendations' },
+  { id: 'friends', label: 'Friends & Family', icon: Users, blurb: 'Word of mouth from friends or fellow aspirants' },
+  { id: 'search', label: 'Google Search', icon: Globe, blurb: 'Searching for exam prep or mock tests' },
+  { id: 'other', label: 'Other', icon: Sparkles, blurb: 'Community groups, blogs, or events' },
 ];
-
-/** The toolkit for EPS-TOPIK: no speaking, writing or mock tests yet, and a Korean course. */
-const EPS_FEATURES: Feature[] = [
-  {
-    ...FEATURES[0],
-    tag: 'Reading & listening',
-    text: 'Drill all 16 EPS-TOPIK task types, one question at a time.',
-    highlights: [
-      'Every official reading and listening task type',
-      'Marked instantly, with the answer explained',
-      'Listening plays twice, as in the test',
-    ],
-  },
-  {
-    icon: GraduationCap,
-    title: 'Learn Korean',
-    tag: 'From zero',
-    text: 'A short-lesson course from Hangul to the EPS-TOPIK tasks.',
-    highlights: ['Read Hangul, then everyday and workplace words', 'Every word has a recording you can play'],
-    where: 'Learn Korean, in the sidebar',
-    accent: { tile: 'bg-violet-600 text-white', soft: 'bg-violet-50 text-violet-600', glow: 'from-violet-100' },
-  },
-  {
-    icon: Languages,
-    title: 'Help in English',
-    tag: 'Premium',
-    text: "Didn't catch the Korean? Hear and read it in English.",
-    highlights: ['On every Korean practice question', 'Text and audio, side by side with the Korean'],
-    where: 'On each listening question',
-    accent: { tile: 'bg-sky-600 text-white', soft: 'bg-sky-50 text-sky-600', glow: 'from-sky-100' },
-  },
-  ...FEATURES.slice(2),
-];
-
-/** The toolkit for JLPT, built the same way as EPS-TOPIK's, with a Japanese course. */
-const JLPT_FEATURES: Feature[] = [
-  {
-    ...FEATURES[0],
-    tag: 'Reading & listening',
-    text: 'Drill every JLPT N5 and N4 task type, one question at a time.',
-    highlights: [
-      'Vocabulary, grammar, reading and listening, as in the test',
-      'Marked instantly, with the answer explained',
-      'Switch between N5 and N4 on Home at any time',
-    ],
-  },
-  {
-    ...EPS_FEATURES[1],
-    title: 'Learn Japanese',
-    text: 'A short-lesson course from hiragana to the JLPT N5 tasks.',
-    highlights: ['Hiragana, katakana, then everyday words and grammar', 'Every word can be played aloud'],
-    where: 'Learn Japanese, in the sidebar',
-  },
-  {
-    ...EPS_FEATURES[2],
-    text: 'Stuck on the Japanese? Read and hear it in English.',
-    highlights: ['On every Japanese practice question', 'Text and audio, side by side with the Japanese'],
-    where: 'On each practice question',
-  },
-  ...FEATURES.slice(2),
-];
-
-const featuresFor = (exam: ExamType) =>
-  exam === 'EPS_TOPIK' ? EPS_FEATURES : exam === 'JLPT' ? JLPT_FEATURES : FEATURES;
-
-const CONFETTI_COLORS = ['#1b40a7', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#1d4ed8'];
 
 const examName = (exam: ExamType) => (exam === 'PTE' ? 'PTE Academic' : EXAM_LABELS[exam]);
 
@@ -512,14 +198,14 @@ export default function OnboardingFlow({
 }) {
   const navigate = useNavigate();
   const toast = useToast();
-  const { completeOnboarding } = useApp();
+  const { completeOnboarding, setActiveExam } = useApp();
   const plansQuery = useSubscriptionPlans();
 
   const plans = useMemo(() => {
     const served = plansQuery.data?.plans ?? [];
     return PLANS_ON_SALE.map(
-      tier => served.find(plan => plan.id === tier) ?? DEFAULT_PLANS.find(plan => plan.id === tier)!,
-    );
+      tier => served.find(plan => plan.id === tier) ?? DEFAULT_PLANS.find(plan => plan.id === tier),
+    ).filter((p): p is SubscriptionPlan => p !== undefined);
   }, [plansQuery.data]);
 
   const currentPaidPlan: SubscriptionTier | null = user.paidPlanActive ? user.planId : null;
@@ -527,60 +213,98 @@ export default function OnboardingFlow({
   const [stepIndex, setStepIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [exam, setExam] = useState<ExamType | null>(null);
-  // IELTS comes in two modules with different Reading texts and Writing Task 1.
+  // IMA, INA and AFA sit three CDS papers; OTA two. Changeable later on Home.
+  const [cdsTrack, setCdsTrack] = useState<CdsTrack>('ima');
   const ieltsModule: IELTSModule = ieltsModuleOf(user);
-  const [goal, setGoal] = useState<StudyGoal | null>(null);
-  const [destination, setDestination] = useState<Destination | null>(null);
-  const [prior, setPrior] = useState<'first' | 'retake' | null>(null);
-  const [previousScore, setPreviousScore] = useState(() => SCORE_SCALE[user.targetExam ?? 'PTE'].presets[0]);
-  const [score, setScore] = useState(() => SCORE_SCALE[user.targetExam ?? 'PTE'].fallback);
-  const [examDate, setExamDate] = useState(user.examDate ?? '');
-  const [notBooked, setNotBooked] = useState(false);
-  const [focus, setFocus] = useState<SkillType | null>(null);
-  const [minutes, setMinutes] = useState<number | null>(null);
-  const [planId, setPlanId] = useState<SubscriptionTier | null>(currentPaidPlan);
-  const [feature, setFeature] = useState(0);
+  const [referralSource, setReferralSource] = useState<string | null>(null);
+  const [planId, setPlanId] = useState<string | null>(currentPaidPlan ?? 'free');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [paymentSubmitted, setPaymentSubmitted] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
-  const steps = stepsFor(exam);
+  const steps = STEPS;
+  // India is offered UPSC CDS alone; everywhere else, every exam but CDS.
+  const exams = useMemo(() => EXAMS.filter(option => (option.id === 'CDS') === inIndia()), []);
+  // With one exam on offer (UPSC CDS in India) it is chosen already, so its academy question shows at once.
+  useEffect(() => {
+    if (exams.length === 1 && !exam) chooseExam(exams[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exams]);
   const step = steps[stepIndex];
-  const eps = exam === 'EPS_TOPIK';
-  // Both language exams have a Learn course and Help in English, and no
-  // speaking, writing or mock tests yet.
-  const languageExam = eps || exam === 'JLPT';
-  const courseName = exam === 'JLPT' ? 'Learn Japanese' : 'Learn Korean';
   const firstName = user.name?.trim().split(/\s+/)[0] || 'there';
   const chosen: ExamType = exam ?? 'PTE';
-  const scale = SCORE_SCALE[chosen];
-  const unit = chosen === 'IELTS' ? 'band' : 'score';
-  const days = examDate && !notBooked ? daysUntil(examDate) : null;
-  const dateValid = days !== null && days >= 0;
-  // Basic and the Premium plan for the chosen exam (EPS-TOPIK and JLPT have their own).
+
+  // Plans logic
+  const isCds = chosen === 'CDS';
   const premiumId = premiumPlanIdFor(chosen, currentPaidPlan);
-  const examPlans = plans.filter(plan => plan.id === 'free' || plan.id === premiumId);
-  const selectedPlan = examPlans.find(plan => plan.id === planId) ?? null;
-  const needsPayment = selectedPlan !== null && isPaidTier(selectedPlan.id) && selectedPlan.id !== currentPaidPlan;
+  const standardExamPlans = plans.filter(plan => plan.id === 'free' || plan.id === premiumId);
+
+  // CDS specific plans
+  const cdsPlans: SubscriptionPlan[] = [
+    {
+      id: 'free',
+      name: 'Basic',
+      priceNPR: 0,
+      durationMonths: 0,
+      durationDays: 0,
+      bonusDays: 0,
+      features: ['Official 2024 sample tests', 'Authentic UPSC 1/3 negative marking', 'Standard timer simulation'],
+      subTestsPerDay: 5,
+      mockTestsIncluded: 1,
+      isPopular: false,
+    },
+    {
+      id: 'cds_monthly',
+      name: 'CDS Monthly',
+      priceNPR: 199,
+      durationMonths: 1,
+      durationDays: 30,
+      bonusDays: 0,
+      features: [
+        'Complete UPSC CDS test bank (English, GK, Maths)',
+        'Full 2-hour official exam simulation',
+        'Detailed answer keys & explanations',
+        'Automatic Mistake Notebook tracking',
+      ],
+      subTestsPerDay: 100,
+      mockTestsIncluded: 20,
+      isPopular: true,
+      unlimited: true,
+    },
+    {
+      id: 'cds_annual',
+      name: 'CDS 1-Year Pass',
+      priceNPR: 1199,
+      durationMonths: 12,
+      durationDays: 365,
+      bonusDays: 0,
+      features: [
+        '365 days unlimited CDS & defence exam access',
+        'All upcoming CDS (I & II) mock papers',
+        'Complete sectional cutoffs & academy rank predictors',
+        'Priority mistake analysis & doubt clearing',
+      ],
+      subTestsPerDay: 100,
+      mockTestsIncluded: 100,
+      isPopular: false,
+      unlimited: true,
+    },
+  ];
+
+  const displayPlans = isCds ? cdsPlans : standardExamPlans;
+  const selectedPlan = displayPlans.find(plan => plan.id === planId) ?? null;
+  const needsPayment = selectedPlan !== null && selectedPlan.priceNPR > 0 && selectedPlan.id !== currentPaidPlan;
 
   const canContinue = (() => {
     switch (step.id) {
+      case 'welcome':
+        return true;
       case 'exam':
         return exam !== null;
-      case 'goal':
-        return goal !== null;
-      case 'destination':
-        return destination !== null;
-      case 'experience':
-        return prior !== null;
-      case 'date':
-        return notBooked || dateValid;
-      case 'focus':
-        return focus !== null;
-      case 'daily':
-        return minutes !== null;
+      case 'referral':
+        return referralSource !== null;
       case 'plan':
         return selectedPlan !== null;
       default:
@@ -610,8 +334,13 @@ export default function OnboardingFlow({
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
-      if (step.id === 'ready') return;
-      if (event.key === 'ArrowRight' && canContinue) go(stepIndex + 1);
+      if (event.key === 'ArrowRight' && canContinue) {
+        if (stepIndex === steps.length - 1) {
+          void finish('/dashboard');
+        } else {
+          go(stepIndex + 1);
+        }
+      }
       if (event.key === 'ArrowLeft' && stepIndex > 0) go(stepIndex - 1);
     };
     window.addEventListener('keydown', onKey);
@@ -621,49 +350,42 @@ export default function OnboardingFlow({
   const chooseExam = (next: ExamType) => {
     if (next === exam) return;
     setExam(next);
-    setScore(
-      next === user.targetExam && user.targetScore != null
-        ? clampScore(next, user.targetScore)
-        : SCORE_SCALE[next].fallback,
-    );
-    setPreviousScore(SCORE_SCALE[next].presets[0]);
-    if (next === 'EPS_TOPIK') {
-      setGoal('work');
-      setDestination('south-korea');
-    } else if (next === 'JLPT') {
-      // Japan, for study or for work: the goal is still asked.
-      if (exam === 'EPS_TOPIK') setGoal(null);
-      setDestination('japan');
-    } else if (exam === 'EPS_TOPIK' || exam === 'JLPT') {
-      setGoal(null);
-      setDestination(null);
+    if (next === 'CDS') {
+      setPlanId('cds_monthly');
+    } else {
+      setPlanId(premiumPlanIdFor(next, currentPaidPlan));
     }
-    // A skill this exam does not test cannot stay chosen.
-    if (focus && !skillsFor(next).includes(focus)) setFocus(null);
   };
 
   const finish = async (path: string) => {
+    if (exam && typeof setActiveExam === 'function') {
+      void setActiveExam(exam);
+    }
     if (preview) {
       toast.success('Preview complete', 'Onboarding preview closed.');
       onDone();
       return;
     }
-    if (saving || !exam || !goal || !destination || !prior || !focus || minutes === null || !planId) return;
+    if (saving || !exam) return;
     setSaving(true);
     setSaveError(null);
     try {
       await completeOnboarding({
         targetExam: exam,
         ...(exam === 'IELTS' ? { targetModule: ieltsModule } : {}),
-        targetScore: score,
-        ...(dateValid ? { examDate } : {}),
-        studyGoal: goal,
-        destination,
-        priorAttempt: prior,
-        ...(prior === 'retake' ? { previousScore } : {}),
-        focusSkill: focus,
-        dailyMinutes: minutes,
+        targetScore: SCORE_SCALE[exam]?.fallback ?? 65,
+        studyGoal: exam === 'CDS' ? 'work' : 'other',
+        destination: exam === 'EPS_TOPIK' ? 'south-korea' : exam === 'JLPT' ? 'japan' : 'other',
+        priorAttempt: 'first',
+        focusSkill: skillsFor(exam)[0] ?? 'reading',
+        dailyMinutes: 30,
+        ...(referralSource ? { referralSource } : {}),
       });
+      if (exam === 'CDS') {
+        await cdsApi.setTrack(cdsTrack).catch(() =>
+          toast.warning('Your CDS route was not saved', 'Choose IMA · INA · AFA or OTA on Home.'),
+        );
+      }
       toast.success(`You're set for ${examName(exam)}`, 'Your plan is on your dashboard.');
       onDone();
       navigate(path);
@@ -675,15 +397,12 @@ export default function OnboardingFlow({
   };
 
   const progress = `${((stepIndex + 1) / steps.length) * 100}%`;
-  const reached = (id: StepId) => stepIndex >= steps.findIndex(item => item.id === id);
+  const selectedReferralLabel = REFERRAL_OPTIONS.find(o => o.id === referralSource)?.label ?? null;
+
   const planLines: PlanLine[] = [
     { label: 'Exam', icon: GraduationCap, value: exam ? examName(exam) : null },
-    { label: 'Goal', icon: Target, value: goal ? STUDY_GOALS.find(item => item.id === goal)?.short ?? null : null },
-    { label: 'Heading to', icon: MapPin, value: destination ? destinationLabel(destination) ?? null : null },
-    { label: 'Target', icon: Trophy, value: exam && reached('target') ? formatScore(chosen, score) : null },
-    { label: 'Exam date', icon: CalendarDays, value: notBooked ? 'Not booked' : dateValid ? formatExamDate(examDate) : null },
-    { label: 'Focus', icon: Zap, value: skillLabel(focus ?? undefined) ?? null },
-    { label: 'Daily', icon: Clock, value: minutes ? dailyLabel(minutes) : null },
+    { label: 'Found via', icon: Globe, value: selectedReferralLabel },
+    { label: 'Plan', icon: Crown, value: selectedPlan ? selectedPlan.name : null },
   ];
   const slide = direction === 1 ? 'motion-safe:slide-in-from-right-8' : 'motion-safe:slide-in-from-left-8';
 
@@ -714,1003 +433,392 @@ export default function OnboardingFlow({
               key={step.id}
               className={`flex w-full justify-center motion-safe:animate-in motion-safe:fade-in duration-300 ${slide}`}
             >
-
-
-                {/* Step 1: Welcome Screen */}
-                {step.id === 'welcome' && (
-                  <div className="grid w-full max-w-4xl items-center gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-12">
-                    <div>
-                      <span className="mb-5 grid h-16 w-16 place-items-center rounded-3xl bg-white shadow-[0_18px_40px_-20px_rgba(37,99,235,0.6)] ring-1 ring-blue-100 motion-safe:animate-onboarding-pop">
-                        <img src="/prepyo-mark.webp" alt="" className="h-9 w-9 object-contain" />
-                      </span>
-                      <h2
-                        ref={headingRef}
-                        id="onboarding-title"
-                        tabIndex={-1}
-                        className="font-display text-4xl font-extrabold tracking-tight text-slate-900 outline-none sm:text-5xl"
-                      >
-                        Namaste,{' '}
-                        <span className="bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">
-                          {firstName}!
-                        </span>
-                      </h2>
-                      <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-500 sm:text-base">
-                        Welcome to Prepyo. Answer a few quick questions and we&apos;ll build a study plan
-                        around your exam, your goals and your schedule.
-                      </p>
-
-                      <div className="mt-6 flex flex-wrap gap-2">
-                        {[
-                          { icon: Target, label: 'A few questions' },
-                          { icon: Clock, label: 'About 2 minutes' },
-                          { icon: ShieldCheck, label: 'Free to start' },
-                        ].map(item => (
-                          <span
-                            key={item.label}
-                            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm"
-                          >
-                            <item.icon className="h-3.5 w-3.5 text-blue-600" />
-                            {item.label}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#2a56cf] via-blue-700 to-[#132e7d] p-7 text-white shadow-[0_30px_60px_-30px_rgba(29,78,216,0.8)]">
-                      <span aria-hidden className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full border-[26px] border-white/10" />
-                      <span className="relative text-[11px] font-bold uppercase tracking-wider text-sky-200">How it works</span>
-                      <ol className="relative mt-5 space-y-5">
-                        {[
-                          { icon: Target, title: 'Tell us your goal', text: 'Your exam, target score and exam date.' },
-                          { icon: CalendarDays, title: 'Get your plan', text: 'Built around your weakest skill and your daily time.' },
-                          { icon: Zap, title: 'Start practising', text: 'Take a diagnostic test or jump straight into your dashboard.' },
-                        ].map((item, index, all) => (
-                          <li key={item.title} className="relative flex gap-3.5">
-                            {index < all.length - 1 && (
-                              <span aria-hidden className="absolute left-[19px] top-11 h-[calc(100%-1.75rem)] w-px bg-white/20" />
-                            )}
-                            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.12] text-white ring-1 ring-white/15">
-                              <item.icon className="h-[18px] w-[18px]" />
-                              <span className="absolute -right-1 -top-1 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-sky-300 text-xs font-bold text-[#0d1f5c] ring-2 ring-blue-700">
-                                {index + 1}
-                              </span>
-                            </span>
-                            <div className="pt-0.5">
-                              <span className="block text-sm font-bold text-white">{item.title}</span>
-                              <span className="mt-0.5 block text-xs leading-relaxed text-white/70">{item.text}</span>
-                            </div>
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 2: Exam */}
-                {step.id === 'exam' && (
-                  <div className="w-full max-w-3xl space-y-6">
-                    <QuestionHeader
-                      badge={step.label} icon={STEP_ICONS[step.id]}
-                      headingRef={headingRef}
-                      title="Which exam are you preparing for?"
-                      subtitle="Your practice, mock tests and scoring are all built around it."
-                    />
-
-                    <div className="grid gap-3.5 sm:grid-cols-3">
-                      {EXAMS.map(option => {
-                        const style = EXAM_STYLE[option.id];
-                        const selected = option.id === exam;
-                        const ielts = option.id === 'IELTS';
-                        return (
-                          <ChoiceCard
-                            key={option.id}
-                            selected={selected}
-                            onSelect={() => chooseExam(option.id)}
-                            tone={style}
-                            title={option.name}
-                            titleClassName="pr-8 font-display text-2xl"
-                            detail={option.blurb}
-                            chips={style.facts}
-                          >
-                            {/* The scoring scale, drawn as rising steps and lit in the exam's colour once chosen. */}
-                            <span aria-hidden className="mt-5 block">
-                              <span className="flex items-end gap-[3px]">
-                                {(ielts ? Array.from({ length: 11 }) : Array.from({ length: 17 })).map((_, i, all) => (
-                                  <span
-                                    key={i}
-                                    style={{ height: `${6 + (i / (all.length - 1)) * 14}px` }}
-                                    className={`flex-1 rounded-sm transition-colors ${selected ? style.bar : 'bg-slate-200 group-hover:bg-slate-300'}`}
-                                  />
-                                ))}
-                              </span>
-                              <span className="mt-1.5 flex justify-between text-xs font-bold text-slate-400">
-                                <span>{SCALE_ENDS[option.id][0]}</span>
-                                <span className={selected ? 'text-slate-700' : ''}>{option.scale}</span>
-                                <span>{SCALE_ENDS[option.id][1]}</span>
-                              </span>
-                            </span>
-                          </ChoiceCard>
-                        );
-                      })}
-                    </div>
-
-                    {exam === 'IELTS' && (
-                      <p className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600">
-                        <span className="font-bold text-slate-900">IELTS Academic</span>: the test universities
-                        and student visas ask for.
-                      </p>
-                    )}
-
-                    {/* Coming soon, kept small so it never competes with the real choice. */}
-                    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-slate-200 px-4 py-3">
-                      <span className="mr-1 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                        <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                        Coming soon
-                      </span>
-                      {UPCOMING_PREPARATIONS.map(option => {
-                        const FlagComponent = DE;
-                        return (
-                          <span
-                            key={option.id}
-                            title={option.blurb}
-                            className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600"
-                          >
-                            <span className="flex h-3.5 w-5 overflow-hidden rounded-[3px] ring-1 ring-black/5">
-                              <FlagComponent className="h-full w-full object-cover" />
-                            </span>
-                            {option.name}
-                            <span className="text-xs font-medium text-slate-400">{option.scale}</span>
-                          </span>
-                        );
-                      })}
-                    </div>
-
-                    <div className="flex items-center gap-3 rounded-2xl border border-amber-200/70 bg-amber-50/60 px-4 py-3 text-xs text-amber-900">
-                      <Lock className="h-4 w-4 shrink-0 text-amber-600" />
-                      <p>
-                        <span className="font-bold">Choose carefully:</span> your exam can&apos;t be changed after setup, so
-                        pick the one you&apos;re sitting.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 3: Goal */}
-                {step.id === 'goal' && (
-                  <div className="w-full max-w-2xl space-y-6">
-                    <QuestionHeader
-                      badge={step.label} icon={STEP_ICONS[step.id]}
-                      headingRef={headingRef}
-                      title={`What's your ${examName(chosen)} for?`}
-                      subtitle="Knowing why keeps you going on the hard days. Pick the one that fits best."
-                    />
-
-                    <div className="grid gap-3.5 sm:grid-cols-2">
-                      {STUDY_GOALS.map(option => {
-                        const Icon = GOAL_ICONS[option.id];
-                        const style = GOAL_STYLE[option.id];
-                        const selected = goal === option.id;
-                        return (
-                          <ChoiceCard
-                            key={option.id}
-                            selected={selected}
-                            onSelect={() => setGoal(option.id)}
-                            tone={style}
-                            icon={<Icon className="h-7 w-7" />}
-                            title={option.label}
-                            detail={option.detail}
-                            chips={style.examples}
-                          />
-                        );
-                      })}
-                    </div>
-
-                    <div
-                      aria-live="polite"
-                      className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-xs transition-colors ${
-                        goal ? 'border-slate-200/80 bg-white text-slate-600 shadow-sm' : 'border-dashed border-slate-200 text-slate-400'
-                      }`}
+              {/* Step 1: Welcome Screen */}
+              {step.id === 'welcome' && (
+                <div className="grid w-full max-w-4xl items-center gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-12">
+                  <div>
+                    <span className="mb-5 grid h-16 w-16 place-items-center rounded-3xl bg-white shadow-[0_18px_40px_-20px_rgba(37,99,235,0.6)] ring-1 ring-blue-100 motion-safe:animate-onboarding-pop">
+                      <img src="/prepyo-mark.webp" alt="" className="h-9 w-9 object-contain" />
+                    </span>
+                    <h2
+                      ref={headingRef}
+                      id="onboarding-title"
+                      tabIndex={-1}
+                      className="font-display text-4xl font-extrabold tracking-tight text-slate-900 outline-none sm:text-5xl"
                     >
-                      <Target className={`h-4 w-4 shrink-0 ${goal ? 'text-blue-600' : 'text-slate-300'}`} />
-                      <p>
-                        {goal
-                          ? <>We&apos;ll keep <span className="font-bold text-slate-900">{STUDY_GOALS.find(item => item.id === goal)?.short}</span> on your dashboard as a daily reminder of why you&apos;re practising.</>
-                          : 'Your goal shows on your dashboard, so the reason you started is always in view.'}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                      Namaste,{' '}
+                      <span className="bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">
+                        {firstName}!
+                      </span>
+                    </h2>
+                    <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-500 sm:text-base">
+                      Welcome to Prepyo. Just 3 quick questions and your personalized study workspace and practice hub will be ready.
+                    </p>
 
-                {/* Step 4: Destination - Matching User Screenshot */}
-                {step.id === 'destination' && (
-                  <div className="w-full max-w-xl space-y-6">
-                    <QuestionHeader
-                      badge={step.label} icon={STEP_ICONS[step.id]}
-                      headingRef={headingRef}
-                      title="Where are you headed?"
-                      subtitle="Pick the country your score is for. This helps us personalize your study plan, content and goals."
-                    />
-
-                    <div className="grid max-w-xl grid-cols-1 gap-3.5 sm:grid-cols-2">
-                      {DESTINATIONS.map(option => {
-                        const selected = destination === option.id;
-                        return (
-                          <button
-                            key={option.id}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => setDestination(option.id)}
-                            className={`flex items-center justify-between rounded-2xl border p-4 text-left transition-all duration-200 ${
-                              selected
-                                ? 'border-blue-600 bg-blue-50/50 shadow-sm ring-1 ring-blue-600/20'
-                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.45)]'
-                            }`}
-                          >
-                            <div className="flex min-w-0 items-center gap-3.5">
-                              <DestinationFlag id={option.id} />
-                              <span className={`truncate text-sm font-bold ${selected ? 'text-blue-950' : 'text-slate-800'}`}>
-                                {option.label}
-                              </span>
-                            </div>
-                            <span
-                              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all ${
-                                selected ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white'
-                              }`}
-                            >
-                              {selected && <div className="h-2 w-2 rounded-full bg-white" />}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 5: Experience */}
-                {step.id === 'experience' && (
-                  <div className="w-full max-w-2xl space-y-6">
-                    <QuestionHeader
-                      badge={step.label} icon={STEP_ICONS[step.id]}
-                      headingRef={headingRef}
-                      title={`Have you taken ${examName(chosen)} before?`}
-                      subtitle="First try or a comeback, we'll plan from where you are."
-                    />
-
-                    <div className="grid gap-3.5 sm:grid-cols-2">
+                    <div className="mt-6 flex flex-wrap gap-2">
                       {[
-                        {
-                          key: 'first' as const,
-                          title: 'This is my first attempt',
-                          desc: "We'll start with the fundamentals of every task.",
-                          icon: SproutIcon,
-                          tile: 'bg-emerald-600 text-white',
-                          soft: 'bg-emerald-50 text-emerald-600',
-                          ring: 'border-emerald-600 ring-emerald-600/20',
-                          wash: 'from-emerald-50',
-                        },
-                        {
-                          key: 'retake' as const,
-                          title: "I've taken it before",
-                          desc: "We'll help you beat your last result.",
-                          icon: RetakeIcon,
-                          tile: 'bg-blue-600 text-white',
-                          soft: 'bg-blue-50 text-blue-600',
-                          ring: 'border-blue-600 ring-blue-600/20',
-                          wash: 'from-blue-50',
-                        },
-                      ].map(opt => {
-                        const selected = prior === opt.key;
-                        const Icon = opt.icon;
-                        return (
-                          <ChoiceCard
-                            key={opt.key}
-                            selected={selected}
-                            onSelect={() => setPrior(opt.key)}
-                            tone={opt}
-                            icon={<Icon className="h-7 w-7" />}
-                            title={opt.title}
-                            detail={opt.desc}
-                          />
-                        );
-                      })}
-                    </div>
-
-                    {prior === 'retake' && (
-                      <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-2">
-                        <span className="block text-center text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                          Your last {unit}
-                        </span>
-
-                        <div className="mt-2 flex items-center justify-center gap-6">
-                          <button
-                            type="button"
-                            onClick={() => setPreviousScore(clampScore(chosen, previousScore - scale.step))}
-                            disabled={previousScore <= scale.min}
-                            aria-label={`Lower your last ${unit}`}
-                            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:text-blue-600 active:scale-95 disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-600"
-                          >
-                            <Minus className="h-4 w-4" />
-                          </button>
-                          <span className="min-w-[5ch] text-center font-display text-5xl font-extrabold tracking-tight text-slate-900">
-                            {formatScore(chosen, previousScore)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setPreviousScore(clampScore(chosen, previousScore + scale.step))}
-                            disabled={previousScore >= scale.max}
-                            aria-label={`Raise your last ${unit}`}
-                            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:text-blue-600 active:scale-95 disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-600"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        </div>
-
-                        <p className="mt-1 text-center text-sm font-semibold text-slate-500" aria-live="polite">
-                          {scoreLabel(chosen, previousScore)}
-                        </p>
-
-                        <input
-                          type="range"
-                          min={scale.min}
-                          max={scale.max}
-                          step={scale.step}
-                          value={previousScore}
-                          onChange={event => setPreviousScore(Number(event.target.value))}
-                          aria-label={`Your last ${unit}`}
-                          className="mt-5 w-full cursor-pointer accent-blue-600"
-                        />
-                        <div className="mt-1 flex justify-between text-xs font-bold text-slate-400">
-                          <span>{formatScore(chosen, scale.min)}</span>
-                          <span>{formatScore(chosen, scale.max)}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Step 6: Target Score */}
-                {step.id === 'target' && (
-                  <div className="w-full max-w-xl space-y-6">
-                    <QuestionHeader
-                      badge={step.label} icon={STEP_ICONS[step.id]}
-                      headingRef={headingRef}
-                      title={`What ${unit} are you aiming for?`}
-                      subtitle="Your dashboard measures your progress against this target."
-                    />
-
-                    <div className="max-w-xl rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-7">
-                      {/* The ring shows where the target sits on the scale; minus and plus fine-tune it. */}
-                      <div className="flex items-center justify-center gap-5 sm:gap-8">
-                        <button
-                          type="button"
-                          onClick={() => setScore(clampScore(chosen, score - scale.step))}
-                          disabled={score <= scale.min}
-                          aria-label={`Lower target ${unit}`}
-                          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:text-blue-600 active:scale-95 disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-600"
+                        { icon: GraduationCap, label: 'Choose exam' },
+                        { icon: Globe, label: 'Where you found us' },
+                        { icon: ShieldCheck, label: 'Start free' },
+                      ].map(item => (
+                        <span
+                          key={item.label}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm"
                         >
-                          <Minus className="h-4 w-4" />
-                        </button>
-
-                        <ScoreRing
-                          fraction={(score - scale.min) / (scale.max - scale.min)}
-                          value={formatScore(chosen, score)}
-                          caption={chosen === 'IELTS' ? 'Target band' : 'Target score'}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => setScore(clampScore(chosen, score + scale.step))}
-                          disabled={score >= scale.max}
-                          aria-label={`Raise target ${unit}`}
-                          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:text-blue-600 active:scale-95 disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-600"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      <p className="mt-3 text-center text-sm font-semibold text-slate-600" aria-live="polite">
-                        {scoreLabel(chosen, score)}
-                      </p>
-
-                      <div className="mt-6">
-                        <input
-                          type="range"
-                          min={scale.min}
-                          max={scale.max}
-                          step={scale.step}
-                          value={score}
-                          onChange={event => setScore(Number(event.target.value))}
-                          aria-label="Target score"
-                          aria-valuetext={scoreLabel(chosen, score)}
-                          className="w-full cursor-pointer accent-blue-600"
-                        />
-
-                        <div className="mt-1 flex justify-between text-xs font-bold text-slate-400">
-                          <span>{formatScore(chosen, scale.min)}</span>
-                          <span>{formatScore(chosen, scale.max)}</span>
-                        </div>
-
-                        {/* A row, not marks placed on the track: IELTS targets sit half a band
-                            apart, which is too close to label on a phone-width slider. */}
-                        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                          <span className="mr-1 text-[11px] font-semibold text-slate-400">Popular targets</span>
-                          {scale.presets.map(preset => {
-                            const active = score === preset;
-                            return (
-                              <button
-                                key={preset}
-                                type="button"
-                                aria-pressed={active}
-                                onClick={() => setScore(preset)}
-                                className={`h-8 rounded-full px-3.5 text-xs font-bold transition-all ${
-                                  active
-                                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
-                                    : 'border border-slate-200 bg-slate-50 text-slate-600 hover:border-blue-200 hover:bg-white hover:text-blue-700'
-                                }`}
-                              >
-                                {formatScore(chosen, preset)}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    {prior === 'retake' && (
-                      <p className="max-w-xl rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-2.5 text-xs font-semibold text-blue-800">
-                        {score > previousScore
-                          ? `That's ${formatScore(chosen, score - previousScore)} higher than last time. Let's get you there.`
-                          : `That's no higher than your last ${unit} of ${formatScore(chosen, previousScore)}. Aim a little higher?`}
-                      </p>
-                    )}
-                    <div className="flex max-w-xl items-start gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm">
-                      <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                      <p className="text-xs leading-relaxed text-slate-600">
-                        {eps
-                          ? 'Not sure? HRD Korea sets a minimum score for each industry, and places above it go by rank, so a higher score gives you a better chance.'
-                          : `Not sure? Aim for the ${unit} your university, visa or registration body asks for.`}{' '}
-                        You can change it any time in Profile.
-                      </p>
+                          <item.icon className="h-3.5 w-3.5 text-blue-600" />
+                          {item.label}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                )}
 
-                {/* Step 7: Exam Date */}
-                {step.id === 'date' && (
-                  <div className="w-full max-w-2xl space-y-6">
-                    <QuestionHeader
-                      badge={step.label} icon={STEP_ICONS[step.id]}
-                      headingRef={headingRef}
-                      title="When is your exam?"
-                      subtitle="Knowing your runway helps you pace your practice."
-                    />
-
-                    <div className="grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
-                      {[1, 3, 6].map(months => {
-                        const value = isoDateAfterMonths(months);
-                        const selected = !notBooked && examDate === value;
-                        const when = new Date(`${value}T00:00:00`);
-                        const weeks = Math.round((daysUntil(value) ?? 0) / 7);
-                        return (
-                          <button
-                            key={months}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => {
-                              setExamDate(value);
-                              setNotBooked(false);
-                            }}
-                            className={`relative flex flex-col rounded-2xl border p-4 text-left transition-all duration-200 ${selected ? 'border-blue-600 bg-white shadow-md ring-2 ring-blue-600/20' : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_12px_28px_-18px_rgba(15,23,42,0.45)]'}`}
-                          >
-                            <span className="flex items-start justify-between">
-                              <MiniCalendar
-                                month={when.toLocaleDateString('en-US', { month: 'short' })}
-                                day={when.getDate()}
-                                active={selected}
-                              />
-                              <SelectedCheck on={selected} />
+                  <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#2a56cf] via-blue-700 to-[#132e7d] p-7 text-white shadow-[0_30px_60px_-30px_rgba(29,78,216,0.8)]">
+                    <span aria-hidden className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full border-[26px] border-white/10" />
+                    <span className="relative text-[11px] font-bold uppercase tracking-wider text-sky-200">How it works</span>
+                    <ol className="relative mt-5 space-y-5">
+                      {[
+                        { icon: GraduationCap, title: 'Pick your exam', text: exams.map(option => option.name).join(', ') + (exams.some(option => option.id === 'CDS') ? ' or NCC (coming soon).' : '.') },
+                        { icon: Globe, title: 'Tell us how you found us', text: 'YouTube, Instagram, TikTok, friends or search.' },
+                        { icon: Zap, title: 'Start your practice', text: 'Unlock daily sub-tests, official mocks and instant feedback.' },
+                      ].map((item, index, all) => (
+                        <li key={item.title} className="relative flex gap-3.5">
+                          {index < all.length - 1 && (
+                            <span aria-hidden className="absolute left-[19px] top-11 h-[calc(100%-1.75rem)] w-px bg-white/20" />
+                          )}
+                          <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.12] text-white ring-1 ring-white/15">
+                            <item.icon className="h-[18px] w-[18px]" />
+                            <span className="absolute -right-1 -top-1 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-sky-300 text-xs font-bold text-[#0d1f5c] ring-2 ring-blue-700">
+                              {index + 1}
                             </span>
-                            <span className={`mt-3 whitespace-nowrap font-display text-base font-bold ${selected ? 'text-blue-700' : 'text-slate-900'}`}>
-                              In {months} month{months === 1 ? '' : 's'}
-                            </span>
-                            <span className="mt-0.5 text-[11px] font-semibold text-slate-400">{weeks} weeks to prepare</span>
-                          </button>
-                        );
-                      })}
-                      <button
-                        type="button"
-                        aria-pressed={notBooked}
-                        onClick={() => {
-                          setNotBooked(true);
-                          setExamDate('');
-                        }}
-                        className={`relative flex flex-col rounded-2xl border p-4 text-left transition-all duration-200 ${notBooked ? 'border-blue-600 bg-white shadow-md ring-2 ring-blue-600/20' : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_12px_28px_-18px_rgba(15,23,42,0.45)]'}`}
-                      >
-                        <span className="flex items-start justify-between">
-                          <span
-                            className={`flex h-12 w-11 items-center justify-center rounded-xl border transition-colors ${
-                              notBooked ? 'border-blue-600 bg-blue-600 text-white' : 'border-dashed border-slate-300 bg-slate-50 text-slate-400'
-                            }`}
-                          >
-                            <CalendarClock className="h-5 w-5" />
                           </span>
-                          <SelectedCheck on={notBooked} />
-                        </span>
-                        <span className={`mt-3 whitespace-nowrap font-display text-base font-bold ${notBooked ? 'text-blue-700' : 'text-slate-900'}`}>
-                          Not booked yet
-                        </span>
-                        <span className="mt-0.5 text-[11px] font-semibold text-slate-400">Add it later</span>
-                      </button>
-                    </div>
-
-                    <div className="flex max-w-2xl items-center gap-3">
-                      <div className="h-px flex-1 bg-slate-200/80" />
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">or pick the exact date</span>
-                      <div className="h-px flex-1 bg-slate-200/80" />
-                    </div>
-
-                    <label className="relative block max-w-2xl">
-                      <span className="sr-only">Exam date</span>
-                      <CalendarDays className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-600" />
-                      <input
-                        type="date"
-                        min={toIsoDate(new Date())}
-                        value={examDate}
-                        onChange={event => {
-                          setExamDate(event.target.value);
-                          setNotBooked(false);
-                        }}
-                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 text-sm font-semibold text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-                      />
-                    </label>
-
-                    <div aria-live="polite">
-                      {notBooked ? (
-                        <div className="flex max-w-2xl items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                            <CalendarClock className="h-6 w-6" />
+                          <div className="pt-0.5">
+                            <span className="block text-sm font-bold text-white">{item.title}</span>
+                            <span className="mt-0.5 block text-xs leading-relaxed text-white/70">{item.text}</span>
                           </div>
-                          <div>
-                            <p className="text-sm font-bold text-slate-900">No problem, start practising now</p>
-                            <p className="mt-0.5 text-xs text-slate-500">Add your date in Profile once it&apos;s booked and we&apos;ll start the countdown.</p>
-                          </div>
-                        </div>
-                      ) : days === null ? (
-                        <div className="flex max-w-2xl items-center gap-4 rounded-2xl border border-dashed border-slate-200 p-5">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-50 text-slate-300">
-                            <CalendarDays className="h-6 w-6" />
-                          </div>
-                          <p className="text-sm text-slate-400">Pick a date to see your countdown.</p>
-                        </div>
-                      ) : days < 0 ? (
-                        <div className="max-w-2xl rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-sm font-semibold text-rose-700">
-                          That date has passed. Pick an upcoming one.
-                        </div>
-                      ) : (
-                        <div className="max-w-2xl overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-                          <div className="flex items-center gap-5 bg-gradient-to-br from-blue-600 to-indigo-600 px-5 py-4 text-white">
-                            <div>
-                              <span className="block font-display text-4xl font-extrabold leading-none">{days}</span>
-                              <span className="mt-1 block text-[11px] font-semibold text-white/80">
-                                day{days === 1 ? '' : 's'} to go
-                              </span>
-                            </div>
-                            <div className="h-10 w-px bg-white/25" />
-                            <div className="min-w-0">
-                              <span className="block text-[11px] font-bold uppercase tracking-wider text-white/70">Exam day</span>
-                              <span className="block truncate text-sm font-bold">{formatExamDate(examDate)}</span>
-                            </div>
-                            {days >= 7 && (
-                              <span className="ml-auto hidden rounded-full bg-white/15 px-3 py-1 text-xs font-bold sm:inline">
-                                {Math.floor(days / 7)} week{Math.floor(days / 7) === 1 ? '' : 's'}
-                              </span>
-                            )}
-                          </div>
-                          <p className="px-5 py-3 text-xs text-slate-600">{runwayAdvice(days)}</p>
-                        </div>
-                      )}
-                    </div>
+                        </li>
+                      ))}
+                    </ol>
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* Step 8: Focus Skill */}
-                {step.id === 'focus' && (
-                  <div className="w-full max-w-2xl space-y-6">
-                    <QuestionHeader
-                      badge={step.label} icon={STEP_ICONS[step.id]}
-                      headingRef={headingRef}
-                      title="Which skill feels hardest right now?"
-                      subtitle="We'll put it front and centre on your dashboard."
-                    />
+              {/* Step 2: Choose Exam */}
+              {step.id === 'exam' && (
+                <div className="w-full max-w-4xl space-y-6">
+                  <QuestionHeader
+                    badge={step.label}
+                    icon={STEP_ICONS[step.id]}
+                    headingRef={headingRef}
+                    title="Which exam are you preparing for?"
+                    subtitle="Your practice, mock tests and scoring are all built around it."
+                  />
 
-                    <div className="grid gap-3.5 sm:grid-cols-2">
-                      {FOCUS_SKILLS.filter(option => skillsFor(chosen).includes(option.id)).map(option => {
-                        const style = SKILL_STYLE[option.id];
-                        const Icon = style.icon;
-                        const selected = focus === option.id;
-                        return (
-                          <ChoiceCard
-                            key={option.id}
-                            selected={selected}
-                            onSelect={() => setFocus(option.id)}
-                            tone={style}
-                            icon={<Icon className="h-7 w-7" />}
-                            title={option.label}
-                            detail={(exam && LANGUAGE_SKILL_DETAIL[exam]?.[option.id]) || option.detail}
-                            chips={SKILL_TASKS[chosen][option.id]}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 9: Daily Routine */}
-                {step.id === 'daily' && (
-                  <div className="w-full max-w-2xl space-y-6">
-                    <QuestionHeader
-                      badge={step.label} icon={STEP_ICONS[step.id]}
-                      headingRef={headingRef}
-                      title="How much time can you practise each day?"
-                      subtitle="Pick what you can keep up, even on busy days."
-                    />
-
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                      {DAILY_MINUTES.map((value, level) => {
-                        const selected = minutes === value;
-                        return (
-                          <button
-                            key={value}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => setMinutes(value)}
-                            className={`relative flex flex-col rounded-2xl border p-4 text-left transition-all duration-200 ${
-                              selected
-                                ? 'border-blue-600 bg-blue-50/50 shadow-md ring-2 ring-blue-600/20'
-                                : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_12px_28px_-18px_rgba(15,23,42,0.45)]'
-                            }`}
-                          >
-                            <span className={`block font-display text-2xl font-bold ${selected ? 'text-blue-700' : 'text-slate-900'}`}>
-                              {dailyLabel(value)}
-                            </span>
-                            <span className="mt-0.5 text-[11px] font-semibold text-slate-400">
-                              {DAILY_PACE[value] ?? 'a day'} · a day
-                            </span>
-
-                            {/* Intensity meter: one more bar lit per step up. */}
-                            <span aria-hidden className="mt-3 flex items-end gap-1">
-                              {DAILY_MINUTES.map((_, bar) => (
+                  <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+                    {exams.map(option => {
+                      const style = EXAM_STYLE[option.id];
+                      const selected = option.id === exam;
+                      const ielts = option.id === 'IELTS';
+                      return (
+                        <ChoiceCard
+                          key={option.id}
+                          selected={selected}
+                          onSelect={() => chooseExam(option.id)}
+                          tone={style}
+                          title={option.name}
+                          titleClassName="pr-8 font-display text-2xl"
+                          detail={option.blurb}
+                          chips={style.facts}
+                        >
+                          <span aria-hidden className="mt-5 block">
+                            <span className="flex items-end gap-[3px]">
+                              {(ielts ? Array.from({ length: 11 }) : Array.from({ length: 17 })).map((_, i, all) => (
                                 <span
-                                  key={bar}
-                                  style={{ height: `${6 + bar * 3}px` }}
-                                  className={`w-2 rounded-sm transition-colors ${
-                                    bar <= level
-                                      ? selected
-                                        ? 'bg-blue-600'
-                                        : 'bg-blue-300'
-                                      : 'bg-slate-100'
-                                  }`}
+                                  key={i}
+                                  style={{ height: `${6 + (i / (all.length - 1)) * 14}px` }}
+                                  className={`flex-1 rounded-sm transition-colors ${selected ? style.bar : 'bg-slate-200 group-hover:bg-slate-300'}`}
                                 />
                               ))}
                             </span>
-
-                            {selected && (
-                              <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white">
-                                <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <div
-                      aria-live="polite"
-                      className={`flex items-center gap-4 rounded-2xl border px-4 py-3.5 transition-colors ${
-                        minutes === null ? 'border-dashed border-slate-200' : 'border-slate-200/80 bg-white shadow-sm'
-                      }`}
-                    >
+                            <span className="mt-1.5 flex justify-between text-xs font-bold text-slate-400">
+                              <span>{SCALE_ENDS[option.id][0]}</span>
+                              <span className={selected ? 'text-slate-700' : ''}>{option.scale}</span>
+                              <span>{SCALE_ENDS[option.id][1]}</span>
+                            </span>
+                          </span>
+                        </ChoiceCard>
+                      );
+                    })}
+                    {/* India: NCC is on its way; shown beside CDS, not yet selectable. */}
+                    {exams.some(option => option.id === 'CDS') && (
                       <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                          minutes === null ? 'bg-slate-50 text-slate-300' : 'bg-blue-50 text-blue-600'
-                        }`}
+                        aria-disabled="true"
+                        className="relative flex flex-col gap-2 rounded-3xl border-2 border-dashed border-slate-200 bg-white/60 p-5 text-left opacity-80"
                       >
-                        <Clock className="h-5 w-5" />
+                        <span className="absolute right-4 top-4 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-800">
+                          Coming soon
+                        </span>
+                        <span className="font-display text-2xl font-bold text-slate-400">NCC</span>
+                        <span className="text-sm text-slate-500">B and C certificate exams.</span>
                       </div>
-                      {minutes === null ? (
-                        <p className="text-xs text-slate-500">Twenty focused minutes a day adds up faster than you think.</p>
-                      ) : (
+                    )}
+                  </div>
+
+                  {exam === 'CDS' && (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
+                      <ChoiceRow
+                        label="Academy"
+                        value={cdsTrack}
+                        onChange={setCdsTrack}
+                        options={CDS_TRACKS.map(track => ({ id: track.id, label: track.label, note: track.detail }))}
+                      />
+                    </div>
+                  )}
+
+                  {exam === 'IELTS' && (
+                    <p className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600">
+                      <span className="font-bold text-slate-900">IELTS Academic</span>: the test universities and student visas ask for.
+                    </p>
+                  )}
+
+                  {/* Coming soon: not for India, where the onboarding offers UPSC CDS alone. */}
+                  {!exams.some(option => option.id === 'CDS') && (
+                  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-slate-200 px-4 py-3">
+                    <span className="mr-1 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                      Coming soon
+                    </span>
+                    {UPCOMING_PREPARATIONS.map(option => (
+                      <span
+                        key={option.id}
+                        title={option.blurb}
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600"
+                      >
+                        <span className="flex h-3.5 w-5 overflow-hidden rounded-[3px] ring-1 ring-black/5">
+                          <DE className="h-full w-full object-cover" />
+                        </span>
+                        {option.name}
+                        <span className="text-xs font-medium text-slate-400">{option.scale}</span>
+                      </span>
+                    ))}
+                  </div>
+                  )}
+
+                  <div className="flex items-center gap-3 rounded-2xl border border-amber-200/70 bg-amber-50/60 px-4 py-3 text-xs text-amber-900">
+                    <Lock className="h-4 w-4 shrink-0 text-amber-600" />
+                    <p>
+                      <span className="font-bold">Choose carefully:</span> your exam can&apos;t be changed after setup, so pick the one you&apos;re sitting.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Referral / How you found us */}
+              {step.id === 'referral' && (
+                <div className="w-full max-w-2xl space-y-6">
+                  <QuestionHeader
+                    badge={step.label}
+                    icon={STEP_ICONS[step.id]}
+                    headingRef={headingRef}
+                    title="Where did you hear about us?"
+                    subtitle="Help us understand how students and aspirants discover Prepyo."
+                  />
+
+                  <div className="grid gap-3.5 sm:grid-cols-2">
+                    {REFERRAL_OPTIONS.map(option => {
+                      const Icon = option.icon;
+                      const selected = referralSource === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => setReferralSource(option.id)}
+                          className={`group relative flex items-start gap-4 rounded-2xl border p-4 text-left transition-all duration-200 ${
+                            selected
+                              ? 'border-blue-600 bg-blue-50/50 shadow-sm ring-1 ring-blue-600/20'
+                              : 'border-slate-200/80 bg-white hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md'
+                          }`}
+                        >
+                          <span
+                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                              selected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600'
+                            }`}
+                          >
+                            <Icon className="h-5 w-5" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <span className="block font-display text-base font-bold text-slate-900">{option.label}</span>
+                            <span className="mt-0.5 block text-xs text-slate-500">{option.blurb}</span>
+                          </div>
+                          <span
+                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all ${
+                              selected ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white'
+                            }`}
+                          >
+                            {selected && <div className="h-2 w-2 rounded-full bg-white" />}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Plan Selection & Pricing */}
+              {step.id === 'plan' && (
+                <div className="w-full max-w-5xl space-y-6">
+                  <QuestionHeader
+                    badge={step.label}
+                    icon={STEP_ICONS[step.id]}
+                    headingRef={headingRef}
+                    title="Choose your preparation plan"
+                    subtitle={
+                      isCds
+                        ? 'Affordable monthly & annual passes for defence aspirants. Start free anytime.'
+                        : 'Start free, or unlock unlimited practice and full mock tests. Upgrade anytime.'
+                    }
+                  />
+
+                  <div className={`grid gap-4 sm:grid-cols-2 ${displayPlans.length >= 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
+                    {displayPlans.map((plan, index) => {
+                      const free = plan.priceNPR === 0;
+                      const isSelected = planId === plan.id;
+                      const currency = isCds && !free ? 'INR' : 'NPR';
+                      const period = isCds
+                        ? plan.id === 'cds_annual'
+                          ? 'per year · 365 days access'
+                          : free
+                            ? 'No payment needed'
+                            : 'per month · 30 days access'
+                        : free
+                          ? 'No payment needed'
+                          : `per month · ${planAccessDays(plan)} days access`;
+
+                      return (
+                        <OptionCard
+                          key={plan.id}
+                          selected={isSelected}
+                          onClick={() => setPlanId(plan.id)}
+                          style={{ animationDelay: `${index * 50}ms` }}
+                          className="relative flex flex-col justify-between p-5 sm:p-6 min-h-[340px]"
+                        >
+                          {plan.isPopular && (
+                            <span className="absolute -top-3 left-5 rounded-full bg-blue-600 px-3 py-0.5 text-xs font-bold uppercase tracking-wider text-white shadow-sm">
+                              Most popular
+                            </span>
+                          )}
+                          <div>
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <span className="block text-[11px] font-bold uppercase tracking-widest text-blue-600">
+                                  {free ? 'Free Starter' : isCds ? (plan.id === 'cds_annual' ? 'Best Value' : 'Monthly Pass') : 'Premium'}
+                                </span>
+                                <span className="mt-1 block font-display text-lg font-bold text-slate-900">{plan.name}</span>
+                              </div>
+                              <span
+                                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all ${
+                                  isSelected ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white'
+                                }`}
+                              >
+                                {isSelected && <div className="h-2 w-2 rounded-full bg-white" />}
+                              </span>
+                            </div>
+
+                            <span className="mt-4 block font-display text-3xl font-black text-slate-900">
+                              {free ? 'Free' : `${currency} ${plan.priceNPR.toLocaleString('en-US')}`}
+                            </span>
+                            <span className="mt-0.5 block text-xs font-semibold text-slate-400">{period}</span>
+                          </div>
+
+                          <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+                            {plan.features.map(perk => (
+                              <div key={perk} className="flex items-start gap-2 text-xs text-slate-600">
+                                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600" />
+                                <span>{perk}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </OptionCard>
+                      );
+                    })}
+                  </div>
+
+                  {saveError && (
+                    <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-xs text-rose-800">
+                      <p className="font-bold">We couldn&apos;t save your plan.</p>
+                      <p className="mt-0.5">{saveError}</p>
+                    </div>
+                  )}
+
+                  {needsPayment && selectedPlan && !isCds && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl border border-blue-200 bg-blue-50/60 max-w-5xl">
+                      <div className="flex items-center gap-3.5">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+                          <Crown className="h-6 w-6" />
+                        </div>
                         <div>
                           <p className="text-sm font-bold text-slate-900">
-                            {Math.round(((minutes * 7) / 60) * 10) / 10} hours a week
+                            {paymentSubmitted
+                              ? `Payment proof submitted for ${formatPlanName(selectedPlan.id)} · NPR ${selectedPlan.priceNPR.toLocaleString('en-US')}`
+                              : `Pay with QR for ${formatPlanName(selectedPlan.id)} · NPR ${selectedPlan.priceNPR.toLocaleString('en-US')}`}
                           </p>
-                          <p className="mt-0.5 text-xs text-slate-500">{practiceHours(minutes, days)}</p>
+                          <p className="text-xs text-slate-500">
+                            {paymentSubmitted
+                              ? 'Your screenshot was received. Verification is in progress.'
+                              : 'Scan with eSewa, Khalti, or your bank app right here.'}
+                          </p>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                      </div>
 
-                {/* Step 10: Plan Selection */}
-                {step.id === 'plan' && (
-                  <div className="w-full max-w-5xl space-y-8">
-                    <QuestionHeader
-                      badge={step.label} icon={STEP_ICONS[step.id]}
-                      headingRef={headingRef}
-                      title="Choose how you want to prepare"
-                      subtitle={
-                        languageExam
-                          ? 'Start free, or unlock more daily practice and Help in English. You can upgrade any time.'
-                          : 'Start free, or unlock more daily practice and full mock tests. You can upgrade any time.'
-                      }
-                    />
-
-                    <div className="grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      {examPlans.map((plan, index) => (
-                        <PlanCard
-                          key={plan.id}
-                          plan={plan}
-                          exam={chosen}
-                          index={index}
-                          selected={planId === plan.id}
-                          current={plan.id === currentPaidPlan}
-                          currentUntil={plan.id === currentPaidPlan ? user.planValidUntil : undefined}
-                          onSelect={() => setPlanId(plan.id)}
-                        />
-                      ))}
-                    </div>
-
-                    {selectedPlan && isPaidTier(selectedPlan.id) && (
-                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl border border-blue-200 bg-blue-50/60 max-w-5xl">
-                        <div className="flex items-center gap-3.5">
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
-                            <Crown className="h-6 w-6" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-slate-900">
-                              {paymentSubmitted
-                                ? `Payment proof submitted for ${formatPlanName(selectedPlan.id)} · NPR ${selectedPlan.priceNPR.toLocaleString()}`
-                                : `Pay with QR for ${formatPlanName(selectedPlan.id)} · NPR ${selectedPlan.priceNPR.toLocaleString()}`}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {paymentSubmitted
-                                ? 'Your screenshot was received. Verification is in progress.'
-                                : 'Scan with eSewa, Khalti, or your bank app right here.'}
-                            </p>
-                          </div>
-                        </div>
+                      <div className="flex items-center gap-2.5">
                         <Button
                           type="button"
                           onClick={() => setCheckoutModalOpen(true)}
-                          className="w-full sm:w-auto h-11 rounded-full bg-blue-600 px-6 font-bold text-sm text-white shadow-md shadow-blue-500/20 hover:bg-blue-700"
+                          className="h-10 rounded-full bg-blue-600 px-5 text-xs font-bold text-white hover:bg-blue-700"
                         >
-                          {paymentSubmitted ? 'View payment status' : 'Pay now with QR'}
+                          <Crown className="mr-1.5 h-4 w-4" />
+                          Pay with QR
                         </Button>
                       </div>
-                    )}
-
-                    <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-slate-400 max-w-5xl pt-2">
-                      <div className="flex items-center gap-3.5">
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                          Accepted methods:
-                        </span>
-                        <img src="/images/esewa-logo.png" alt="eSewa" className="h-6 w-auto object-contain" />
-                        <img src="/images/khalti-logo.svg" alt="Khalti" className="h-6 w-auto object-contain" />
-                        <span className="font-bold text-slate-600">All Banks</span>
-                      </div>
-                      <span className="flex items-center gap-2 text-slate-500 text-xs font-medium">
-                        <ShieldCheck className="h-4 w-4 text-blue-600" />
-                        Pay once · No auto-renewal
-                      </span>
                     </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+                    <span className="flex items-center gap-2 text-slate-500 text-xs font-medium">
+                      <ShieldCheck className="h-4 w-4 text-blue-600" />
+                      Instant activation · No hidden fees
+                    </span>
+                    <Button
+                      type="button"
+                      onClick={() => void finish('/dashboard')}
+                      disabled={saving || !selectedPlan}
+                      className="h-12 rounded-full bg-blue-600 px-8 text-sm font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700"
+                    >
+                      {saving ? 'Setting up...' : selectedPlan?.priceNPR === 0 ? 'Start Free' : 'Continue to Dashboard'}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
                   </div>
-                )}
-
-                {/* Step 11: Tour */}
-                {step.id === 'tour' && (
-                  <div className="w-full max-w-4xl space-y-6">
-                    <QuestionHeader
-                      badge={step.label} icon={STEP_ICONS[step.id]}
-                      headingRef={headingRef}
-                      title="Your Prepyo toolkit"
-                      subtitle={`${featuresFor(chosen).length === 7 ? 'Seven' : 'Six'} tools that work together to get you to your target. Pick one to see how it helps.`}
-                    />
-
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-                      <div
-                        role="tablist"
-                        aria-label="Prepyo tools"
-                        aria-orientation="vertical"
-                        className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1"
-                      >
-                        {featuresFor(chosen).map((item, index) => {
-                          const Icon = item.icon;
-                          const selected = index === feature;
-                          return (
-                            <button
-                              key={item.title}
-                              type="button"
-                              role="tab"
-                              id={`tour-tab-${index}`}
-                              aria-selected={selected}
-                              aria-controls="tour-panel"
-                              onClick={() => setFeature(index)}
-                              className={`group flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-all duration-200 ${
-                                selected
-                                  ? 'border-blue-600/40 bg-white shadow-sm ring-1 ring-blue-600/20'
-                                  : 'border-slate-200/60 bg-white/50 hover:border-slate-200 hover:bg-white lg:border-transparent lg:bg-transparent'
-                              }`}
-                            >
-                              <span
-                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
-                                  selected ? item.accent.tile : item.accent.soft
-                                }`}
-                              >
-                                <Icon className="h-4 w-4" />
-                              </span>
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate text-xs font-bold text-slate-900">{item.title}</span>
-                                <span className="hidden truncate text-[11px] text-slate-400 sm:block">{item.tag}</span>
-                              </span>
-                              <ArrowRight
-                                className={`hidden h-3.5 w-3.5 shrink-0 transition-all lg:block ${
-                                  selected
-                                    ? 'translate-x-0 text-blue-600'
-                                    : '-translate-x-1 text-transparent group-hover:text-slate-300'
-                                }`}
-                              />
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <ToolkitPanel
-                        features={featuresFor(chosen)}
-                        index={feature}
-                        onNext={() => setFeature((feature + 1) % featuresFor(chosen).length)}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 12: All Set */}
-                {step.id === 'ready' && (
-                  <div className="relative grid w-full max-w-4xl items-center gap-8 lg:grid-cols-2 lg:gap-12">
-                    <Confetti />
-
-                    <div className="space-y-6">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-500 text-white shadow-md shadow-blue-500/30">
-                        <Check className="h-7 w-7" strokeWidth={3} />
-                      </div>
-
-                      <div>
-                        <h2
-                          ref={headingRef}
-                          id="onboarding-title"
-                          tabIndex={-1}
-                          className="font-display text-3xl font-bold tracking-tight text-slate-900 outline-none sm:text-4xl"
-                        >
-                          You&apos;re all set,{' '}
-                          <span className="bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">
-                            {firstName}!
-                          </span>
-                        </h2>
-                        <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-500 sm:text-base">
-                          {needsPayment && selectedPlan && !paymentSubmitted
-                            ? `One last step: pay for ${formatPlanName(selectedPlan.id)} and your plan is ready on your dashboard.`
-                            : languageExam
-                              ? `Your plan is ready and waiting on your dashboard. Start with the ${courseName} course, or go straight to practice questions.`
-                              : "Your plan is ready and waiting on your dashboard. A quick diagnostic test is the best place to start."}
-                        </p>
-                      </div>
-
-                      {saveError && (
-                        <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-xs text-rose-800">
-                          <p className="font-bold">We couldn&apos;t save your plan.</p>
-                          <p className="mt-0.5">{saveError}</p>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <Button size="sm" onClick={() => void finish('/dashboard')} disabled={saving}>
-                              Try again
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={onDone} disabled={saving}>
-                              Continue for now
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-
-                      {needsPayment && selectedPlan && paymentSubmitted && (
-                        <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-xs text-emerald-800">
-                          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
-                          <div>
-                            <p className="font-bold">Payment proof submitted</p>
-                            <p className="text-[11px] text-emerald-700">
-                              Your payment is being verified. You can start practising right away.
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {needsPayment && selectedPlan && !paymentSubmitted ? (
-                        <div className="space-y-3">
-                          <div className="flex flex-col gap-2.5 sm:flex-row">
-                            <Button
-                              type="button"
-                              onClick={() => setCheckoutModalOpen(true)}
-                              disabled={saving}
-                              className="h-12 gap-2 rounded-full bg-blue-600 px-7 text-sm font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700"
-                            >
-                              <Crown className="h-4 w-4" />
-                              Pay now with QR
-                            </Button>
-                            <Button
-                              onClick={() => void finish(`/subscription?plan=${selectedPlan.id}`)}
-                              disabled={saving}
-                              variant="outline"
-                              className="h-12 rounded-full border-slate-200 bg-white px-6 text-sm font-bold text-slate-700 hover:bg-slate-50"
-                            >
-                              Continue to payment
-                            </Button>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => void finish('/dashboard')}
-                            disabled={saving}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 transition-colors hover:text-slate-900 disabled:opacity-50"
-                          >
-                            Pay later, go to my dashboard
-                            <ArrowRight className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-2.5 sm:flex-row">
-                          <Button
-                            onClick={() => void finish(languageExam ? '/learn' : '/diagnostic')}
-                            disabled={saving}
-                            className="h-12 gap-2 rounded-full bg-blue-600 px-7 text-sm font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700"
-                          >
-                            <Sparkles className="h-4 w-4" />
-                            {languageExam ? `Start ${courseName}` : 'Take the diagnostic test'}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => void finish('/dashboard')}
-                            disabled={saving}
-                            className="h-12 rounded-full border-slate-200 bg-white px-6 text-sm font-bold text-slate-700 hover:bg-slate-50"
-                          >
-                            Go to my dashboard
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-
-                    <PlanSummary
-                      exam={chosen}
-                      score={score}
-                      days={dateValid ? days : null}
-                      examDate={dateValid ? examDate : null}
-                      focus={focus}
-                      minutes={minutes}
-                      plan={selectedPlan}
-                      awaitingPayment={needsPayment && !paymentSubmitted}
-                    />
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
+          </div>
         </main>
 
-        {step.id !== 'ready' && (
-          <OnboardingNavigation
-            showBack={stepIndex > 0}
-            onBack={() => go(stepIndex - 1)}
-            onContinue={() => go(stepIndex + 1)}
-            disabled={!canContinue}
-            label={step.id === 'welcome' ? "Let's go" : step.id === 'tour' ? 'See my plan' : 'Continue'}
-          />
-        )}
+        <OnboardingNavigation
+          showBack={stepIndex > 0}
+          onBack={() => go(stepIndex - 1)}
+          onContinue={() => {
+            if (stepIndex === steps.length - 1) {
+              void finish('/dashboard');
+            } else {
+              go(stepIndex + 1);
+            }
+          }}
+          disabled={!canContinue || saving}
+          label={stepIndex === steps.length - 1 ? (selectedPlan?.priceNPR === 0 ? 'Start Free' : 'Finish Setup') : step.id === 'welcome' ? "Let's go" : 'Continue'}
+        />
 
-        {/* In-onboarding QR Checkout Modal */}
+        {/* QR Checkout Modal */}
         {selectedPlan && isPaidTier(selectedPlan.id) && (
           <QRPaymentCheckoutDialog
             open={checkoutModalOpen}
@@ -1727,411 +835,34 @@ export default function OnboardingFlow({
   );
 }
 
-function PlanCard({
-  plan,
-  exam,
-  index,
-  selected,
-  current,
-  currentUntil,
-  onSelect,
-}: {
-  plan: SubscriptionPlan;
-  exam: ExamType;
-  index: number;
-  selected: boolean;
-  current: boolean;
-  currentUntil?: string;
-  onSelect: () => void;
+/** One labelled row of pill choices, as the CDS academy is asked. */
+function ChoiceRow<T extends string>({ label, value, onChange, options }: {
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: { id: T; label: string; note?: string }[];
 }) {
-  const free = plan.priceNPR === 0;
-  const days = planAccessDays(plan);
-  const brand = formatPlanName(plan.id);
-  const tier = planUsageTier(plan.id);
-  const access = free ? 'Free forever' : `${days} days of access${plan.bonusDays ? ` (incl. ${plan.bonusDays} bonus)` : ''}`;
-  const practice = plan.unlimited ? 'Unlimited practice sub-tests' : `${tier} daily practice`;
-  // EPS-TOPIK and JLPT have no speaking, writing or mock tests yet, so their
-  // plans are told apart by Help in English, which only paid plans include.
-  const perks =
-    exam === 'EPS_TOPIK'
-      ? [practice, 'The full Learn Korean course', free ? 'Upgrade any time for Help in English' : 'Help in English on Korean listening', access]
-      : exam === 'JLPT'
-        ? [practice, 'The full Learn Japanese course', free ? 'Upgrade any time for Help in English' : 'Help in English on Japanese questions', access]
-        : [
-            practice,
-            `${formatGradings(plan.aiGradingsPerPeriod ?? 0)} AI gradings per ${gradingsPeriodLabel(plan)} for speaking & writing`,
-            `${plan.mockTestsIncluded} full mock ${plan.mockTestsIncluded === 1 ? 'exam' : 'exams'}${free ? '' : ' per month'}`,
-            access,
-          ];
-
   return (
-    <OptionCard
-      selected={selected}
-      onClick={onSelect}
-      style={{ animationDelay: `${index * 50}ms` }}
-      className="relative flex flex-col justify-between p-5 sm:p-6 min-h-[340px]"
-    >
-      {(plan.isPopular || current) && (
-        <span className="absolute -top-3 left-5 rounded-full bg-blue-600 px-3 py-0.5 text-xs font-bold uppercase tracking-wider text-white shadow-sm">
-          {current ? 'Current plan' : 'Most popular'}
-        </span>
-      )}
-      <div>
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <span className="block text-[11px] font-bold uppercase tracking-widest text-blue-600">
-              {PLAN_TAGLINES[plan.id]}
-            </span>{' '}
-            <span className="mt-1 block font-display text-lg font-bold text-slate-900">{brand}</span>
-          </div>
-          <span
-            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all ${
-              selected ? 'border-blue-600 bg-blue-600' : 'border-slate-300 bg-white'
+    <div role="group" aria-label={label} className="space-y-2">
+      <p className="text-sm font-bold text-slate-900">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map(option => (
+          <button
+            key={option.id}
+            type="button"
+            aria-pressed={value === option.id}
+            onClick={() => onChange(option.id)}
+            className={`rounded-full border-2 px-4 py-2 text-sm font-semibold transition-colors ${
+              value === option.id
+                ? 'border-emerald-600 bg-emerald-600 text-white'
+                : 'border-slate-200 bg-white text-slate-800 hover:border-emerald-400'
             }`}
           >
-            {selected && <div className="h-2 w-2 rounded-full bg-white" />}
-          </span>
-        </div>
-
-        <span className="mt-4 block font-display text-3xl font-black text-slate-900">
-          {free ? 'Free' : `NPR ${plan.priceNPR.toLocaleString()}`}
-        </span>
-        <span className="mt-0.5 block text-xs font-semibold text-slate-400">
-          {current && currentUntil
-            ? `Active until ${formatExamDate(currentUntil)}`
-            : free
-              ? 'No payment needed'
-              : `per month · ${days} days access`}
-        </span>
-      </div>
-
-      <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
-        {perks.map(perk => (
-          <div key={perk} className="flex items-start gap-2 text-xs text-slate-600">
-            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600" />
-            <span>{perk}</span>
-          </div>
+            {option.label}
+            {option.note && <span className={`ml-1.5 font-normal ${value === option.id ? 'text-white/85' : 'text-slate-500'}`}>· {option.note}</span>}
+          </button>
         ))}
       </div>
-    </OptionCard>
-  );
-}
-
-/** A tear-off calendar page: month strip on top, day underneath. */
-function MiniCalendar({ month, day, active }: { month: string; day: number; active: boolean }) {
-  return (
-    <span
-      aria-hidden
-      className={`flex h-12 w-11 flex-col overflow-hidden rounded-xl border text-center shadow-sm transition-colors ${
-        active ? 'border-blue-600' : 'border-slate-200'
-      }`}
-    >
-      <span
-        className={`py-0.5 text-xs font-bold uppercase tracking-wider transition-colors ${
-          active ? 'bg-blue-600 text-white' : 'bg-rose-500 text-white'
-        }`}
-      >
-        {month}
-      </span>
-      <span className="flex flex-1 items-center justify-center bg-white font-display text-lg font-extrabold leading-none text-slate-900">
-        {day}
-      </span>
-    </span>
-  );
-}
-
-function SelectedCheck({ on }: { on: boolean }) {
-  return (
-    <span
-      className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all ${
-        on ? 'border-transparent bg-blue-600 text-white' : 'border-slate-200 bg-white'
-      }`}
-    >
-      {on && <Check className="h-3 w-3" strokeWidth={3} />}
-    </span>
-  );
-}
-
-function ScoreRing({ fraction, value, caption }: { fraction: number; value: string; caption: string }) {
-  const radius = 54;
-  const circumference = 2 * Math.PI * radius;
-  const filled = Math.min(1, Math.max(0, fraction)) * circumference;
-
-  return (
-    <div className="relative h-36 w-36 shrink-0 sm:h-40 sm:w-40">
-      <svg viewBox="0 0 128 128" className="h-full w-full -rotate-90" aria-hidden>
-        <defs>
-          <linearGradient id="score-ring-gradient" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#2563eb" />
-            <stop offset="100%" stopColor="#6366f1" />
-          </linearGradient>
-        </defs>
-        <circle cx="64" cy="64" r={radius} fill="none" stroke="#eef2ff" strokeWidth="10" />
-        <circle
-          cx="64"
-          cy="64"
-          r={radius}
-          fill="none"
-          stroke="url(#score-ring-gradient)"
-          strokeWidth="10"
-          strokeLinecap="round"
-          strokeDasharray={`${filled} ${circumference}`}
-          className="transition-[stroke-dasharray] duration-300 ease-out"
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-display text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">{value}</span>
-        <span className="mt-0.5 text-xs font-bold uppercase tracking-wider text-slate-400">{caption}</span>
-      </div>
-    </div>
-  );
-}
-
-function PlanSummary({
-  exam,
-  score,
-  days,
-  examDate,
-  focus,
-  minutes,
-  plan,
-  awaitingPayment,
-}: {
-  exam: ExamType;
-  score: number;
-  days: number | null;
-  examDate: string | null;
-  focus: SkillType | null;
-  minutes: number | null;
-  plan: SubscriptionPlan | null;
-  awaitingPayment: boolean;
-}) {
-  const FocusIcon = focus ? SKILL_ICONS[focus] : Target;
-  const rows: { icon: LucideIcon; label: string; value: string; note?: string }[] = [
-    { icon: CalendarDays, label: 'Exam date', value: examDate ? formatExamDate(examDate) : 'Not booked yet' },
-    { icon: FocusIcon, label: 'Focus skill', value: skillLabel(focus ?? undefined) ?? '—' },
-    { icon: Clock, label: 'Daily practice', value: minutes ? dailyLabel(minutes) : '—' },
-    {
-      icon: Crown,
-      label: 'Plan',
-      value: plan ? formatPlanName(plan.id) : '—',
-      note: plan && awaitingPayment ? `NPR ${plan.priceNPR.toLocaleString()} · awaiting payment` : undefined,
-    },
-  ];
-
-  return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm">
-      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 to-indigo-600 p-6 text-white">
-        <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-xl" />
-        <span className="relative text-[11px] font-bold uppercase tracking-wider text-white/70">
-          Your {examName(exam)} plan
-        </span>
-        <div className="relative mt-3 flex items-end justify-between gap-4">
-          <div>
-            <span className="block font-display text-5xl font-extrabold leading-none tracking-tight">
-              {formatScore(exam, score)}
-            </span>
-            <span className="mt-1.5 block text-xs font-semibold text-white/75">Target {exam === 'IELTS' ? 'band' : 'score'}</span>
-          </div>
-          {days !== null && (
-            <div className="rounded-2xl bg-white/15 px-4 py-2.5 text-right backdrop-blur-sm">
-              <span className="block font-display text-2xl font-bold leading-none">{days}</span>
-              <span className="mt-1 block text-[11px] font-semibold text-white/80">day{days === 1 ? '' : 's'} to go</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <dl className="divide-y divide-slate-100 px-6">
-        {rows.map(row => (
-          <div key={row.label} className="flex items-center gap-3 py-3.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-              <row.icon className="h-4 w-4" />
-            </span>
-            <dt className="flex-1 text-xs font-semibold text-slate-500">{row.label}</dt>
-            <dd className="text-right">
-              <span className="block text-sm font-bold text-slate-900">{row.value}</span>
-              {row.note && <span className="block text-[11px] font-semibold text-amber-600">{row.note}</span>}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </div>
-  );
-}
-
-function ToolkitPanel({ features, index, onNext }: { features: Feature[]; index: number; onNext: () => void }) {
-  const active = features[index];
-  const next = features[(index + 1) % features.length];
-  const Icon = active.icon;
-  const pad = (n: number) => String(n).padStart(2, '0');
-
-  return (
-    <div
-      key={index}
-      id="tour-panel"
-      role="tabpanel"
-      aria-labelledby={`tour-tab-${index}`}
-      className="relative flex min-h-[320px] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm motion-safe:animate-in motion-safe:fade-in duration-300 sm:p-7"
-    >
-      <div
-        aria-hidden
-        className={`pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br ${active.accent.glow} to-transparent blur-2xl`}
-      />
-
-      <div className="relative flex items-start justify-between gap-4">
-        <span className={`flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm ${active.accent.tile}`}>
-          <Icon className="h-7 w-7" />
-        </span>
-        <span className="font-display text-xs font-bold tabular-nums text-slate-300">
-          {pad(index + 1)} / {pad(features.length)}
-        </span>
-      </div>
-
-      <div className="relative mt-5">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{active.tag}</span>
-        <h3 className="mt-1 font-display text-xl font-bold text-slate-900">{active.title}</h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{active.text}</p>
-      </div>
-
-      <ul className="relative mb-6 mt-5 space-y-2.5">
-        {active.highlights.map(point => (
-          <li key={point} className="flex items-start gap-2.5 text-sm text-slate-700">
-            <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${active.accent.soft}`}>
-              <Check className="h-3 w-3" strokeWidth={3} />
-            </span>
-            <span>{point}</span>
-          </li>
-        ))}
-      </ul>
-
-      <div className="relative mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-        {active.where ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
-            <MapPin className="h-3.5 w-3.5 text-blue-600" />
-            {active.where}
-          </span>
-        ) : (
-          <span className="text-[11px] font-semibold text-slate-400">Tracks itself as you practise</span>
-        )}
-        <button
-          type="button"
-          onClick={onNext}
-          className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 transition-colors hover:text-blue-800"
-        >
-          Next: {next.title}
-          <ArrowRight className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function DestinationFlag({ id, className }: { id: string; className?: string }) {
-  const containerClass =
-    className ??
-    'flex h-6 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[5px] border border-slate-200/90 bg-slate-50 shadow-[0_1px_2px_rgba(0,0,0,0.06)] ring-1 ring-black/5';
-
-  switch (id) {
-    case 'australia':
-      return (
-        <span className={containerClass} title="Australia">
-          <AU className="h-full w-full object-cover" />
-        </span>
-      );
-    case 'uk':
-      return (
-        <span className={containerClass} title="United Kingdom">
-          <GB className="h-full w-full object-cover" />
-        </span>
-      );
-    case 'canada':
-      return (
-        <span className={containerClass} title="Canada">
-          <CA className="h-full w-full object-cover" />
-        </span>
-      );
-    case 'usa':
-      return (
-        <span className={containerClass} title="United States">
-          <US className="h-full w-full object-cover" />
-        </span>
-      );
-    case 'new-zealand':
-      return (
-        <span className={containerClass} title="New Zealand">
-          <NZ className="h-full w-full object-cover" />
-        </span>
-      );
-    case 'korea':
-    case 'south-korea':
-      return (
-        <span className={containerClass} title="South Korea">
-          <KR className="h-full w-full object-cover" />
-        </span>
-      );
-    case 'japan':
-      return (
-        <span className={containerClass} title="Japan">
-          <JP className="h-full w-full object-cover" />
-        </span>
-      );
-    case 'germany':
-      return (
-        <span className={containerClass} title="Germany">
-          <DE className="h-full w-full object-cover" />
-        </span>
-      );
-    default:
-      return (
-        <span
-          className={
-            className ??
-            'flex h-6 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[5px] border border-slate-200/90 bg-slate-100 text-slate-500 shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
-          }
-          title="Somewhere else"
-        >
-          <Globe className="h-4 w-4" />
-        </span>
-      );
-  }
-}
-
-function Confetti() {
-  const pieces = useMemo(
-    () =>
-      Array.from({ length: 40 }, (_, index) => ({
-        left: (index * 37) % 100,
-        delay: (index % 10) * 0.09,
-        duration: 2.1 + ((index * 7) % 10) / 10,
-        drift: ((index * 53) % 140) - 70,
-        color: CONFETTI_COLORS[index % CONFETTI_COLORS.length],
-        size: 6 + (index % 4) * 2,
-        round: index % 3 === 0,
-      })),
-    [],
-  );
-
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-16 h-0 motion-reduce:hidden">
-      {pieces.map((piece, index) => (
-        <span
-          key={index}
-          className="absolute top-0 animate-onboarding-confetti"
-          style={
-            {
-              left: `${piece.left}%`,
-              width: piece.size,
-              height: piece.round ? piece.size : piece.size * 0.45,
-              background: piece.color,
-              borderRadius: piece.round ? '9999px' : '2px',
-              animationDelay: `${piece.delay}s`,
-              animationDuration: `${piece.duration}s`,
-              '--drift': `${piece.drift}px`,
-            } as React.CSSProperties
-          }
-        />
-      ))}
     </div>
   );
 }

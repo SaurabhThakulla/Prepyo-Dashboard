@@ -33,10 +33,10 @@ export function OnboardingLayout({ children }: { children: ReactNode }) {
 }
 
 const STAGES = [
-  { label: 'Your Target', steps: ['welcome', 'exam', 'goal', 'destination'] },
-  { label: 'Benchmark', steps: ['experience', 'target', 'date'] },
-  { label: 'Study Routine', steps: ['focus', 'daily'] },
-  { label: 'Plan & Launch', steps: ['plan', 'tour', 'ready'] },
+  { label: 'Welcome', steps: ['welcome'] },
+  { label: 'Your Exam', steps: ['exam'] },
+  { label: 'Discovery', steps: ['referral'] },
+  { label: 'Your Plan', steps: ['plan'] },
 ];
 
 /** The blue brand panel: stages on top, the learner's plan filling in underneath. */

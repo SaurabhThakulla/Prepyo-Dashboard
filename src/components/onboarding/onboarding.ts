@@ -1,10 +1,16 @@
-import { EXAM_LABELS, ExamType, SkillType, UserProfile, isAdmin, jlptLevelOf } from '@/lib/types';
+import { EXAM_LABELS, ExamType, SkillType, UserProfile, isAdmin, isInstitutionStudent, jlptLevelOf } from '@/lib/types';
 
 export type StudyGoal = NonNullable<UserProfile['studyGoal']>;
 export type Destination = NonNullable<UserProfile['destination']>;
 
+/** True when the browser's clock is set to India, where the onboarding offers UPSC CDS alone. */
+export function inIndia(timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone): boolean {
+  return timeZone === 'Asia/Kolkata' || timeZone === 'Asia/Calcutta';
+}
+
 export function shouldShowOnboarding(user: UserProfile | null): boolean {
-  if (!user || isAdmin(user)) return false;
+  // A consultancy sets up its students' exam itself, so they skip onboarding.
+  if (!user || isAdmin(user) || isInstitutionStudent(user)) return false;
   return user.onboardingCompletedAt === null;
 }
 
@@ -25,6 +31,7 @@ export const SCORE_SCALE: Record<ExamType, ScoreScale> = {
   // N5 is out of 180 and passes at 80, with at least 38 in vocabulary, grammar
   // and reading and 19 in listening; schools and employers may ask for more.
   JLPT: { min: 80, max: 180, step: 1, presets: [80, 100, 120, 140], fallback: 100 },
+  CDS: { min: 50, max: 300, step: 1, presets: [100, 130, 150, 170], fallback: 140 },
 };
 
 export function clampScore(exam: ExamType, score: number): number {
@@ -85,7 +92,7 @@ export function runwayAdvice(days: number): string {
 export function formatExamDate(isoDate: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
   if (!match) return isoDate;
-  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).toLocaleDateString(undefined, {
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).toLocaleDateString('en-US', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
