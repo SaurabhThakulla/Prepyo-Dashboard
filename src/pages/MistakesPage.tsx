@@ -19,13 +19,19 @@ import {
   SquarePen,
   Mic,
   Layers,
-  X,
   ChevronRight,
   ChevronDown,
 } from 'lucide-react';
 import { MistakesPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { useMistakes, useMistakeAnalytics, usePracticeAttempts, useEvaluationHistory, useMockAttempts, useMocks } from '@/lib/hooks/useResources';
@@ -244,13 +250,14 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
   const navigate = useNavigate();
   const toast = useToast();
   const [selectedSkill, setSelectedSkill] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'unresolved' | 'resolved'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly');
+  // The summary cards double as the status filter.
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  // One window, the past 4 weeks: the page shows history, not a report.
+  const period = 'monthly';
   const [opened, setOpened] = useState<HistoryItem | null>(null);
   // Render the newest PAGE rows only; "Show more" adds another page.
   const [visible, setVisible] = useState(PAGE);
-  useEffect(() => setVisible(PAGE), [selectedSkill, statusFilter, searchQuery, period, activeExam]);
+  useEffect(() => setVisible(PAGE), [selectedSkill, statusFilter, activeExam]);
 
   // Queries for mistakes, analytics, and all practice attempts
   const { data, isPending, error } = useMistakes(activeExam, selectedSkill, false, period);
@@ -374,21 +381,12 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
 
   const filteredMistakes = historyItems.filter(item => {
     if (selectedSkill !== 'all' && item.skill !== selectedSkill) return false;
-    if (statusFilter === 'unresolved' && (item.resolved || item.isCorrect)) return false;
-    if (statusFilter === 'resolved' && !(item.resolved || item.isCorrect)) return false;
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      item.questionTitle?.toLowerCase().includes(q) ||
-      item.prompt?.toLowerCase().includes(q) ||
-      item.explanation?.toLowerCase().includes(q) ||
-      item.errorTag?.toLowerCase().includes(q) ||
-      item.typeName?.toLowerCase().includes(q)
-    );
+    const done = item.resolved || item.isCorrect;
+    if (statusFilter === 'unresolved') return !done;
+    if (statusFilter === 'resolved') return Boolean(done);
+    if (statusFilter === 'repeat') return (item.failedCount ?? 0) > 1;
+    return true;
   });
-
-  const periodLabel =
-    period === 'weekly' ? 'Past 7 Days' : 'Past 4 Weeks';
 
   const totalPracticed = historyItems.length || analytics?.total || 0;
   const unresolvedCount = historyItems.filter(i => !i.resolved && !i.isCorrect).length || analytics?.unresolved || 0;
@@ -397,11 +395,8 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
     ? Math.round((resolvedCount / totalPracticed) * 100)
     : (analytics?.total && analytics.total > 0 ? Math.round((analytics.resolved / analytics.total) * 100) : 0);
 
-  const statusOptions = [
-    { value: 'all', label: 'All' },
-    { value: 'unresolved', label: 'To review' },
-    { value: 'resolved', label: 'Mastered' },
-  ] as const;
+  // Clicking the card already chosen goes back to everything.
+  const pick = (value: StatusFilter) => () => setStatusFilter(statusFilter === value ? 'all' : value);
 
   const groups = groupByDay(filteredMistakes.slice(0, visible));
   const remaining = filteredMistakes.length - visible;
@@ -428,76 +423,50 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
                 <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">{activeExam}</span>
               </div>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                Your answers from the {periodLabel.toLowerCase()}, with the right answer and why.
+                Your answers from the past 4 weeks, with the right answer and why.
               </p>
             </div>
           </div>
-          <Segmented
-            label="Time period"
-            value={period}
-            onChange={setPeriod}
-            options={[{ value: 'weekly', label: '7 days' }, { value: 'monthly', label: '4 weeks' }]}
-          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={`Filter by skill: ${skillLabel(selectedSkill)}`}
+                className="group inline-flex h-10 min-w-[10rem] items-center gap-2.5 rounded-xl border border-border/80 bg-card pl-1.5 pr-3 text-sm font-semibold text-foreground shadow-xs transition-colors outline-none hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=open]:border-primary/50"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  {React.createElement(SKILL_ICONS[selectedSkill] || Layers, { className: 'w-4 h-4' })}
+                </span>
+                <span className="flex-1 text-left">{skillLabel(selectedSkill)}</span>
+                <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[10rem] rounded-xl p-1.5">
+              <DropdownMenuLabel className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Show skill</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={selectedSkill} onValueChange={setSelectedSkill}>
+                {skillFilters.map(s => {
+                  const Icon = SKILL_ICONS[s] || Layers;
+                  return (
+                    <DropdownMenuRadioItem key={s} value={s} className="gap-2 text-[13px]">
+                      <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+                      {skillLabel(s)}
+                    </DropdownMenuRadioItem>
+                  );
+                })}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
 
-        <section aria-label="Summary" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Stat icon={Layers} tone="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" label="Practiced" value={totalPracticed} hint="questions answered" />
-          <Stat icon={Flame} tone="bg-rose-500/10 text-rose-600 dark:text-rose-400" label="To review" value={unresolvedCount} hint="still to get right" />
-          <Stat icon={CheckCircle2} tone="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" label="Mastered" value={resolvedCount} hint={`${accuracyRate}% of answers`}>
-            <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-emerald-500/15">
+        <section aria-label="Filter by status" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Stat icon={Layers} tone="indigo" label="Practiced" value={totalPracticed} hint="Show all answers" active={statusFilter === 'all'} onClick={() => setStatusFilter('all')} />
+          <Stat icon={Flame} tone="rose" label="To review" value={unresolvedCount} hint="Still to get right" active={statusFilter === 'unresolved'} onClick={pick('unresolved')} />
+          <Stat icon={CheckCircle2} tone="emerald" label="Mastered" value={resolvedCount} hint={`${accuracyRate}% of answers`} active={statusFilter === 'resolved'} onClick={pick('resolved')}>
+            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-emerald-500/15">
               <div className="h-full rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${accuracyRate}%` }} />
             </div>
           </Stat>
-          <Stat icon={RotateCcw} tone="bg-amber-500/10 text-amber-600 dark:text-amber-400" label="Repeat traps" value={analytics?.repeatCount ?? 0} hint="missed more than once" />
-        </section>
-
-        <section aria-label="Filters" className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/30 p-2.5 xl:flex-row-reverse xl:items-center">
-          <div className="relative xl:w-72 xl:shrink-0">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            <Input
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search titles, topics, types"
-              aria-label="Search your history"
-              className="h-9 pl-10 pr-10 text-sm bg-card rounded-xl border-border/80 shadow-2xs focus-visible:ring-1 focus-visible:ring-primary"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-full"
-                aria-label="Clear search"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2">
-            <div className="flex min-w-0 max-w-full items-center gap-1.5 overflow-x-auto no-scrollbar">
-              {skillFilters.map(t => {
-                const Icon = SKILL_ICONS[t] || Layers;
-                const isSelected = selectedSkill === t;
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => setSelectedSkill(t)}
-                    className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium capitalize whitespace-nowrap transition-colors ${
-                      isSelected
-                        ? 'border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/25'
-                        : 'border-border/80 bg-card text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5'
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {t}
-                  </button>
-                );
-              })}
-            </div>
-            <Segmented label="Status" value={statusFilter} onChange={setStatusFilter} options={statusOptions} />
-          </div>
+          <Stat icon={RotateCcw} tone="amber" label="Repeat traps" value={analytics?.repeatCount ?? 0} hint="Missed more than once" active={statusFilter === 'repeat'} onClick={pick('repeat')} />
         </section>
 
         {loading ? (
@@ -508,16 +477,16 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
               {historyItems.length === 0 ? <History className="w-6 h-6" /> : <Search className="w-6 h-6" />}
             </div>
             <h2 className="font-display text-lg font-semibold text-foreground">
-              {historyItems.length === 0 ? `Nothing practiced in the ${periodLabel.toLowerCase()}` : 'No questions match'}
+              {historyItems.length === 0 ? 'Nothing practiced in the past 4 weeks' : 'No questions match'}
             </h2>
             <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
               {historyItems.length === 0
                 ? 'Questions you answer in practice and mock exams show up here automatically.'
-                : 'Try another search, skill or status.'}
+                : 'Try another skill, or tap Practiced to see everything.'}
             </p>
-            {searchQuery && (
-              <Button variant="outline" size="sm" onClick={() => setSearchQuery('')} className="mt-5 rounded-xl">
-                Clear search
+            {(statusFilter !== 'all' || selectedSkill !== 'all') && (
+              <Button variant="outline" size="sm" onClick={() => { setStatusFilter('all'); setSelectedSkill('all'); }} className="mt-5 rounded-xl">
+                Show everything
               </Button>
             )}
           </div>
@@ -737,35 +706,19 @@ function groupByDay(items: HistoryItem[]) {
   return [...groups.values()].sort((a, b) => b.time - a.time);
 }
 
-function Segmented<T extends string>({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: T;
-  onChange: (value: T) => void;
-  options: readonly { value: T; label: string }[];
-}) {
-  return (
-    <div role="group" aria-label={label} className="inline-flex shrink-0 rounded-xl border border-border/80 bg-muted/60 p-1">
-      {options.map(o => (
-        <button
-          key={o.value}
-          type="button"
-          aria-pressed={value === o.value}
-          onClick={() => onChange(o.value)}
-          className={`rounded-lg px-3 py-1.5 text-[13px] font-medium whitespace-nowrap transition-colors ${
-            value === o.value ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
+function skillLabel(skill: string): string {
+  return skill === 'all' ? 'All skills' : skill[0].toUpperCase() + skill.slice(1);
 }
+
+type StatusFilter = 'all' | 'unresolved' | 'resolved' | 'repeat';
+
+// Icon colour, and the card's colour when it is the chosen filter.
+const STAT_TONES = {
+  indigo: { icon: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400', active: 'border-indigo-500/60 bg-indigo-500/[0.06] ring-1 ring-indigo-500/30' },
+  rose: { icon: 'bg-rose-500/10 text-rose-600 dark:text-rose-400', active: 'border-rose-500/60 bg-rose-500/[0.06] ring-1 ring-rose-500/30' },
+  emerald: { icon: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', active: 'border-emerald-500/60 bg-emerald-500/[0.06] ring-1 ring-emerald-500/30' },
+  amber: { icon: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', active: 'border-amber-500/60 bg-amber-500/[0.06] ring-1 ring-amber-500/30' },
+} as const;
 
 function Stat({
   icon: Icon,
@@ -773,29 +726,40 @@ function Stat({
   label,
   value,
   hint,
+  active,
+  onClick,
   children,
 }: {
   icon: React.ComponentType<{ className?: string }>;
-  tone: string;
+  tone: keyof typeof STAT_TONES;
   label: string;
   value: number;
   hint: string;
+  active: boolean;
+  onClick: () => void;
   children?: React.ReactNode;
 }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-border/70 bg-card p-3.5 sm:p-4 shadow-card">
-      <div className="flex items-center gap-3">
-        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${tone}`}>
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`group flex min-w-0 flex-col rounded-2xl border p-4 text-left shadow-card transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+        active ? STAT_TONES[tone].active : 'border-border/70 bg-card hover:border-border'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-[13px] font-semibold text-muted-foreground">{label}</p>
+          <p className="mt-1 font-display text-3xl font-black leading-none tabular-nums text-foreground">{value}</p>
+        </div>
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${STAT_TONES[tone].icon}`}>
           <Icon className="w-5 h-5" />
         </span>
-        <div className="min-w-0">
-          <p className="truncate text-xs font-semibold text-muted-foreground">{label}</p>
-          <p className="font-display text-2xl font-black leading-tight tabular-nums text-foreground">{value}</p>
-        </div>
       </div>
-      <p className="mt-2 truncate text-xs text-muted-foreground">{hint}</p>
+      <p className="mt-3 truncate text-xs text-muted-foreground">{hint}</p>
       {children}
-    </div>
+    </button>
   );
 }
 

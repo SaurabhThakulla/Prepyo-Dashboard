@@ -433,7 +433,7 @@ const TASK_META: Record<ExamType, Record<string, TaskMeta>> = {
     },
   ]))),
   // NCC question types, keyed as their ?type= links are.
-  NCC: Object.fromEntries([...NCC_SUBTASKS.ncc_common, ...NCC_SUBTASKS.ncc_army].map(task => [
+  NCC: Object.fromEntries(Object.values(NCC_SUBTASKS).flat().map(task => [
     task.key.replace(/[^a-z0-9]/g, ''),
     {
       code: task.name.split(/[\s&/()-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(),

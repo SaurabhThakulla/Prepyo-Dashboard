@@ -47,7 +47,7 @@ export default function SkillQuestionCard({
           {label}
         </div>
         <div className="text-xl sm:text-2xl font-black text-indigo-950 dark:text-white tracking-tight">
-          {total > 0 ? `${completed}/${total.toLocaleString('en-US')}` : '--'}
+          {total > 0 ? `${completed}/${total.toLocaleString('en-US')}` : '0'}
         </div>
       </div>
     </Link>
