@@ -34,6 +34,7 @@ import AnimatedLogo from './AnimatedLogo';
 import BrandMark from '@/institution/BrandMark';
 import NotificationDrawer from './NotificationDrawer';
 import { ExamSwitcher, PteVariantSwitcher } from './ExamSwitchers';
+import JLPTLevelSwitch from '@/components/dashboard/JLPTLevelSwitch';
 import SecondaryNavList from './sidebar/SecondaryNavList';
 import { useNavSections } from './sidebar/useNavSections';
 import { getSectionFromPathname, isNavItemActive, PrimarySectionId, SecondaryNavItem } from './sidebar/navigation';
@@ -158,7 +159,7 @@ export default function TopNav() {
           </span>
         </Link>
 
-        <nav aria-label="Sections" className="flex min-w-0 items-center gap-1.5 xl:gap-3 shrink">
+        <nav aria-label="Sections" className="flex min-w-0 items-center gap-3 xl:gap-5 shrink">
           {sections.map(section => {
             const Icon = section.icon;
             const isOpen = openId === section.id;
@@ -219,7 +220,7 @@ export default function TopNav() {
             </Link>
           )}
 
-          {/* Notifications, report and theme, each on its own */}
+          {/* Notifications; reporting an issue and the theme are in the profile menu. */}
           <div className="flex items-center gap-1.5 xl:gap-2">
             {/* Notifications: data-stay so opening them does not end a running practice. */}
             <button
@@ -236,19 +237,6 @@ export default function TopNav() {
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
-            </button>
-            <button type="button" data-stay onClick={() => setIsReportOpen(true)} title="Report an issue" aria-label="Report an issue" className={ICON_BUTTON}>
-              <Bug className="h-[18px] w-[18px]" />
-            </button>
-            <button
-              type="button"
-              data-stay
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
-              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              className={ICON_BUTTON}
-            >
-              {theme === 'dark' ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
             </button>
           </div>
 
@@ -326,6 +314,34 @@ export default function TopNav() {
                     </DropdownMenuItem>
                   ),
                 )}
+                <DropdownMenuSeparator className="mx-2 my-1" />
+                {/* data-stay: neither ends a running practice. */}
+                <DropdownMenuItem data-stay onSelect={() => setIsReportOpen(true)} className={MENU_ITEM}>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/[0.08] text-primary transition group-hover:bg-primary group-hover:text-primary-foreground dark:bg-white/[0.06] dark:text-blue-300">
+                    <Bug className="h-4 w-4" />
+                  </span>
+                  <span className="flex-1 font-medium">Report an issue</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/50 transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  data-stay
+                  role="menuitemcheckbox"
+                  aria-checked={theme === 'dark'}
+                  // The menu stays open so the switch is seen to flip.
+                  onSelect={event => {
+                    event.preventDefault();
+                    setTheme(theme === 'dark' ? 'light' : 'dark');
+                  }}
+                  className={MENU_ITEM}
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/[0.08] text-primary transition group-hover:bg-primary group-hover:text-primary-foreground dark:bg-white/[0.06] dark:text-blue-300">
+                    {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                  </span>
+                  <span className="flex-1 font-medium">Dark mode</span>
+                  <span aria-hidden className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${theme === 'dark' ? 'bg-primary' : 'bg-muted-foreground/30'}`}>
+                    <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${theme === 'dark' ? 'left-[18px]' : 'left-0.5'}`} />
+                  </span>
+                </DropdownMenuItem>
               </div>
 
               <div className="border-t border-border bg-muted/40 p-2">
@@ -349,24 +365,30 @@ export default function TopNav() {
             <div
               id="top-nav-panel"
               data-stay
-              className="pointer-events-auto flex max-h-[calc(100dvh-6rem)] w-full max-w-7xl flex-col overflow-hidden rounded-2xl text-white bg-gradient-to-b from-[#2a56cf] via-primary to-[#132e7d] dark:from-slate-900 dark:via-blue-950 dark:to-slate-950 ring-1 ring-white/15 shadow-2xl shadow-slate-950/40 animate-in fade-in-0 slide-in-from-top-2 duration-200"
+              className="pointer-events-auto flex max-h-[calc(100dvh-6rem)] w-fit max-w-7xl flex-col overflow-hidden rounded-2xl text-white bg-gradient-to-b from-[#2a56cf] via-primary to-[#132e7d] dark:from-slate-900 dark:via-blue-950 dark:to-slate-950 ring-1 ring-white/15 shadow-2xl shadow-slate-950/40 animate-in fade-in-0 slide-in-from-top-2 duration-200"
             >
-              <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-white/10 px-5 py-4">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-primary dark:text-blue-950 shadow-md shadow-black/15">
-                  <openSection.icon className="w-5 h-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-display text-base font-bold leading-tight truncate">{openSection.title}</h3>
-                  <p className="text-xs text-white/65 leading-snug truncate mt-0.5">{openSection.description}</p>
-                </div>
-                {isAdmin(user) && (
-                  <div className="w-80">
-                    <ExamSwitcher activeExam={activeExam} onChange={setActiveExam} onBlue />
+              <div className="shrink-0 space-y-3.5 border-b border-white/10 px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-primary dark:text-blue-950 shadow-md shadow-black/15">
+                    <openSection.icon className="w-5 h-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="flex items-center gap-2 font-display text-lg font-bold leading-tight">
+                      <span className="truncate">{openSection.title}</span>
+                      {openSection.id === 'home' && isAdmin(user) && (
+                        <span className="shrink-0 rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ring-1 ring-inset ring-white/25">Admin</span>
+                      )}
+                    </h3>
+                    <p className="text-[13px] text-white/70 leading-snug truncate mt-0.5">{openSection.description}</p>
                   </div>
-                )}
-                {activeExam === 'PTE' && (
-                  <div className="w-64">
-                    <PteVariantSwitcher pteVariant={pteVariant} onChange={setPteVariant} onBlue />
+                </div>
+                {/* Only panels whose content follows the exam; the Admin Hub does not. */}
+                {openSection.id !== 'home' && (isAdmin(user) || activeExam === 'PTE' || activeExam === 'JLPT') && (
+                  // The exam controls get their own row, so every exam and its target fits.
+                  <div className="flex flex-wrap items-center gap-2">
+                    {isAdmin(user) && <ExamSwitcher activeExam={activeExam} onChange={setActiveExam} onBlue />}
+                    {activeExam === 'PTE' && <PteVariantSwitcher pteVariant={pteVariant} onChange={setPteVariant} onBlue />}
+                    {activeExam === 'JLPT' && <JLPTLevelSwitch panel />}
                   </div>
                 )}
               </div>

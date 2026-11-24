@@ -3,14 +3,17 @@ import { CheckCircle2, ShieldCheck, Gift } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { SubscriptionPlan } from '@/lib/types';
 import { formatPlanName } from '@/lib/subscriptions';
+import { inIndia } from '@/components/onboarding/onboarding';
 
 export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan | null }) {
+  // India is offered UPSC CDS and NCC only.
+  const india = inIndia();
   return (
     <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 h-screen max-h-screen relative flex-col justify-between p-8 xl:p-12 overflow-hidden bg-slate-950 text-white">
       <div className="absolute inset-0 z-0 pointer-events-none">
         <img
           src="/images/auth-hero.jpg"
-          alt="Student preparing for PTE and IELTS in Kathmandu"
+          alt={india ? 'Student preparing for UPSC CDS' : 'Student preparing for PTE and IELTS in Kathmandu'}
           loading="eager"
           fetchPriority="high"
           className="absolute inset-0 object-cover object-center w-full h-full brightness-[0.85]"
@@ -30,7 +33,7 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
                 prep<span className="text-primary">yo</span>
               </span>
               <span className="text-xs font-black uppercase tracking-wider bg-primary/25 text-blue-200 px-2 py-0.5 rounded-md border border-primary/40">
-                NP
+                {india ? 'IN' : 'NP'}
               </span>
             </div>
           </div>
@@ -43,24 +46,37 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
 
         <div className="space-y-2 max-w-lg pt-2">
           <h2 className="font-display text-2xl xl:text-3xl font-black text-white leading-tight tracking-tight drop-shadow-md">
-            Master PTE 79+ &amp; IELTS 8.0 with AI
+            {india ? 'Crack UPSC CDS & NCC exams' : <>Master PTE 79+ &amp; IELTS 8.0 with AI</>}
           </h2>
           <p className="text-sm text-slate-300 leading-relaxed font-normal">
-            Nepal’s premier realistic exam simulator tuned with authentic Pearson &amp; Cambridge scoring rubrics.
+            {india
+              ? 'CDS English, General Knowledge and Elementary Maths, timed and marked the UPSC way, plus NCC B and C certificate exam practice.'
+              : 'Nepal’s premier realistic exam simulator tuned with authentic Pearson & Cambridge scoring rubrics.'}
           </p>
         </div>
       </div>
 
       <div className="relative z-10 space-y-3.5">
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5">
-          <HeroCard
-            icon={<Gift className="w-4 h-4" />}
-            iconClass="bg-amber-500/20 text-amber-400"
-            title={formatPlanName(freePlan?.name || freePlan?.id) || 'Instant Free Starter'}
-            badge={<Badge variant="secondary" className="text-xs py-0 font-bold shrink-0">NPR {freePlan?.priceNPR ?? 0}</Badge>}
-            tickClass="text-primary"
-            points={freePlan?.features?.length ? freePlan.features : ['Nepali Accent AI Engine']}
-          />
+          {india ? (
+            <HeroCard
+              icon={<Gift className="w-4 h-4" />}
+              iconClass="bg-amber-500/20 text-amber-400"
+              title="UPSC CDS & NCC"
+              badge={<Badge variant="secondary" className="text-xs py-0 font-bold shrink-0">Free start</Badge>}
+              tickClass="text-primary"
+              points={['IMA · INA · AFA · OTA papers', 'Full 2-hour mock tests', 'NCC B & C certificate exams']}
+            />
+          ) : (
+            <HeroCard
+              icon={<Gift className="w-4 h-4" />}
+              iconClass="bg-amber-500/20 text-amber-400"
+              title={formatPlanName(freePlan?.name || freePlan?.id) || 'Instant Free Starter'}
+              badge={<Badge variant="secondary" className="text-xs py-0 font-bold shrink-0">NPR {freePlan?.priceNPR ?? 0}</Badge>}
+              tickClass="text-primary"
+              points={freePlan?.features?.length ? freePlan.features : ['Nepali Accent AI Engine']}
+            />
+          )}
           <HeroCard
             icon={<ShieldCheck className="w-4 h-4 text-primary" />}
             iconClass="bg-primary/20 text-primary"
@@ -72,8 +88,17 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
         </div>
 
         <div className="flex items-center justify-between text-xs text-slate-300 px-1 font-medium">
-          <span>🇳🇵 Kathmandu • Pokhara • Lalitpur • Chitwan</span>
-          <span className="text-primary font-semibold">Nepal Official</span>
+          {india ? (
+            <>
+              <span>🇮🇳 Defence exam practice for India</span>
+              <span className="text-primary font-semibold">UPSC CDS · NCC</span>
+            </>
+          ) : (
+            <>
+              <span>🇳🇵 Kathmandu • Pokhara • Lalitpur • Chitwan</span>
+              <span className="text-primary font-semibold">Nepal Official</span>
+            </>
+          )}
         </div>
       </div>
     </div>

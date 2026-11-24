@@ -9,7 +9,7 @@ import { JLPT_LEVELS, jlptLevelOf, type JLPTLevel } from '@/lib/types';
  * The learner picks their own JLPT level on Home, so no admin or institution
  * has to set it. Practice and progress then follow that level only.
  */
-export default function JLPTLevelSwitch() {
+export default function JLPTLevelSwitch({ panel = false }: { panel?: boolean } = {}) {
   const { user, updateProfile } = useApp();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -31,7 +31,11 @@ export default function JLPTLevelSwitch() {
   };
 
   return (
-    <div role="group" aria-label="JLPT level" className="inline-flex rounded-xl bg-white/15 p-1 backdrop-blur-sm">
+    <div
+      role="group"
+      aria-label="JLPT level"
+      className={panel ? 'inline-flex gap-1 rounded-xl bg-slate-950/25 p-1 ring-1 ring-white/10' : 'inline-flex rounded-xl bg-white/15 p-1 backdrop-blur-sm'}
+    >
       {JLPT_LEVELS.map(level => (
         <button
           key={level}
@@ -39,7 +43,7 @@ export default function JLPTLevelSwitch() {
           aria-pressed={level === current}
           disabled={saving}
           onClick={() => void choose(level)}
-          className={`min-w-[3.5rem] rounded-lg px-3 py-1.5 text-sm font-bold transition-colors disabled:opacity-70 ${
+          className={`min-w-[3.5rem] rounded-lg px-3 py-1.5 ${panel ? 'text-xs' : 'text-sm'} font-bold transition-colors disabled:opacity-70 ${
             level === current ? 'bg-white text-primary shadow-sm' : 'text-white/85 hover:bg-white/10'
           }`}
         >

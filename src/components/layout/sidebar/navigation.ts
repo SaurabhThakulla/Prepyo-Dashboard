@@ -1,5 +1,6 @@
 import {
   Home,
+  Sparkles,
   Building2,
   Mic,
   PenTool,
@@ -31,6 +32,8 @@ import {
 } from 'lucide-react';
 import { lessonHref } from '@/data/learnKorean';
 import { JLPT_SECTIONS, type JlptSection } from '@/data/tutorials';
+import { CDS_SUBTASKS, cdsPapersFor } from '@/cds/cdsShared';
+import type { CdsTrack } from '@/cds/cdsApi';
 
 const JLPT_SECTION_ICON: Record<JlptSection, LucideIcon> = { vocabulary: Languages, 'grammar-reading': BookOpen, listening: Headphones };
 import { hasMaterials, providersFor } from '@/data/materials';
@@ -75,7 +78,19 @@ export interface SecondaryNavItem {
   isLocked?: boolean;
   /** Why the task is locked, e.g. "PTE Academic only". */
   lockedReason?: string;
+  /** A live count beside a page, e.g. "2 pending": warn when it needs action. */
+  status?: { text: string; tone: 'warn' | 'ok' };
 }
+
+/** The Admin Hub's live numbers; each is left out until it has loaded. */
+export interface AdminHubCounts {
+  users?: number;
+  pendingPayments?: number;
+  openReports?: number;
+}
+
+const countStatus = (n: number | undefined, word: string): SecondaryNavItem['status'] =>
+  n === undefined ? undefined : { text: `${n} ${word}`, tone: n > 0 ? 'warn' : 'ok' };
 
 export interface PrimarySectionConfig {
   id: PrimarySectionId;
@@ -100,8 +115,8 @@ const PRACTICE_SKILLS: { skill: SkillType; label: string; icon: LucideIcon; subl
   { skill: 'listening', label: 'Listening', icon: Headphones, sublabel: 'Listen and answer, marked instantly' },
 ];
 
-/** The admin's Home section: their dashboards. */
-function adminHomeSection(): PrimarySectionConfig {
+/** The admin's Home section: their dashboards, with what needs attention. */
+function adminHomeSection(counts: AdminHubCounts = {}): PrimarySectionConfig {
   return {
     id: 'home',
     label: 'Home',
@@ -109,10 +124,16 @@ function adminHomeSection(): PrimarySectionConfig {
     title: 'Admin Hub',
     description: 'Users, plans, reports & consultancies',
     items: [
-      { href: '/admin', label: 'Admin Dashboard', icon: ShieldCheck, sublabel: 'Users, plans & platform metrics', badge: 'Admin' },
-      { href: '/admin/payments', label: 'Plan Management', icon: CreditCard, sublabel: 'Approve payments and grant plans', badge: 'Admin' },
-      { href: '/admin/reports', label: 'Issue reports', icon: MessageSquareWarning, sublabel: 'What learners have reported', badge: 'Admin' },
-      { href: '/admin/consultancies', label: 'Consultancies', icon: Building2, sublabel: 'Institutions, students & usage', badge: 'Admin' },
+      {
+        href: '/admin',
+        label: 'Admin Dashboard',
+        icon: ShieldCheck,
+        sublabel: counts.users === undefined ? 'Overview, users & AI usage' : `Overview, users (${counts.users.toLocaleString('en-US')}) & AI usage`,
+      },
+      { href: '/admin/payments', label: 'Plan Management', icon: CreditCard, sublabel: 'Approve payments and grant plans', status: countStatus(counts.pendingPayments, 'pending') },
+      { href: '/admin/reports', label: 'Issue Reports', icon: MessageSquareWarning, sublabel: 'What learners have reported', status: countStatus(counts.openReports, 'open') },
+      { href: '/admin/consultancies', label: 'Consultancies', icon: Building2, sublabel: 'Institutions, students & usage' },
+      { href: '/onboarding', label: 'Onboarding Preview', icon: Sparkles, sublabel: "Test the learner's first run & target flow" },
     ],
   };
 }
@@ -121,7 +142,7 @@ function adminHomeSection(): PrimarySectionConfig {
 export function getSectionFromPathname(path: string, searchParams?: URLSearchParams | string): PrimarySectionId {
   const params = typeof searchParams === 'string' ? new URLSearchParams(searchParams) : searchParams;
   if (params?.get('mock') || params?.get('view') === 'full') return 'mock';
-  if (path.startsWith('/admin')) return 'home';
+  if (path.startsWith('/admin') || path.startsWith('/onboarding')) return 'home';
   if (path.startsWith('/practice')) return 'practice';
   if (path.startsWith('/learn')) return 'learn';
   if (path.startsWith('/mocks') || path.startsWith('/diagnostic') || path.startsWith('/institute-mock')) return 'mock';
@@ -145,14 +166,18 @@ export function buildSections(
   hasMistake = false,
   learnProgress: LearnProgress = EMPTY_PROGRESS,
   pteVariant: PteExamVariant = 'academic',
+  cdsTrack: CdsTrack = 'ima',
+  adminCounts: AdminHubCounts = {},
 ): PrimarySectionConfig[] {
   const isPTE = activeExam === 'PTE';
   // EPS-TOPIK and JLPT have no sectional mocks yet; their full mocks are to come.
   const isLanguageExam = activeExam === 'EPS_TOPIK' || activeExam === 'JLPT';
+  // CDS is practised as whole papers, timed, through its own backend.
+  const isCds = activeExam === 'CDS';
 
   return [
     // Admins keep their Home section; learners reach their dashboard from the logo.
-    ...(isAdmin(user ?? null) ? [adminHomeSection()] : []),
+    ...(isAdmin(user ?? null) ? [adminHomeSection(adminCounts)] : []),
     {
       id: 'practice',
       label: 'Practice',
@@ -164,7 +189,17 @@ export function buildSections(
       // One heading per skill, one item per task type underneath — the exam's
       // own shape, straight from the syllabus, so PTE and IELTS each list their
       // own tasks and a change there needs no edit here.
-      items: PRACTICE_SKILLS.flatMap(({ skill, label, icon, sublabel }) => {
+      // CDS: each paper a heading, its question types under it, as PTE lists a skill's tasks.
+      items: isCds ? cdsPapersFor(cdsTrack).flatMap(paper => CDS_SUBTASKS[paper.type].map(task => ({
+        href: `/practice?skill=reading&type=${task.key}`,
+        label: task.name,
+        icon: FilePenLine,
+        sublabel: task.weight,
+        description: task.detail,
+        weight: task.weight,
+        group: paper.name,
+        groupHref: `/practice?skill=reading&paper=${paper.type}`,
+      }))) : PRACTICE_SKILLS.flatMap(({ skill, label, icon, sublabel }) => {
         // Admins author both IELTS modules' tasks; a learner sees their own.
         const rawNames = isAdmin(user ?? null)
           ? SYLLABUS[activeExam][skill] ?? []
@@ -253,18 +288,20 @@ export function buildSections(
       description: 'Timed full exams with scorecards',
       items: [
         // An institution's students see the tests their institution sets them first.
-        ...(!isLanguageExam && user?.institution
+        ...(!isLanguageExam && !isCds && user?.institution
           ? [{ href: '/institute-mock', label: 'Institute Mock', icon: ClipboardCheck, sublabel: `Tests set by ${user.institution.name}` }]
           : []),
-        ...(isLanguageExam ? [] : isPTE ? pteMockItems(pteVariant) : ieltsMockItems()),
-        {
+        ...(isCds
+          ? [{ href: '/mocks', label: 'CDS papers', icon: ClipboardCheck, sublabel: 'English, GK and Maths, timed' }]
+          : isLanguageExam ? [] : isPTE ? pteMockItems(pteVariant) : ieltsMockItems()),
+        ...(isCds ? [] : [{
           href: '/diagnostic',
           label: 'Level check',
           icon: Gauge,
           sublabel: 'Find your starting level',
           badge: '15 Min',
           group: 'Results',
-        },
+        }]),
         {
           href: '/mocks?tab=reports',
           label: 'My mock results',
