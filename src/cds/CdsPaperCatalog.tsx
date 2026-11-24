@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Award } from 'lucide-react';
 import MockPaperList from '@/components/mocks/MockPaperList';
 import { CdsAttempt, CdsPaper, CdsUserPlan } from './cdsApi';
-import { cdsPaperItems, cdsPaperName, cdsPapersFor, useCdsTrack } from './cdsShared';
+import { cdsPaperItems, cdsPaperName, cdsPapersFor, useCdsTrack, useCdsExam } from './cdsShared';
 
 interface Props {
   tabs: React.ReactNode;
@@ -19,10 +19,12 @@ interface Props {
 
 /** The CDS mock catalogue: the shared banner and numbered test list, one paper or all three. */
 export default function CdsPaperCatalog({ tabs, papers, attempts, plan, paperType, isLoading, onStart, onReview }: Props) {
-  const track = useCdsTrack(true);
-  const route = cdsPapersFor(track);
-  // OTA sees English and GK only, unless a link asks for Maths by name.
-  const shown = paperType ? papers.filter(p => p.paperType === paperType) : papers.filter(p => route.some(r => r.type === p.paperType));
+  const exam = useCdsExam();
+  const ncc = exam === 'NCC';
+  const track = useCdsTrack(!ncc);
+  const route = ncc ? [] : cdsPapersFor(track);
+  // OTA sees English and GK only, unless a link asks for Maths by name. NCC lists its B and C mocks.
+  const shown = ncc ? papers : paperType ? papers.filter(p => p.paperType === paperType) : papers.filter(p => route.some(r => r.type === p.paperType));
   const items = cdsPaperItems(shown, attempts);
   const chip = (active: boolean) =>
     `rounded-full border px-3 py-1 text-xs font-bold transition-colors ${
@@ -39,10 +41,12 @@ export default function CdsPaperCatalog({ tabs, papers, attempts, plan, paperTyp
           </span>
           <div className="space-y-1">
             <h1 className="font-display text-xl font-extrabold leading-tight sm:text-2xl">
-              {paperType ? `CDS ${cdsPaperName(paperType)} tests` : 'UPSC CDS Mock Tests'}
+              {ncc ? "NCC 'B' & 'C' Certificate Mock Tests" : paperType ? `CDS ${cdsPaperName(paperType)} tests` : 'UPSC CDS Mock Tests'}
             </h1>
             <p className="text-xs text-white/85 sm:text-sm">
-              Timed papers marked as UPSC marks them: a wrong answer costs a third of a right one.
+              {ncc
+                ? 'The written paper, 175 questions in 3 hours: 2 marks a right answer, half a mark off a wrong one. The practical is assessed at camp.'
+                : 'Timed papers marked as UPSC marks them: a wrong answer costs a third of a right one.'}
             </p>
           </div>
         </div>
@@ -50,8 +54,8 @@ export default function CdsPaperCatalog({ tabs, papers, attempts, plan, paperTyp
 
       <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-5">
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <nav aria-label="CDS papers" className="flex flex-wrap gap-2">
-            <Link to="/mocks" className={chip(!paperType)}>All papers</Link>
+          <nav aria-label={ncc ? 'NCC papers' : 'CDS papers'} className="flex flex-wrap gap-2">
+            {!ncc && <Link to="/mocks" className={chip(!paperType)}>All papers</Link>}
             {route.map(p => (
               <Link key={p.type} to={`/mocks?paper=${p.type}`} className={chip(paperType === p.type)}>
                 {p.name}
@@ -63,8 +67,8 @@ export default function CdsPaperCatalog({ tabs, papers, attempts, plan, paperTyp
 
         {plan && !plan.isPremium && (
           <p className="text-xs text-muted-foreground">
-            Your plan includes {plan.freeMocksLimit} CDS test; you have taken {plan.completedMocks}.{' '}
-            <Link to="/subscription" className="font-bold text-primary">See CDS plans</Link>
+            Your plan includes {plan.freeMocksLimit} {exam} test; you have taken {plan.completedMocks}.{' '}
+            <Link to="/subscription" className="font-bold text-primary">See {exam} plans</Link>
           </p>
         )}
 
@@ -72,7 +76,7 @@ export default function CdsPaperCatalog({ tabs, papers, attempts, plan, paperTyp
           variant="page"
           papers={items}
           isLoading={isLoading}
-          exam="CDS"
+          exam={exam}
           section={paperType ?? 'all'}
           onStart={paper => onStart(paper.id)}
           onResume={paper => onStart(paper.id)}

@@ -1,6 +1,7 @@
 import { api } from '@/lib/api';
 
-export type CdsPaperType = 'english' | 'gk' | 'maths';
+/** CDS papers, and NCC's (000226): practice banks of common and Army Wing subjects, and the B and C mocks. */
+export type CdsPaperType = 'english' | 'gk' | 'maths' | 'ncc_common' | 'ncc_army' | 'ncc_b' | 'ncc_c';
 
 export interface CdsPaper {
   id: string;
@@ -94,8 +95,9 @@ export interface SubmitAttemptPayload {
   timeSpentSeconds: number;
 }
 
-export async function fetchCdsPapers(): Promise<{ papers: CdsPaper[]; plan?: CdsUserPlan }> {
-  return api.get<{ papers: CdsPaper[]; plan?: CdsUserPlan }>('/cds/papers');
+/** The papers of one exam in the cds schema, UPSC CDS or NCC, with that exam's plan. */
+export async function fetchCdsPapers(exam: 'CDS' | 'NCC' = 'CDS'): Promise<{ papers: CdsPaper[]; plan?: CdsUserPlan }> {
+  return api.get<{ papers: CdsPaper[]; plan?: CdsUserPlan }>(`/cds/papers?exam=${exam}`);
 }
 
 export async function fetchCdsPaper(id: string): Promise<{ paper: CdsPaper; questions: CdsQuestion[] }> {

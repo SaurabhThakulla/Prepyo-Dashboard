@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { MarkedText } from '@/components/practice/OptionContent';
 import { errorMessage } from '@/lib/api';
 import { cdsApi } from './cdsApi';
-import { cdsKeys, cdsMaxMarks, cdsQuestion, useCdsMocks } from './cdsShared';
+import { cdsKeys, cdsMaxMarks, cdsQuestion, useCdsMocks, cdsExamOf } from './cdsShared';
 
 interface Props {
   attemptId: string;
@@ -45,6 +45,8 @@ export default function CdsTestReport({ attemptId, onBack, onRedo }: Props) {
   const questions = data.questions.map(q => cdsQuestion(q, paper?.paperType));
   const skipped = questions.length - attempt.totalAttempted;
   const cleared = max > 0 && attempt.netScore >= max * CUT_OFF;
+  // NCC's grade also counts the practical at camp, so its written score gets no pass or fail here.
+  const ncc = cdsExamOf(paper?.paperType ?? attempt.paperType) === 'NCC';
 
   return (
     <Card className="border-primary/40 p-6 sm:p-8 space-y-6 mx-4 sm:mx-6 lg:mx-8 my-6">
@@ -55,7 +57,7 @@ export default function CdsTestReport({ attemptId, onBack, onRedo }: Props) {
             <h2 className="font-display text-2xl font-bold text-foreground">Score Report</h2>
           </div>
           <p className="text-xs text-muted-foreground">
-            {new Date(attempt.submittedAt ?? attempt.startedAt).toLocaleString('en-US')} • {attempt.paperTitle ?? paper?.title ?? 'CDS'}
+            {new Date(attempt.submittedAt ?? attempt.startedAt).toLocaleString('en-US')} • {attempt.paperTitle ?? paper?.title ?? (ncc ? 'NCC' : 'CDS')}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -79,8 +81,12 @@ export default function CdsTestReport({ attemptId, onBack, onRedo }: Props) {
             {attempt.netScore.toFixed(2)}
             {max > 0 && <span className="text-xs font-bold text-muted-foreground"> / {max}</span>}
           </div>
-          <Badge variant={cleared ? 'default' : 'outline'}>
-            {cleared ? 'Above the 20% cut-off' : 'Below the 20% cut-off'}
+          <Badge variant={ncc || !cleared ? 'outline' : 'default'}>
+            {ncc
+              ? `${max > 0 ? Math.round((Math.max(attempt.netScore, 0) / max) * 100) : 0}% of the written marks`
+              : cleared
+                ? 'Above the 20% cut-off'
+                : 'Below the 20% cut-off'}
           </Badge>
         </Card>
         <Card className="bg-background p-5 text-center space-y-1">
@@ -104,7 +110,9 @@ export default function CdsTestReport({ attemptId, onBack, onRedo }: Props) {
 
       <p className="text-xs text-muted-foreground">
         {attempt.rawScore.toFixed(2)} for correct answers − {attempt.penalty.toFixed(2)} for wrong ones = {attempt.netScore.toFixed(2)}.
-        As in the UPSC paper, a wrong answer costs a third of a right one and a skipped question costs nothing.
+        {ncc
+          ? ' Each right answer earns 2 marks, a wrong one loses half a mark and a skipped question costs nothing. Your certificate grade also counts the practical at camp, so this written score is not a grade.'
+          : ' As in the UPSC paper, a wrong answer costs a third of a right one and a skipped question costs nothing.'}
       </p>
 
       <div className="space-y-3 pt-2">

@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+import { useApp } from '@/context/AppContext';
 import { Mock, MockAttempt, MockPaperItem, Question } from '@/lib/types';
 import { CdsAttempt, CdsPaper, CdsPaperType, CdsQuestion, CdsTrack, cdsApi } from './cdsApi';
+import { NCC_SUBTASKS } from './nccSubtasks';
 
 /**
  * CDS keeps its own backend (/api/v1/cds); these turn its papers, questions,
@@ -8,11 +10,24 @@ import { CdsAttempt, CdsPaper, CdsPaperType, CdsQuestion, CdsTrack, cdsApi } fro
  * is sat in the same mock runner and shows in the same lists as every exam.
  */
 
-export const CDS_PAPERS: { type: CdsPaperType; name: string; detail: string }[] = [
+type CdsOnlyPaper = 'english' | 'gk' | 'maths';
+
+export const CDS_PAPERS: { type: CdsOnlyPaper; name: string; detail: string }[] = [
   { type: 'english', name: 'English', detail: '120 questions in 2 hours' },
   { type: 'gk', name: 'General Knowledge', detail: '120 questions in 2 hours' },
   { type: 'maths', name: 'Elementary Mathematics', detail: '100 questions in 2 hours' },
 ];
+
+/** NCC's papers: the two practice banks and the full B and C certificate mocks. */
+export const NCC_PAPERS: { type: CdsPaperType; name: string; detail: string }[] = [
+  { type: 'ncc_common', name: 'Common Subjects', detail: '120 questions in a full paper' },
+  { type: 'ncc_army', name: 'Army Wing Subjects', detail: '55 questions in a full paper' },
+  { type: 'ncc_b', name: "'B' Certificate", detail: '175 questions in 3 hours' },
+  { type: 'ncc_c', name: "'C' Certificate", detail: '175 questions in 3 hours' },
+];
+
+/** The exam a paper type belongs to: NCC for the ncc_ papers, UPSC CDS otherwise. */
+export const cdsExamOf = (type?: string | null): 'CDS' | 'NCC' => (type?.startsWith('ncc_') ? 'NCC' : 'CDS');
 
 /** The two routes through CDS, as the switch on Home and the onboarding offer them. */
 export const CDS_TRACKS: { id: CdsTrack; label: string; detail: string }[] = [
@@ -53,13 +68,15 @@ export interface CdsSubtask {
   weight: string;
   /** The topic names stored on CDS questions that belong to it. */
   topics: string[];
+  /** The heading it is listed under when that is not its paper: an NCC subject. */
+  group?: string;
 }
 
 /**
  * Each paper's question types, as the UPSC papers set them, with their usual
  * share of the paper. Practice offers them one type at a time, as PTE's tasks.
  */
-export const CDS_SUBTASKS: Record<CdsPaperType, CdsSubtask[]> = {
+export const CDS_SUBTASKS: Record<CdsOnlyPaper, CdsSubtask[]> = {
   english: [
     { key: 'spotting-errors', name: 'Spotting Errors', weight: '10–15 Qs', topics: ['Spotting Errors'],
       detail: 'A sentence in parts (a), (b), (c) and (d) No error: find the part with the grammatical error.' },
@@ -115,15 +132,18 @@ export const CDS_SUBTASKS: Record<CdsPaperType, CdsSubtask[]> = {
 };
 
 /** The paper and question type behind a practice link's ?type= key. */
+const ALL_SUBTASKS: Partial<Record<CdsPaperType, CdsSubtask[]>> = { ...CDS_SUBTASKS, ...NCC_SUBTASKS };
+
 export function cdsSubtask(key: string | null): { paper: CdsPaperType; subtask: CdsSubtask } | null {
-  for (const paper of Object.keys(CDS_SUBTASKS) as CdsPaperType[]) {
-    const subtask = CDS_SUBTASKS[paper].find(s => s.key === key);
+  for (const paper of Object.keys(ALL_SUBTASKS) as CdsPaperType[]) {
+    const subtask = ALL_SUBTASKS[paper]?.find(s => s.key === key);
     if (subtask) return { paper, subtask };
   }
   return null;
 }
 
-export const cdsPaperName = (type?: string) => CDS_PAPERS.find(p => p.type === type)?.name ?? 'CDS';
+export const cdsPaperName = (type?: string) =>
+  [...CDS_PAPERS, ...NCC_PAPERS].find(p => p.type === type)?.name ?? (cdsExamOf(type) === 'NCC' ? 'NCC' : 'CDS');
 
 /** The most a paper can score: a full mark for every question. */
 export const cdsMaxMarks = (paper?: CdsPaper) =>
@@ -198,7 +218,7 @@ export function cdsQuestion(q: CdsQuestion, paperType?: CdsPaperType): Question 
   return {
     id: q.id,
     examVersionId: '',
-    exam: 'CDS',
+    exam: cdsExamOf(paperType),
     skill: 'reading',
     typeId: `cds-${q.topic}`,
     typeName: q.topic,
@@ -219,12 +239,16 @@ export function cdsQuestion(q: CdsQuestion, paperType?: CdsPaperType): Question 
 
 export function cdsMock(paper: CdsPaper): Mock {
   const name = cdsPaperName(paper.paperType);
+  const exam = cdsExamOf(paper.paperType);
   return {
     id: paper.id,
     examVersionId: '',
-    exam: 'CDS',
+    exam,
     title: paper.title,
-    description: `${paper.totalQuestions} ${name} questions in ${paper.durationMinutes} minutes. A wrong answer costs a third of a right one; a skipped question costs nothing.`,
+    description:
+      exam === 'NCC'
+        ? `${paper.totalQuestions} questions in ${paper.durationMinutes} minutes, the written paper only. 2 marks for a right answer, half a mark off for a wrong one; a skipped question costs nothing.`
+        : `${paper.totalQuestions} ${name} questions in ${paper.durationMinutes} minutes. A wrong answer costs a third of a right one; a skipped question costs nothing.`,
     totalDurationMinutes: paper.durationMinutes,
     totalQuestions: paper.totalQuestions,
     isDiagnostic: false,
@@ -239,7 +263,7 @@ export function cdsMockAttempt(attempt: CdsAttempt, paper?: CdsPaper): MockAttem
     id: attempt.id,
     mockId: attempt.paperId,
     examVersionId: '',
-    exam: 'CDS',
+    exam: cdsExamOf(paper?.paperType ?? attempt.paperType),
     userScore: attempt.netScore,
     skillScores: {},
     totalCorrect: attempt.totalCorrect,
@@ -256,7 +280,7 @@ export function cdsPaperItems(papers: CdsPaper[], attempts: CdsAttempt[]): MockP
     const last = done[0];
     return {
       id: paper.id,
-      exam: 'CDS',
+      exam: cdsExamOf(paper.paperType),
       section: paper.paperType,
       module: '',
       number: index + 1,
@@ -274,7 +298,7 @@ export function cdsPaperItems(papers: CdsPaper[], attempts: CdsAttempt[]): MockP
 }
 
 export const cdsKeys = {
-  papers: ['cds', 'papers'] as const,
+  papers: (exam: 'CDS' | 'NCC') => ['cds', 'papers', exam] as const,
   attempts: ['cds', 'attempts'] as const,
   attempt: (id: string) => ['cds', 'attempt', id] as const,
   mistakes: ['cds', 'mistakes'] as const,
@@ -288,25 +312,48 @@ export function useCdsTrack(enabled: boolean): CdsTrack {
   return data?.track ?? 'ima';
 }
 
-/** CDS papers and finished attempts, in the shared shapes; nothing is fetched unless enabled. */
+/** The exam in the cds schema being studied: NCC when it is the active exam, UPSC CDS otherwise. */
+export function useCdsExam(): 'CDS' | 'NCC' {
+  return useApp().activeExam === 'NCC' ? 'NCC' : 'CDS';
+}
+
+/**
+ * The active exam's papers (CDS or NCC) and finished attempts, in the shared shapes;
+ * nothing is fetched unless enabled. NCC's mocks are its B and C papers only: its
+ * practice banks are practised by type, not sat whole.
+ */
 export function useCdsMocks(enabled: boolean) {
-  const papers = useQuery({ queryKey: cdsKeys.papers, queryFn: cdsApi.getPapers, enabled });
+  const exam = useCdsExam();
+  const papers = useQuery({ queryKey: cdsKeys.papers(exam), queryFn: () => cdsApi.getPapers(exam), enabled });
   const attempts = useQuery({ queryKey: cdsKeys.attempts, queryFn: cdsApi.getAttempts, enabled });
-  const finished = (attempts.data?.attempts ?? []).filter(a => a.status === 'completed');
+  const ofExam = new Set((papers.data?.papers ?? []).map(p => p.id));
+  const finished = (attempts.data?.attempts ?? []).filter(a => a.status === 'completed' && ofExam.has(a.paperId));
+  const mockPapers = (papers.data?.papers ?? []).filter(p => exam === 'CDS' || p.paperType === 'ncc_b' || p.paperType === 'ncc_c');
   return {
     papers: papers.data?.papers ?? [],
+    mockPapers,
     plan: papers.data?.plan,
     attempts: finished,
-    mocks: (papers.data?.papers ?? []).map(cdsMock),
+    mocks: mockPapers.map(cdsMock),
     mockAttempts: finished.map(a => cdsMockAttempt(a, papers.data?.papers.find(p => p.id === a.paperId))),
     isPending: enabled && (papers.isPending || attempts.isPending),
     error: papers.error ?? attempts.error,
   };
 }
 
-/** The learner's submitted practice sets, newest first. */
+/** The exam a practice set belongs to, from its question type or paper:<type>. */
+const setExam = (practice: string) =>
+  cdsExamOf(practice.startsWith('paper:') ? practice.slice('paper:'.length) : cdsSubtask(practice)?.paper);
+
+/** The learner's submitted practice sets of the active exam (CDS or NCC), newest first. */
 export function useCdsSets(enabled: boolean) {
-  return useQuery({ queryKey: cdsKeys.sets, queryFn: cdsApi.getSets, enabled, select: data => data.sets ?? [] });
+  const exam = useCdsExam();
+  return useQuery({
+    queryKey: cdsKeys.sets,
+    queryFn: cdsApi.getSets,
+    enabled,
+    select: data => (data.sets ?? []).filter(set => setExam(set.practice) === exam),
+  });
 }
 
 /** What a set practised, and the link that reopens it marked. */

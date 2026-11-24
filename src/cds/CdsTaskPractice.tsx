@@ -14,7 +14,7 @@ import { useToast } from '@/components/ui/toast';
 import { api, errorMessage } from '@/lib/api';
 import { Question } from '@/lib/types';
 import { CdsPaperType, cdsApi } from './cdsApi';
-import { cdsKeys, cdsPaperName, cdsQuestion, cdsSubtask, cdsText, setLevel, setName, useCdsMocks, useCdsSets } from './cdsShared';
+import { cdsKeys, cdsPaperName, cdsQuestion, cdsSubtask, cdsText, setLevel, setName, useCdsMocks, useCdsSets, useCdsExam } from './cdsShared';
 
 interface Checked {
   isCorrect: boolean;
@@ -45,7 +45,10 @@ export default function CdsTaskPractice() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const found = cdsSubtask(params.get('type'));
-  const paperType = (found?.paper ?? params.get('paper') ?? 'english') as CdsPaperType;
+  const exam = useCdsExam();
+  const paperType = (found?.paper ?? params.get('paper') ?? (exam === 'NCC' ? 'ncc_common' : 'english')) as CdsPaperType;
+  // CDS mocks are listed by paper; NCC's two mocks share one list.
+  const mocksHref = exam === 'NCC' ? '/mocks' : `/mocks?paper=${paperType}`;
   const title = found?.subtask.name ?? `${cdsPaperName(paperType)}: all question types`;
 
   const { papers, isPending: papersPending } = useCdsMocks(true);
@@ -156,7 +159,7 @@ export default function CdsTaskPractice() {
   if (page < 0) {
     return (
       <QuestionDrawer
-        exam="CDS"
+        exam={exam}
         skill="reading"
         typeKey={found?.subtask.key ?? null}
         isMock={false}
@@ -183,11 +186,11 @@ export default function CdsTaskPractice() {
         <Card className="mt-6 p-10 text-center space-y-3">
           <h2 className="font-display text-base font-bold text-foreground">No {title} questions yet</h2>
           <p className="text-xs text-muted-foreground">
-            They are being added. Meanwhile, sit a full {cdsPaperName(paperType)} paper.
+            They are being added. Meanwhile, sit a full {exam === 'NCC' ? 'NCC mock test' : `${cdsPaperName(paperType)} paper`}.
           </p>
           <Button asChild size="sm" className="font-bold text-xs gap-1.5">
-            <Link to={`/mocks?paper=${paperType}`}>
-              <ClipboardCheck className="w-3.5 h-3.5" /> {cdsPaperName(paperType)} papers
+            <Link to={mocksHref}>
+              <ClipboardCheck className="w-3.5 h-3.5" /> {exam === 'NCC' ? 'NCC mock tests' : `${cdsPaperName(paperType)} papers`}
             </Link>
           </Button>
         </Card>
@@ -214,7 +217,7 @@ export default function CdsTaskPractice() {
             }
           >
             <p className="text-sm text-muted-foreground leading-relaxed">
-              UPSC CDS · {cdsPaperName(paperType)}
+              {exam === 'NCC' ? 'NCC' : 'UPSC CDS'} · {found?.subtask.group ?? cdsPaperName(paperType)}
               {found ? ` · ${found.subtask.weight} a paper · ${found.subtask.detail}` : ''}
             </p>
           </QuestionHeader>
@@ -280,7 +283,7 @@ export default function CdsTaskPractice() {
                 </Button>
               ) : (
                 <Button asChild className={`${PILL} bg-white text-[#13307f] hover:bg-white/90`}>
-                  <Link to={`/mocks?paper=${paperType}`}>Try a full paper</Link>
+                  <Link to={mocksHref}>Try a full paper</Link>
                 </Button>
               )
             }
