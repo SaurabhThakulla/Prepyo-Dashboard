@@ -1,3 +1,4 @@
+import { isCdsSchemaExam } from '@/lib/types';
 import { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -71,7 +72,7 @@ function DeterministicResult({ attempt, review, xpAwarded, blankAnswers, recordi
       />
       {recordingUrl && <AnswerRecording src={recordingUrl} />}
       {review && (review.exam === 'EPS_TOPIK' || review.exam === 'JLPT') && <AskedQuestion review={review} />}
-      {review?.exam === 'CDS' && (
+      {isCdsSchemaExam(review?.exam) && (
         <ResultSection title="Question">
           <p className="whitespace-pre-line text-sm font-medium leading-relaxed text-foreground"><MarkedText text={review.prompt} /></p>
           {review.contextPassage && (
@@ -110,7 +111,7 @@ function DeterministicResult({ attempt, review, xpAwarded, blankAnswers, recordi
         <Script text={review.audioTranscript} />
       ))}
       {/* The AI explainer reads the shared question bank, which has no CDS questions. */}
-      {review && !attempt.isCorrect && review.exam !== 'CDS' && <ExplainMistake attempt={attempt} review={review} />}
+      {review && !attempt.isCorrect && !isCdsSchemaExam(review.exam) && <ExplainMistake attempt={attempt} review={review} />}
     </div>
   );
 }

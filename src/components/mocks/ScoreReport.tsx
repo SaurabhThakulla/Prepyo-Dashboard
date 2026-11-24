@@ -3,7 +3,7 @@ import { Award, RotateCcw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { MockAttempt, MockSubmitOutcome } from '@/lib/types';
+import { MockAttempt, MockSubmitOutcome, isCdsSchemaExam } from '@/lib/types';
 import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
 import CdsTestReport from '@/cds/CdsTestReport';
 
@@ -27,7 +27,7 @@ export default function ScoreReport({ attempt, outcome, onBack, onRedo }: ScoreR
     return <IeltsTestReport attemptId={attempt.id} xpAwarded={outcome?.xpAwarded} onBack={onBack} onRedo={onRedo} />;
   }
   // CDS has its net marks after negative marking, and every answer.
-  if (attempt.exam === 'CDS') {
+  if (isCdsSchemaExam(attempt.exam)) {
     return <CdsTestReport attemptId={attempt.id} onBack={onBack} onRedo={onRedo} />;
   }
   const skillScores = Object.entries(attempt.skillScores ?? {});
