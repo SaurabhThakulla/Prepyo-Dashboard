@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { MockAttempt, MockSubmitOutcome } from '@/lib/types';
 import IeltsTestReport from '@/components/mocks/ielts/IeltsTestReport';
+import CdsTestReport from '@/cds/CdsTestReport';
 
 interface ScoreReportProps {
   attempt: MockAttempt;
@@ -25,6 +26,10 @@ export default function ScoreReport({ attempt, outcome, onBack, onRedo }: ScoreR
   if (attempt.exam === 'IELTS') {
     return <IeltsTestReport attemptId={attempt.id} xpAwarded={outcome?.xpAwarded} onBack={onBack} onRedo={onRedo} />;
   }
+  // CDS has its net marks after negative marking, and every answer.
+  if (attempt.exam === 'CDS') {
+    return <CdsTestReport attemptId={attempt.id} onBack={onBack} onRedo={onRedo} />;
+  }
   const skillScores = Object.entries(attempt.skillScores ?? {});
 
   return (
@@ -36,7 +41,7 @@ export default function ScoreReport({ attempt, outcome, onBack, onRedo }: ScoreR
             <h2 className="font-display text-2xl font-bold text-foreground">Score Report</h2>
           </div>
           <p className="text-xs text-muted-foreground">
-            {new Date(attempt.completedAt).toLocaleString()} • {attempt.exam}
+            {new Date(attempt.completedAt).toLocaleString('en-US')} • {attempt.exam}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

@@ -71,6 +71,14 @@ function DeterministicResult({ attempt, review, xpAwarded, blankAnswers, recordi
       />
       {recordingUrl && <AnswerRecording src={recordingUrl} />}
       {review && (review.exam === 'EPS_TOPIK' || review.exam === 'JLPT') && <AskedQuestion review={review} />}
+      {review?.exam === 'CDS' && (
+        <ResultSection title="Question">
+          <p className="whitespace-pre-line text-sm font-medium leading-relaxed text-foreground"><MarkedText text={review.prompt} /></p>
+          {review.contextPassage && (
+            <p className="whitespace-pre-line rounded-xl bg-primary/[0.04] px-4 py-3 text-sm leading-relaxed text-foreground"><MarkedText text={review.contextPassage} /></p>
+          )}
+        </ResultSection>
+      )}
       {review?.typeId === READING_TYPES.reorderParagraphs ? (
         <ResultSection title="Your answer">
           {/* Every box is in a re-order key, so the choice list would mark them all right. */}
@@ -101,7 +109,8 @@ function DeterministicResult({ attempt, review, xpAwarded, blankAnswers, recordi
       ) : (
         <Script text={review.audioTranscript} />
       ))}
-      {review && !attempt.isCorrect && <ExplainMistake attempt={attempt} review={review} />}
+      {/* The AI explainer reads the shared question bank, which has no CDS questions. */}
+      {review && !attempt.isCorrect && review.exam !== 'CDS' && <ExplainMistake attempt={attempt} review={review} />}
     </div>
   );
 }

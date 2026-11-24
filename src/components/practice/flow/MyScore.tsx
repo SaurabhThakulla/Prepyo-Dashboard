@@ -249,10 +249,10 @@ const round = (n: number) => Math.round(n * 100) / 100;
 /** "Today, 8:10 PM", "Yesterday, 4:59 PM", or the full date for anything older. */
 const when = (at: string) => {
   const d = new Date(at);
-  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86_400_000);
   if (days === 0) return `Today, ${time}`;
   if (days === 1) return `Yesterday, ${time}`;
-  return d.toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return d.toLocaleString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 };
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();

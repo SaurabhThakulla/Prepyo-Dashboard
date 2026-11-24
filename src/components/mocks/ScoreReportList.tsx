@@ -73,7 +73,7 @@ export default function ScoreReportList({
             <div className="text-xs text-muted-foreground flex items-center gap-3">
               <span className="flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
-                {new Date(attempt.completedAt).toLocaleDateString()}
+                {new Date(attempt.completedAt).toLocaleDateString('en-US')}
               </span>
               <span>•</span>
               <span>{Math.round(attempt.durationSeconds / 60)} min</span>
@@ -83,10 +83,10 @@ export default function ScoreReportList({
           <div className="flex items-center gap-4">
             <div className="text-right">
               <div className="text-[11px] font-bold text-muted-foreground uppercase">
-                {attempt.exam === 'IELTS' ? 'Band' : 'Score'}
+                {attempt.exam === 'IELTS' ? 'Band' : attempt.exam === 'CDS' ? 'Net marks' : 'Score'}
               </div>
               <div className="font-display text-2xl font-black text-foreground">
-                {attempt.exam === 'IELTS' ? attempt.userScore.toFixed(1) : Math.round(attempt.userScore)}
+                {attempt.exam === 'IELTS' ? attempt.userScore.toFixed(1) : attempt.exam === 'CDS' ? attempt.userScore.toFixed(2) : Math.round(attempt.userScore)}
               </div>
             </div>
 

@@ -27,6 +27,8 @@ interface Props {
   /** The next item in the list, in its order (Shuffle picks one at random). */
   onNext?: () => void;
   disabled?: boolean;
+  /** At the far right, in Next's place: a page's own main action (CDS's Submit set). */
+  end?: ReactNode;
 }
 
 // One look for every control on the right: same height, border and surface.
@@ -36,7 +38,7 @@ export const ON_BAR = 'text-white hover:bg-white/15 hover:text-white';
 const ARROW = 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:pointer-events-none disabled:opacity-30';
 
 /** The row under every practice item: actions on the left; cost and shuffle in the right corner. */
-export default function PracticeActionBar({ actions, middle, hideMiddleOnPhone, cost, costDoublesWhenLong, onShuffle, onNext, disabled }: Props) {
+export default function PracticeActionBar({ actions, middle, hideMiddleOnPhone, cost, costDoublesWhenLong, onShuffle, onNext, disabled, end }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-[#0f2a6b] bg-[#13307f] dark:border-border dark:bg-card p-2.5 shadow-md sm:gap-3 sm:p-3">
       {/* One row when it fits; otherwise the right corner wraps under the buttons, kept to the right. */}
@@ -49,6 +51,7 @@ export default function PracticeActionBar({ actions, middle, hideMiddleOnPhone, 
       )}
       <div className="ml-auto flex items-center gap-2">
         {cost != null && <CostChip cost={cost} costDoublesWhenLong={costDoublesWhenLong} side="top" />}
+        {end}
         {onNext && (
           <button
             type="button"
@@ -148,7 +151,7 @@ export function CostChip({
             <div className="flex justify-between items-center text-muted-foreground">
               <span>{isPremium ? 'Plan allowance:' : 'Your allowance:'}</span>
               <span className="font-semibold text-foreground">
-                {limit.toLocaleString()} AI gradings ({totalCredits.toLocaleString()} credits)
+                {limit.toLocaleString('en-US')} AI gradings ({totalCredits.toLocaleString('en-US')} credits)
               </span>
             </div>
             {!isPremium && (
@@ -160,7 +163,7 @@ export function CostChip({
               <div className="flex justify-between items-center text-muted-foreground pt-1.5 border-t border-border/50">
                 <span>Remaining pool:</span>
                 <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                  {formatGradings(remainingGradings)} gradings ({remainingCredits?.toLocaleString()} credits)
+                  {formatGradings(remainingGradings)} gradings ({remainingCredits?.toLocaleString('en-US')} credits)
                 </span>
               </div>
             )}
