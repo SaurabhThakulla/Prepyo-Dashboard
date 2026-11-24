@@ -135,6 +135,7 @@ const EXAMS: { id: string; label: string; tone: Tone }[] = [
   { id: 'EPS_TOPIK', label: 'EPS-TOPIK', tone: 'green' },
   { id: 'JLPT', label: 'JLPT', tone: 'rose' },
   { id: 'CDS', label: 'UPSC CDS', tone: 'amber' },
+  { id: 'NCC', label: 'NCC', tone: 'green' },
 ];
 
 const QUICK_LINKS: { to: string; label: string; hint: string; icon: LucideIcon }[] = [

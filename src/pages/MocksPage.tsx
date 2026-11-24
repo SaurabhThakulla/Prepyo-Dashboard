@@ -6,7 +6,7 @@ import { queryKeys } from '@/lib/queryKeys';
 import { Award, BarChart3, FileText } from 'lucide-react';
 import { MocksPageSkeleton } from '@/components/layout/PageSkeleton';
 import { Card } from '@/components/ui/card';
-import { EXAM_LABELS, Mock, MockAttempt } from '@/lib/types';
+import { EXAM_LABELS, Mock, MockAttempt, isCdsSchemaExam } from '@/lib/types';
 import { api, errorMessage } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { useMocks, useMockAttempts } from '@/lib/hooks/useResources';
@@ -40,7 +40,7 @@ export default function MocksPage() {
   const queryClient = useQueryClient();
 
   // CDS papers and results come from the CDS backend, in the same shapes.
-  const isCds = activeExam === 'CDS';
+  const isCds = isCdsSchemaExam(activeExam);
   const cds = useCdsMocks(isCds);
 
   const mocks = isCds ? cds.mocks : mocksQuery.data?.mocks ?? [];
@@ -53,7 +53,7 @@ export default function MocksPage() {
 
   const addAttempt = useCallback(
     (attempt: MockAttempt) => {
-      if (attempt.exam === 'CDS') return; // useMockExam refetches the CDS results
+      if (isCdsSchemaExam(attempt.exam)) return; // useMockExam refetches the CDS results
       queryClient.setQueryData(
         queryKeys.mockAttempts(),
         (previous: { attempts: MockAttempt[] } | undefined) => ({
@@ -105,7 +105,7 @@ export default function MocksPage() {
       setReviewAttempt(found);
     } else if (isCds) {
       // The CDS report loads the attempt itself.
-      setReviewAttempt({ id: reviewParam, exam: 'CDS' } as MockAttempt);
+      setReviewAttempt({ id: reviewParam, exam: activeExam } as MockAttempt);
     } else {
       api.get<{ attempt: MockAttempt }>(`/mocks/attempts/${reviewParam}`)
         .then(data => {
@@ -231,7 +231,7 @@ export default function MocksPage() {
       <Suspense fallback={<AppPageSkeleton />}>
         <CdsPaperCatalog
           tabs={tabs}
-          papers={cds.papers}
+          papers={cds.mockPapers}
           attempts={cds.attempts}
           plan={cds.plan}
           paperType={searchParams.get('paper')}

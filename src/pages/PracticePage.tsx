@@ -39,7 +39,7 @@ import { isAiRatedListening, isReadAloudTask, isRepeatSentenceTask, isWordHighli
 import { allowsMultipleChoices } from '@/lib/choices';
 import { minimumWritingWords, writingLengthNote, writingWordCount, writingWordTarget } from '@/lib/writing';
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
-import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isInstitutionStudent, isPremiumUser, listeningPlays, PracticeAttempt, Question, SkillType, ieltsModuleOf } from '@/lib/types';
+import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isInstitutionStudent, isPremiumUser, listeningPlays, PracticeAttempt, Question, SkillType, ieltsModuleOf, isCdsSchemaExam } from '@/lib/types';
 import FreePlanNotice from '@/institution/FreePlanNotice';
 import PracticeActionBar, { CostChip, gradingUnits } from '@/components/practice/flow/PracticeActionBar';
 import MyScore from '@/components/practice/flow/MyScore';
@@ -123,7 +123,7 @@ const CdsTaskPractice = React.lazy(() => import('@/cds/CdsTaskPractice'));
 export default function PracticePage() {
   const [params] = useSearchParams();
   const { activeExam } = useApp();
-  if (activeExam === 'CDS') {
+  if (isCdsSchemaExam(activeExam)) {
     return (
       <React.Suspense fallback={null}>
         <CdsTaskPractice key={`${params.get('type') ?? ''}-${params.get('paper') ?? ''}`} />
@@ -454,7 +454,8 @@ function PracticePageContent() {
       }
 
       const startingKey = `${activeExam}:${selectedSkill}:${targetQuestion.id}`;
-      const started = await api.post<{ scored?: boolean }>('/practice/start', {
+      // Opening is free: the first submitted answer spends the sub-test, so no toast here.
+      await api.post('/practice/start', {
         exam: activeExam,
         skill: selectedSkill,
         questionId: targetQuestion.id,
@@ -463,11 +464,6 @@ function PracticePageContent() {
       setStartedTask(startingKey);
       setStartedAt(Date.now());
       await refreshUser();
-      // Only a spent credit is worth a toast; free and unlimited starts stay quiet.
-      // The server's answer: the capability check may not have returned when the page starts on its own.
-      if (!speakingUnscored && started?.scored !== false && Number.isFinite(subTestsRemaining)) {
-        toast.success('Practice started', '1 sub-test credit applied. Good luck!');
-      }
     } catch (err) {
       startFailedFor.current = targetQuestion?.id ?? listKey;
       if (err instanceof ApiError && err.isLimitReached) {

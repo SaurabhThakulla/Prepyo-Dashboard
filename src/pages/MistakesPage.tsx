@@ -34,7 +34,7 @@ import { pteReportHref } from '@/lib/pteMock/catalog';
 import { PTE_MOCK_ATTEMPT_IDS, SECTION_MOCK_TITLES } from '@/components/mocks/ScoreReportList';
 import { SCALE } from '@/components/practice/PracticeResultCard';
 import { matchesTypeKey, SYLLABUS, typeKey } from '@/lib/syllabus';
-import { SkillType, ExamType, Evaluation, Mistake, MistakeAnalytics, MockAttempt, PracticeAttempt, isInstitutionStudent, isPremiumUser } from '@/lib/types';
+import { SkillType, ExamType, Evaluation, Mistake, MistakeAnalytics, MockAttempt, PracticeAttempt, isInstitutionStudent, isPremiumUser, isCdsSchemaExam } from '@/lib/types';
 import { PteHistoryEntry } from '@/lib/pteMock/types';
 import { DEFAULT_PLANS, formatPlanName, premiumPlanIdFor } from '@/lib/subscriptions';
 import AskInstitution from '@/components/common/AskInstitution';
@@ -266,7 +266,7 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
     period
   );
   // CDS keeps its mistakes and papers on its own backend; its notebook is free.
-  const isCds = activeExam === 'CDS';
+  const isCds = isCdsSchemaExam(activeExam);
   // A CDS practice set is one entry, opening on its five questions marked.
   const cdsSets = useCdsSets(isCds);
   const cdsMocks = useCdsMocks(isCds);

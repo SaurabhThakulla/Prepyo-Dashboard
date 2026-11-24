@@ -10,21 +10,21 @@ import MistakesPage from '@/pages/MistakesPage';
 import { planHeadline } from '@/components/onboarding/onboarding';
 import { useDashboardSummary } from '@/lib/hooks/useDashboardSummary';
 import { daysUntilExam, formatExamDate } from '@/lib/dates';
-import { EXAM_LABELS, skillsFor } from '@/lib/types';
+import { EXAM_LABELS, skillsFor, isCdsSchemaExam } from '@/lib/types';
 import { DashboardPageSkeleton } from '@/components/layout/PageSkeleton';
 import { BookOpen, Calculator, Globe } from 'lucide-react';
 import JLPTLevelSwitch from '@/components/dashboard/JLPTLevelSwitch';
 import CdsTrackSwitch from '@/cds/CdsTrackSwitch';
-import { cdsPapersFor, useCdsMocks, useCdsTrack } from '@/cds/cdsShared';
+import { cdsPapersFor, useCdsMocks, useCdsTrack, cdsPaperName } from '@/cds/cdsShared';
 
 export default function DashboardPage() {
   const { user, activeExam, pteVariant } = useApp();
   const [isExamDateOpen, setIsExamDateOpen] = useState(false);
   const { progress, isLoading } = useDashboardSummary(activeExam);
-  const isCds = activeExam === 'CDS';
-  // CDS is practised as papers on its own backend: a card per paper, not per skill.
+  const isCds = isCdsSchemaExam(activeExam);
+  // CDS and NCC are practised as papers on their own backend: a card per paper, not per skill.
   const cds = useCdsMocks(isCds);
-  const cdsTrack = useCdsTrack(isCds);
+  const cdsTrack = useCdsTrack(activeExam === 'CDS');
 
   if (isLoading) {
     return <DashboardPageSkeleton />;
@@ -61,7 +61,7 @@ export default function DashboardPage() {
 
         <div className="relative flex flex-col sm:flex-row sm:items-center gap-3">
           {activeExam === 'JLPT' && <JLPTLevelSwitch />}
-          {isCds && <CdsTrackSwitch />}
+          {activeExam === 'CDS' && <CdsTrackSwitch />}
           <ExamCountdown
             examDate={examDate}
             daysLeft={daysLeft}
@@ -71,7 +71,19 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-2 2xl:grid-cols-4 gap-3 sm:gap-4">
-        {isCds && cdsPapersFor(cdsTrack).map(paper => {
+        {/* NCC: a card for each certificate's mock test. */}
+        {activeExam === 'NCC' && cds.mockPapers.map(paper => (
+          <SkillQuestionCard
+            key={paper.id}
+            skill="reading"
+            icon={BookOpen}
+            label={`${cdsPaperName(paper.paperType)} Mock`}
+            completed={cds.attempts.some(a => a.paperId === paper.id) ? 1 : 0}
+            total={1}
+            href="/mocks"
+          />
+        ))}
+        {activeExam === 'CDS' && cdsPapersFor(cdsTrack).map(paper => {
           const papers = cds.papers.filter(p => p.paperType === paper.type);
           return (
             <SkillQuestionCard
