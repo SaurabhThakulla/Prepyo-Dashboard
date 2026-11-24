@@ -222,7 +222,7 @@ export default function CdsTaskPractice() {
             </p>
           </QuestionHeader>
 
-          {setDone && <SetScoreCard set={set} checked={checked} maths={paperType === 'maths'} />}
+          {setDone && <SetScoreCard set={set} checked={checked} maths={paperType === 'maths'} ncc={exam === 'NCC'} />}
 
           {/* All five on one page, each with its question beside its answers. */}
           {set.map((question, i) => (
@@ -295,15 +295,15 @@ export default function CdsTaskPractice() {
   );
 }
 
-/** UPSC's marks for one question: 0.833 (a third off when wrong) in English and GK, 1 in Maths. */
-const MARKS = { english: [0.833, 0.277], maths: [1, 0.333] } as const;
+/** Marks for one question: UPSC's 0.833 (a third off when wrong) in English and GK, 1 in Maths; NCC's 2, half a mark off. */
+const MARKS = { english: [0.833, 0.277], maths: [1, 0.333], ncc: [2, 0.5] } as const;
 
 /** The result of a submitted set, as the other exams' practice shows a result: the shared summary card. */
-function SetScoreCard({ set, checked, maths }: { set: Question[]; checked: Record<string, Checked>; maths: boolean }) {
+function SetScoreCard({ set, checked, maths, ncc }: { set: Question[]; checked: Record<string, Checked>; maths: boolean; ncc: boolean }) {
   const right = set.filter(q => checked[q.id]?.isCorrect).length;
   const wrong = set.filter(q => checked[q.id] && !checked[q.id].isCorrect).length;
   const skipped = set.length - right - wrong;
-  const [mark, penalty] = maths ? MARKS.maths : MARKS.english;
+  const [mark, penalty] = ncc ? MARKS.ncc : maths ? MARKS.maths : MARKS.english;
   const net = right * mark - wrong * penalty;
   const fraction = set.length ? right / set.length : 0;
   return (
@@ -315,8 +315,10 @@ function SetScoreCard({ set, checked, maths }: { set: Question[]; checked: Recor
         fraction={fraction}
         tone={toneFor(fraction)}
         verdict={right === set.length ? 'All correct' : right > 0 ? 'Partly right' : 'Not quite'}
-        meta={[`${wrong} wrong`, `${skipped} skipped`, `UPSC marks ${net.toFixed(2)} of ${(set.length * mark).toFixed(2)}`]}
-        summary="Each answer is marked below. As in the UPSC paper, a wrong answer costs a third of a right one and a skipped question costs nothing."
+        meta={[`${wrong} wrong`, `${skipped} skipped`, `${ncc ? 'NCC' : 'UPSC'} marks ${net.toFixed(2)} of ${(set.length * mark).toFixed(2)}`]}
+        summary={ncc
+          ? 'Each answer is marked below. As in the NCC written paper, a right answer earns 2 marks, a wrong one loses half a mark and a skipped question costs nothing.'
+          : 'Each answer is marked below. As in the UPSC paper, a wrong answer costs a third of a right one and a skipped question costs nothing.'}
         notes={wrong > 0 ? ['Wrong answers are saved to your Mistake Bank.'] : []}
       />
     </Card>

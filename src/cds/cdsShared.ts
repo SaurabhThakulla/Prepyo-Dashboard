@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useApp } from '@/context/AppContext';
 import { Mock, MockAttempt, MockPaperItem, Question } from '@/lib/types';
-import { CdsAttempt, CdsPaper, CdsPaperType, CdsQuestion, CdsTrack, cdsApi } from './cdsApi';
+import { CdsAttempt, CdsPaper, CdsPaperType, CdsQuestion, CdsTrack, NccWing, cdsApi } from './cdsApi';
 import { NCC_SUBTASKS } from './nccSubtasks';
 
 /**
@@ -12,16 +12,26 @@ import { NCC_SUBTASKS } from './nccSubtasks';
 
 type CdsOnlyPaper = 'english' | 'gk' | 'maths';
 
-export const CDS_PAPERS: { type: CdsOnlyPaper; name: string; detail: string }[] = [
-  { type: 'english', name: 'English', detail: '120 questions in 2 hours' },
-  { type: 'gk', name: 'General Knowledge', detail: '120 questions in 2 hours' },
-  { type: 'maths', name: 'Elementary Mathematics', detail: '100 questions in 2 hours' },
+/** CDS's three papers; each is out of 100 marks (UPSC CDS notice). */
+export const CDS_PAPERS: { type: CdsOnlyPaper; name: string; detail: string; marks: number }[] = [
+  { type: 'english', name: 'English', detail: '120 questions in 2 hours', marks: 100 },
+  { type: 'gk', name: 'General Knowledge', detail: '120 questions in 2 hours', marks: 100 },
+  { type: 'maths', name: 'Elementary Mathematics', detail: '100 questions in 2 hours', marks: 100 },
+];
+
+/** NCC's three wings: the common subjects are the same; the wing decides the specialised ones. */
+export const NCC_WINGS: { id: NccWing; label: string; detail: string }[] = [
+  { id: 'army', label: 'Army Wing', detail: 'Map reading, field craft, military history' },
+  { id: 'navy', label: 'Naval Wing', detail: 'Seamanship, naval communication, navigation' },
+  { id: 'air', label: 'Air Wing', detail: 'Principles of flight, air campaigns, aero modelling' },
 ];
 
 /** NCC's papers: the two practice banks and the full B and C certificate mocks. */
 export const NCC_PAPERS: { type: CdsPaperType; name: string; detail: string }[] = [
   { type: 'ncc_common', name: 'Common Subjects', detail: '120 questions in a full paper' },
   { type: 'ncc_army', name: 'Army Wing Subjects', detail: '55 questions in a full paper' },
+  { type: 'ncc_navy', name: 'Naval Wing Subjects', detail: '55 questions in a full paper' },
+  { type: 'ncc_air', name: 'Air Wing Subjects', detail: '55 questions in a full paper' },
   { type: 'ncc_b', name: "'B' Certificate", detail: '175 questions in 3 hours' },
   { type: 'ncc_c', name: "'C' Certificate", detail: '175 questions in 3 hours' },
 ];
@@ -70,6 +80,8 @@ export interface CdsSubtask {
   topics: string[];
   /** The heading it is listed under when that is not its paper: an NCC subject. */
   group?: string;
+  /** What that heading is worth, shown beside it: an NCC subject's B and C marks. */
+  groupNote?: string;
 }
 
 /**
@@ -306,6 +318,12 @@ export const cdsKeys = {
   sets: ['cds', 'sets'] as const,
 };
 
+/** The cadet's NCC wing; the Army Wing's until they choose another. */
+export function useNccWing(enabled: boolean): NccWing {
+  const { data } = useQuery({ queryKey: cdsKeys.track, queryFn: cdsApi.getTrack, enabled });
+  return data?.wing ?? 'army';
+}
+
 /** The learner's CDS track; IMA, INA and AFA's until they choose OTA. */
 export function useCdsTrack(enabled: boolean): CdsTrack {
   const { data } = useQuery({ queryKey: cdsKeys.track, queryFn: cdsApi.getTrack, enabled });
@@ -328,7 +346,11 @@ export function useCdsMocks(enabled: boolean) {
   const attempts = useQuery({ queryKey: cdsKeys.attempts, queryFn: cdsApi.getAttempts, enabled });
   const ofExam = new Set((papers.data?.papers ?? []).map(p => p.id));
   const finished = (attempts.data?.attempts ?? []).filter(a => a.status === 'completed' && ofExam.has(a.paperId));
-  const mockPapers = (papers.data?.papers ?? []).filter(p => exam === 'CDS' || p.paperType === 'ncc_b' || p.paperType === 'ncc_c');
+  const wing = useNccWing(enabled && exam === 'NCC');
+  // An NCC mock's wing is its id's suffix (ncc_b_mock_1_navy); none is the Army Wing's.
+  const wingOf = (id: string) => (id.endsWith('_navy') ? 'navy' : id.endsWith('_air') ? 'air' : 'army');
+  const mockPapers = (papers.data?.papers ?? []).filter(p =>
+    exam === 'CDS' || ((p.paperType === 'ncc_b' || p.paperType === 'ncc_c') && wingOf(p.id) === wing));
   return {
     papers: papers.data?.papers ?? [],
     mockPapers,
