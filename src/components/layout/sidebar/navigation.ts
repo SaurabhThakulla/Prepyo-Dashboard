@@ -33,6 +33,7 @@ import {
 import { lessonHref } from '@/data/learnKorean';
 import { JLPT_SECTIONS, type JlptSection } from '@/data/tutorials';
 import { CDS_SUBTASKS, cdsPapersFor } from '@/cds/cdsShared';
+import { NCC_SUBTASKS } from '@/cds/nccSubtasks';
 import type { CdsTrack } from '@/cds/cdsApi';
 
 const JLPT_SECTION_ICON: Record<JlptSection, LucideIcon> = { vocabulary: Languages, 'grammar-reading': BookOpen, listening: Headphones };
@@ -174,6 +175,8 @@ export function buildSections(
   const isLanguageExam = activeExam === 'EPS_TOPIK' || activeExam === 'JLPT';
   // CDS is practised as whole papers, timed, through its own backend.
   const isCds = activeExam === 'CDS';
+  // NCC, like CDS, is practised and sat from the cds schema: written paper only.
+  const isNcc = activeExam === 'NCC';
 
   return [
     // Admins keep their Home section; learners reach their dashboard from the logo.
@@ -190,7 +193,16 @@ export function buildSections(
       // own shape, straight from the syllabus, so PTE and IELTS each list their
       // own tasks and a change there needs no edit here.
       // CDS: each paper a heading, its question types under it, as PTE lists a skill's tasks.
-      items: isCds ? cdsPapersFor(cdsTrack).flatMap(paper => CDS_SUBTASKS[paper.type].map(task => ({
+      // NCC: each subject a heading, its question types under it.
+      items: isNcc ? [...NCC_SUBTASKS.ncc_common, ...NCC_SUBTASKS.ncc_army].map(task => ({
+        href: `/practice?skill=reading&type=${task.key}`,
+        label: task.name,
+        icon: FilePenLine,
+        // No weight pill: an NCC subject's B and C counts would squeeze the names; the practice page shows them.
+        sublabel: task.weight,
+        description: task.detail,
+        group: task.group,
+      })) : isCds ? cdsPapersFor(cdsTrack).flatMap(paper => CDS_SUBTASKS[paper.type].map(task => ({
         href: `/practice?skill=reading&type=${task.key}`,
         label: task.name,
         icon: FilePenLine,
@@ -288,13 +300,15 @@ export function buildSections(
       description: 'Timed full exams with scorecards',
       items: [
         // An institution's students see the tests their institution sets them first.
-        ...(!isLanguageExam && !isCds && user?.institution
+        ...(!isLanguageExam && !isCds && !isNcc && user?.institution
           ? [{ href: '/institute-mock', label: 'Institute Mock', icon: ClipboardCheck, sublabel: `Tests set by ${user.institution.name}` }]
           : []),
-        ...(isCds
+        ...(isNcc
+          ? [{ href: '/mocks', label: 'NCC mock tests', icon: ClipboardCheck, sublabel: "'B' and 'C' certificate written papers" }]
+          : isCds
           ? [{ href: '/mocks', label: 'CDS papers', icon: ClipboardCheck, sublabel: 'English, GK and Maths, timed' }]
           : isLanguageExam ? [] : isPTE ? pteMockItems(pteVariant) : ieltsMockItems()),
-        ...(isCds ? [] : [{
+        ...(isCds || isNcc ? [] : [{
           href: '/diagnostic',
           label: 'Level check',
           icon: Gauge,

@@ -10,6 +10,8 @@ const EXAMS: { exam: ExamType; target: string }[] = [
   // JLPT is pass or fail, at the level the admin picks beside these pills.
   { exam: 'JLPT', target: 'Pass' },
   { exam: 'CDS', target: '140+' },
+  // NCC: an 'A' grade needs 70%, so 245 of the 350 written marks.
+  { exam: 'NCC', target: '245+' },
 ];
 
 /**

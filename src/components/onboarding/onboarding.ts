@@ -3,7 +3,7 @@ import { EXAM_LABELS, ExamType, SkillType, UserProfile, isAdmin, isInstitutionSt
 export type StudyGoal = NonNullable<UserProfile['studyGoal']>;
 export type Destination = NonNullable<UserProfile['destination']>;
 
-/** True when the browser's clock is set to India, where the onboarding offers UPSC CDS alone. */
+/** True when the browser's clock is set to India, where the onboarding offers UPSC CDS and NCC. */
 export function inIndia(timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone): boolean {
   return timeZone === 'Asia/Kolkata' || timeZone === 'Asia/Calcutta';
 }
@@ -32,6 +32,8 @@ export const SCORE_SCALE: Record<ExamType, ScoreScale> = {
   // and reading and 19 in listening; schools and employers may ask for more.
   JLPT: { min: 80, max: 180, step: 1, presets: [80, 100, 120, 140], fallback: 100 },
   CDS: { min: 50, max: 300, step: 1, presets: [100, 130, 150, 170], fallback: 140 },
+  // NCC written paper out of 350: 245 is the 70% an 'A' grade needs.
+  NCC: { min: 100, max: 350, step: 5, presets: [195, 245, 280, 315], fallback: 245 },
 };
 
 export function clampScore(exam: ExamType, score: number): number {

@@ -102,6 +102,12 @@ const EXAMS: { id: ExamType; name: string; scale: string; blurb: string }[] = [
     scale: 'Scores 0–300',
     blurb: 'English, General Knowledge and Maths.',
   },
+  {
+    id: 'NCC',
+    name: "NCC 'B' & 'C'",
+    scale: 'Written paper, 350 marks',
+    blurb: "The NCC 'B' and 'C' certificate written paper (Army Wing): common and Army subjects. The practical is done at camp.",
+  },
 ];
 
 /** The ends of each exam's scale, drawn under its card. */
@@ -111,6 +117,7 @@ const SCALE_ENDS: Record<ExamType, [string, string]> = {
   EPS_TOPIK: ['0', '100'],
   JLPT: ['0', '180'],
   CDS: ['0', '300'],
+  NCC: ['0', '350'],
 };
 
 /** Exam-step look, and what Prepyo gives you for each exam. */
@@ -157,6 +164,14 @@ const EXAM_STYLE: Record<
     ring: 'border-emerald-600 ring-emerald-600/20',
     wash: 'from-emerald-50',
     bar: 'bg-emerald-600',
+  },
+  NCC: {
+    facts: ['Written paper'],
+    tile: 'bg-indigo-600 text-white',
+    soft: 'bg-indigo-50 text-indigo-700',
+    ring: 'border-indigo-600 ring-indigo-600/20',
+    wash: 'from-indigo-50',
+    bar: 'bg-indigo-600',
   },
 };
 
@@ -225,8 +240,8 @@ export default function OnboardingFlow({
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   const steps = STEPS;
-  // India is offered UPSC CDS alone; everywhere else, every exam but CDS.
-  const exams = useMemo(() => EXAMS.filter(option => (option.id === 'CDS') === inIndia()), []);
+  // India is offered UPSC CDS and NCC; everywhere else, every exam but those two.
+  const exams = useMemo(() => EXAMS.filter(option => (option.id === 'CDS' || option.id === 'NCC') === inIndia()), []);
   // With one exam on offer (UPSC CDS in India) it is chosen already, so its academy question shows at once.
   useEffect(() => {
     if (exams.length === 1 && !exam) chooseExam(exams[0].id);
@@ -238,6 +253,7 @@ export default function OnboardingFlow({
 
   // Plans logic
   const isCds = chosen === 'CDS';
+  const isNcc = chosen === 'NCC';
   const premiumId = premiumPlanIdFor(chosen, currentPaidPlan);
   const standardExamPlans = plans.filter(plan => plan.id === 'free' || plan.id === premiumId);
 
@@ -293,7 +309,30 @@ export default function OnboardingFlow({
     },
   ];
 
-  const displayPlans = isCds ? cdsPlans : standardExamPlans;
+  // NCC: free, or NCC Monthly at INR 199 (000226).
+  const nccPlans: SubscriptionPlan[] = [
+    { ...cdsPlans[0], features: ['Practice sets in every subject', '1 full mock test', 'Answer keys'] },
+    {
+      id: 'ncc_monthly',
+      name: 'NCC Monthly',
+      priceNPR: 199,
+      durationMonths: 1,
+      durationDays: 30,
+      bonusDays: 0,
+      features: [
+        'Practice in all 17 subjects of the written paper',
+        "Full 'B' and 'C' certificate mock tests",
+        'Answer keys and explanations',
+        'Mistake Notebook',
+      ],
+      subTestsPerDay: 100,
+      mockTestsIncluded: 20,
+      isPopular: true,
+      unlimited: true,
+    },
+  ];
+
+  const displayPlans = isCds ? cdsPlans : isNcc ? nccPlans : standardExamPlans;
   const selectedPlan = displayPlans.find(plan => plan.id === planId) ?? null;
   const needsPayment = selectedPlan !== null && selectedPlan.priceNPR > 0 && selectedPlan.id !== currentPaidPlan;
 
@@ -352,6 +391,8 @@ export default function OnboardingFlow({
     setExam(next);
     if (next === 'CDS') {
       setPlanId('cds_monthly');
+    } else if (next === 'NCC') {
+      setPlanId('ncc_monthly');
     } else {
       setPlanId(premiumPlanIdFor(next, currentPaidPlan));
     }
@@ -374,7 +415,7 @@ export default function OnboardingFlow({
         targetExam: exam,
         ...(exam === 'IELTS' ? { targetModule: ieltsModule } : {}),
         targetScore: SCORE_SCALE[exam]?.fallback ?? 65,
-        studyGoal: exam === 'CDS' ? 'work' : 'other',
+        studyGoal: exam === 'CDS' || exam === 'NCC' ? 'work' : 'other',
         destination: exam === 'EPS_TOPIK' ? 'south-korea' : exam === 'JLPT' ? 'japan' : 'other',
         priorAttempt: 'first',
         focusSkill: skillsFor(exam)[0] ?? 'reading',
@@ -477,7 +518,7 @@ export default function OnboardingFlow({
                     <span className="relative text-[11px] font-bold uppercase tracking-wider text-sky-200">How it works</span>
                     <ol className="relative mt-5 space-y-5">
                       {[
-                        { icon: GraduationCap, title: 'Pick your exam', text: exams.map(option => option.name).join(', ') + (exams.some(option => option.id === 'CDS') ? ' or NCC (coming soon).' : '.') },
+                        { icon: GraduationCap, title: 'Pick your exam', text: exams.map(option => option.name).join(', ') + '.' },
                         { icon: Globe, title: 'Tell us how you found us', text: 'YouTube, Instagram, TikTok, friends or search.' },
                         { icon: Zap, title: 'Start your practice', text: 'Unlock daily sub-tests, official mocks and instant feedback.' },
                       ].map((item, index, all) => (
@@ -548,19 +589,6 @@ export default function OnboardingFlow({
                         </ChoiceCard>
                       );
                     })}
-                    {/* India: NCC is on its way; shown beside CDS, not yet selectable. */}
-                    {exams.some(option => option.id === 'CDS') && (
-                      <div
-                        aria-disabled="true"
-                        className="relative flex flex-col gap-2 rounded-3xl border-2 border-dashed border-slate-200 bg-white/60 p-5 text-left opacity-80"
-                      >
-                        <span className="absolute right-4 top-4 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-800">
-                          Coming soon
-                        </span>
-                        <span className="font-display text-2xl font-bold text-slate-400">NCC</span>
-                        <span className="text-sm text-slate-500">B and C certificate exams.</span>
-                      </div>
-                    )}
                   </div>
 
                   {exam === 'CDS' && (
@@ -673,8 +701,8 @@ export default function OnboardingFlow({
                     headingRef={headingRef}
                     title="Choose your preparation plan"
                     subtitle={
-                      isCds
-                        ? 'Affordable monthly & annual passes for defence aspirants. Start free anytime.'
+                      isCds || isNcc
+                        ? 'Affordable passes for defence aspirants and cadets. Start free anytime.'
                         : 'Start free, or unlock unlimited practice and full mock tests. Upgrade anytime.'
                     }
                   />
@@ -683,8 +711,8 @@ export default function OnboardingFlow({
                     {displayPlans.map((plan, index) => {
                       const free = plan.priceNPR === 0;
                       const isSelected = planId === plan.id;
-                      const currency = isCds && !free ? 'INR' : 'NPR';
-                      const period = isCds
+                      const currency = (isCds || isNcc) && !free ? 'INR' : 'NPR';
+                      const period = isCds || isNcc
                         ? plan.id === 'cds_annual'
                           ? 'per year · 365 days access'
                           : free
@@ -711,7 +739,7 @@ export default function OnboardingFlow({
                             <div className="flex items-start justify-between gap-2">
                               <div>
                                 <span className="block text-[11px] font-bold uppercase tracking-widest text-blue-600">
-                                  {free ? 'Free Starter' : isCds ? (plan.id === 'cds_annual' ? 'Best Value' : 'Monthly Pass') : 'Premium'}
+                                  {free ? 'Free Starter' : isCds || isNcc ? (plan.id === 'cds_annual' ? 'Best Value' : 'Monthly Pass') : 'Premium'}
                                 </span>
                                 <span className="mt-1 block font-display text-lg font-bold text-slate-900">{plan.name}</span>
                               </div>
@@ -750,7 +778,7 @@ export default function OnboardingFlow({
                     </div>
                   )}
 
-                  {needsPayment && selectedPlan && !isCds && (
+                  {needsPayment && selectedPlan && !isCds && !isNcc && (
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl border border-blue-200 bg-blue-50/60 max-w-5xl">
                       <div className="flex items-center gap-3.5">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
