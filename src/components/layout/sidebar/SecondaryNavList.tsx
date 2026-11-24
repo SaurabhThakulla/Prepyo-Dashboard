@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -8,7 +8,7 @@ import {
   BookOpen,
   Headphones,
   Sparkles,
-  ChevronDown,
+  ChevronRight,
   Layers,
   FileText,
   AlignLeft,
@@ -39,6 +39,24 @@ import {
   GitFork,
   ListOrdered,
   Lock,
+  SpellCheck,
+  Puzzle,
+  Quote,
+  ArrowLeftRight,
+  Type,
+  Link2,
+  FlaskConical,
+  Landmark,
+  ScrollText,
+  Globe,
+  Shield,
+  TrendingUp,
+  Calculator,
+  Triangle,
+  Sigma,
+  Ruler,
+  Box,
+  Languages,
   LucideIcon,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
@@ -61,6 +79,8 @@ interface SecondaryNavListProps {
   fallbackIcon: LucideIcon;
   isItemActive: (item: SecondaryNavItem) => boolean;
   onNavigate: () => void;
+  /** Lays the groups out side by side, for the top bar's wide panel. */
+  columns?: boolean;
 }
 
 /** Renders a weight badge (e.g. "16%") with a little space between the number and '%' so they don't merge. */
@@ -88,6 +108,9 @@ function getGroupIcon(groupName?: string): LucideIcon {
   if (norm.includes('read')) return BookOpen;
   if (norm.includes('listen')) return Headphones;
   if (norm.includes('study') || norm.includes('resource')) return Sparkles;
+  if (norm === 'english') return Languages;
+  if (norm.includes('general knowledge')) return Globe;
+  if (norm.includes('mathematics')) return Calculator;
   return Folder;
 }
 
@@ -132,6 +155,27 @@ function getSubtopicIcon(label: string, fallbackIcon: LucideIcon): LucideIcon {
   if (norm.includes('missing word')) return HelpCircle;
   if (norm.includes('dictation')) return PenLine;
 
+  // CDS question types
+  if (norm.includes('spotting errors')) return SpellCheck;
+  if (norm.includes('ordering of')) return ArrowUpDown;
+  if (norm.includes('reading comprehension')) return BookOpen;
+  if (norm.includes('cloze')) return Puzzle;
+  if (norm.includes('idioms')) return Quote;
+  if (norm.includes('synonyms')) return ArrowLeftRight;
+  if (norm.includes('parts of speech')) return Type;
+  if (norm.includes('paired words')) return Link2;
+  if (norm.includes('general science')) return FlaskConical;
+  if (norm.includes('polity')) return Landmark;
+  if (norm.includes('history')) return ScrollText;
+  if (norm.includes('geography')) return Globe;
+  if (norm.includes('defence')) return Shield;
+  if (norm.includes('economy')) return TrendingUp;
+  if (norm.includes('arithmetic')) return Calculator;
+  if (norm.includes('geometry') || norm.includes('trigonometry')) return Triangle;
+  if (norm.includes('algebra')) return Sigma;
+  if (norm.includes('mensuration')) return Box;
+  if (norm.includes('statistics')) return Ruler;
+
   // Plan & subscription subtopics
   if (norm.includes('plan') || norm.includes('subscription')) return CreditCard;
 
@@ -145,16 +189,15 @@ interface NavGroup {
   items: SecondaryNavItem[];
 }
 
-/** The list of links inside the blue secondary panel; the open link is a white pill. */
+/** The list of links inside the blue menu panel; the open link is a white pill. */
 export default function SecondaryNavList({
   items,
   fallbackHeading,
   fallbackIcon,
   isItemActive,
   onNavigate,
+  columns = false,
 }: SecondaryNavListProps) {
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-
   const groups = useMemo(() => {
     const result: NavGroup[] = [];
     let currentGroup: NavGroup | null = null;
@@ -197,17 +240,41 @@ export default function SecondaryNavList({
     return result;
   }, [items, fallbackHeading, fallbackIcon]);
 
-  const toggleGroup = (groupName: string) => {
-    setCollapsedGroups(prev => ({
-      ...prev,
-      [groupName]: !prev[groupName],
-    }));
-  };
+  // A panel of plain pages with no groups (the Admin Hub) is one list of full
+  // rows: each page with what it is for and any live count, and no badges.
+  if (columns && items.length > 0 && items.every(item => !item.group)) {
+    const FallbackIcon = fallbackIcon;
+    return (
+      <div className="flex-1 overflow-y-auto px-3 pb-2">
+        <div className="w-[min(52rem,calc(100vw-4rem))]">
+          <div className="mb-2 flex items-center justify-between gap-3 px-2">
+            <span className="flex items-center gap-2.5 text-[15px] font-semibold text-white">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#00c4a7] text-white">
+                <FallbackIcon className="h-4 w-4" />
+              </span>
+              {fallbackHeading}
+            </span>
+            <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/80 ring-1 ring-inset ring-white/15">
+              {items.length} {items.length === 1 ? 'page' : 'pages'}
+            </span>
+          </div>
+          <div className="space-y-1">
+            {items.map((item, idx) => (
+              <HubRow key={`${item.href ?? item.label}-${idx}`} item={item} isActive={isItemActive(item)} onNavigate={onNavigate} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 overflow-y-auto px-3 pb-2 [&::-webkit-scrollbar-thumb]:bg-white/20 hover:[&::-webkit-scrollbar-thumb]:bg-white/35">
       <TooltipProvider delayDuration={120}>
-        <div>
+        <div
+          className={columns ? 'grid gap-3' : undefined}
+          style={columns ? { gridTemplateColumns: `repeat(${Math.min(groups.length, 4)}, minmax(13rem, 18rem))` } : undefined}
+        >
           {groups.map((group, groupIndex) => {
             if (!group.name) {
               return (
@@ -225,36 +292,34 @@ export default function SecondaryNavList({
             }
 
             const isGroupActive = group.items.some(item => isItemActive(item));
-            const isCollapsed = Boolean(collapsedGroups[group.name]) && !isGroupActive;
 
             return (
               <div
                 key={`group-${group.name}-${groupIndex}`}
-                className={groupIndex > 0 ? 'mt-5' : ''}
+                className={columns ? 'rounded-2xl bg-white/[0.06] p-2 ring-1 ring-white/10' : groupIndex > 0 ? 'mt-5' : ''}
               >
                 <GroupHeading
+                  card={columns}
+                  count={group.items.length}
+                  note={group.items[0]?.groupNote}
                   groupName={group.name}
                   groupIcon={group.icon}
                   groupHref={group.groupHref}
                   isGroupActive={isGroupActive}
-                  isCollapsed={isCollapsed}
-                  onToggleCollapse={() => toggleGroup(group.name!)}
                   onNavigate={onNavigate}
                 />
 
-                {!isCollapsed && (
-                  // Tasks hang off the heading's icon on a guide line, like a folder tree.
-                  <div className="ml-[13px] pl-2 border-l border-white/20 space-y-0.5">
-                    {group.items.map((item, idx) => (
-                      <TooltipItem
-                        key={`${item.href ?? item.label}-${idx}`}
-                        item={item}
-                        isActive={isItemActive(item)}
-                        onNavigate={onNavigate}
-                      />
-                    ))}
-                  </div>
-                )}
+                {/* Tasks hang off the heading's icon on a guide line, like a folder tree. Groups always show their tasks. */}
+                <div className={columns ? 'space-y-0.5' : 'ml-[13px] pl-2 border-l border-white/20 space-y-0.5'}>
+                  {group.items.map((item, idx) => (
+                    <TooltipItem
+                      key={`${item.href ?? item.label}-${idx}`}
+                      item={item}
+                      isActive={isItemActive(item)}
+                      onNavigate={onNavigate}
+                    />
+                  ))}
+                </div>
               </div>
             );
           })}
@@ -265,60 +330,127 @@ export default function SecondaryNavList({
 }
 
 interface GroupHeadingProps {
+  /** Heading of a column card in the wide panel, rather than a full-width strip. */
+  card?: boolean;
+  count: number;
+  /** What the group is worth, shown in place of the type count. */
+  note?: string;
   groupName: string;
   groupIcon?: LucideIcon;
   groupHref?: string;
   isGroupActive: boolean;
-  isCollapsed: boolean;
-  onToggleCollapse: () => void;
   onNavigate: () => void;
 }
 
 function GroupHeading({
+  card = false,
+  count,
+  note,
   groupName,
   groupIcon,
   groupHref,
   isGroupActive,
-  isCollapsed,
-  onToggleCollapse,
   onNavigate,
 }: GroupHeadingProps) {
   const GroupIcon = groupIcon ?? getGroupIcon(groupName);
 
   return (
     // Flat full-width strip (bleeds past the list's px-3), square edges.
-    <div className={`-mx-3 mb-1.5 flex items-center justify-between pl-4 pr-3 py-2 ${isGroupActive ? 'bg-white/15' : 'bg-white/[0.08]'}`}>
+    <div
+      className={card
+        ? 'mb-1 flex items-center justify-between gap-2 border-b border-white/10 px-1.5 pb-2 pt-1'
+        : `-mx-3 mb-1.5 flex items-center justify-between pl-4 pr-3 py-2 ${isGroupActive ? 'bg-white/15' : 'bg-white/[0.08]'}`}
+    >
       <div className={`flex items-center gap-2.5 min-w-0 flex-1 ${isGroupActive ? 'text-white' : 'text-white/90'}`}>
-        <GroupIcon className={`w-[18px] h-[18px] shrink-0 ${isGroupActive ? 'text-[#00c4a7]' : ''}`} />
-        {groupHref ? (
-          <Link
-            to={groupHref}
-            onClick={onNavigate}
-            className="font-display text-[17px] font-semibold tracking-wide truncate hover:text-white transition-colors"
-          >
-            {groupName}
-          </Link>
+        {card ? (
+          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isGroupActive ? 'bg-[#00c4a7] text-white' : 'bg-white text-primary dark:text-blue-950'}`}>
+            <GroupIcon className="h-4 w-4" />
+          </span>
         ) : (
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            className="font-display text-[17px] font-semibold tracking-wide truncate text-left hover:text-white transition-colors"
-          >
-            {groupName}
-          </button>
+          <GroupIcon className={`w-[18px] h-[18px] shrink-0 ${isGroupActive ? 'text-[#00c4a7]' : ''}`} />
+        )}
+        {groupHref ? (
+          <span className="flex min-w-0 flex-col">
+            <Link
+              to={groupHref}
+              onClick={onNavigate}
+              className={`font-display text-[17px] font-semibold tracking-wide ${card ? 'leading-tight' : 'truncate'} hover:text-white transition-colors`}
+            >
+              {groupName}
+            </Link>
+            {card && note && <span className="mt-0.5 text-[11px] font-semibold text-white/70">{note}</span>}
+          </span>
+        ) : (
+          <span className="flex min-w-0 flex-col">
+            <span className={`font-display text-[17px] font-semibold tracking-wide ${card ? 'leading-tight' : 'truncate'}`}>{groupName}</span>
+            {/* What the section is worth, on its own line so the heading keeps its width. */}
+            {card && note && <span className="mt-0.5 text-[11px] font-semibold text-white/70">{note}</span>}
+          </span>
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={onToggleCollapse}
-        className="p-1 shrink-0 rounded-md text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-        title={isCollapsed ? `Expand ${groupName}` : `Collapse ${groupName}`}
-        aria-label={isCollapsed ? `Expand ${groupName}` : `Collapse ${groupName}`}
-      >
-        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
-      </button>
+      {card && !note && <span className="shrink-0 text-[11px] font-medium text-white/55">{count} types</span>}
     </div>
+  );
+}
+
+/** One page of the Admin Hub: its icon, name, what it is for and any live count. */
+function HubRow({ item, isActive, onNavigate }: { item: SecondaryNavItem; isActive: boolean; onNavigate: () => void }) {
+  const Icon = item.icon;
+  const className = `group flex w-full items-center gap-3.5 rounded-2xl px-3 py-3 text-left transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-white ${
+    isActive ? 'bg-white text-primary shadow-lg shadow-black/15 dark:text-blue-950' : 'text-white hover:bg-white/10'
+  }`;
+  const body = (
+    <>
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
+          isActive ? 'bg-primary text-white dark:bg-blue-950' : 'text-white/85 group-hover:bg-white/10'
+        }`}
+      >
+        <Icon className="h-[18px] w-[18px]" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-semibold leading-tight">{item.label}</span>
+        {item.sublabel && (
+          <span className={`mt-0.5 block truncate text-[13px] ${isActive ? 'text-slate-600 dark:text-blue-950/70' : 'text-white/65'}`}>{item.sublabel}</span>
+        )}
+      </span>
+      {item.status && (
+        <span
+          className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${
+            item.status.tone === 'warn'
+              ? isActive
+                ? 'bg-amber-100 text-amber-800 ring-amber-200'
+                : 'bg-amber-300/15 text-amber-200 ring-amber-300/30'
+              : isActive
+                ? 'bg-emerald-100 text-emerald-800 ring-emerald-200'
+                : 'bg-emerald-300/15 text-emerald-200 ring-emerald-300/30'
+          }`}
+        >
+          {item.status.text}
+        </span>
+      )}
+      <ChevronRight className={`h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5 ${isActive ? '' : 'text-white/60'}`} />
+    </>
+  );
+  if (item.href) {
+    return (
+      <Link to={item.href} onClick={onNavigate} className={className}>
+        {body}
+      </Link>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        item.onClick?.();
+        onNavigate();
+      }}
+      className={className}
+    >
+      {body}
+    </button>
   );
 }
 
@@ -483,10 +615,10 @@ const NavItem = React.forwardRef<HTMLElement, NavItemProps>(function NavItem(
           </span>
         ) : item.weight && (
           <span
-            className={`text-[11px] font-extrabold px-2 py-0.5 rounded-full font-mono min-w-[36px] text-center inline-flex items-center justify-center ${
+            className={`text-[11px] font-semibold tabular-nums whitespace-nowrap px-2 py-0.5 rounded-full min-w-[36px] text-center inline-flex items-center justify-center ${
               isActive
-                ? 'bg-primary text-primary-foreground dark:bg-black dark:text-white'
-                : 'bg-white text-blue-950 dark:bg-white/10 dark:text-white'
+                ? 'bg-primary/10 text-primary dark:text-blue-950'
+                : 'bg-white/10 text-white/75 ring-1 ring-inset ring-white/15 group-hover:text-white'
             }`}
             title={`Score Weight: ${item.weight}`}
           >

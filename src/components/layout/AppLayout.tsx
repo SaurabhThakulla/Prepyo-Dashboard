@@ -2,8 +2,7 @@ import React, { useState, lazy, Suspense, useEffect, useRef } from 'react';
 import { useLocation, useNavigationType } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/ui/toast';
-import AppSidebar from './AppSidebar';
-import Header from './Header';
+import TopNav from './TopNav';
 import MobileTopBar from './mobile/MobileTopBar';
 import MobileTabBar from './mobile/MobileTabBar';
 import MobileCoachButton from './mobile/MobileCoachButton';
@@ -14,7 +13,6 @@ import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
 import { useClipboardGuard } from '@/lib/hooks/useClipboardGuard';
 import { isAdmin } from '@/lib/types';
 import { isInstitutionPath } from '@/institution/paths';
-import { useExclusivePanel } from './sidePanels';
 import DictionaryPopup from '@/components/dictionary/DictionaryPopup';
 
 // Paste blocking, turned off temporarily for staging testers.
@@ -24,7 +22,6 @@ const AITutorDrawer = lazy(() => import('@/components/ai/AITutorDrawer'));
 const GlobalMiniPlayer = lazy(() => import('@/components/tutorials/GlobalMiniPlayer'));
 
 const ONBOARDING_PENDING_KEY = 'prepyo_onboarding_pending';
-const WIDE_MIN = 1280;
 
 const PROTECTED_PREFIXES = [
   '/dashboard',
@@ -143,23 +140,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
     }
   };
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  // Below 1280px (tablets) the menu panel opens over the page instead of
-  // beside it, so the page keeps its width; it starts closed there.
-  const [isWide, setIsWide] = useState(() => typeof window === 'undefined' || window.innerWidth >= WIDE_MIN);
-  const [isSecondaryOpen, setIsSecondaryOpen] = useState(isWide);
-  useEffect(() => {
-    if (typeof window.matchMedia !== 'function') return;
-    const query = window.matchMedia(`(min-width: ${WIDE_MIN}px)`);
-    const onChange = (e: MediaQueryListEvent) => {
-      setIsWide(e.matches);
-      setIsSecondaryOpen(e.matches);
-    };
-    query.addEventListener('change', onChange);
-    return () => query.removeEventListener('change', onChange);
-  }, []);
-  useExclusivePanel('left', isSecondaryOpen, () => setIsSecondaryOpen(false));
-  const panelPushes = isSecondaryOpen && isWide;
   const [onboardingClosedFor, setOnboardingClosedFor] = useState<string | null>(null);
 
   const isAuthPage =
@@ -240,35 +220,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       onClickCapture={handleContainerClickCapture}
       className={`${showTabBar ? '[--mobile-nav-h:calc(4rem+env(safe-area-inset-bottom))]' : '[--mobile-nav-h:0px]'} lg:[--mobile-nav-h:0px] min-h-screen app-backdrop text-foreground flex flex-col transition-colors duration-200`}
     >
-      {/* A mock test takes the whole screen: no menu to leave it by. */}
-      {!locked && (
-        <AppSidebar
-          isOpen={isSidebarOpen}
-          setIsOpen={setIsSidebarOpen}
-          isSecondaryOpen={isSecondaryOpen}
-          setIsSecondaryOpen={setIsSecondaryOpen}
-          panelOverlays={!isWide}
-        />
-      )}
-
-      {/* On a tablet the open panel covers the page; a tap outside closes it. */}
-      {!locked && isSecondaryOpen && !isWide && (
-        <div
-          data-stay
-          aria-hidden
-          className="fixed inset-0 z-[35] hidden lg:block bg-black/30 backdrop-blur-[1px]"
-          onClick={() => setIsSecondaryOpen(false)}
-        />
-      )}
-
       <div
         // --app-header-h: a locked test hides the header, so pages sized to "the screen minus the header" get the whole screen.
-        style={{ '--sidebar-offset': locked ? '0px' : panelPushes ? '416px' : '64px', '--app-header-h': locked ? '0px' : '4rem' } as React.CSSProperties}
-        className={`${locked ? 'lg:pl-0' : panelPushes ? 'lg:pl-[416px]' : 'lg:pl-16'
-          } flex w-full min-w-0 flex-col min-h-screen transition-[padding] duration-300 ease-in-out`}
+        style={{ '--app-header-h': locked ? '0px' : '4rem' } as React.CSSProperties}
+        className="flex w-full min-w-0 flex-col min-h-screen"
       >
         {!locked && <MobileTopBar />}
-        {!locked && <Header />}
+        {/* A mock test takes the whole screen: no menu to leave it by. */}
+        {!locked && <TopNav />}
 
         <main className="flex-1 w-full min-w-0 p-0 pb-[var(--mobile-nav-h)] flex flex-col min-h-0">
           {isProtected ? <RequireAuth>{children}</RequireAuth> : children}

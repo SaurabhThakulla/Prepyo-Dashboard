@@ -24,7 +24,7 @@ import {
 import { useApp } from '@/context/AppContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import ReportIssueDialog from '@/components/support/ReportIssueDialog';
-import { ExamSwitcher } from '@/components/layout/sidebar/SecondaryPanel';
+import { ExamSwitcher } from '@/components/layout/ExamSwitchers';
 import { accountLines } from '@/lib/account';
 import { EXAM_LABELS, isAdmin, isInstitutionStudent, isPremiumUser } from '@/lib/types';
 import { hasMaterials } from '@/data/materials';

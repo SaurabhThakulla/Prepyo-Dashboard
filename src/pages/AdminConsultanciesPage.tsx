@@ -93,9 +93,9 @@ const STATUS_STYLES: Record<string, string> = {
   none: 'bg-muted text-muted-foreground border-border',
 };
 
-const date = (value: string | null) => (value ? new Date(value).toLocaleDateString() : '—');
-const gradings = (value: number) => value.toLocaleString(undefined, { maximumFractionDigits: 1 });
-const npr = (value: number) => `NPR ${value.toLocaleString(undefined, { maximumFractionDigits: value < 100 ? 2 : 0 })}`;
+const date = (value: string | null) => (value ? new Date(value).toLocaleDateString('en-US') : '—');
+const gradings = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 1 });
+const npr = (value: number) => `NPR ${value.toLocaleString('en-US', { maximumFractionDigits: value < 100 ? 2 : 0 })}`;
 
 /** Whether part of an AI cost is estimated, said under it. */
 const costHint = (estimated: number) =>
@@ -197,7 +197,7 @@ export default function AdminConsultanciesPage() {
           />
           <Stat
             label="Packs this month"
-            value={`NPR ${list.reduce((n, c) => n + (c.packSalesNpr ?? 0), 0).toLocaleString()}`}
+            value={`NPR ${list.reduce((n, c) => n + (c.packSalesNpr ?? 0), 0).toLocaleString('en-US')}`}
             hint="credit packs added"
           />
           <Stat
@@ -303,7 +303,7 @@ function ConsultancyCard({ consultancy: c, onOpen }: { consultancy: Consultancy;
         <div className="flex items-baseline justify-between text-xs max-w-[7.5rem]">
           <span className="text-[11px] font-medium text-muted-foreground">AI gradings</span>
           <span className="font-semibold text-foreground tabular-nums">
-            {gradings(c.aiGradingsUsed)}{c.aiGradingsTotal !== null && ` / ${c.aiGradingsTotal.toLocaleString()}`}
+            {gradings(c.aiGradingsUsed)}{c.aiGradingsTotal !== null && ` / ${c.aiGradingsTotal.toLocaleString('en-US')}`}
           </span>
         </div>
         <div className="text-[11px] text-muted-foreground">
@@ -483,7 +483,7 @@ function ConsultancyDialog({
                   tone="violet"
                   label="AI gradings"
                   value={gradings(c.aiGradingsUsed)}
-                  hint={c.aiGradingsTotal === null ? 'this month · no cap' : `of ${c.aiGradingsTotal.toLocaleString()} this month`}
+                  hint={c.aiGradingsTotal === null ? 'this month · no cap' : `of ${c.aiGradingsTotal.toLocaleString('en-US')} this month`}
                 />
                 <Stat
                   icon={CalendarDays}
@@ -496,7 +496,7 @@ function ConsultancyDialog({
                   icon={Wallet}
                   tone="amber"
                   label="Packs this month"
-                  value={`NPR ${(c.packSalesNpr ?? 0).toLocaleString()}`}
+                  value={`NPR ${(c.packSalesNpr ?? 0).toLocaleString('en-US')}`}
                 />
                 <Stat icon={Cpu} tone="rose" label="AI cost" value={npr(c.aiCostNpr)} hint={costHint(c.aiCostEstimatedNpr)} />
               </div>
@@ -806,7 +806,7 @@ function CreditsForm({ consultancy, onSaved }: { consultancy: Consultancy; onSav
       toast.error('Credits not added', `Add at least ${MIN_CREDITS} credits.`);
       return;
     }
-    if (!window.confirm(`Add ${size} ${label} credits for NPR ${creditsPrice(group, size).toLocaleString()}? Do this only once it is paid.`)) return;
+    if (!window.confirm(`Add ${size} ${label} credits for NPR ${creditsPrice(group, size).toLocaleString('en-US')}? Do this only once it is paid.`)) return;
     setSaving(true);
     try {
       await api.post(`/admin/consultancies/${consultancy.id}/credits`, { group: CREDIT_GROUPS.find(g => g.key === group)?.api, size });
@@ -850,7 +850,7 @@ function CreditsForm({ consultancy, onSaved }: { consultancy: Consultancy; onSav
       </form>
       <p className="text-[11px] text-muted-foreground">
         {tier
-          ? `NPR ${creditsPrice(group, size).toLocaleString()} · NPR ${tier.perCredit[group]} a credit (${CREDIT_TIERS.map(t => `${t.to ? `${t.from}-${t.to}` : `${t.from - 1}+`}: ${t.perCredit[group]}`).join(', ')})`
+          ? `NPR ${creditsPrice(group, size).toLocaleString('en-US')} · NPR ${tier.perCredit[group]} a credit (${CREDIT_TIERS.map(t => `${t.to ? `${t.from}-${t.to}` : `${t.from - 1}+`}: ${t.perCredit[group]}`).join(', ')})`
           : `At least ${MIN_CREDITS} credits.`}
       </p>
       {log && log.length > 0 && (
@@ -859,7 +859,7 @@ function CreditsForm({ consultancy, onSaved }: { consultancy: Consultancy; onSav
             <li key={i} className="flex items-center justify-between gap-2 px-3 py-1.5">
               <span className="text-foreground">
                 {entry.change > 0
-                  ? `${entry.change} ${CREDIT_GROUPS.find(g => g.api === entry.group)?.label} credits added · NPR ${(entry.priceNpr ?? 0).toLocaleString()}`
+                  ? `${entry.change} ${CREDIT_GROUPS.find(g => g.api === entry.group)?.label} credits added · NPR ${(entry.priceNpr ?? 0).toLocaleString('en-US')}`
                   : `${entry.studentName} · ${CREDIT_GROUPS.find(g => g.api === entry.group)?.label}`}
               </span>
               <span className="text-muted-foreground tabular-nums">
@@ -948,7 +948,7 @@ function GradingsForm({ consultancy, onSaved }: { consultancy: Consultancy; onSa
           <span className="font-semibold text-foreground">Used this month</span>
           <span className="tabular-nums text-muted-foreground">
             <span className="font-display text-base font-bold text-foreground">{gradings(consultancy.aiGradingsUsed)}</span>
-            {cap === null ? ' · no cap' : ` of ${cap.toLocaleString()}`}
+            {cap === null ? ' · no cap' : ` of ${cap.toLocaleString('en-US')}`}
           </span>
         </div>
         {cap !== null && <UsageBar used={consultancy.aiGradingsUsed} of={cap} tone="bg-violet-500" />}
@@ -1021,7 +1021,7 @@ function StudentsList({ consultancyId, days, perStudent }: { consultancyId: stri
             <div className="flex items-baseline justify-between gap-2 text-xs">
               <span className="text-muted-foreground">AI gradings</span>
               <span className="font-semibold text-foreground tabular-nums">
-                {gradings(s.aiGradingsUsed)} / {perStudent.toLocaleString()}
+                {gradings(s.aiGradingsUsed)} / {perStudent.toLocaleString('en-US')}
               </span>
             </div>
             <UsageBar used={s.aiGradingsUsed} of={perStudent} tone="bg-violet-500" />

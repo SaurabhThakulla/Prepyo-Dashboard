@@ -5,9 +5,10 @@ import MockHeader from '@/components/mocks/MockHeader';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import MockAnswerInput from '@/components/mocks/MockAnswerInput';
+import { MarkedText } from '@/components/practice/OptionContent';
 import PromptAudio from '@/components/practice/PromptAudio';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
-import { AnswerSubmission, Mock, Question } from '@/lib/types';
+import { AnswerSubmission, Mock, Question, isCdsSchemaExam } from '@/lib/types';
 import { isReadAloudTask, isRepeatSentenceTask, isWordHighlightTask, passageText } from '@/lib/listening';
 
 interface MockExamRunnerProps {
@@ -94,7 +95,8 @@ export default function MockExamRunner({
             <div className="space-y-4">
               <h4 className="font-display font-bold text-base text-foreground">{currentQuestion.title}</h4>
               <div className="p-4 rounded-xl bg-background border border-border text-xs sm:text-sm text-foreground leading-relaxed whitespace-pre-line">
-                {currentQuestion.prompt}
+                {/* CDS underlines the word a vocabulary question asks about, as the paper does. */}
+                {isCdsSchemaExam(currentQuestion.exam) ? <MarkedText text={currentQuestion.prompt} /> : currentQuestion.prompt}
               </div>
 
               {currentQuestion.contextPassage && !isWordHighlightTask(currentQuestion) && !isRepeatSentenceTask(currentQuestion) && (
@@ -107,7 +109,9 @@ export default function MockExamRunner({
                   />
                 ) : (
                   <div className="p-4 rounded-xl bg-background border border-border text-xs text-foreground leading-relaxed max-h-56 overflow-y-auto">
-                    {passageText(currentQuestion)}
+                    {isCdsSchemaExam(currentQuestion.exam)
+                      ? <span className="whitespace-pre-line"><MarkedText text={passageText(currentQuestion)} /></span>
+                      : passageText(currentQuestion)}
                   </div>
                 )
               )}

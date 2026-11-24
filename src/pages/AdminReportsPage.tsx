@@ -180,7 +180,7 @@ export default function AdminReportsPage() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap gap-x-3 font-mono text-xs text-muted-foreground">
             <span>{listed.path}</span>
-            <span>{new Date(listed.createdAt).toLocaleString()}</span>
+            <span>{new Date(listed.createdAt).toLocaleString('en-US')}</span>
           </div>
           <button
             type="button"

@@ -39,7 +39,7 @@ import { isAiRatedListening, isReadAloudTask, isRepeatSentenceTask, isWordHighli
 import { allowsMultipleChoices } from '@/lib/choices';
 import { minimumWritingWords, writingLengthNote, writingWordCount, writingWordTarget } from '@/lib/writing';
 import { AdminPageSkeleton, PracticePageSkeleton, ReadingPracticeSkeleton } from '@/components/layout/PageSkeleton';
-import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isInstitutionStudent, isPremiumUser, listeningPlays, PracticeAttempt, Question, SkillType, ieltsModuleOf } from '@/lib/types';
+import { Evaluation, EXAM_MAX_SCORE, ExamType, isAdmin, isExamType, isInstitutionStudent, isPremiumUser, listeningPlays, PracticeAttempt, Question, SkillType, ieltsModuleOf, isCdsSchemaExam } from '@/lib/types';
 import FreePlanNotice from '@/institution/FreePlanNotice';
 import PracticeActionBar, { CostChip, gradingUnits } from '@/components/practice/flow/PracticeActionBar';
 import MyScore from '@/components/practice/flow/MyScore';
@@ -117,8 +117,19 @@ interface SubmitResult {
   xpAwarded: number;
 }
 
+// CDS practises from its own backend, one question type at a time.
+const CdsTaskPractice = React.lazy(() => import('@/cds/CdsTaskPractice'));
+
 export default function PracticePage() {
   const [params] = useSearchParams();
+  const { activeExam } = useApp();
+  if (isCdsSchemaExam(activeExam)) {
+    return (
+      <React.Suspense fallback={null}>
+        <CdsTaskPractice key={`${params.get('type') ?? ''}-${params.get('paper') ?? ''}`} />
+      </React.Suspense>
+    );
+  }
   return (
     <PracticePageContent
       key={`${params.get('mistake') ?? ''}-${params.get('exam') ?? ''}-${params.get('skill') ?? ''}-${params.get('type') ?? ''}`}
@@ -160,10 +171,12 @@ function PracticePageContent() {
   const resolution = useMistakeResolution(mistakeId);
 
   const skillParam = searchParams.get('skill') as SkillType | null;
+  const examSyllabus = activeExam ? SYLLABUS[activeExam] : undefined;
+  const validSkills = (examSyllabus ? (Object.keys(examSyllabus) as SkillType[]) : ['reading', 'listening', 'writing', 'speaking']) as SkillType[];
   const selectedSkill: SkillType =
-    skillParam && ['speaking', 'writing', 'reading', 'listening'].includes(skillParam)
+    skillParam && validSkills.includes(skillParam)
       ? skillParam
-      : 'reading';
+      : (validSkills[0] ?? 'reading');
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -418,6 +431,7 @@ function PracticePageContent() {
           : all;
 
         if (list.length === 0) {
+          startFailedFor.current = listKey;
           toast.error('No questions available', `No ${selectedSkill} questions found for this task.`);
           return;
         }
@@ -434,12 +448,14 @@ function PracticePageContent() {
       }
 
       if (!targetQuestion) {
+        startFailedFor.current = listKey;
         toast.error('No questions available', `No ${selectedSkill} questions found.`);
         return;
       }
 
       const startingKey = `${activeExam}:${selectedSkill}:${targetQuestion.id}`;
-      const started = await api.post<{ scored?: boolean }>('/practice/start', {
+      // Opening is free: the first submitted answer spends the sub-test, so no toast here.
+      await api.post('/practice/start', {
         exam: activeExam,
         skill: selectedSkill,
         questionId: targetQuestion.id,
@@ -448,11 +464,6 @@ function PracticePageContent() {
       setStartedTask(startingKey);
       setStartedAt(Date.now());
       await refreshUser();
-      // Only a spent credit is worth a toast; free and unlimited starts stay quiet.
-      // The server's answer: the capability check may not have returned when the page starts on its own.
-      if (!speakingUnscored && started?.scored !== false && Number.isFinite(subTestsRemaining)) {
-        toast.success('Practice started', '1 sub-test credit applied. Good luck!');
-      }
     } catch (err) {
       startFailedFor.current = targetQuestion?.id ?? listKey;
       if (err instanceof ApiError && err.isLimitReached) {
@@ -845,7 +856,7 @@ function PracticePageContent() {
     goToIndex(0);
   };
 
-  const writingSideBySide = grading === 'ai' && selectedSkill === 'writing';
+  const writingSideBySide = (grading === 'ai' && selectedSkill === 'writing') || activeExam === 'JLPT' || currentQuestion?.exam === 'JLPT';
 
   return (
     <div
@@ -1113,6 +1124,7 @@ function PracticePageContent() {
                       <CostChip
                         cost={gradingUnits(selectedSkill, currentQuestion.typeId)!}
                         costDoublesWhenLong={selectedSkill === 'speaking' && gradingUnits(selectedSkill, currentQuestion.typeId) === 5}
+                        side="bottom"
                       />
                     )}
                     <Button variant="outline" onClick={handleAskAITutor} className={`${PILL} gap-2`}>
@@ -1201,8 +1213,6 @@ function PracticePageContent() {
                   repeat={listeningPlays(currentQuestion)}
                   // The recording plays on its own after the test's lead-in; speaking recording follows it.
                   autoPlayAfter={result === null ? audioDelayFor(currentQuestion) : undefined}
-                  // Listening recordings start with a beep; speaking prompts keep their own cue.
-                  beepFirst={currentQuestion.skill === 'listening'}
                   title={currentQuestion.title}
                   // Every practice recording (listening, and speaking answered from what is heard): one bar with time, speed and volume.
                   layout="bar"
@@ -1534,10 +1544,14 @@ function timeAllowed(seconds: number): string {
 }
 
 function AutoStart({ ready, onStart }: { ready: boolean; onStart: () => void }) {
+  const hasFired = useRef(false);
   const start = useRef(onStart);
   start.current = onStart;
   useEffect(() => {
-    if (ready) start.current();
+    if (ready && !hasFired.current) {
+      hasFired.current = true;
+      start.current();
+    }
   }, [ready]);
   // Blank while the question list is open; the question itself shows once it starts.
   return <div className="w-full min-h-[calc(100vh-4rem)]" />;

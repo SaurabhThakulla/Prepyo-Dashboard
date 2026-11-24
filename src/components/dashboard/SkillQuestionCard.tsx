@@ -9,6 +9,8 @@ export interface SkillQuestionCardProps {
   completed: number;
   total: number;
   href?: string;
+  /** In place of the skill's icon, for a card that is not a skill (a CDS paper). */
+  icon?: React.ComponentType<{ className?: string }>;
 }
 
 const SKILL_ICONS: Record<SkillType, React.ComponentType<{ className?: string }>> = {
@@ -24,8 +26,9 @@ export default function SkillQuestionCard({
   completed,
   total,
   href = `/practice?skill=${skill}`,
+  icon,
 }: SkillQuestionCardProps) {
-  const Icon = SKILL_ICONS[skill] || BookOpen;
+  const Icon = icon ?? SKILL_ICONS[skill] ?? BookOpen;
 
   return (
     <Link
@@ -44,7 +47,7 @@ export default function SkillQuestionCard({
           {label}
         </div>
         <div className="text-xl sm:text-2xl font-black text-indigo-950 dark:text-white tracking-tight">
-          {total > 0 ? `${completed}/${total.toLocaleString()}` : '--'}
+          {total > 0 ? `${completed}/${total.toLocaleString('en-US')}` : '0'}
         </div>
       </div>
     </Link>

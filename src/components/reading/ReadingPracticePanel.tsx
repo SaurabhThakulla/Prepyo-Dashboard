@@ -184,7 +184,7 @@ export default function ReadingPracticePanel({ initialTypeKey, mistakeId, exam, 
         'Reading test started',
         !Number.isFinite(subTestsRemaining)
           ? 'Unlimited practice active. Good luck!'
-          : '1 sub-test credit applied. Good luck!',
+          : 'Your first answer uses 1 sub-test. Good luck!',
       );
     } catch (err) {
       if (err instanceof ApiError && err.isLimitReached) {

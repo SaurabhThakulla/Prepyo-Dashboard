@@ -53,7 +53,7 @@ export default function PteMockHistory() {
               <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-3">
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
-                  {new Date(s.completedAt ?? s.createdAt).toLocaleDateString()}
+                  {new Date(s.completedAt ?? s.createdAt).toLocaleDateString('en-US')}
                 </span>
                 {minutes != null && <><span>•</span><span>{minutes} min</span></>}
                 {s.result && Object.keys(s.result.skills).length > 1 && (

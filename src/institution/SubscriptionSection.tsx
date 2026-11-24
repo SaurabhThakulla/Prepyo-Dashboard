@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { formatExamDate } from '@/lib/dates';
-import { ACCESS_DAYS, AI_GRADINGS_PER_MONTH, CREDIT_GROUPS, CREDIT_TIERS, CreditEntry, fetchCreditLog, InstitutionAccount, MIN_CREDITS } from './api';
+import { ACCESS_DAYS, AI_GRADINGS_PER_MONTH, CREDIT_GROUPS, CREDIT_TIERS, CreditEntry, creditGroupOf, fetchCreditLog, InstitutionAccount, MIN_CREDITS } from './api';
 import { rupees } from './FeesSection';
 
 // Each pack's own colour, so the three read apart at a glance.
@@ -17,7 +17,7 @@ const PACK_LOOK = [
 // What every credit gives a student.
 const INCLUDED: { text: string; icon: LucideIcon; tile: string }[] = [
   { text: 'Unlimited reading and listening questions', icon: BookOpen, tile: 'bg-sky-500/15 text-sky-600 dark:text-sky-300' },
-  { text: `${AI_GRADINGS_PER_MONTH.toLocaleString()} AI credits a month per student`, icon: SpellCheck, tile: 'bg-violet-500/15 text-violet-600 dark:text-violet-300' },
+  { text: `${AI_GRADINGS_PER_MONTH.toLocaleString('en-US')} AI credits a month per student`, icon: SpellCheck, tile: 'bg-violet-500/15 text-violet-600 dark:text-violet-300' },
   { text: 'Full and sectional mock tests', icon: ClipboardList, tile: 'bg-amber-500/15 text-amber-600 dark:text-amber-300' },
   { text: 'Ready-to-book status and booking targets', icon: BadgeCheck, tile: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300' },
   { text: 'Batches, fees and receipts', icon: Layers, tile: 'bg-rose-500/15 text-rose-600 dark:text-rose-300' },
@@ -32,6 +32,12 @@ const groupLabel = (api: CreditEntry['group']) => CREDIT_GROUPS.find(g => g.api 
 /** What the institution pays Prepyo: its credits left, the packs it can buy, and where each credit went. */
 export default function SubscriptionSection({ account }: { account: InstitutionAccount }) {
   const { institution } = account;
+  // Only the credit groups of the institution's exams (Prepyo's plan, else its own
+  // choice in Settings), and any group it still has credits in.
+  const exams = institution.planExams?.length ? institution.planExams : institution.profile?.exams ?? [];
+  const groups = CREDIT_GROUPS.filter(
+    g => exams.length === 0 || exams.some(exam => creditGroupOf(exam) === g.key) || (institution.credits?.[g.key] ?? 0) > 0,
+  );
   const [log, setLog] = useState<CreditEntry[] | null>(null);
 
   useEffect(() => {
@@ -66,8 +72,8 @@ export default function SubscriptionSection({ account }: { account: InstitutionA
           </Button>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          {CREDIT_GROUPS.map(({ key, label }) => {
+        <div className={`mt-5 grid gap-3 ${groups.length === 1 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+          {groups.map(({ key, label }) => {
             const left = institution.credits?.[key] ?? 0;
             return (
               <div key={key} className="rounded-lg border border-border p-3">
@@ -109,7 +115,7 @@ export default function SubscriptionSection({ account }: { account: InstitutionA
             <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
               <tr>
                 <th className="px-4 py-2.5 font-medium">Credits bought at once</th>
-                {CREDIT_GROUPS.map(({ key, label }) => (
+                {groups.map(({ key, label }) => (
                   <th key={key} className="px-4 py-2.5 text-right font-medium">
                     {label}
                   </th>
@@ -127,7 +133,7 @@ export default function SubscriptionSection({ account }: { account: InstitutionA
                       {to ? `${String(from).padStart(2, '0')} to ${to} credits` : `${from - 1}+ credits`}
                     </span>
                   </td>
-                  {CREDIT_GROUPS.map(({ key }) => (
+                  {groups.map(({ key }) => (
                     <td key={key} className={`whitespace-nowrap px-4 py-3 text-right text-base font-semibold tabular-nums ${PACK_LOOK[i % PACK_LOOK.length].price}`}>
                       {rupees(perCredit[key])}
                       <span className="text-xs font-normal text-muted-foreground"> / student</span>

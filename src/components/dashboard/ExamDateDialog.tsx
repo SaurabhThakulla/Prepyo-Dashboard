@@ -41,7 +41,7 @@ interface ExamDateDialogProps {
 
 
 /** The target a learner starts from when they have not set one. */
-const TARGET_DEFAULT: Record<ExamType, number> = { PTE: 79, IELTS: 7.5, EPS_TOPIK: 60, JLPT: 100 };
+const TARGET_DEFAULT: Record<ExamType, number> = { PTE: 79, IELTS: 7.5, EPS_TOPIK: 60, JLPT: 100, CDS: 140, NCC: 245 };
 
 const daysAhead = (days: number) => {
   const d = new Date();
@@ -66,7 +66,7 @@ const TIME_SLOTS = [
 const formatTime = (time: string) => {
   const [hh, mm] = time.split(':').map(n => parseInt(n, 10));
   if (Number.isNaN(hh)) return time;
-  return new Date(2000, 0, 1, hh, mm || 0).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return new Date(2000, 0, 1, hh, mm || 0).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 };
 
 // The start time lives in this browser only: the account stores the exam day.
@@ -92,7 +92,7 @@ const writeExamTime = (userId: string | undefined, time: string) => {
 const formatLongDate = (isoDate: string) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
   if (!match) return '';
-  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).toLocaleDateString(undefined, {
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).toLocaleDateString('en-US', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',

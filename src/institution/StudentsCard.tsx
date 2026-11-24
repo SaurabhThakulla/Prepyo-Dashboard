@@ -110,7 +110,7 @@ const IDLE_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const shortDate = (value: string | null) =>
-  value ? new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  value ? new Date(value).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
 /** A student's credit: until when it runs, or the button that activates them with one. */
 function AccessCell({ student, actions }: { student: Student; actions: StudentActions }) {

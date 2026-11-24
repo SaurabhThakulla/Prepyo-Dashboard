@@ -65,7 +65,6 @@ export default function IeltsReportForm({
         </div>
         <div className="flex flex-wrap gap-4 text-xs font-semibold">
           <Tick checked={module === 'academic'}>Academic</Tick>
-          <Tick checked={module === 'general_training'}>General Training</Tick>
         </div>
       </header>
 

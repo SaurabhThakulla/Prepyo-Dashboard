@@ -3,7 +3,7 @@ import { Play, FileText, Calendar, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Mock, MockAttempt } from '@/lib/types';
+import { Mock, MockAttempt, isCdsSchemaExam } from '@/lib/types';
 
 /**
  * Titles for mock attempts whose mock is not in the catalogue: the IELTS
@@ -73,7 +73,7 @@ export default function ScoreReportList({
             <div className="text-xs text-muted-foreground flex items-center gap-3">
               <span className="flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
-                {new Date(attempt.completedAt).toLocaleDateString()}
+                {new Date(attempt.completedAt).toLocaleDateString('en-US')}
               </span>
               <span>•</span>
               <span>{Math.round(attempt.durationSeconds / 60)} min</span>
@@ -83,10 +83,10 @@ export default function ScoreReportList({
           <div className="flex items-center gap-4">
             <div className="text-right">
               <div className="text-[11px] font-bold text-muted-foreground uppercase">
-                {attempt.exam === 'IELTS' ? 'Band' : 'Score'}
+                {attempt.exam === 'IELTS' ? 'Band' : isCdsSchemaExam(attempt.exam) ? 'Net marks' : 'Score'}
               </div>
               <div className="font-display text-2xl font-black text-foreground">
-                {attempt.exam === 'IELTS' ? attempt.userScore.toFixed(1) : Math.round(attempt.userScore)}
+                {attempt.exam === 'IELTS' ? attempt.userScore.toFixed(1) : isCdsSchemaExam(attempt.exam) ? attempt.userScore.toFixed(2) : Math.round(attempt.userScore)}
               </div>
             </div>
 

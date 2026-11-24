@@ -5,7 +5,7 @@ import { Send, X, Sparkles, RefreshCw, Zap, MessageSquare, Lock } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import TutorText from './TutorText';
-import { canUseTutor, isInstitutionStudent } from '@/lib/types';
+import { canUseTutor, isInstitutionStudent, jlptLevelOf } from '@/lib/types';
 import AskInstitution from '@/components/common/AskInstitution';
 
 interface ChatMessage {
@@ -112,7 +112,7 @@ export default function AITutorDrawer() {
     'When do I use は and when が?',
     'Explain the ます, ました and ません forms',
     'How do I read Japanese dates and times?',
-    'Tips for the JLPT N5 listening section',
+    `Tips for the JLPT ${jlptLevelOf(user)} listening section`,
   ] : activeExam === 'PTE' ? [
     'Give me the 90/90 Describe Image template',
     'How to score 79+ in Read Aloud oral fluency?',

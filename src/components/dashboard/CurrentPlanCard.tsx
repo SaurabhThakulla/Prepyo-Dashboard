@@ -329,7 +329,7 @@ interface QuotaGaugeProps {
 function QuotaGauge({ title, percentUsed, period, hint, accent, unlimited = false, locked }: QuotaGaugeProps) {
   if (locked) {
     return (
-      <div className="flex items-center gap-3.5 rounded-xl border border-dashed border-amber-400/50 bg-amber-50/40 p-3 dark:bg-amber-950/10">
+      <div className="flex items-center justify-center gap-3.5 rounded-xl border border-dashed border-amber-400/50 bg-amber-50/40 p-3 dark:bg-amber-950/10">
         <div className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-full border-[5px] border-muted-foreground/15 text-amber-600 dark:text-amber-400">
           <Lock className="h-4 w-4" />
         </div>
@@ -349,7 +349,7 @@ function QuotaGauge({ title, percentUsed, period, hint, accent, unlimited = fals
   const ring = tone === 'out' ? 'text-rose-500' : tone === 'low' ? 'text-amber-500' : accent;
 
   return (
-    <div className="flex items-center gap-3.5 rounded-xl border border-border/70 bg-muted/40 p-3 dark:bg-slate-900/50">
+    <div className="flex items-center justify-center gap-3.5 rounded-xl border border-border/70 bg-muted/40 p-3 dark:bg-slate-900/50">
       <div className="relative h-12 w-12 sm:h-14 sm:w-14 shrink-0">
         <svg viewBox="0 0 48 48" className="h-full w-full -rotate-90" aria-hidden>
           <circle cx="24" cy="24" r={radius} fill="none" strokeWidth="5" className="stroke-muted-foreground/15 dark:stroke-zinc-800" />

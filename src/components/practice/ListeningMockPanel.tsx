@@ -13,7 +13,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AnswerSubmission, MockAttempt, Question, isInstitutionStudent, isPremiumUser } from '@/lib/types';
 import { subTestsLeft } from '@/lib/subscriptions';
 import { Playback, playClips, playRecording, StoppedError, unlockAudio } from '@/lib/scriptPlayer';
-import { beep } from '@/lib/audio';
 import RecordingStatus from '@/components/mocks/RecordingStatus';
 import PracticeMockPaywall from '@/components/practice/PracticeMockPaywall';
 import SectionMockIntro from '@/components/mocks/SectionMockIntro';
@@ -280,8 +279,6 @@ export function ListeningMockRunner({ session, onDone, onLeave, onClosed, title 
     setAudioError(null);
     setPhase('playing');
     setProgress(0);
-    // The test's cue that the recording is about to begin.
-    await beep();
     // Once started, a recording counts as heard: leaving now does not earn a replay.
     const played = Math.max(partsPlayed, part.partNo);
     setPartsPlayed(played);

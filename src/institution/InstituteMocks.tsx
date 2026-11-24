@@ -86,7 +86,7 @@ const levelName = (share: number | null) => {
 };
 
 const day = (value: string | null) =>
-  value ? new Date(value).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—';
+  value ? new Date(value).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—';
 
 /** A released score on its exam's scale: PTE out of 90, an IELTS band. */
 const finalScoreText = (exam: InstituteMockExam, score: number | null) =>

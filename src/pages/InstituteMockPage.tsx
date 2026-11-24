@@ -69,7 +69,7 @@ const scoreText = (m: StudentMock) =>
 const SKILL_NAMES: Record<string, string> = { speaking: 'Speaking', writing: 'Writing', reading: 'Reading', listening: 'Listening' };
 
 const when = (value: string | null) =>
-  value ? new Date(value).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+  value ? new Date(value).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '';
 
 function statusLine(m: StudentMock): { text: string; tone: string } {
   if (m.status === 'released') return { text: 'Result ready', tone: 'text-emerald-700 dark:text-emerald-300' };
