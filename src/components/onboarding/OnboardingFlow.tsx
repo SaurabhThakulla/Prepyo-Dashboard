@@ -31,8 +31,8 @@ import {
 } from '@/components/onboarding/OnboardingChrome';
 import { useToast } from '@/components/ui/toast';
 import { useApp } from '@/context/AppContext';
-import { CdsTrack, cdsApi } from '@/cds/cdsApi';
-import { CDS_TRACKS } from '@/cds/cdsShared';
+import { CdsTrack, cdsApi, type NccWing } from '@/cds/cdsApi';
+import { CDS_TRACKS, NCC_WINGS } from '@/cds/cdsShared';
 import { errorMessage } from '@/lib/api';
 import { useSubscriptionPlans } from '@/lib/hooks/useResources';
 import QRPaymentCheckoutDialog from '@/components/subscription/QRPaymentCheckoutDialog';
@@ -230,6 +230,7 @@ export default function OnboardingFlow({
   const [exam, setExam] = useState<ExamType | null>(null);
   // IMA, INA and AFA sit three CDS papers; OTA two. Changeable later on Home.
   const [cdsTrack, setCdsTrack] = useState<CdsTrack>('ima');
+  const [nccWing, setNccWing] = useState<NccWing>('army');
   const ieltsModule: IELTSModule = ieltsModuleOf(user);
   const [referralSource, setReferralSource] = useState<string | null>(null);
   const [planId, setPlanId] = useState<string | null>(currentPaidPlan ?? 'free');
@@ -422,6 +423,11 @@ export default function OnboardingFlow({
         dailyMinutes: 30,
         ...(referralSource ? { referralSource } : {}),
       });
+      if (exam === 'NCC') {
+        await cdsApi.setWing(nccWing).catch(() =>
+          toast.warning('Your NCC wing was not saved', 'Choose Army, Naval or Air Wing on Home.'),
+        );
+      }
       if (exam === 'CDS') {
         await cdsApi.setTrack(cdsTrack).catch(() =>
           toast.warning('Your CDS route was not saved', 'Choose IMA · INA · AFA or OTA on Home.'),
@@ -598,6 +604,17 @@ export default function OnboardingFlow({
                         value={cdsTrack}
                         onChange={setCdsTrack}
                         options={CDS_TRACKS.map(track => ({ id: track.id, label: track.label, note: track.detail }))}
+                      />
+                    </div>
+                  )}
+
+                  {exam === 'NCC' && (
+                    <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4">
+                      <ChoiceRow
+                        label="Wing"
+                        value={nccWing}
+                        onChange={setNccWing}
+                        options={NCC_WINGS.map(wing => ({ id: wing.id, label: wing.label, note: wing.detail }))}
                       />
                     </div>
                   )}

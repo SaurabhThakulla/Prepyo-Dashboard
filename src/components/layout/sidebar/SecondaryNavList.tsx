@@ -301,6 +301,7 @@ export default function SecondaryNavList({
                 <GroupHeading
                   card={columns}
                   count={group.items.length}
+                  note={group.items[0]?.groupNote}
                   groupName={group.name}
                   groupIcon={group.icon}
                   groupHref={group.groupHref}
@@ -332,6 +333,8 @@ interface GroupHeadingProps {
   /** Heading of a column card in the wide panel, rather than a full-width strip. */
   card?: boolean;
   count: number;
+  /** What the group is worth, shown in place of the type count. */
+  note?: string;
   groupName: string;
   groupIcon?: LucideIcon;
   groupHref?: string;
@@ -342,6 +345,7 @@ interface GroupHeadingProps {
 function GroupHeading({
   card = false,
   count,
+  note,
   groupName,
   groupIcon,
   groupHref,
@@ -366,19 +370,26 @@ function GroupHeading({
           <GroupIcon className={`w-[18px] h-[18px] shrink-0 ${isGroupActive ? 'text-[#00c4a7]' : ''}`} />
         )}
         {groupHref ? (
-          <Link
-            to={groupHref}
-            onClick={onNavigate}
-            className={`font-display text-[17px] font-semibold tracking-wide ${card ? 'leading-tight' : 'truncate'} hover:text-white transition-colors`}
-          >
-            {groupName}
-          </Link>
+          <span className="flex min-w-0 flex-col">
+            <Link
+              to={groupHref}
+              onClick={onNavigate}
+              className={`font-display text-[17px] font-semibold tracking-wide ${card ? 'leading-tight' : 'truncate'} hover:text-white transition-colors`}
+            >
+              {groupName}
+            </Link>
+            {card && note && <span className="mt-0.5 text-[11px] font-semibold text-white/70">{note}</span>}
+          </span>
         ) : (
-          <span className={`font-display text-[17px] font-semibold tracking-wide ${card ? 'leading-tight' : 'truncate'}`}>{groupName}</span>
+          <span className="flex min-w-0 flex-col">
+            <span className={`font-display text-[17px] font-semibold tracking-wide ${card ? 'leading-tight' : 'truncate'}`}>{groupName}</span>
+            {/* What the section is worth, on its own line so the heading keeps its width. */}
+            {card && note && <span className="mt-0.5 text-[11px] font-semibold text-white/70">{note}</span>}
+          </span>
         )}
       </div>
 
-      {card && <span className="shrink-0 text-[11px] font-medium text-white/55">{count} types</span>}
+      {card && !note && <span className="shrink-0 text-[11px] font-medium text-white/55">{count} types</span>}
     </div>
   );
 }

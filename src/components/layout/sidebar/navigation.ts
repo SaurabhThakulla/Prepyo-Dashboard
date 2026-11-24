@@ -34,7 +34,7 @@ import { lessonHref } from '@/data/learnKorean';
 import { JLPT_SECTIONS, type JlptSection } from '@/data/tutorials';
 import { CDS_SUBTASKS, cdsPapersFor } from '@/cds/cdsShared';
 import { NCC_SUBTASKS } from '@/cds/nccSubtasks';
-import type { CdsTrack } from '@/cds/cdsApi';
+import type { CdsTrack, NccWing } from '@/cds/cdsApi';
 
 const JLPT_SECTION_ICON: Record<JlptSection, LucideIcon> = { vocabulary: Languages, 'grammar-reading': BookOpen, listening: Headphones };
 import { hasMaterials, providersFor } from '@/data/materials';
@@ -68,6 +68,8 @@ export interface SecondaryNavItem {
   /** Starts a labelled run of items in the panel. Consecutive items sharing a
    *  group sit under one heading; ungrouped items lead the list. */
   group?: string;
+  /** What the group is worth, shown on its heading in place of the type count: "100 marks". */
+  groupNote?: string;
   /** Makes the group heading itself a link — used by the skill headings, so
    *  "Reading" still opens reading practice without picking a task type. */
   groupHref?: string;
@@ -169,6 +171,7 @@ export function buildSections(
   pteVariant: PteExamVariant = 'academic',
   cdsTrack: CdsTrack = 'ima',
   adminCounts: AdminHubCounts = {},
+  nccWing: NccWing = 'army',
 ): PrimarySectionConfig[] {
   const isPTE = activeExam === 'PTE';
   // EPS-TOPIK and JLPT have no sectional mocks yet; their full mocks are to come.
@@ -194,7 +197,8 @@ export function buildSections(
       // own tasks and a change there needs no edit here.
       // CDS: each paper a heading, its question types under it, as PTE lists a skill's tasks.
       // NCC: each subject a heading, its question types under it.
-      items: isNcc ? [...NCC_SUBTASKS.ncc_common, ...NCC_SUBTASKS.ncc_army].map(task => ({
+      // The wing decides the specialised subjects.
+      items: isNcc ? [...NCC_SUBTASKS.ncc_common, ...NCC_SUBTASKS[`ncc_${nccWing}`]].map(task => ({
         href: `/practice?skill=reading&type=${task.key}`,
         label: task.name,
         icon: FilePenLine,
@@ -202,6 +206,7 @@ export function buildSections(
         sublabel: task.weight,
         description: task.detail,
         group: task.group,
+        groupNote: task.groupNote,
       })) : isCds ? cdsPapersFor(cdsTrack).flatMap(paper => CDS_SUBTASKS[paper.type].map(task => ({
         href: `/practice?skill=reading&type=${task.key}`,
         label: task.name,
@@ -210,6 +215,7 @@ export function buildSections(
         description: task.detail,
         weight: task.weight,
         group: paper.name,
+        groupNote: `${paper.marks} marks`,
         groupHref: `/practice?skill=reading&paper=${paper.type}`,
       }))) : PRACTICE_SKILLS.flatMap(({ skill, label, icon, sublabel }) => {
         // Admins author both IELTS modules' tasks; a learner sees their own.
@@ -325,7 +331,8 @@ export function buildSections(
         },
       ],
     },
-    {
+    // No videos exist for UPSC CDS or NCC yet, so they have no Tutorials tab.
+    ...(isCds || isNcc ? [] : [{
       id: 'tutorials',
       label: 'Tutorials',
       icon: Video,
@@ -379,7 +386,7 @@ export function buildSections(
             }))
           : []),
       ],
-    },
+    } as PrimarySectionConfig]),
     ...(hasMaterials(activeExam) ? [materialsSection(activeExam)] : []),
   ];
 }

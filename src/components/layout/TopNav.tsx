@@ -244,10 +244,10 @@ export default function TopNav() {
             <DropdownMenuTrigger asChild>
               <button
                 title="Account & Profile"
-                className="flex items-center gap-1.5 xl:gap-2 rounded-full p-0.5 xl:pr-2.5 transition-colors outline-none hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white data-[state=open]:bg-white/10"
+                className="flex items-center gap-1.5 xl:gap-2 rounded-full p-0.5 xl:pr-2.5 transition-colors outline-none hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-white/50 data-[state=open]:bg-white/10"
               >
-                <Avatar className="h-9 w-9 ring-2 ring-white/70">
-                  <AvatarFallback className="bg-white text-primary text-sm font-bold">{user?.name?.charAt(0)?.toUpperCase() || 'P'}</AvatarFallback>
+                <Avatar className="h-9 w-9 ring-1 ring-white/25">
+                  <AvatarFallback className="bg-white/15 text-white text-sm font-bold">{user?.name?.charAt(0)?.toUpperCase() || 'P'}</AvatarFallback>
                 </Avatar>
                 <span className="hidden xl:block max-w-[6.5rem] 2xl:max-w-[8rem] truncate text-sm font-semibold">{firstName}</span>
                 <ChevronDown className="hidden xl:block h-3.5 w-3.5 opacity-60" />
@@ -264,8 +264,8 @@ export default function TopNav() {
                   <span className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-white/10" aria-hidden />
                   <span className="pointer-events-none absolute -bottom-12 right-10 h-20 w-20 rounded-full bg-white/5" aria-hidden />
                   <div className="relative flex items-center gap-3">
-                    <Avatar className="h-11 w-11 shrink-0 ring-2 ring-white/40">
-                      <AvatarFallback className="bg-white text-base font-bold text-primary">
+                    <Avatar className="h-11 w-11 shrink-0 ring-1 ring-white/25">
+                      <AvatarFallback className="bg-white/15 text-base font-bold text-white">
                         {user?.name?.charAt(0)?.toUpperCase() || 'P'}
                       </AvatarFallback>
                     </Avatar>

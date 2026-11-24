@@ -7,7 +7,7 @@ import { useApp } from '@/context/AppContext';
 import { useReadingTypes } from '@/lib/hooks/useReading';
 import { useLearnProgress } from '@/lib/hooks/useLearnProgress';
 import { AdminHubCounts, buildSections, PrimarySectionConfig } from './navigation';
-import { useCdsTrack } from '@/cds/cdsShared';
+import { useCdsTrack, useNccWing } from '@/cds/cdsShared';
 
 /**
  * The menu for the signed-in learner, as `buildSections` builds it, with the
@@ -35,6 +35,7 @@ export function useNavSections(): PrimarySectionConfig[] {
   const hasMistake = Boolean(searchParams.get('mistake'));
   const { progress: learnProgress } = useLearnProgress();
   const adminCounts = useAdminHubCounts(isAdmin(user ?? null));
+  const nccWing = useNccWing(Boolean(user) && activeExam === 'NCC');
   return buildSections(
     activeExam,
     () => setIsTutorOpen(true),
@@ -46,6 +47,7 @@ export function useNavSections(): PrimarySectionConfig[] {
     pteVariant,
     cdsTrack,
     adminCounts,
+    nccWing,
   );
 }
 
