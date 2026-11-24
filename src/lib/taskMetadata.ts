@@ -1,5 +1,6 @@
 import { ExamType, SkillType } from './types';
 import { typeKey, typeLabel } from './syllabus';
+import { CDS_PAPERS, CDS_SUBTASKS } from '@/cds/cdsShared';
 
 export interface TaskMeta {
   code: string;
@@ -418,6 +419,18 @@ const TASK_META: Record<ExamType, Record<string, TaskMeta>> = {
   IELTS: IELTS_TASK_META,
   EPS_TOPIK: EPS_TASK_META,
   JLPT: JLPT_TASK_META,
+  // CDS question types, keyed as their ?type= links are.
+  CDS: Object.fromEntries(CDS_PAPERS.flatMap(paper => CDS_SUBTASKS[paper.type].map(task => [
+    task.key.replace(/[^a-z0-9]/g, ''),
+    {
+      code: task.name.split(/[\s&/()-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(),
+      name: task.name,
+      skill: 'reading' as SkillType,
+      color: 'bg-emerald-700 text-white',
+      bgLight: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400',
+      scoreWeight: `UPSC CDS ${paper.name} · ${task.weight} a paper`,
+    },
+  ]))),
 };
 
 export function getTaskMetadata(

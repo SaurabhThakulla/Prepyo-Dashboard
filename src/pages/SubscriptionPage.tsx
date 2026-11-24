@@ -79,7 +79,7 @@ function SubscriptionPlans() {
       plan: premiumPlan,
       title: formatPlanName(premiumPlan.name),
       blurb: examsOnly ? 'Premium for EPS-TOPIK and JLPT' : 'For learners aiming for their target score',
-      price: `NPR ${premiumPlan.priceNPR.toLocaleString()}`,
+      price: `NPR ${premiumPlan.priceNPR.toLocaleString('en-US')}`,
       per: '/ month',
       note: `Paid monthly · ${planAccessDays(premiumPlan)} days access`,
       features: examsOnly ? [

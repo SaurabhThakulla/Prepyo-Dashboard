@@ -54,7 +54,7 @@ interface AdminMetrics {
  *
  * The frontend and the API deploy separately, so this page can run against a
  * backend that predates a field it reads — which is what `totalUsers` did:
- * calling .toLocaleString() on the missing value threw during render and blanked
+ * calling .toLocaleString('en-US') on the missing value threw during render and blanked
  * the whole page. Merging over these defaults means an older backend costs a
  * wrong zero, not a white screen.
  */
@@ -134,6 +134,7 @@ const EXAMS: { id: string; label: string; tone: Tone }[] = [
   { id: 'IELTS', label: 'IELTS', tone: 'violet' },
   { id: 'EPS_TOPIK', label: 'EPS-TOPIK', tone: 'green' },
   { id: 'JLPT', label: 'JLPT', tone: 'rose' },
+  { id: 'CDS', label: 'UPSC CDS', tone: 'amber' },
 ];
 
 const QUICK_LINKS: { to: string; label: string; hint: string; icon: LucideIcon }[] = [
@@ -160,7 +161,7 @@ function compact(n: number): string {
 }
 
 function plural(n: number, word: string): string {
-  return `${n.toLocaleString()} ${word}${n === 1 ? '' : 's'}`;
+  return `${n.toLocaleString('en-US')} ${word}${n === 1 ? '' : 's'}`;
 }
 
 export default function AdminPage() {
@@ -271,7 +272,7 @@ export default function AdminPage() {
             </h1>
             <p className="text-sm text-white/80">
               Live numbers from the database
-              {updatedAt && <> · updated {updatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</>}
+              {updatedAt && <> · updated {updatedAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</>}
             </p>
           </div>
 
@@ -342,7 +343,7 @@ export default function AdminPage() {
               {item.label}
               {item.count !== undefined && (
                 <span className="rounded-full bg-foreground/10 px-1.5 text-[11px] font-bold tabular-nums">
-                  {item.count.toLocaleString()}
+                  {item.count.toLocaleString('en-US')}
                 </span>
               )}
             </TabsTrigger>
@@ -480,7 +481,7 @@ function OverviewTab({
           icon={Users}
           tone="blue"
           label="Learners"
-          value={metrics.learners.toLocaleString()}
+          value={metrics.learners.toLocaleString('en-US')}
           note={`${plural(metrics.totalUsers, 'account')} in total`}
           onClick={() => onOpen('users')}
           action="Manage"
@@ -489,7 +490,7 @@ function OverviewTab({
           icon={UserCheck}
           tone="green"
           label="Active this week"
-          value={metrics.activeLast7Days.toLocaleString()}
+          value={metrics.activeLast7Days.toLocaleString('en-US')}
           note={`${activeShare}% of learners in the last 7 days`}
           progress={activeShare}
         />
@@ -497,8 +498,8 @@ function OverviewTab({
           icon={Bot}
           tone="violet"
           label="AI evaluations today"
-          value={metrics.evaluationsToday.toLocaleString()}
-          note={`${metrics.evaluations.toLocaleString()} all time`}
+          value={metrics.evaluationsToday.toLocaleString('en-US')}
+          note={`${metrics.evaluations.toLocaleString('en-US')} all time`}
           onClick={() => onOpen('ai')}
           action="Details"
         />
@@ -521,7 +522,7 @@ function OverviewTab({
             />
             <div className="text-right">
               <div className="font-display text-3xl font-black text-foreground tabular-nums">
-                {examTotal.toLocaleString()}
+                {examTotal.toLocaleString('en-US')}
               </div>
               <div className="text-xs font-semibold uppercase tracking-wide text-foreground/60">questions</div>
             </div>
@@ -551,7 +552,7 @@ function OverviewTab({
                     {exam.label}
                   </div>
                   <div className={`font-display text-3xl font-black tabular-nums ${t.text}`}>
-                    {count.toLocaleString()}
+                    {count.toLocaleString('en-US')}
                   </div>
                   <div className="text-sm text-foreground/70">{percent(count, examTotal)}% of the bank</div>
                 </div>
@@ -572,7 +573,7 @@ function OverviewTab({
                   </span>
                   <span className="flex-1 text-sm font-semibold text-foreground">{item.label}</span>
                   <span className={`font-display text-xl font-black tabular-nums ${t.text}`}>
-                    {item.value.toLocaleString()}
+                    {item.value.toLocaleString('en-US')}
                   </span>
                 </li>
               );
@@ -654,7 +655,7 @@ function AiUsageTab({ metrics, usageByModel }: { metrics: AdminMetrics; usageByM
           </div>
           <div
             className={`font-display text-4xl font-black tabular-nums ${TONES.amber.text}`}
-            title={totalTokens.toLocaleString()}
+            title={totalTokens.toLocaleString('en-US')}
           >
             {compact(totalTokens)}
           </div>
@@ -677,8 +678,8 @@ function AiUsageTab({ metrics, usageByModel }: { metrics: AdminMetrics; usageByM
           icon={Bot}
           tone="violet"
           label="Evaluations"
-          value={metrics.evaluations.toLocaleString()}
-          note={`${metrics.evaluationsToday.toLocaleString()} today · ${plural(rows.length, 'model setup')}`}
+          value={metrics.evaluations.toLocaleString('en-US')}
+          note={`${metrics.evaluationsToday.toLocaleString('en-US')} today · ${plural(rows.length, 'model setup')}`}
         />
         <Kpi
           icon={Timer}
@@ -736,15 +737,15 @@ function AiUsageTab({ metrics, usageByModel }: { metrics: AdminMetrics; usageByM
                     </div>
                     <div className="text-sm md:text-right">
                       <span className="md:hidden text-foreground/60">Requests </span>
-                      <span className="font-bold text-foreground tabular-nums">{row.requests.toLocaleString()}</span>
+                      <span className="font-bold text-foreground tabular-nums">{row.requests.toLocaleString('en-US')}</span>
                       <span className="text-foreground/50 text-xs"> · {percent(row.requests, totalRequests)}%</span>
                     </div>
                     <div
                       className="text-sm text-right"
-                      title={`${row.promptTokens.toLocaleString()} prompt / ${row.completionTokens.toLocaleString()} completion`}
+                      title={`${row.promptTokens.toLocaleString('en-US')} prompt / ${row.completionTokens.toLocaleString('en-US')} completion`}
                     >
                       <span className="md:hidden text-foreground/60">Tokens </span>
-                      <span className="font-bold text-foreground tabular-nums">{tokens.toLocaleString()}</span>
+                      <span className="font-bold text-foreground tabular-nums">{tokens.toLocaleString('en-US')}</span>
                     </div>
                     <div className="col-span-2 md:col-span-1 flex items-center gap-2">
                       <div className="h-2 flex-1 overflow-hidden rounded-full bg-foreground/10">

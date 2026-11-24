@@ -39,6 +39,7 @@ import { PteHistoryEntry } from '@/lib/pteMock/types';
 import { DEFAULT_PLANS, formatPlanName, premiumPlanIdFor } from '@/lib/subscriptions';
 import AskInstitution from '@/components/common/AskInstitution';
 import PracticeResultDialog from '@/components/practice/PracticeResultDialog';
+import { cdsSetLink, useCdsMocks, useCdsSets } from '@/cds/cdsShared';
 
 const PAGE = 10;
 
@@ -264,6 +265,11 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
     activeExam,
     period
   );
+  // CDS keeps its mistakes and papers on its own backend; its notebook is free.
+  const isCds = activeExam === 'CDS';
+  // A CDS practice set is one entry, opening on its five questions marked.
+  const cdsSets = useCdsSets(isCds);
+  const cdsMocks = useCdsMocks(isCds);
 
   // Check if forbidden by the server, or not premium. Premium includes a
   // consultancy's students, whose own plan may be free.
@@ -271,14 +277,14 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
     (error && 'status' in error && (error as { status: number }).status === 403) ||
     (analyticsError && 'status' in analyticsError && (analyticsError as { status: number }).status === 403);
 
-  const isSuru = Boolean(isForbidden || (user && !isPremiumUser(user)));
+  const isSuru = !isCds && Boolean(isForbidden || (user && !isPremiumUser(user)));
   // The upgrade offered here: NPR 249 on EPS-TOPIK and JLPT, Premium on IELTS and PTE.
   const offer = DEFAULT_PLANS.find(plan => plan.id === premiumPlanIdFor(activeExam))!;
 
   const rawMistakes = isSuru
     ? (DUMMY_MISTAKES[activeExam] ?? DUMMY_MISTAKES.PTE ?? [])
-    : (data?.mistakes ?? []);
-  const rawAttempts = attemptsData?.attempts ?? [];
+    : isCds ? [] : (data?.mistakes ?? []);
+  const rawAttempts = isCds ? [] : attemptsData?.attempts ?? [];
 
   const mistakesByQuestion = React.useMemo(() => {
     const map = new Map<string, Mistake>();
@@ -337,22 +343,26 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
       // A mock's answers are reached through the mock's own entry.
       .filter(e => e.exam === activeExam && !e.mockAttemptId && !e.pteMockSessionId && (selectedSkill === 'all' || e.skill === selectedSkill))
       .map(evaluationItem);
-    const titles = new Map((mocksData?.mocks ?? []).map(m => [m.id, m.title]));
+    const titles = new Map((isCds ? cdsMocks.mocks : mocksData?.mocks ?? []).map(m => [m.id, m.title]));
     const mocks = [
-      ...(mockAttemptsData?.attempts ?? [])
+      ...(isCds ? cdsMocks.mockAttempts : mockAttemptsData?.attempts ?? [])
         .filter(a => a.exam === activeExam && !PTE_MOCK_ATTEMPT_IDS.has(a.mockId))
         .map(a => mockAttemptItem(a, titles.get(a.mockId) ?? SECTION_MOCK_TITLES[a.mockId] ?? 'Mock test')),
+      ...(isCds ? cdsSets.data ?? [] : []).map(s => {
+        const { name, href } = cdsSetLink(s.practice, s.setNumber, s.id);
+        return { ...mockItem(s.id, `${name} · Set ${s.setNumber}`, href, 'reading', s.correct, s.total, s.createdAt), typeName: name };
+      }),
       ...(activeExam === 'PTE' ? pteMocksData?.sessions ?? [] : [])
         .filter(s => s.status === 'completed')
         .map(pteMockItem),
     ].filter(m => selectedSkill === 'all' || m.skill === selectedSkill);
     return [...mocks, ...scored, ...practiceItems].sort((a, b) => (b.lastAttemptedAt ?? '').localeCompare(a.lastAttemptedAt ?? ''));
-  }, [isSuru, practiceItems, evaluationsData, mockAttemptsData, mocksData, pteMocksData, activeExam, selectedSkill]);
+  }, [isSuru, practiceItems, evaluationsData, mockAttemptsData, mocksData, pteMocksData, activeExam, selectedSkill, isCds, cdsMocks.mocks, cdsMocks.mockAttempts, cdsSets.data]);
 
   const analytics = isSuru
     ? (DUMMY_ANALYTICS[activeExam] ?? DUMMY_ANALYTICS.PTE)
     : analyticsData?.analytics;
-  const loading = isSuru ? false : (isPending && attemptsPending);
+  const loading = isSuru ? false : isCds ? cdsSets.isPending || cdsMocks.isPending : (isPending && attemptsPending);
 
   useEffect(() => {
     if (error && !isForbidden && !isSuru) {
@@ -600,7 +610,7 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
                   <ArrowRight className="w-4 h-4" />
                 </Button>
                 <p className="text-[11px] text-muted-foreground font-medium">
-                  {formatPlanName(offer.id)} is NPR {offer.priceNPR.toLocaleString()} a month · Instant access to all premium features
+                  {formatPlanName(offer.id)} is NPR {offer.priceNPR.toLocaleString('en-US')} a month · Instant access to all premium features
                 </p>
               </div>
               )}
@@ -719,7 +729,7 @@ function groupByDay(items: HistoryItem[]) {
         ? 'Today'
         : days === 1
           ? 'Yesterday'
-          : date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+          : date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
     const group = groups.get(label) ?? { label, time, items: [] };
     group.items.push(item);
     groups.set(label, group);
@@ -833,7 +843,7 @@ function HistoryCard({ item, onOpen }: { item: HistoryItem; onOpen?: () => void 
     bad: { bar: 'bg-rose-500', pill: 'bg-rose-500/10 text-rose-700 dark:text-rose-400 ring-rose-500/20' },
   }[item.evaluation && !hasScore ? 'mid' : ratio >= 0.7 ? 'good' : ratio > 0 ? 'mid' : 'bad'];
   const when = item.lastAttemptedAt ? new Date(item.lastAttemptedAt) : null;
-  const time = when && !Number.isNaN(when.getTime()) ? when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : null;
+  const time = when && !Number.isNaN(when.getTime()) ? when.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
 
   const body = (
     <>

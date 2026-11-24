@@ -6,18 +6,25 @@ import SkillQuestionCard from '@/components/dashboard/SkillQuestionCard';
 import CurrentPlanCard from '@/components/dashboard/CurrentPlanCard';
 import DashboardQuickTests from '@/components/dashboard/DashboardQuickTests';
 import SkillProfileCard from '@/components/dashboard/SkillProfileCard';
-import JLPTLevelSwitch from '@/components/dashboard/JLPTLevelSwitch';
 import MistakesPage from '@/pages/MistakesPage';
 import { planHeadline } from '@/components/onboarding/onboarding';
 import { useDashboardSummary } from '@/lib/hooks/useDashboardSummary';
 import { daysUntilExam, formatExamDate } from '@/lib/dates';
 import { EXAM_LABELS, skillsFor } from '@/lib/types';
 import { DashboardPageSkeleton } from '@/components/layout/PageSkeleton';
+import { BookOpen, Calculator, Globe } from 'lucide-react';
+import JLPTLevelSwitch from '@/components/dashboard/JLPTLevelSwitch';
+import CdsTrackSwitch from '@/cds/CdsTrackSwitch';
+import { cdsPapersFor, useCdsMocks, useCdsTrack } from '@/cds/cdsShared';
 
 export default function DashboardPage() {
   const { user, activeExam, pteVariant } = useApp();
   const [isExamDateOpen, setIsExamDateOpen] = useState(false);
   const { progress, isLoading } = useDashboardSummary(activeExam);
+  const isCds = activeExam === 'CDS';
+  // CDS is practised as papers on its own backend: a card per paper, not per skill.
+  const cds = useCdsMocks(isCds);
+  const cdsTrack = useCdsTrack(isCds);
 
   if (isLoading) {
     return <DashboardPageSkeleton />;
@@ -54,6 +61,7 @@ export default function DashboardPage() {
 
         <div className="relative flex flex-col sm:flex-row sm:items-center gap-3">
           {activeExam === 'JLPT' && <JLPTLevelSwitch />}
+          {isCds && <CdsTrackSwitch />}
           <ExamCountdown
             examDate={examDate}
             daysLeft={daysLeft}
@@ -63,7 +71,21 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-2 2xl:grid-cols-4 gap-3 sm:gap-4">
-        {skillsFor(activeExam).map(skill => {
+        {isCds && cdsPapersFor(cdsTrack).map(paper => {
+          const papers = cds.papers.filter(p => p.paperType === paper.type);
+          return (
+            <SkillQuestionCard
+              key={paper.type}
+              skill="reading"
+              icon={paper.type === 'english' ? BookOpen : paper.type === 'gk' ? Globe : Calculator}
+              label={`${paper.name} Papers`}
+              completed={papers.filter(p => cds.attempts.some(a => a.paperId === p.id)).length}
+              total={papers.length}
+              href={`/mocks?paper=${paper.type}`}
+            />
+          );
+        })}
+        {!isCds && skillsFor(activeExam).map(skill => {
           const row = skillProgress.get(skill);
           return (
             <SkillQuestionCard
@@ -88,7 +110,7 @@ export default function DashboardPage() {
         <CurrentPlanCard user={user} />
       </div>
 
-      <SkillProfileCard progress={progress} />
+      {!isCds && <SkillProfileCard progress={progress} />}
 
       <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-sm">
         <MistakesPage embedded />

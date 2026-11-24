@@ -25,6 +25,10 @@ export const SYLLABUS: Record<ExamType, Partial<Record<SkillType, string[]>>> = 
     reading: syllabusData.exams.JLPT.skills.reading.topics.map(t => t.name),
     listening: syllabusData.exams.JLPT.skills.listening.topics.map(t => t.name),
   },
+  CDS: {
+    reading: [],
+    listening: [],
+  },
 };
 
 /**
@@ -33,21 +37,25 @@ export const SYLLABUS: Record<ExamType, Partial<Record<SkillType, string[]>>> = 
  * tasks without one.
  */
 export function taskInstruction(exam: ExamType, skill: SkillType, key: string): string | undefined {
-  const topics = (syllabusData.exams[exam]?.skills as Record<string, { topics: (Topic & { instruction?: string })[] }> | undefined)?.[skill]?.topics ?? [];
+  const examData = (syllabusData.exams as Record<string, any>)[exam];
+  const topics = (examData?.skills as Record<string, { topics: (Topic & { instruction?: string })[] }> | undefined)?.[skill]?.topics ?? [];
   return topics.find(topic => matchesTypeKey(topic.name, key))?.instruction;
 }
 
 /** What a task asks of the learner, in one plain line, for the practice hub's cards. */
 export function taskSummary(exam: ExamType, skill: SkillType, name: string): string | undefined {
-  const topics = (syllabusData.exams[exam]?.skills as Record<string, { topics: (Topic & { simpleDescription?: string })[] }> | undefined)?.[skill]?.topics ?? [];
+  const examData = (syllabusData.exams as Record<string, any>)[exam];
+  const topics = (examData?.skills as Record<string, { topics: (Topic & { simpleDescription?: string })[] }> | undefined)?.[skill]?.topics ?? [];
   return topics.find(topic => topic.name === name)?.simpleDescription ?? partsOf(exam, skill).find(part => part.name === name)?.simpleDescription;
 }
 
 type Topic = { name: string; module?: string };
 
 /** The parts a learner picks a skill by (IELTS Writing's Task 1 and 2, Reading's Part 1-3), if any. */
-const partsOf = (exam: ExamType, skill: SkillType): { name: string; simpleDescription?: string }[] =>
-  (syllabusData.exams[exam]?.skills as Record<string, { parts?: { name: string; simpleDescription?: string }[] }> | undefined)?.[skill]?.parts ?? [];
+const partsOf = (exam: ExamType, skill: SkillType): { name: string; simpleDescription?: string }[] => {
+  const examData = (syllabusData.exams as Record<string, any>)[exam];
+  return (examData?.skills as Record<string, { parts?: { name: string; simpleDescription?: string }[] }> | undefined)?.[skill]?.parts ?? [];
+};
 
 /**
  * The task names a learner is offered: the whole syllabus, less the other
@@ -57,7 +65,8 @@ const partsOf = (exam: ExamType, skill: SkillType): { name: string; simpleDescri
  * 1-3); the question list then filters by task type inside it.
  */
 export function syllabusFor(exam: ExamType, skill: SkillType, module: IELTSModule = 'academic'): string[] {
-  const topics = (syllabusData.exams[exam]?.skills as Record<string, { topics: Topic[] }> | undefined)?.[skill]?.topics ?? [];
+  const examData = (syllabusData.exams as Record<string, any>)[exam];
+  const topics = (examData?.skills as Record<string, { topics: Topic[] }> | undefined)?.[skill]?.topics ?? [];
   const parts = partsOf(exam, skill);
   if (parts.length > 0) return parts.map(part => part.name);
   return topics.filter(topic => exam !== 'IELTS' || !topic.module || topic.module === module).map(topic => topic.name);

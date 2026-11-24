@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/ui/toast';
@@ -9,6 +10,8 @@ import {
   MockSubmitOutcome,
   Question,
 } from '@/lib/types';
+import { cdsApi } from '@/cds/cdsApi';
+import { cdsKeys, cdsMockAttempt, cdsQuestion } from '@/cds/cdsShared';
 
 /**
  * Everything involved in actually sitting a mock exam: the questions, the
@@ -24,6 +27,9 @@ import {
 export function useMockExam(onAttemptFinished: (attempt: MockAttempt) => void) {
   const { refreshUser, setActiveTestSession } = useApp();
   const toast = useToast();
+  const queryClient = useQueryClient();
+  // A CDS paper is sat through the CDS backend: its attempt is opened on start.
+  const cdsAttemptId = useRef<string | null>(null);
 
   const [activeMock, setActiveMock] = useState<Mock | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -69,6 +75,18 @@ export function useMockExam(onAttemptFinished: (attempt: MockAttempt) => void) {
 
     try {
       const elapsed = activeMock.totalDurationMinutes * 60 - secondsLeft;
+      if (activeMock.exam === 'CDS' && cdsAttemptId.current) {
+        const chosen = Object.values(answers).filter(answer => answer.selectedOptions?.[0]);
+        const { attempt, score } = await cdsApi.submitAttempt(cdsAttemptId.current, {
+          answers: Object.fromEntries(chosen.map(answer => [answer.questionId, answer.selectedOptions![0]])),
+          timeSpentSeconds: Math.max(0, elapsed),
+        });
+        const finished = { ...cdsMockAttempt(attempt), totalQuestions: score.totalQuestions };
+        setOutcome({ attempt: finished, xpAwarded: 0, scoredQuestions: score.totalQuestions, ungradedQuestions: 0, scoreConfidence: '' });
+        onAttemptFinished(finished);
+        void queryClient.invalidateQueries({ queryKey: ['cds'] });
+        return;
+      }
       const result = await api.post<MockSubmitOutcome>(`/mocks/${activeMock.id}/submit`, {
         answers: Object.values(answers),
         durationSeconds: Math.max(0, elapsed),
@@ -85,7 +103,7 @@ export function useMockExam(onAttemptFinished: (attempt: MockAttempt) => void) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [activeMock, isSubmitting, secondsLeft, answers, refreshUser, toast, onAttemptFinished]);
+  }, [activeMock, isSubmitting, secondsLeft, answers, refreshUser, toast, onAttemptFinished, queryClient]);
 
   // Exam countdown. Submitting on zero mirrors a real timed test.
   useEffect(() => {
@@ -108,17 +126,27 @@ export function useMockExam(onAttemptFinished: (attempt: MockAttempt) => void) {
     async (mock: Mock) => {
       setStartingMockId(mock.id);
       try {
-        // Fetch the mock's real questions rather than improvising a prompt.
-        const data = await api.get<{ mock: Mock; questions: Question[] }>(`/mocks/${mock.id}`);
-        setActiveMock(data.mock);
-        setQuestions(data.questions ?? []);
+        if (mock.exam === 'CDS') {
+          // A fresh attempt on the CDS backend each time.
+          const { attempt, questions: paper } = await cdsApi.startAttempt(mock.id);
+          cdsAttemptId.current = attempt.id;
+          const type = mock.sections[0]?.name === 'Elementary Mathematics' ? 'maths' : undefined;
+          setActiveMock(mock);
+          setQuestions(paper.map(question => cdsQuestion(question, type)));
+        } else {
+          // Fetch the mock's real questions rather than improvising a prompt.
+          const data = await api.get<{ mock: Mock; questions: Question[] }>(`/mocks/${mock.id}`);
+          setActiveMock(data.mock);
+          setQuestions(data.questions ?? []);
+        }
         setCurrentIndex(0);
         setSecondsLeft(mock.totalDurationMinutes * 60);
         setAnswers({});
         setFlaggedIds([]);
         setOutcome(null);
       } catch (err) {
-        toast.error('Could not start that mock', errorMessage(err));
+        if (err instanceof ApiError && err.isLimitReached) toast.warning('Mock limit reached', errorMessage(err));
+        else toast.error('Could not start that mock', errorMessage(err));
       } finally {
         setStartingMockId(null);
       }

@@ -15,6 +15,7 @@ import MockStartPanel from '@/components/mocks/MockStartPanel';
 import ScoreReportList, { PTE_MOCK_ATTEMPT_IDS } from '@/components/mocks/ScoreReportList';
 import AppPageSkeleton from '@/components/layout/AppPageSkeleton';
 import { READING_MOCK_HREF } from '@/components/layout/sidebar/navigation';
+import { useCdsMocks } from '@/cds/cdsShared';
 
 const MockExamRunner = lazy(() => import('@/components/mocks/MockExamRunner'));
 const ScoreReport = lazy(() => import('@/components/mocks/ScoreReport'));
@@ -22,6 +23,7 @@ const FullMockPanel = lazy(() => import('@/components/mocks/FullMockPanel'));
 const IeltsMockCenter = lazy(() => import('@/components/mocks/IeltsMockCenter'));
 const PteMockCenter = lazy(() => import('@/components/pteMock/PteMockCenter'));
 const PteMockHistory = lazy(() => import('@/components/pteMock/PteMockHistory'));
+const CdsPaperCatalog = lazy(() => import('@/cds/CdsPaperCatalog'));
 
 export default function MocksPage() {
   const navigate = useNavigate();
@@ -37,16 +39,21 @@ export default function MocksPage() {
   const attemptsQuery = useMockAttempts();
   const queryClient = useQueryClient();
 
-  const mocks = mocksQuery.data?.mocks ?? [];
-  const pastAttempts = attemptsQuery.data?.attempts ?? [];
-  const loading = mocksQuery.isPending || attemptsQuery.isPending;
+  // CDS papers and results come from the CDS backend, in the same shapes.
+  const isCds = activeExam === 'CDS';
+  const cds = useCdsMocks(isCds);
+
+  const mocks = isCds ? cds.mocks : mocksQuery.data?.mocks ?? [];
+  const pastAttempts = isCds ? cds.mockAttempts : attemptsQuery.data?.attempts ?? [];
+  const loading = isCds ? cds.isPending : mocksQuery.isPending || attemptsQuery.isPending;
   // PTE mock tests have their own history (PteMockHistory), with the full
   // report behind each row; their attempt rows are not listed a second time.
   const otherAttempts = pastAttempts.filter(a => !PTE_MOCK_ATTEMPT_IDS.has(a.mockId));
-  const loadError = mocksQuery.error ?? attemptsQuery.error;
+  const loadError = isCds ? cds.error : mocksQuery.error ?? attemptsQuery.error;
 
   const addAttempt = useCallback(
     (attempt: MockAttempt) => {
+      if (attempt.exam === 'CDS') return; // useMockExam refetches the CDS results
       queryClient.setQueryData(
         queryKeys.mockAttempts(),
         (previous: { attempts: MockAttempt[] } | undefined) => ({
@@ -96,6 +103,9 @@ export default function MocksPage() {
     const found = pastAttempts.find(a => a.id === reviewParam || a.mockId === reviewParam);
     if (found) {
       setReviewAttempt(found);
+    } else if (isCds) {
+      // The CDS report loads the attempt itself.
+      setReviewAttempt({ id: reviewParam, exam: 'CDS' } as MockAttempt);
     } else {
       api.get<{ attempt: MockAttempt }>(`/mocks/attempts/${reviewParam}`)
         .then(data => {
@@ -106,7 +116,7 @@ export default function MocksPage() {
           navigate('/mocks', { replace: true });
         });
     }
-  }, [reviewParam, pastAttempts, reviewAttempt]);
+  }, [reviewParam, pastAttempts, reviewAttempt, isCds]);
 
   const leaveReport = () => {
     exam.exit();
@@ -211,6 +221,27 @@ export default function MocksPage() {
     return (
       <Suspense fallback={<AppPageSkeleton />}>
         <PteMockCenter tabs={tabs} />
+      </Suspense>
+    );
+  }
+
+  // CDS lists its papers in the shared test list; each is sat in the shared runner.
+  if (isCds && activeTab === 'catalog') {
+    return (
+      <Suspense fallback={<AppPageSkeleton />}>
+        <CdsPaperCatalog
+          tabs={tabs}
+          papers={cds.papers}
+          attempts={cds.attempts}
+          plan={cds.plan}
+          paperType={searchParams.get('paper')}
+          isLoading={cds.isPending}
+          onStart={id => {
+            const mock = mocks.find(m => m.id === id);
+            if (mock) void startMock(mock);
+          }}
+          onReview={id => navigate(`/mocks?review=${id}`)}
+        />
       </Suspense>
     );
   }

@@ -152,7 +152,7 @@ export default function MyReportsPage() {
                           {listed.status === 'open' ? 'Open' : 'Resolved'}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          {new Date(listed.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {new Date(listed.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                         {listed.replyCount > 0 && (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">

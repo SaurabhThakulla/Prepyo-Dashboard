@@ -185,7 +185,7 @@ export default function AdminPaymentsPage() {
 
               <div className="text-right">
                 <div className="font-display text-lg font-black text-foreground">
-                  NPR {payment.amountNpr.toLocaleString()}
+                  NPR {payment.amountNpr.toLocaleString('en-US')}
                 </div>
                 <p className="text-[11px] text-muted-foreground">
                   {payment.planName} · {payment.effectiveDays} days
@@ -198,10 +198,10 @@ export default function AdminPaymentsPage() {
               {/* Requests sent before the form dropped country codes still carry "+91…". */}
               <Detail label="Phone" value={payment.phoneNumber ? localPhone(payment.phoneNumber) : '—'} mono />
               <Detail label="Transaction" value={payment.transactionId} mono />
-              <Detail label="Submitted" value={new Date(payment.createdAt).toLocaleDateString()} />
+              <Detail label="Submitted" value={new Date(payment.createdAt).toLocaleDateString('en-US')} />
               <Detail
                 label="Reviewed"
-                value={payment.reviewedAt ? new Date(payment.reviewedAt).toLocaleDateString() : '—'}
+                value={payment.reviewedAt ? new Date(payment.reviewedAt).toLocaleDateString('en-US') : '—'}
               />
             </div>
 

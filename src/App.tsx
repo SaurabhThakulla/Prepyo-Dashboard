@@ -31,6 +31,7 @@ const TermsPage = lazy(() => import('@/pages/TermsPage'));
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 const MyReportsPage = lazy(() => import('@/pages/MyReportsPage'));
+const OnboardingPage = lazy(() => import('@/pages/OnboardingPage'));
 
 export default function App() {
   return (
@@ -91,6 +92,7 @@ export default function App() {
         <Route path="/learn" element={<Suspense fallback={<AppPageSkeleton />}><LearnPage /></Suspense>} />
         <Route path="/learn/review" element={<Suspense fallback={<AppPageSkeleton />}><ReviewPage /></Suspense>} />
         <Route path="/learn/:unitId/:lessonId" element={<Suspense fallback={<AppPageSkeleton />}><LessonPage /></Suspense>} />
+        <Route path="/onboarding" element={<Suspense fallback={<AppPageSkeleton />}><OnboardingPage /></Suspense>} />
         <Route path="/reports" element={<Suspense fallback={<AppPageSkeleton />}><MyReportsPage /></Suspense>} />
         <Route path="/admin" element={<Suspense fallback={<AppPageSkeleton />}><AdminPage /></Suspense>} />
         <Route path="/admin/reports" element={<Suspense fallback={<AppPageSkeleton />}><AdminReportsPage /></Suspense>} />

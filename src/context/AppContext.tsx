@@ -34,7 +34,10 @@ export type OnboardingAnswers = Partial<
     | 'focusSkill'
     | 'dailyMinutes'
   >
->;
+> & {
+  /** How the learner found Prepyo; saved for Prepyo admins, not shown back to the learner. */
+  referralSource?: string;
+};
 
 interface AppContextType {
   user: UserProfile | null;

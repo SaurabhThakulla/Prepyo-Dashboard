@@ -117,8 +117,19 @@ interface SubmitResult {
   xpAwarded: number;
 }
 
+// CDS practises from its own backend, one question type at a time.
+const CdsTaskPractice = React.lazy(() => import('@/cds/CdsTaskPractice'));
+
 export default function PracticePage() {
   const [params] = useSearchParams();
+  const { activeExam } = useApp();
+  if (activeExam === 'CDS') {
+    return (
+      <React.Suspense fallback={null}>
+        <CdsTaskPractice key={`${params.get('type') ?? ''}-${params.get('paper') ?? ''}`} />
+      </React.Suspense>
+    );
+  }
   return (
     <PracticePageContent
       key={`${params.get('mistake') ?? ''}-${params.get('exam') ?? ''}-${params.get('skill') ?? ''}-${params.get('type') ?? ''}`}
@@ -1206,8 +1217,6 @@ function PracticePageContent() {
                   repeat={listeningPlays(currentQuestion)}
                   // The recording plays on its own after the test's lead-in; speaking recording follows it.
                   autoPlayAfter={result === null ? audioDelayFor(currentQuestion) : undefined}
-                  // Listening recordings start with a beep; speaking prompts keep their own cue.
-                  beepFirst={currentQuestion.skill === 'listening'}
                   title={currentQuestion.title}
                   // Every practice recording (listening, and speaking answered from what is heard): one bar with time, speed and volume.
                   layout="bar"
