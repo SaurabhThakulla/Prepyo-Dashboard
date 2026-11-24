@@ -29,6 +29,10 @@ export const SYLLABUS: Record<ExamType, Partial<Record<SkillType, string[]>>> = 
     reading: [],
     listening: [],
   },
+  NCC: {
+    reading: [],
+    listening: [],
+  },
 };
 
 /**

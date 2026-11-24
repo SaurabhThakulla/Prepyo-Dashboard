@@ -3,13 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/ui/toast';
-import {
-  AnswerSubmission,
-  Mock,
-  MockAttempt,
-  MockSubmitOutcome,
-  Question,
-} from '@/lib/types';
+import { AnswerSubmission, Mock, MockAttempt, MockSubmitOutcome, Question, isCdsSchemaExam } from '@/lib/types';
 import { cdsApi } from '@/cds/cdsApi';
 import { cdsKeys, cdsMockAttempt, cdsQuestion } from '@/cds/cdsShared';
 
@@ -75,7 +69,7 @@ export function useMockExam(onAttemptFinished: (attempt: MockAttempt) => void) {
 
     try {
       const elapsed = activeMock.totalDurationMinutes * 60 - secondsLeft;
-      if (activeMock.exam === 'CDS' && cdsAttemptId.current) {
+      if (isCdsSchemaExam(activeMock.exam) && cdsAttemptId.current) {
         const chosen = Object.values(answers).filter(answer => answer.selectedOptions?.[0]);
         const { attempt, score } = await cdsApi.submitAttempt(cdsAttemptId.current, {
           answers: Object.fromEntries(chosen.map(answer => [answer.questionId, answer.selectedOptions![0]])),
@@ -126,7 +120,7 @@ export function useMockExam(onAttemptFinished: (attempt: MockAttempt) => void) {
     async (mock: Mock) => {
       setStartingMockId(mock.id);
       try {
-        if (mock.exam === 'CDS') {
+        if (isCdsSchemaExam(mock.exam)) {
           // A fresh attempt on the CDS backend each time.
           const { attempt, questions: paper } = await cdsApi.startAttempt(mock.id);
           cdsAttemptId.current = attempt.id;

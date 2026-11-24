@@ -5,11 +5,11 @@
 // empty list means the learner has not generated that data yet, and the UI says
 // so rather than substituting a number.
 
-export type ExamType = 'PTE' | 'IELTS' | 'EPS_TOPIK' | 'JLPT' | 'CDS';
+export type ExamType = 'PTE' | 'IELTS' | 'EPS_TOPIK' | 'JLPT' | 'CDS' | 'NCC';
 export type SkillType = 'speaking' | 'writing' | 'reading' | 'listening';
 
 /** Every exam, in the order they are offered. */
-export const EXAM_TYPES: ExamType[] = ['IELTS', 'PTE', 'EPS_TOPIK', 'JLPT', 'CDS'];
+export const EXAM_TYPES: ExamType[] = ['IELTS', 'PTE', 'EPS_TOPIK', 'JLPT', 'CDS', 'NCC'];
 
 /** How an exam is named on screen. `EPS_TOPIK` is an identifier, not a name. */
 export const EXAM_LABELS: Record<ExamType, string> = {
@@ -19,20 +19,25 @@ export const EXAM_LABELS: Record<ExamType, string> = {
   // N5 or N4 (NAT-TEST 5Q or 4Q), the learner's own pick: see jlptLevelOf.
   JLPT: 'JLPT',
   CDS: 'UPSC CDS',
+  // The NCC 'B' and 'C' certificate written paper (Army Wing).
+  NCC: 'NCC',
 };
+
+/** UPSC CDS and NCC keep their papers in the cds schema and are practised and sat the same way. */
+export const isCdsSchemaExam = (exam?: string | null): exam is 'CDS' | 'NCC' => exam === 'CDS' || exam === 'NCC';
 
 export const isExamType = (value: unknown): value is ExamType =>
   typeof value === 'string' && (EXAM_TYPES as string[]).includes(value);
 
 /** The top of each exam's reporting scale. */
-export const EXAM_MAX_SCORE: Record<ExamType, number> = { IELTS: 9, PTE: 90, EPS_TOPIK: 100, JLPT: 180, CDS: 300 };
+export const EXAM_MAX_SCORE: Record<ExamType, number> = { IELTS: 9, PTE: 90, EPS_TOPIK: 100, JLPT: 180, CDS: 300, NCC: 350 };
 
 /** How many times a listening item's recording runs per play: EPS-TOPIK plays each one twice. */
 export const listeningPlays = (question: { exam: ExamType; skill: SkillType }): number =>
   question.exam === 'EPS_TOPIK' && question.skill === 'listening' ? 2 : 1;
 
 /** elite_asia is Premium on EPS-TOPIK and JLPT only; elite covers every exam. */
-export type SubscriptionTier = 'free' | 'weekly' | 'pro' | 'elite' | 'elite_asia' | 'cds_monthly' | 'cds_annual';
+export type SubscriptionTier = 'free' | 'weekly' | 'pro' | 'elite' | 'elite_asia' | 'cds_monthly' | 'cds_annual' | 'ncc_monthly';
 
 export type UserRole = 'admin' | 'suru' | 'abhyas' | 'taiyari' | 'udaan';
 
@@ -44,6 +49,7 @@ export const ROLE_FOR_PLAN: Record<SubscriptionTier, Exclude<UserRole, 'admin'>>
   elite_asia: 'udaan',
   cds_monthly: 'udaan',
   cds_annual: 'udaan',
+  ncc_monthly: 'udaan',
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {
@@ -64,7 +70,7 @@ export const ALL_SKILLS: SkillType[] = ['speaking', 'writing', 'reading', 'liste
  * no speaking or writing; JLPT's vocabulary and grammar count as reading.
  */
 export const skillsFor = (exam: ExamType): SkillType[] =>
-  exam === 'EPS_TOPIK' || exam === 'JLPT' || exam === 'CDS' ? ['reading', 'listening'] : ALL_SKILLS;
+  exam === 'EPS_TOPIK' || exam === 'JLPT' || exam === 'CDS' || exam === 'NCC' ? ['reading', 'listening'] : ALL_SKILLS;
 
 /** Width of one level in XP. Levels start at 1. Matches models.XPPerLevel. */
 export const XP_PER_LEVEL = 400;

@@ -1,6 +1,7 @@
 import { ExamType, SkillType } from './types';
 import { typeKey, typeLabel } from './syllabus';
 import { CDS_PAPERS, CDS_SUBTASKS } from '@/cds/cdsShared';
+import { NCC_SUBTASKS } from '@/cds/nccSubtasks';
 
 export interface TaskMeta {
   code: string;
@@ -431,6 +432,18 @@ const TASK_META: Record<ExamType, Record<string, TaskMeta>> = {
       scoreWeight: `UPSC CDS ${paper.name} · ${task.weight} a paper`,
     },
   ]))),
+  // NCC question types, keyed as their ?type= links are.
+  NCC: Object.fromEntries([...NCC_SUBTASKS.ncc_common, ...NCC_SUBTASKS.ncc_army].map(task => [
+    task.key.replace(/[^a-z0-9]/g, ''),
+    {
+      code: task.name.split(/[\s&/()-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase(),
+      name: task.name,
+      skill: 'reading' as SkillType,
+      color: 'bg-indigo-700 text-white',
+      bgLight: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400',
+      scoreWeight: `NCC ${task.group} · ${task.weight} a paper`,
+    },
+  ])),
 };
 
 export function getTaskMetadata(

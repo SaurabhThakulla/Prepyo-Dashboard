@@ -1,15 +1,15 @@
 import { ExamType, PaidTier, SubscriptionPlan, SubscriptionState, SubscriptionTier } from './types';
 
-export const SUBSCRIPTION_TIERS: SubscriptionTier[] = ['free', 'weekly', 'pro', 'elite', 'elite_asia', 'cds_monthly', 'cds_annual'];
+export const SUBSCRIPTION_TIERS: SubscriptionTier[] = ['free', 'weekly', 'pro', 'elite', 'elite_asia', 'cds_monthly', 'cds_annual', 'ncc_monthly'];
 
 /** Tiers checkout accepts. Kept in one place so routes can't drift apart —
  *  the weekly plan was previously rejected by one route and allowed by another. */
-export const PAID_TIERS: PaidTier[] = ['weekly', 'pro', 'elite', 'elite_asia', 'cds_monthly', 'cds_annual'];
+export const PAID_TIERS: PaidTier[] = ['weekly', 'pro', 'elite', 'elite_asia', 'cds_monthly', 'cds_annual', 'ncc_monthly'];
 
 /** Plans a learner can pick: Basic (free), Premium (elite, every exam) and
  *  EPS-TOPIK & JLPT Premium (elite_asia). The others are no longer sold;
  *  learners already on them keep them until they end. */
-export const PLANS_ON_SALE: SubscriptionTier[] = ['free', 'elite', 'elite_asia', 'cds_monthly', 'cds_annual'];
+export const PLANS_ON_SALE: SubscriptionTier[] = ['free', 'elite', 'elite_asia', 'cds_monthly', 'cds_annual', 'ncc_monthly'];
 
 /**
  * The Premium plan offered on an exam: EPS-TOPIK and JLPT have their own at
@@ -41,6 +41,7 @@ export function formatPlanName(nameOrTier?: string | null): string {
   if (key === 'elite_asia') return 'EPS-TOPIK & JLPT Premium';
   if (key === 'cds_monthly') return 'CDS Monthly';
   if (key === 'cds_annual') return 'CDS 1-Year Pass';
+  if (key === 'ncc_monthly') return 'NCC Monthly';
   return nameOrTier;
 }
 
@@ -82,6 +83,19 @@ export const DEFAULT_PLANS: SubscriptionPlan[] = [
     features: ['365 days unlimited CDS access', 'All upcoming CDS mock papers', 'Sectional cutoffs & rank predictors'],
     subTestsPerDay: 100,
     mockTestsIncluded: 100,
+    isPopular: false,
+    unlimited: true,
+  },
+  {
+    id: 'ncc_monthly',
+    name: 'NCC Monthly',
+    priceNPR: 199,
+    durationMonths: 1,
+    durationDays: 30,
+    bonusDays: 0,
+    features: ['NCC B and C certificate practice in every subject', "Full 'B' and 'C' mock tests", 'Detailed answer keys', 'Mistake Notebook'],
+    subTestsPerDay: 100,
+    mockTestsIncluded: 20,
     isPopular: false,
     unlimited: true,
   },
@@ -183,6 +197,7 @@ export const PLAN_USAGE_TIERS: Record<SubscriptionTier, string> = {
   elite_asia: 'Maximum',
   cds_monthly: 'Maximum',
   cds_annual: 'Maximum',
+  ncc_monthly: 'Maximum',
 };
 
 export function planUsageTier(planId?: string | null): string {
@@ -203,6 +218,7 @@ export const PLAN_TAGLINES: Record<SubscriptionTier, string> = {
   elite_asia: 'Monthly',
   cds_monthly: 'Monthly',
   cds_annual: 'Best Value',
+  ncc_monthly: 'Monthly',
 };
 
 /**
