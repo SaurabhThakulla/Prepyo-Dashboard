@@ -48,7 +48,7 @@ export const TONES = {
 export type Tone = keyof typeof TONES;
 
 /** Each exam keeps one colour everywhere, as on the admin dashboard. */
-export const EXAM_TONE: Record<ExamCode, Tone> = { PTE: 'blue', IELTS: 'violet', EPS_TOPIK: 'green', JLPT: 'rose' };
+export const EXAM_TONE: Record<ExamCode, Tone> = { PTE: 'blue', IELTS: 'violet', EPS_TOPIK: 'green', JLPT: 'rose', CDS: 'amber' };
 
 /**
  * The blue page header, edge to edge under the top bar like the learner pages: the

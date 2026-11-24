@@ -57,7 +57,7 @@ export const AI_GRADINGS_PER_MONTH = 1100;
 export const nextGradingReset = (now = new Date()) =>
   new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
 
-export type ExamCode = 'IELTS' | 'PTE' | 'EPS_TOPIK' | 'JLPT';
+export type ExamCode = 'IELTS' | 'PTE' | 'EPS_TOPIK' | 'JLPT' | 'CDS';
 
 // The institution's details, kept up to date from its Settings page.
 export interface InstitutionProfile {

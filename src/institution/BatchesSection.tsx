@@ -19,7 +19,7 @@ interface Props {
   exams: ExamCode[];
 }
 
-const day = (value: string) => new Date(value + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+const day = (value: string) => new Date(value + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 
 /** The text under a batch's name: when it runs. */
 export function batchDates(batch: Pick<Batch, 'startsOn' | 'endsOn'>): string {
@@ -204,7 +204,7 @@ function BatchStudentsDialog({ batch, code }: { batch: Batch; code: string }) {
   const ready = students?.filter(s => s.readiness?.status === 'ready').length ?? 0;
   const activeThisWeek = students?.filter(s => s.usage.lastActiveAt && new Date(s.usage.lastActiveAt).getTime() >= weekAgo).length ?? 0;
   const lastSeen = (value: string | null) =>
-    value ? new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : 'Never';
+    value ? new Date(value).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) : 'Never';
 
   return (
     <DialogContent className="gap-5 sm:max-w-2xl">

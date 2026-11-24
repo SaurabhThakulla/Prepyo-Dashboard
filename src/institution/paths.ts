@@ -34,7 +34,7 @@ export const sectionPath = (code: string, section: string) =>
 const APP_PAGES = new Set([
   'login', 'signup', 'home', 'dashboard', 'practice', 'me', 'mocks', 'institute-mock', 'mistakes', 'history', 'evaluations',
   'profile', 'subscription', 'diagnostic', 'tutorials', 'videos', 'learn', 'materials',
-  'reports', 'admin', 'terms', 'privacy', 'terms-and-conditions', 'privacy-policy', 'account', 'progress',
+  'reports', 'admin', 'terms', 'privacy', 'terms-and-conditions', 'privacy-policy', 'account', 'progress', 'onboarding', 'cds',
 ]);
 
 /** True for /institution/... and for an institution's own address such as /bright-future. */

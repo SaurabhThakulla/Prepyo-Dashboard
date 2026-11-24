@@ -42,7 +42,7 @@ function resultText(result: IeltsResult | null | undefined): string {
 }
 
 const day = (value: string | null) =>
-  value ? new Date(value).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—';
+  value ? new Date(value).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—';
 
 type Marks = Record<string, { band: number | null; comment: string }>;
 

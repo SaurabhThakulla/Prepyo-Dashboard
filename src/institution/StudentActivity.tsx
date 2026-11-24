@@ -7,7 +7,7 @@ import { examName } from './profile';
 const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 const when = (value: string) =>
-  new Date(value).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  new Date(value).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
 /** One student's practice by skill over the period, and their latest answers and mocks. */
 export default function StudentActivityPanel({ id, days, period }: { id: string; days: number; period: string }) {

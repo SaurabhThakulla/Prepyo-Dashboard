@@ -70,7 +70,7 @@ async function receiptData(account: InstitutionAccount, f: StudentFee, batch: st
   };
 }
 
-const day = (value: string) => new Date(value + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+const day = (value: string) => new Date(value + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 const methodName = (id: PaymentMethod) => PAYMENT_METHODS.find(m => m.id === id)?.name ?? id;
 
 /** The fee board: what each student owes, payments, and receipts. */

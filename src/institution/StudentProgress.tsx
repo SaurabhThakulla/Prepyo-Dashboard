@@ -11,7 +11,7 @@ export function scoreOutOf(exam: ExamCode, score: number): string {
   return `${rounded} / ${EXAM_MAX_SCORE[exam] ?? 100}`;
 }
 
-const shortDay = (value: string) => new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+const shortDay = (value: string) => new Date(value).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
 
 /** One student's mock scores over time and their practice in each of the last 12 weeks. */
 export default function StudentProgressPanel({ id }: { id: string }) {
