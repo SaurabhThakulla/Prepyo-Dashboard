@@ -21,7 +21,18 @@ interface AdminUser {
   xp: number;
   streakDays: number;
   createdAt: string;
+  /** How they found Prepyo (youtube, instagram…), from onboarding; empty if not answered. */
+  referralSource: string;
 }
+
+const REFERRAL_LABELS: Record<string, string> = {
+  youtube: 'YouTube',
+  instagram: 'Instagram',
+  tiktok: 'TikTok',
+  friends: 'Friends & family',
+  search: 'Google search',
+  other: 'Other',
+};
 
 interface RoleCount {
   role: UserRole;
@@ -36,7 +47,8 @@ interface UsersResponse {
 }
 
 const PAGE_SIZE = 20;
-const ROLES: UserRole[] = ['admin', 'suru', 'abhyas', 'taiyari', 'udaan'];
+// Abhyas (weekly) and Taiyari (pro) are retired: not offered, and their card shows only while someone is still on one.
+const ROLES: UserRole[] = ['admin', 'suru', 'udaan'];
 
 const ROLE_STYLES: Record<UserRole, string> = {
   admin: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25',
@@ -169,13 +181,13 @@ export default function AdminUsersPanel() {
             <span className="text-sm font-bold">All users</span>
             <Users className="w-4 h-4 opacity-80" />
           </div>
-          <div className="font-display text-3xl font-black">{totalUsers.toLocaleString()}</div>
+          <div className="font-display text-3xl font-black">{totalUsers.toLocaleString('en-US')}</div>
           <span className={`text-xs ${roleFilter === '' ? 'text-primary-foreground/75' : 'text-foreground/60'}`}>
             every account
           </span>
         </button>
 
-        {counts.map(entry => {
+        {counts.filter(entry => ROLES.includes(entry.role) || entry.count > 0).map(entry => {
           const active = roleFilter === entry.role;
           return (
             <button
@@ -188,7 +200,7 @@ export default function AdminUsersPanel() {
               } ${active ? 'ring-2 ring-offset-2 ring-offset-background ring-current shadow-md' : 'hover:shadow-sm'}`}
             >
               <span className="text-sm font-bold block">{ROLE_LABELS[entry.role] ?? entry.role}</span>
-              <div className="font-display text-3xl font-black">{entry.count.toLocaleString()}</div>
+              <div className="font-display text-3xl font-black">{entry.count.toLocaleString('en-US')}</div>
               <span className="text-xs capitalize opacity-80">{entry.plan ?? 'access level'}</span>
             </button>
           );
@@ -240,6 +252,7 @@ export default function AdminUsersPanel() {
                 <th className="py-3 pr-3 w-32">Exam</th>
                 <th className="py-3 pr-3 text-right">XP</th>
                 <th className="py-3 pr-3">Joined</th>
+                <th className="py-3 pr-3">Found us via</th>
                 <th className="py-3 pr-4 w-36">Change role</th>
               </tr>
             </thead>
@@ -291,9 +304,12 @@ export default function AdminUsersPanel() {
                     </select>
                   </td>
                   <td className="py-3 pr-3 text-right font-bold text-amber-600 dark:text-amber-400 tabular-nums whitespace-nowrap">
-                    {user.xp.toLocaleString()}
+                    {user.xp.toLocaleString('en-US')}
                   </td>
                   <td className="py-3 pr-3 text-foreground/75 whitespace-nowrap">{formatExamDate(user.createdAt)}</td>
+                  <td className="py-3 pr-3 text-foreground/75 whitespace-nowrap">
+                    {REFERRAL_LABELS[user.referralSource] ?? <span className="text-muted-foreground">Not asked</span>}
+                  </td>
                   <td className="py-3 pr-4">
                     <div className="flex items-center gap-1.5">
                       <select
@@ -303,7 +319,7 @@ export default function AdminUsersPanel() {
                         onChange={e => changeRole(user, e.target.value as UserRole)}
                         className="h-9 rounded-lg border border-input bg-card px-2 text-sm font-semibold text-foreground disabled:opacity-50"
                       >
-                        {ROLES.map(role => (
+                        {(ROLES.includes(user.role) ? ROLES : [...ROLES, user.role]).map(role => (
                           <option key={role} value={role}>
                             {ROLE_LABELS[role]}
                           </option>
@@ -331,7 +347,7 @@ export default function AdminUsersPanel() {
 
         <div className="flex items-center justify-between pt-1">
           <span className="text-sm text-foreground/70">
-            Showing <b className="text-foreground">{from}–{to}</b> of <b className="text-foreground">{total.toLocaleString()}</b>
+            Showing <b className="text-foreground">{from}–{to}</b> of <b className="text-foreground">{total.toLocaleString('en-US')}</b>
           </span>
           <div className="flex gap-2">
             <Button

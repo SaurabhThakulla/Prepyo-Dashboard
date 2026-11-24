@@ -37,7 +37,7 @@ interface Props {
 const MAX_MESSAGE = 4000;
 
 function when(iso: string) {
-  return new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  return new Date(iso).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 }
 
 /**

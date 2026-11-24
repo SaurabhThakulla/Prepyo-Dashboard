@@ -30,10 +30,12 @@ const DialogContent = React.forwardRef<
     centered?: boolean
     /** The dialog opens with a full-width blue header (`dialogBand`), so the close button turns white on it. */
     band?: boolean
+    /** Classes for the dimmed backdrop, e.g. to raise it with the dialog above a full-screen layer. */
+    overlayClassName?: string
   }
->(({ className, children, centered = false, band = false, ...props }, ref) => (
+>(({ className, children, centered = false, band = false, overlayClassName, ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay className={overlayClassName} />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(

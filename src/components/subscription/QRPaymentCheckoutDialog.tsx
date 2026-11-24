@@ -103,7 +103,7 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
 
   const planTitle = formatPlanName(selectedPlan.name || selectedPlan.id);
   const totalDays = (selectedPlan.durationDays || selectedPlan.durationMonths * 30) + selectedPlan.bonusDays;
-  const amount = selectedPlan.priceNPR.toLocaleString();
+  const amount = selectedPlan.priceNPR.toLocaleString('en-US');
   const tier = planUsageTier(selectedPlan.id).toLowerCase();
 
   // The eSewa QR is built from this id, so paying to it by hand reaches the
@@ -199,7 +199,9 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
-        className={`gap-0 overflow-hidden border-border bg-card p-0 shadow-2xl ${PHONE_CENTERED} ${
+        // Above the onboarding screen (z-80), which opens this from its plan step.
+        overlayClassName="z-[90]"
+        className={`z-[90] gap-0 overflow-hidden border-border bg-card p-0 shadow-2xl ${PHONE_CENTERED} ${
           success ? 'sm:max-w-md' : 'sm:max-w-3xl'
         }`}
       >
