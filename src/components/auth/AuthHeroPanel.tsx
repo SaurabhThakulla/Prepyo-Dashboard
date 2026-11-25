@@ -18,8 +18,8 @@ export default function AuthHeroPanel({ freePlan }: { freePlan: SubscriptionPlan
           fetchPriority="high"
           className="absolute inset-0 object-cover object-center w-full h-full brightness-[0.85]"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/35 backdrop-brightness-95" />
-        <div className="absolute inset-0 bg-radial-gradient from-transparent via-transparent to-slate-950/70" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/35 backdrop-brightness-95 dark:bg-black/50" />
+        <div className="absolute inset-0 bg-radial-gradient from-transparent via-transparent to-slate-950/70 bg-transparent" />
       </div>
 
       <div className="relative z-10 space-y-5">

@@ -6,7 +6,7 @@ import TopNav from './TopNav';
 import MobileTopBar from './mobile/MobileTopBar';
 import MobileTabBar from './mobile/MobileTabBar';
 import MobileCoachButton from './mobile/MobileCoachButton';
-import { isFocusRoute } from './mobile/mobileNav';
+import { isFocusRoute, isLessonRoute } from './mobile/mobileNav';
 import RequireAuth from '@/components/auth/RequireAuth';
 import { shouldShowOnboarding } from '@/components/onboarding/onboarding';
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
@@ -225,7 +225,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         style={{ '--app-header-h': locked ? '0px' : '4rem' } as React.CSSProperties}
         className="flex w-full min-w-0 flex-col min-h-screen"
       >
-        {!locked && <MobileTopBar />}
+        {!locked && !isLessonRoute(pathname) && <MobileTopBar />}
         {/* A mock test takes the whole screen: no menu to leave it by. */}
         {!locked && <TopNav />}
 

@@ -41,14 +41,14 @@ export default function InstitutionAuthLayout({ title, subtitle, children }: Pro
         {/* Background Image: Nepali Consultancy & Educational Institute */}
         <div className="absolute inset-0 z-0 pointer-events-none">
           <img
-            src="/images/institution-hero.jpg"
+            src="/images/institution-hero.webp"
             alt="Nepali educational consultancy and test prep institute in Kathmandu"
             loading="eager"
             fetchPriority="high"
             className="absolute inset-0 object-cover object-center w-full h-full brightness-[0.88]"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/35 backdrop-brightness-95" />
-          <div className="absolute inset-0 bg-radial-gradient from-transparent via-transparent to-slate-950/70" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/35 backdrop-brightness-95 dark:bg-black/50" />
+          <div className="absolute inset-0 bg-radial-gradient from-transparent via-transparent to-slate-950/70 bg-transparent" />
         </div>
 
         {/* Top Header Block */}

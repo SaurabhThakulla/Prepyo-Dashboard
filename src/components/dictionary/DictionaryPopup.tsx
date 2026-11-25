@@ -118,9 +118,13 @@ export default function DictionaryPopup() {
     // A press on a control (e.g. a dropdown option), or one that closes an open
     // dropdown, is not a lookup, even if the word under it shows once it closes.
     let pressedControl = false;
+    // The word under the press: a click that opened a new screen (a question card)
+    // would otherwise land on whatever word that screen put under the pointer.
+    let pressedWord: string | null = null;
     const onPress = (e: PointerEvent) => {
       const target = e.target as Element | null;
       pressedControl = Boolean(target?.closest?.(SKIP)) || Boolean(document.querySelector('[role="menu"]'));
+      pressedWord = wordAt(e.clientX, e.clientY)?.word ?? null;
     };
     const onClick = (e: MouseEvent) => {
       if (pressedControl) return;
@@ -129,7 +133,9 @@ export default function DictionaryPopup() {
       const selection = window.getSelection();
       if (selection && !selection.isCollapsed) return;
       const hit = wordAt(e.clientX, e.clientY);
-      if (hit) open(hit.word);
+      // Both the press and the click must be on the word: a press on a question card
+      // opens the question, and the click then lands on whatever passage word took its place.
+      if (hit && hit.word === pressedWord && (e.target as Element | null)?.closest?.(ALLOW)) open(hit.word);
     };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('pointerdown', onPress, true);

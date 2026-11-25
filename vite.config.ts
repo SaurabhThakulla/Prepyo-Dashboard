@@ -38,7 +38,8 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist',
-      sourcemap: true,
+      // The Go server serves everything in dist/, so maps would publish the source.
+      sourcemap: false,
     },
     // Component tests run in jsdom because the reading renderers are the kind
     // of thing that only breaks when something clicks them.

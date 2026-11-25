@@ -31,11 +31,12 @@ export default function EvaluationCard({ evaluation, xpAwarded, taskType, notes 
   // The server encodes an empty list as null, so none of these can be assumed.
   const criteria = evaluation.criteria ?? [];
   const fixes = evaluation.sentenceFeedback ?? [];
+  const suggestions = evaluation.suggestions ?? [];
   const skills = taskType ? pteSkillScores(taskType, { evaluation, xpAwarded }) : undefined;
 
   // The answer and its fixes share one tab, fixes underneath, so both read together.
   const tabs = [
-    answer || fixes.length > 0 ? { id: 'answer', label: answer ? answerTitle : `Fixes (${fixes.length})` } : null,
+    answer || fixes.length > 0 || suggestions.length > 0 ? { id: 'answer', label: answer ? answerTitle : `Fixes (${fixes.length})` } : null,
     evaluation.modelRewrite ? { id: 'rewrite', label: 'Stronger version' } : null,
   ].filter((t): t is { id: string; label: string } => t !== null);
 
@@ -95,6 +96,20 @@ export default function EvaluationCard({ evaluation, xpAwarded, taskType, notes 
                 </ul>
               </div>
             )}
+            {suggestions.length > 0 && (
+              <div className={cn('space-y-2', (answer || fixes.length > 0) && 'border-t border-border pt-3')} data-testid="suggestions">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Suggestions ({suggestions.length})</h4>
+                <p className="text-xs text-muted-foreground">Optional: these sentences are already correct. A different phrasing can sound more precise or natural.</p>
+                <ul className="space-y-2">
+                  {suggestions.map((s, i) => (
+                    <li key={i} className="space-y-1 rounded-lg bg-sky-500/5 px-3 py-2 text-sm">
+                      <CorrectedSentence original={s.original} correction={s.correction} suggestion />
+                      {s.explanation && <p className="text-xs leading-relaxed text-muted-foreground">{s.explanation}</p>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </TabsContent>
           {evaluation.modelRewrite && (
             <TabsContent value="rewrite" data-dictionary className={PANEL}>
@@ -139,8 +154,9 @@ function SkillCard({ skill, score }: { skill: SkillType; score: number }) {
 // One fixed height for every tab, so switching never moves the dialog.
 const PANEL = 'mt-3 max-h-44 overflow-y-auto rounded-xl border border-border px-4 py-3';
 
-/** The learner's sentence with only the changed words marked: the wrong ones struck through, the correction after them. */
-export function CorrectedSentence({ original, correction }: { original: string; correction: string }) {
+/** The learner's sentence with only the changed words marked: the wrong ones struck through, the correction after them.
+ *  A suggestion marks the words in neutral colours: the original was not wrong. */
+export function CorrectedSentence({ original, correction, suggestion = false }: { original: string; correction: string; suggestion?: boolean }) {
   const parts = wordDiff(original, correction);
   return (
     <p className="leading-relaxed text-foreground">
@@ -149,14 +165,14 @@ export function CorrectedSentence({ original, correction }: { original: string; 
           {i > 0 && ' '}
           {part.kind === 'same' && part.text}
           {part.kind === 'removed' && (
-            <del className="text-rose-600 decoration-rose-500/70 dark:text-rose-400">
-              <span className="sr-only">remove </span>
+            <del className={suggestion ? 'text-muted-foreground decoration-muted-foreground/60' : 'text-rose-600 decoration-rose-500/70 dark:text-rose-400'}>
+              <span className="sr-only">{suggestion ? 'instead of ' : 'remove '}</span>
               {part.text}
             </del>
           )}
           {part.kind === 'added' && (
-            <ins className="rounded bg-emerald-500/10 px-1 text-emerald-700 no-underline dark:text-emerald-300">
-              <span className="sr-only">add </span>
+            <ins className={cn('rounded px-1 no-underline', suggestion ? 'bg-sky-500/10 text-sky-700 dark:text-sky-300' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300')}>
+              <span className="sr-only">{suggestion ? 'try ' : 'add '}</span>
               {part.text}
             </ins>
           )}

@@ -39,6 +39,32 @@ export function today(): string {
 }
 
 /** Everything a student's fee receipt shows: their fee, every payment, and the signature. */
+/**
+ * Emails the student the receipt for a payment just recorded, the same PDF the
+ * Download button makes, and says what happened. A failure never undoes the
+ * payment; the receipt can still be downloaded and sent by hand.
+ */
+export async function emailPaymentReceipt(
+  account: InstitutionAccount,
+  studentId: string,
+  paymentId: string,
+  batch: string,
+  fallback?: StudentFee,
+): Promise<string> {
+  try {
+    const { students } = await fetchFees();
+    const latest = students.find(s => s.studentId === studentId) ?? fallback;
+    if (!latest) return 'Download the receipt on the Fees page to share it.';
+    const sent = await emailReceipt(paymentId, await feeReceiptPdf(await receiptData(account, latest, batch)));
+    if (sent.emailed) return `Receipt emailed to ${sent.to}.`;
+    if (sent.reason === 'no_email') return "Add the student's email to send receipts automatically.";
+    if (sent.reason === 'daily_limit') return "Today's email limit is reached, so download the receipt and share it instead.";
+    return '';
+  } catch (err) {
+    return `The receipt could not be emailed: ${errorMessage(err)}`;
+  }
+}
+
 async function receiptData(account: InstitutionAccount, f: StudentFee, batch: string): Promise<ReceiptData> {
   const [{ payments }, signature] = await Promise.all([
     fetchPayments(f.studentId),
@@ -377,20 +403,8 @@ function StudentFeeDialog({ fee, account, batch, onChanged }: { fee: StudentFee;
       const { payment } = await addPayment(fee.studentId, { amountNpr, paidOn, method, note });
       setAmount('');
       setNote('');
-      const recorded = `Payment recorded. Receipt no. ${payment.receiptNo}.`;
-      // The student gets the same PDF the Download button makes. A failure here
-      // never undoes the payment; the receipt can still be downloaded and sent by hand.
-      try {
-        const { students } = await fetchFees();
-        const latest = students.find(s => s.studentId === fee.studentId) ?? fee;
-        const sent = await emailReceipt(payment.id, await feeReceiptPdf(await receiptData(account, latest, batch)));
-        if (sent.emailed) return `${recorded} Receipt emailed to ${sent.to}.`;
-        if (sent.reason === 'no_email') return `${recorded} Add the student's email to send receipts automatically.`;
-        if (sent.reason === 'daily_limit') return `${recorded} Today's email limit is reached, so download the receipt and share it instead.`;
-        return recorded;
-      } catch (err) {
-        return `${recorded} The receipt could not be emailed: ${errorMessage(err)}`;
-      }
+      const sent = await emailPaymentReceipt(account, fee.studentId, payment.id, batch, fee);
+      return `Payment recorded. Receipt no. ${payment.receiptNo}. ${sent}`.trim();
     });
   };
 

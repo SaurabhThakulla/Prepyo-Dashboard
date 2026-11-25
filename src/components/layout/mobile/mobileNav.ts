@@ -1,5 +1,6 @@
 import { FilePenLine, GraduationCap, Home, LucideIcon, PlayCircle, ShieldCheck, Timer, UserRound } from 'lucide-react';
 import { EXAM_LABELS, ExamType, isAdmin, UserProfile } from '@/lib/types';
+import { courseForExam } from '@/data/learnCourses';
 
 /**
  * The phone layout's bottom tab bar, and the top bar that goes with it.
@@ -73,9 +74,12 @@ export function isTabRoot(pathname: string, searchParams: URLSearchParams): bool
  * bar would only invite a tap that ends the attempt, and some of these screens
  * have their own action bar along the bottom.
  */
+/** A Learn lesson, which has its own header (leave, progress), so the phone's top bar steps aside. */
+export const isLessonRoute = (pathname: string) => /^\/learn\/[^/]+\/[^/]+/.test(pathname);
+
 export function isFocusRoute(pathname: string): boolean {
   if (pathname === '/learn/review') return true;
-  if (/^\/learn\/[^/]+\/[^/]+/.test(pathname)) return true; // a lesson
+  if (isLessonRoute(pathname)) return true;
   if (pathname.startsWith('/mocks/pte/') && !pathname.startsWith('/mocks/pte/report/')) return true;
   return false;
 }
@@ -99,7 +103,7 @@ export function mobileTitle(pathname: string, searchParams: URLSearchParams, act
   if (pathname.startsWith('/institute-mock')) return 'Institute Mock';
   if (pathname === '/diagnostic') return 'Level check';
   if (pathname === '/learn/review') return 'Review words';
-  if (pathname.startsWith('/learn')) return 'Learn Korean';
+  if (pathname.startsWith('/learn')) return courseForExam(activeExam).title;
   if (pathname.startsWith('/tutorials')) return 'Video Lessons';
   if (pathname === '/materials') return 'Materials';
   if (pathname === ME_HREF) return 'Me';

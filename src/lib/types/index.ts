@@ -637,6 +637,8 @@ export interface Evaluation {
   strengths: string[];
   weaknesses: string[];
   sentenceFeedback: SentenceFeedback[];
+  /** Optional better phrasings, only for an IELTS answer above band 7. Not errors: never underlined. */
+  suggestions?: SentenceFeedback[];
   modelRewrite?: string;
   transcript?: string;
   /** What the learner wrote, on writing tasks rated since answers were kept. */

@@ -127,10 +127,7 @@ export async function fetchCdsMistakes(
   topic?: string,
   resolved?: boolean
 ): Promise<{ mistakes: CdsMistake[] }> {
-  const query: Record<string, string | boolean | undefined> = {};
-  if (topic) query.topic = topic;
-  if (resolved !== undefined) query.resolved = resolved;
-  return api.get<{ mistakes: CdsMistake[] }>('/cds/mistakes', { query } as any);
+  return api.get<{ mistakes: CdsMistake[] }>('/cds/mistakes', { topic, resolved });
 }
 
 export async function resolveCdsMistake(id: string): Promise<{ message: string }> {

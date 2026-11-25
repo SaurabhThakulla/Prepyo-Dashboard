@@ -32,19 +32,25 @@ export const textLang = (text: string): 'ko' | 'ja' | undefined =>
 /** Shows a new letter, word or phrase: big in the course language, its sound, its meaning. */
 export function TeachCard({ ex, voice }: { ex: TeachExercise; voice: LearnVoice }) {
   const course = useLearnCourse();
+  // A single kana or jamo is a letter, not a word.
+  const letter = Array.from(ex.ko.trim()).length === 1 && /[ぁ-んァ-ンㄱ-ㅣ]/.test(ex.ko);
+  // Letters and short words are the whole card; phrases need room to wrap.
+  const glyph = Array.from(ex.ko).length <= 3 ? 'text-7xl sm:text-8xl' : 'text-4xl sm:text-5xl';
   return (
-    <div className="space-y-6">
-      <p className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">New word</p>
-      <div className="rounded-3xl border-2 border-border bg-card p-6 sm:p-8 text-center space-y-4 shadow-sm">
-        {ex.picture && <div className="text-6xl sm:text-7xl leading-none" aria-hidden>{ex.picture}</div>}
-        <div className="flex items-center justify-center gap-4 flex-wrap">
-          <span lang={course.lang} className="font-display text-4xl sm:text-5xl font-bold text-foreground break-keep">
-            {ex.ko}
-          </span>
+    <div className="space-y-5">
+      <p className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">{letter ? 'New letter' : 'New word'}</p>
+      <div className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm text-center">
+        <div className="absolute right-4 top-4">
           <SpeakButton text={ex.speak ?? ex.ko} voice={voice} autoPlay />
         </div>
-        <p className="text-base font-semibold text-sky-700 dark:text-sky-300">{ex.roman}</p>
-        <p className="text-lg text-foreground">{ex.en}</p>
+        <div className="px-6 pt-10 pb-7 sm:pt-12">
+          {ex.picture && <div className="mb-4 text-6xl sm:text-7xl leading-none" aria-hidden>{ex.picture}</div>}
+          <p lang={course.lang} className={`font-display ${glyph} font-bold leading-tight text-foreground break-keep`}>
+            {ex.ko}
+          </p>
+          <p className="mt-3 text-2xl font-bold tracking-wide text-sky-600 dark:text-sky-400">{ex.roman}</p>
+        </div>
+        <p className="bg-muted/50 px-6 py-4 text-base text-muted-foreground">{ex.en}</p>
       </div>
       {ex.note && (
         <div className="flex gap-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 p-4 text-sm text-amber-900 dark:text-amber-100">

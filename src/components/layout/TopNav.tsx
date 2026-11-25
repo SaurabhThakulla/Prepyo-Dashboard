@@ -213,7 +213,7 @@ export default function TopNav() {
             <Link
               to="/subscription"
               title="Go Premium"
-              className="flex h-9 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-300 to-amber-400 px-3 xl:px-3.5 text-xs font-bold text-amber-950 shadow-md shadow-black/20 transition hover:brightness-105"
+              className="flex h-9 items-center gap-1.5 rounded-full bg-amber-400 bg-gradient-to-r from-amber-300 to-amber-400 px-3 xl:px-3.5 text-xs font-bold text-amber-950 shadow-md shadow-black/20 transition hover:brightness-105"
             >
               <Crown className="h-4 w-4" />
               <span className="hidden xl:inline">Go Premium</span>

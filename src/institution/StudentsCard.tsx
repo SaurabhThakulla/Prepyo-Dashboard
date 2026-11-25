@@ -81,7 +81,7 @@ import { FormError } from './FormField';
 import { EXAM_TONE, FilterTabs, Kpi, TONES, useConfirm } from './ui';
 import StudentActivityPanel from './StudentActivity';
 import StudentProgressPanel, { scoreOutOf } from './StudentProgress';
-import { rupees, today } from './FeesSection';
+import { emailPaymentReceipt, rupees, today } from './FeesSection';
 
 interface Props {
   account: InstitutionAccount;
@@ -96,6 +96,8 @@ interface Credentials {
   password: string;
   // Set when the student was added but their fee or payment could not be saved.
   warning?: string;
+  // What happened to the receipt of the payment entered with the student.
+  receipt?: string;
   // The email already had a Prepyo account, which joined instead of a new one.
   movedIn?: boolean;
 }
@@ -696,6 +698,7 @@ export default function StudentsPage({ account, exams }: Props) {
       <Dialog open={adding} onOpenChange={open => !open && setAdding(false)}>
         {adding && (
           <AddStudentDialog
+            account={account}
             exams={exams}
             batches={batches}
             initialBatch={batchFilter === 'none' || !filterKnown ? '' : batchFilter}
@@ -1225,11 +1228,13 @@ function ResetPasswordDialog({ student, onDone }: { student: Student; onDone: (p
 }
 
 function AddStudentDialog({
+  account,
   exams,
   batches,
   initialBatch,
   onAdded,
 }: {
+  account: InstitutionAccount;
   exams: ExamCode[];
   batches: Batch[];
   initialBatch: string;
@@ -1290,17 +1295,21 @@ function AddStudentDialog({
     }
     // The student exists now, so a fee or payment that fails is reported, not undone.
     let warning: string | undefined;
+    let paymentId: string | undefined;
     try {
       if (totalNpr > 0) await setStudentFee(created.student.id, { totalNpr, discountNpr, dueOn });
-      if (paidNpr > 0) await addPayment(created.student.id, { amountNpr: paidNpr, paidOn: today(), method, note: '' });
+      if (paidNpr > 0) paymentId = (await addPayment(created.student.id, { amountNpr: paidNpr, paidOn: today(), method, note: '' })).payment.id;
     } catch (err) {
       warning = `The fee was not saved (${errorMessage(err)}). Set it on the Fees page.`;
     }
+    const batchName = batches.find(b => b.id === batch)?.name ?? '';
+    const receipt = paymentId ? await emailPaymentReceipt(account, created.student.id, paymentId, batchName) : undefined;
     onAdded({
       name: created.student.name,
       email: created.student.email ?? '',
       password: created.password,
       warning,
+      receipt,
       movedIn: created.student.movedIn,
     });
   };
@@ -1592,6 +1601,7 @@ function CredentialsDialog({ credentials, loginAddress }: { credentials: Credent
           {credentials.warning}
         </p>
       )}
+      {credentials.receipt && <p className="text-sm text-muted-foreground">{credentials.receipt}</p>}
       <CopyButton text={`Sign-in page: ${loginAddress}\nEmail: ${credentials.email}\nPassword: ${credentials.password}`} label="Copy details" />
     </DialogContent>
   );
