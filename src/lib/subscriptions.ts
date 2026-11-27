@@ -12,13 +12,208 @@ export const PAID_TIERS: PaidTier[] = ['weekly', 'pro', 'elite', 'elite_asia', '
 export const PLANS_ON_SALE: SubscriptionTier[] = ['free', 'elite', 'elite_asia', 'cds_monthly', 'cds_annual', 'ncc_monthly'];
 
 /**
- * The Premium plan offered on an exam: EPS-TOPIK and JLPT have their own at
- * NPR 249, IELTS and PTE need Premium. A learner who already has Premium is
- * shown Premium, which covers every exam.
+ * The primary paid plan offered on an exam: CDS offers CDS Monthly (or CDS
+ * 1-Year Pass if already on it), NCC offers NCC Monthly, EPS-TOPIK and JLPT
+ * offer NPR 249 (unless already on global Premium), and IELTS and PTE offer
+ * Premium.
  */
 export function premiumPlanIdFor(exam: ExamType, currentPlanId?: string | null): PaidTier {
+  if (exam === 'CDS') return currentPlanId === 'cds_annual' ? 'cds_annual' : 'cds_monthly';
+  if (exam === 'NCC') return 'ncc_monthly';
   if (currentPlanId === 'elite') return 'elite';
   return exam === 'EPS_TOPIK' || exam === 'JLPT' ? 'elite_asia' : 'elite';
+}
+
+const INR_TIERS = new Set<string>(['cds_monthly', 'cds_annual', 'ncc_monthly']);
+
+/** Currency shown for an exam or plan tier: INR for CDS and NCC, NPR otherwise. */
+export function planCurrency(planIdOrExam?: string | null): 'INR' | 'NPR' {
+  if (planIdOrExam === 'CDS' || planIdOrExam === 'NCC' || (planIdOrExam && INR_TIERS.has(planIdOrExam))) {
+    return 'INR';
+  }
+  return 'NPR';
+}
+
+/** Formats a plan price with its currency (e.g. "INR 199", "NPR 499", or "Free"). */
+export function formatPlanPrice(plan: Pick<SubscriptionPlan, 'id' | 'priceNPR'>, exam?: ExamType): string {
+  if (plan.priceNPR === 0) return 'Free';
+  const currency = exam ? planCurrency(exam) : planCurrency(plan.id);
+  return `${currency} ${plan.priceNPR.toLocaleString('en-US')}`;
+}
+
+/** Short upgrade banner subtitle matching what an active exam actually unlocks. */
+export function upgradeSummaryFor(exam: ExamType): string {
+  if (exam === 'CDS') return 'Unlimited CDS mock tests, full papers & analytics';
+  if (exam === 'NCC') return "Unlimited NCC 'B' and 'C' mock tests & all wing subjects";
+  if (exam === 'EPS_TOPIK' || exam === 'JLPT') return 'Unlimited practice, full mocks and Help in English';
+  return 'More AI gradings, full mocks and Help in English';
+}
+
+export interface SubscriptionPlanCard {
+  plan: SubscriptionPlan;
+  title: string;
+  blurb: string;
+  price: string;
+  per?: string;
+  note: string;
+  badge?: string;
+  highlight?: boolean;
+  features: string[];
+}
+
+/** Builds exam-appropriate Basic and Paid plan cards for /subscription. */
+export function buildSubscriptionCards(
+  exam: ExamType,
+  serverPlans: SubscriptionPlan[],
+  currentPlanId?: string | null,
+): SubscriptionPlanCard[] {
+  const planFor = (id: SubscriptionPlan['id']) =>
+    serverPlans.find(p => p.id === id) ?? DEFAULT_PLANS.find(p => p.id === id)!;
+
+  const freePlan = planFor('free');
+
+  if (exam === 'CDS') {
+    const monthly = planFor('cds_monthly');
+    const annual = planFor('cds_annual');
+    return [
+      {
+        plan: freePlan,
+        title: formatPlanName(freePlan.name),
+        blurb: 'Everything you need to start UPSC CDS prep',
+        price: 'Free',
+        note: 'Included with every account, forever. Nothing to buy.',
+        features: [
+          'Topic-wise practice across English, GK & Maths',
+          '1 free CDS full mock test',
+          'Authentic UPSC 1/3 negative marking & 2-hour timer',
+          'Detailed answer keys & explanations',
+          'Automatic Mistake Notebook',
+        ],
+      },
+      {
+        plan: monthly,
+        title: formatPlanName(monthly.name),
+        badge: 'Recommended',
+        highlight: true,
+        blurb: 'For IMA, INA, AFA & OTA written prep',
+        price: formatPlanPrice(monthly, 'CDS'),
+        per: '/ month',
+        note: `Paid monthly · ${planAccessDays(monthly)} days access`,
+        features: [
+          'Everything in Basic',
+          'Unlimited full CDS mock tests (English, GK & Maths)',
+          'Unlimited practice sets across every subject',
+          'Full score reports & sectional breakdown',
+          'UPSC CDS access only',
+        ],
+      },
+      {
+        plan: annual,
+        title: formatPlanName(annual.name),
+        badge: 'Best Value',
+        blurb: 'Full-year coverage across both CDS (I & II) cycles',
+        price: formatPlanPrice(annual, 'CDS'),
+        per: '/ year',
+        note: `Paid yearly · ${planAccessDays(annual)} days access`,
+        features: [
+          'Everything in CDS Monthly',
+          '365 days unlimited CDS practice & mock tests',
+          'Covers both annual UPSC CDS exam cycles',
+          'Save 50% compared to monthly billing',
+          'UPSC CDS access only',
+        ],
+      },
+    ];
+  }
+
+  if (exam === 'NCC') {
+    const monthly = planFor('ncc_monthly');
+    return [
+      {
+        plan: freePlan,
+        title: formatPlanName(freePlan.name),
+        blurb: "Everything you need to start NCC 'B' & 'C' prep",
+        price: 'Free',
+        note: 'Included with every account, forever. Nothing to buy.',
+        features: [
+          'Practice sets across Common & Wing subjects',
+          "1 free 'B' or 'C' certificate mock test",
+          'DG NCC marking (+2 right, -0.5 wrong) & 3-hour timer',
+          'Army, Naval & Air Wing specialised syllabi',
+          'Answer keys & Mistake Notebook',
+        ],
+      },
+      {
+        plan: monthly,
+        title: formatPlanName(monthly.name),
+        badge: 'Recommended',
+        highlight: true,
+        blurb: "For NCC 'B' and 'C' certificate cadets (written paper)",
+        price: formatPlanPrice(monthly, 'NCC'),
+        per: '/ month',
+        note: `Paid monthly · ${planAccessDays(monthly)} days access`,
+        features: [
+          'Everything in Basic',
+          "Unlimited 'B' and 'C' certificate full mocks (175 Qs)",
+          'Unlimited practice in all Common & Wing subjects',
+          'Full written score report by subject',
+          'NCC access only',
+        ],
+      },
+    ];
+  }
+
+  const premiumPlan = planFor(premiumPlanIdFor(exam, currentPlanId));
+  const examsOnly = premiumPlan.id === 'elite_asia';
+  const gradings = (plan: SubscriptionPlan) =>
+    `${formatGradings(plan.aiGradingsPerPeriod ?? 0)} AI gradings per ${gradingsPeriodLabel(plan)}`;
+  const mocks = (n: number) => `${n} full mock ${n === 1 ? 'exam' : 'exams'}`;
+
+  return [
+    {
+      plan: freePlan,
+      title: formatPlanName(freePlan.name),
+      blurb: 'Everything you need to get started',
+      price: 'Free',
+      note: 'Included with every account, forever. Nothing to buy.',
+      features: [
+        `${freePlan.subTestsPerDay} practice sub-tests per day`,
+        gradings(freePlan),
+        mocks(freePlan.mockTestsIncluded),
+        'Limited AI tutor',
+        'Basic AI score breakdown',
+      ],
+    },
+    {
+      plan: premiumPlan,
+      title: formatPlanName(premiumPlan.name),
+      badge: premiumPlan.isPopular ? 'Recommended' : undefined,
+      highlight: premiumPlan.isPopular,
+      blurb: examsOnly ? 'Premium for EPS-TOPIK and JLPT' : 'For learners aiming for their target score',
+      price: formatPlanPrice(premiumPlan, exam),
+      per: '/ month',
+      note: `Paid monthly · ${planAccessDays(premiumPlan)} days access`,
+      features: examsOnly
+        ? [
+            'Everything in Basic',
+            'Unlimited EPS-TOPIK and JLPT practice',
+            'Help in English on every item',
+            'AI tutor',
+            'IELTS and PTE need Premium (NPR 499)',
+          ]
+        : [
+            'Everything in Basic',
+            'Unlimited practice sub-tests',
+            gradings(premiumPlan),
+            `${mocks(premiumPlan.mockTestsIncluded)} per month`,
+            'Section mock tests',
+            'Maximum AI tutor',
+            'Sentence-level rewrites',
+            'Full AI score breakdown',
+            'Priority evaluation',
+          ],
+    },
+  ];
 }
 
 export function isPaidTier(value: unknown): value is PaidTier {

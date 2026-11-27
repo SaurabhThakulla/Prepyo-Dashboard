@@ -29,6 +29,7 @@ import { accountLines } from '@/lib/account';
 import { EXAM_LABELS, isAdmin, isInstitutionStudent, isPremiumUser } from '@/lib/types';
 import { hasMaterials } from '@/data/materials';
 import { signedOutPath } from '@/lib/signOutPath';
+import { upgradeSummaryFor } from '@/lib/subscriptions';
 import { cn } from '@/lib/utils';
 
 interface Row {
@@ -170,7 +171,7 @@ export default function MePage() {
             </span>
             <span className="min-w-0 flex-1">
               <span className="block font-display text-base font-bold">Upgrade your plan</span>
-              <span className="block text-xs opacity-85">More AI gradings, full mocks and Help in English</span>
+              <span className="block text-xs opacity-85">{upgradeSummaryFor(activeExam)}</span>
             </span>
             <ChevronRight className="h-5 w-5 shrink-0 opacity-85" />
           </Link>

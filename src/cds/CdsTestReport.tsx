@@ -140,6 +140,9 @@ export default function CdsTestReport({ attemptId, onBack, onRedo }: Props) {
                         <MarkedText text={question.contextPassage} />
                       </p>
                     )}
+                    {question.imageUrl && (
+                      <img src={question.imageUrl} alt={question.title} className="max-h-60 rounded-xl border border-border" />
+                    )}
                   </div>
                 </div>
                 <div className="pl-6 text-xs space-y-1">

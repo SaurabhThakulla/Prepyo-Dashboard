@@ -7,6 +7,7 @@ import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import MockAnswerInput from '@/components/mocks/MockAnswerInput';
 import { MarkedText } from '@/components/practice/OptionContent';
 import PromptAudio from '@/components/practice/PromptAudio';
+import QuestionFigure from '@/components/practice/QuestionFigure';
 import InlineBlankPassage, { passageHasGaps } from '@/components/practice/InlineBlankPassage';
 import { AnswerSubmission, Mock, Question, isCdsSchemaExam } from '@/lib/types';
 import { isReadAloudTask, isRepeatSentenceTask, isWordHighlightTask, passageText } from '@/lib/listening';
@@ -114,6 +115,10 @@ export default function MockExamRunner({
                       : passageText(currentQuestion)}
                   </div>
                 )
+              )}
+
+              {currentQuestion.imageUrl && (
+                <QuestionFigure src={currentQuestion.imageUrl} alt={currentQuestion.title} />
               )}
 
               {!isReadAloudTask(currentQuestion) && <PromptAudio

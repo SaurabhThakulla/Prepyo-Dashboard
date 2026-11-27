@@ -52,7 +52,7 @@ export function OnboardingSidebar({
   const active = steps[stepIndex];
   const answered = plan.filter(line => line.value).length;
   return (
-    <aside className="relative hidden w-[300px] shrink-0 flex-col overflow-hidden bg-gradient-to-b from-[#1d3fae] via-[#16328c] to-[#0d1f5c] px-6 py-7 text-white lg:flex">
+    <aside className="relative hidden w-[300px] shrink-0 flex-col overflow-hidden bg-[#16328c] bg-gradient-to-b from-[#1d3fae] via-[#16328c] to-[#0d1f5c] px-6 py-7 text-white lg:flex">
       <span aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full border-[28px] border-white/[0.06]" />
       <span aria-hidden className="pointer-events-none absolute -bottom-28 -left-16 h-64 w-64 rounded-full bg-sky-400/20 blur-3xl" />
 
@@ -392,7 +392,8 @@ export function OnboardingNavigation({
           <Button
             onClick={onContinue}
             disabled={disabled}
-            className="h-11 gap-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-7 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition-all hover:brightness-110 active:scale-[0.98] disabled:from-slate-300 disabled:to-slate-300 disabled:opacity-100 disabled:shadow-none"
+            // Solid colours, not a gradient: dark mode strips gradients (globals.css), which left white text on the white footer.
+            className="h-11 gap-2 rounded-full bg-blue-600 px-7 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition-all hover:bg-blue-700 active:scale-[0.98] disabled:bg-slate-200 disabled:text-slate-500 disabled:opacity-100 disabled:shadow-none"
           >
             {label} <ArrowRight className="h-4 w-4" />
           </Button>

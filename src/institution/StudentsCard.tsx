@@ -1578,9 +1578,9 @@ function CredentialsDialog({ credentials, loginAddress }: { credentials: Credent
         <DialogTitle>Sign-in details for {credentials.name}</DialogTitle>
         <DialogDescription>The password is shown this once, so copy it now.</DialogDescription>
       </DialogHeader>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm">
+      <dl className="grid gap-1 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm [&_dd:not(:last-child)]:mb-2 [&_dt]:text-xs">
         <dt className="text-muted-foreground">Sign-in page</dt>
-        <dd className="break-all font-mono text-xs font-semibold text-foreground">
+        <dd className="break-words font-semibold text-foreground">
           <a href={loginAddress} target="_blank" rel="noreferrer" className="hover:underline">
             {loginAddress}
           </a>

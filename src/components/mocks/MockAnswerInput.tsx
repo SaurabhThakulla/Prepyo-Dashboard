@@ -37,7 +37,7 @@ export default function MockAnswerInput({ question, answer, onChange }: MockAnsw
             return (
               <label
                 key={option.id}
-                className={`flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer text-[15px] leading-snug transition-colors ${checked ? 'bg-primary/10 font-medium text-foreground' : 'bg-muted/50 text-foreground hover:bg-primary/[0.06]'
+                className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer text-[15px] leading-snug transition-colors ${checked ? 'border-primary bg-primary/10 font-medium text-foreground' : 'border-transparent bg-muted/50 text-foreground hover:border-primary/40 hover:bg-primary/[0.06] dark:border-border'
                   }`}
               >
                 <input

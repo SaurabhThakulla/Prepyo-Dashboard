@@ -1,6 +1,6 @@
-import { useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Check, Lock, RotateCcw, Star } from 'lucide-react';
+import { Check, Lock, RotateCcw, Star, Trophy } from 'lucide-react';
 import { lessonHref, type Unit } from '@/data/learnKorean';
 import { useLearnProgress } from '@/lib/hooks/useLearnProgress';
 import { useLearnCourse } from '@/lib/learn/course';
@@ -25,6 +25,11 @@ const UNIT_STYLE: Record<string, { banner: string; node: string; ring: string }>
   'jp-daily': { banner: 'from-emerald-500 to-emerald-600', node: 'bg-emerald-500 border-emerald-700', ring: 'ring-emerald-300' },
   'jp-kanji': { banner: 'from-lime-500 to-green-600', node: 'bg-lime-500 border-lime-700', ring: 'ring-lime-300' },
   'jlpt-n5': { banner: 'from-rose-500 to-rose-600', node: 'bg-rose-500 border-rose-700', ring: 'ring-rose-300' },
+  'ssw-life': { banner: 'from-teal-500 to-teal-600', node: 'bg-teal-500 border-teal-700', ring: 'ring-teal-300' },
+  'ssw-jft': { banner: 'from-blue-500 to-indigo-600', node: 'bg-blue-500 border-blue-700', ring: 'ring-blue-300' },
+  'ssw-care': { banner: 'from-pink-500 to-rose-500', node: 'bg-pink-500 border-pink-700', ring: 'ring-pink-300' },
+  'ssw-food': { banner: 'from-orange-500 to-red-500', node: 'bg-orange-500 border-orange-700', ring: 'ring-orange-300' },
+  'ssw-farm': { banner: 'from-green-500 to-emerald-600', node: 'bg-green-500 border-green-700', ring: 'ring-green-300' },
 };
 
 // The path winds left and right, as it does in Duolingo.
@@ -88,7 +93,7 @@ export default function LearnPage() {
           unit={unit}
           lang={course.lang}
           upNextKey={upNextKey}
-          states={unit.lessons.map((_, i) => lessonState(progress, unit, i))}
+          states={unit.lessons.map((_, i) => lessonState(progress, unit, i, course.units))}
           done={unitDoneCount(progress, unit)}
         />
       ))}
@@ -111,6 +116,11 @@ function UnitPath({
   upNextKey?: string;
 }) {
   const style = UNIT_STYLE[unit.id] ?? UNIT_STYLE.hangul;
+  const listRef = useRef<HTMLOListElement>(null);
+  const nodeRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  // The track is gold as far as the learner has gone: up to the first stop not yet done.
+  const firstOpen = states.findIndex(s => s !== 'done');
+  const reached = firstOpen === -1 ? states.length : firstOpen;
 
   return (
     <section id={`unit-${unit.id}`} className="flex scroll-mt-20 flex-col-reverse gap-6">
@@ -128,14 +138,18 @@ function UnitPath({
         </span>
       </div>
 
-      <ol className="flex flex-col-reverse items-center gap-5 py-2">
+      <ol ref={listRef} className="relative flex flex-col-reverse items-center gap-5 py-2">
         {unit.lessons.map((lesson, i) => {
           const state = states[i];
           const current = upNextKey === `${unit.id}/${i}`;
-          const offset = WIND[i % WIND.length];
+          // The unit test sits centred and larger, a trophy at the end of the path.
+          const offset = lesson.test ? 0 : WIND[i % WIND.length];
           const node = (
             <span
-              className={`relative flex h-16 w-16 items-center justify-center rounded-full border-b-[6px] text-white transition-transform ${
+              ref={el => {
+                nodeRefs.current[i] = el;
+              }}
+              className={`relative flex ${lesson.test ? 'h-20 w-20' : 'h-16 w-16'} items-center justify-center rounded-full border-b-[6px] text-white transition-transform ${
                 state === 'locked'
                   ? 'bg-muted border-muted-foreground/30 text-muted-foreground'
                   : state === 'done'
@@ -143,10 +157,21 @@ function UnitPath({
                     : `${style.node} group-hover:scale-105`
               } ${current ? `ring-4 ring-offset-4 ring-offset-background ${style.ring}` : ''}`}
             >
+              {current && (
+                // Danfe stands beside the learner's stop, on the side away from the bend, so he stays on screen.
+                <img
+                  src="/danfe.svg"
+                  alt=""
+                  aria-hidden
+                  className={`danfe-idle pointer-events-none absolute bottom-[-6px] h-24 w-auto max-w-none ${offset > 0 ? 'right-full mr-3' : 'left-full ml-3'}`}
+                />
+              )}
               {state === 'done' ? (
                 <Check className="h-8 w-8" strokeWidth={3} />
               ) : state === 'locked' ? (
                 <Lock className="h-6 w-6" />
+              ) : lesson.test ? (
+                <Trophy className="h-9 w-9" />
               ) : (
                 <Star className="h-7 w-7 fill-current" />
               )}
@@ -154,14 +179,14 @@ function UnitPath({
           );
 
           return (
-            <li key={lesson.id} id={current ? 'learn-up-next' : undefined} style={{ transform: `translateX(${offset}px)` }} className="flex flex-col items-center">
+            <li key={lesson.id} id={current ? 'learn-up-next' : undefined} style={{ transform: `translateX(${offset}px)` }} className="relative z-[1] flex flex-col items-center">
               {current && (
                 <span className="mb-2 rounded-xl border-2 border-border bg-card px-3 py-1 text-xs font-bold uppercase tracking-wide text-foreground shadow-sm motion-safe:animate-bounce">
                   Start
                 </span>
               )}
               {state === 'locked' ? (
-                <div className="flex flex-col items-center" title="Finish the lesson before this one to open it">
+                <div className="flex flex-col items-center" title="Finish what comes before this to open it">
                   {node}
                   <NodeLabel title={lesson.title} summary={lesson.summary} muted />
                 </div>
@@ -174,6 +199,7 @@ function UnitPath({
             </li>
           );
         })}
+        <Track listRef={listRef} nodeRefs={nodeRefs} reached={reached} count={unit.lessons.length} />
       </ol>
     </section>
   );
@@ -181,9 +207,97 @@ function UnitPath({
 
 function NodeLabel({ title, summary, muted = false }: { title: string; summary: string; muted?: boolean }) {
   return (
-    <span className="mt-2 max-w-[13rem] text-center">
+    <span className="mt-2 max-w-[13rem] rounded-xl bg-background/95 px-2 py-0.5 text-center">
       <span className={`block text-sm font-bold ${muted ? 'text-muted-foreground' : 'text-foreground'}`}>{title}</span>
       <span className="block text-[11px] leading-snug text-muted-foreground">{summary}</span>
     </span>
+  );
+}
+
+type Point = [number, number];
+
+/** The S-curve from one stop up to the next: it leaves and arrives upright, like a railway bend. */
+function bend([x0, y0]: Point, [x1, y1]: Point, t: number): Point {
+  const ym = (y0 + y1) / 2;
+  const u = 1 - t;
+  return [
+    u * u * u * x0 + 3 * u * u * t * x0 + 3 * u * t * t * x1 + t * t * t * x1,
+    u * u * u * y0 + 3 * u * u * t * ym + 3 * u * t * t * ym + t * t * t * y1,
+  ];
+}
+
+/** One rail: the bend sampled finely and shifted sideways by `side` pixels. */
+function rail(a: Point, b: Point, side: number): string {
+  const steps = 24;
+  const pts = Array.from({ length: steps + 1 }, (_, k) => bend(a, b, k / steps));
+  return pts
+    .map(([x, y], k) => {
+      const [px, py] = pts[Math.max(0, k - 1)];
+      const [nx, ny] = pts[Math.min(steps, k + 1)];
+      const len = Math.hypot(nx - px, ny - py) || 1;
+      return `${k ? 'L' : 'M'}${(x - ((ny - py) / len) * side).toFixed(1)} ${(y + ((nx - px) / len) * side).toFixed(1)}`;
+    })
+    .join(' ');
+}
+
+/**
+ * A railway joining a unit's stops, drawn behind them: wooden sleepers and two
+ * rails, gold up to the learner's place and grey beyond. The stops are measured
+ * after layout, so the track follows wherever they wind.
+ */
+function Track({
+  listRef,
+  nodeRefs,
+  reached,
+  count,
+}: {
+  listRef: React.RefObject<HTMLOListElement | null>;
+  nodeRefs: React.MutableRefObject<(HTMLSpanElement | null)[]>;
+  reached: number;
+  count: number;
+}) {
+  const [points, setPoints] = useState<(Point | null)[]>([]);
+
+  // After commit, not in layout: the list's own ref is attached only once its children are.
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const measure = () => {
+      const box = list.getBoundingClientRect();
+      setPoints(
+        // One entry per stop, null where a stop is not mounted, so index i is always lesson i.
+        Array.from({ length: count }, (_, i): Point | null => {
+          const node = nodeRefs.current[i];
+          if (!node) return null;
+          const r = node.getBoundingClientRect();
+          return [r.left + r.width / 2 - box.left, r.top + r.height / 2 - box.top];
+        }),
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [listRef, nodeRefs, count]);
+
+  if (points.length < 2) return null;
+  return (
+    <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
+      {points.slice(1).map((to, i) => {
+        const from = points[i];
+        if (!from || !to) return null;
+        const gold = i < reached;
+        const ym = (from[1] + to[1]) / 2;
+        const centre = `M${from[0]} ${from[1]} C${from[0]} ${ym} ${to[0]} ${ym} ${to[0]} ${to[1]}`;
+        const rails = gold ? '#F59E0B' : '#94A3B8';
+        return (
+          <g key={i} fill="none" strokeLinecap="round">
+            <path d={centre} stroke={gold ? '#B45309' : '#94A3B8'} strokeOpacity={gold ? 0.55 : 0.35} strokeWidth={22} strokeDasharray="4 9" strokeLinecap="butt" />
+            <path d={rail(from, to, 7)} stroke={rails} strokeWidth={3.5} />
+            <path d={rail(from, to, -7)} stroke={rails} strokeWidth={3.5} />
+          </g>
+        );
+      })}
+    </svg>
   );
 }

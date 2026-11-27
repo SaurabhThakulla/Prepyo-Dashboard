@@ -75,6 +75,17 @@ const COMMON: Subject[] = [
   { name: 'Adventure Activities', weight: 'B 8 · C 0 Qs', types: [
     ['adv-activities', 'Adventure Activities & Camping', 'Land, water and air adventure; trekking and camping safely.'],
   ] },
+  { name: 'Drill', weight: 'B 0 · C 0 Qs', types: [
+    ['drl-drill', 'Foot, Arms & Ceremonial Drill', 'Words of command, foot drill, rifle salutes and guards (viva / practical notes).'],
+  ] },
+  { name: 'General Awareness', weight: 'B 0 · C 0 Qs', types: [
+    ['ga-india-states', 'India: States, Capitals & Polity', 'States, capitals, national symbols, Constitution and parliamentary basics.'],
+    ['ga-geography', 'Rivers, Mountains & Natural World', 'Rivers, dams, peaks, wildlife sanctuaries, soils and flora.'],
+    ['ga-history', 'History, Freedom Struggle & Leaders', 'Ancient and medieval heritage, UNESCO sites, freedom struggle and pioneers.'],
+    ['ga-defence-world', 'Defence, World Capitals & International Orgs', 'Defence academies, mottos, world capitals and global bodies.'],
+    ['ga-economy-culture', 'Economy, Railways, Culture, Sports & Awards', 'Banking, minerals, railways, agriculture, arts, awards and sports.'],
+    ['ga-science-tech', 'Science, Anatomy, Diseases, IT & Miscellaneous', 'Human body, health, physics, chemistry, inventions, abbreviations and IT.'],
+  ] },
 ];
 
 const ARMY: Subject[] = [

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useApp } from '@/context/AppContext';
 import { SubscriptionPlan, SubscriptionState } from '@/lib/types';
 import { api, errorMessage } from '@/lib/api';
-import { formatGradings, formatPlanName, planUsageTier } from '@/lib/subscriptions';
+import { formatGradings, formatPlanName, planCurrency, planUsageTier } from '@/lib/subscriptions';
 import { useToast } from '@/components/ui/toast';
 import { PAYMENT_ACCOUNT, PAYMENT_METHODS, PaymentMethod } from '@/lib/paymentMethods';
 import { localPhone } from '@/lib/phone';
@@ -103,6 +103,7 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
 
   const planTitle = formatPlanName(selectedPlan.name || selectedPlan.id);
   const totalDays = (selectedPlan.durationDays || selectedPlan.durationMonths * 30) + selectedPlan.bonusDays;
+  const currency = planCurrency(selectedPlan.id);
   const amount = selectedPlan.priceNPR.toLocaleString('en-US');
   const tier = planUsageTier(selectedPlan.id).toLowerCase();
 
@@ -221,7 +222,7 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
             </div>
             <div className="space-y-2.5 rounded-2xl border border-border/70 bg-muted/30 p-4 text-left">
               <SummaryRow label="Plan" value={`${planTitle} · ${totalDays} days`} />
-              <SummaryRow label="Paid with" value={`${method.label} · NPR ${amount}`} />
+              <SummaryRow label="Paid with" value={`${method.label} · ${currency} ${amount}`} />
               <SummaryRow label="Phone" value={localPhone(phoneNumber)} />
               <SummaryRow label="Txn ID" value={transactionId.trim()} mono />
             </div>
@@ -258,14 +259,14 @@ export default function QRPaymentCheckoutDialog({ open, onOpenChange, selectedPl
                   To pay
                 </span>
                 <span className="block whitespace-nowrap font-display text-xl font-black leading-tight text-primary sm:text-3xl">
-                  NPR {amount}
+                  {currency} {amount}
                 </span>
               </div>
             </header>
 
             <div className="grid flex-1 overflow-y-auto overscroll-contain sm:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] sm:divide-x sm:divide-border/70">
               <section aria-labelledby="pay-step" className="space-y-4 p-4 sm:p-6">
-                <StepHeading id="pay-step" n={1} title={`Pay NPR ${amount}`} />
+                <StepHeading id="pay-step" n={1} title={`Pay ${currency} ${amount}`} />
 
                 <div className="grid grid-cols-2 gap-2">
                   {PAYMENT_METHODS.map(m => (

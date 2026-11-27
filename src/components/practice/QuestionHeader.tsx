@@ -14,7 +14,7 @@ export default function QuestionHeader({ code, title, children, actions }: {
   actions?: ReactNode;
 }) {
   return (
-    <div className="-mx-4 flex flex-col gap-2.5 border-b border-primary/10 bg-primary/[0.06] px-4 py-3 sm:-mx-6 sm:gap-3 sm:py-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:px-6 lg:-mx-8 lg:px-8 dark:bg-white/[0.04]">
+    <div className="-mx-4 flex flex-col gap-2.5 border-b border-primary/10 bg-primary/[0.06] px-4 py-3 sm:-mx-6 sm:gap-3 sm:py-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:px-6 lg:-mx-8 lg:px-8 dark:border-border dark:bg-white/[0.04]">
       {/* The badge sits centred against the title and instructions beside it; on a phone,
           where the instructions run long, it stays level with the title.
           Never narrower than 24rem: when the actions don't fit beside it, they wrap below. */}
@@ -23,7 +23,7 @@ export default function QuestionHeader({ code, title, children, actions }: {
           {code}
         </span>
         <div className="min-w-0 space-y-1">
-          <h2 className="text-xl sm:text-2xl font-bold text-primary leading-tight">{title}</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-primary dark:text-foreground leading-tight">{title}</h2>
           {children}
         </div>
       </div>

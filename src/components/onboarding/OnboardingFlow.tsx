@@ -494,7 +494,7 @@ export default function OnboardingFlow({
                       className="font-display text-4xl font-extrabold tracking-tight text-slate-900 outline-none sm:text-5xl"
                     >
                       Namaste,{' '}
-                      <span className="bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">
+                      <span className="text-blue-600">
                         {firstName}!
                       </span>
                     </h2>
@@ -519,7 +519,7 @@ export default function OnboardingFlow({
                     </div>
                   </div>
 
-                  <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#2a56cf] via-blue-700 to-[#132e7d] p-7 text-white shadow-[0_30px_60px_-30px_rgba(29,78,216,0.8)]">
+                  <div className="relative overflow-hidden rounded-[2rem] bg-blue-800 bg-gradient-to-br from-[#2a56cf] via-blue-700 to-[#132e7d] p-7 text-white shadow-[0_30px_60px_-30px_rgba(29,78,216,0.8)]">
                     <span aria-hidden className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full border-[26px] border-white/10" />
                     <span className="relative text-[11px] font-bold uppercase tracking-wider text-sky-200">How it works</span>
                     <ol className="relative mt-5 space-y-5">

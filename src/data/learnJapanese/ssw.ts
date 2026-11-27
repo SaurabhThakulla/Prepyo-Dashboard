@@ -1,0 +1,332 @@
+import { Unit } from '../learnKorean/types';
+import { vocabLesson } from '../learnKorean/vocab';
+
+const J = 'Japanese';
+
+/*
+ * Japanese for SSW (Specified Skilled Worker, 特定技能) workers: life and work
+ * in Japan, the four parts of the Japan Foundation's JFT-Basic test (A2:
+ * Script and Vocabulary, Conversation and Expression, Listening Comprehension,
+ * Reading Comprehension), and the words of three SSW job fields. Every word,
+ * sentence and question here is our own; none is taken from a JFT-Basic or
+ * skills-test sample. Kana words give their romaji by syllable; kanji words
+ * give the kana reading and the romaji, as the N5 Kanji unit does.
+ */
+
+/** Life and work in Japan: the workplace, polite work phrases, the doctor, daily living and shifts. */
+export const SSW_LIFE: Unit = {
+  id: 'ssw-life',
+  number: 9,
+  title: 'Life & Work in Japan',
+  description: 'For SSW (特定技能) workers: the workplace, polite phrases, the doctor, living in Japan and shifts.',
+  emoji: '🏢',
+  lessons: [
+    vocabLesson('workplace', 'At the workplace', 'じょうし, どうりょう, きゅうけい, きゅうりょう', [
+      { ko: 'しゃちょう', roman: 'sha-chō', en: 'company president', picture: '👔' },
+      { ko: 'じょうし', roman: 'jō-shi', en: 'boss, supervisor', picture: '🧑‍💼' },
+      { ko: 'どうりょう', roman: 'dō-ryō', en: 'co-worker', picture: '🤝' },
+      { ko: 'きゅうけい', roman: 'kyū-kei', en: 'break, rest time', picture: '☕' },
+      { ko: 'ざんぎょう', roman: 'zan-gyō', en: 'overtime', picture: '🌙' },
+      { ko: 'きゅうりょう', roman: 'kyū-ryō', en: 'pay, wages', picture: '💴' },
+      { ko: 'ロッカー', roman: 'rok-kā', en: 'locker', picture: '🗄️' },
+      { ko: 'せいふく', roman: 'sei-fu-ku', en: 'uniform', picture: '🦺' },
+    ], J),
+    vocabLesson('work-phrases', 'Phrases at work', 'おつかれさまです, しつれいします', [
+      { ko: 'おつかれさまです', roman: 'o-tsu-ka-re-sa-ma de-su', en: 'thanks for your hard work (greeting at work)' },
+      { ko: 'しつれいします', roman: 'shi-tsu-rei-shi-ma-su', en: 'excuse me (coming in or going out)' },
+      { ko: 'おさきに しつれいします', roman: 'o-sa-ki ni shi-tsu-rei-shi-ma-su', en: 'excuse me for leaving before you' },
+      { ko: 'わかりました', roman: 'wa-ka-ri-ma-shi-ta', en: 'I understand' },
+      { ko: 'もう いちど おねがいします', roman: 'mō i-chi-do o-ne-ga-i-shi-ma-su', en: 'once more, please' },
+      { ko: 'おくれて すみません', roman: 'o-ku-re-te su-mi-ma-sen', en: 'sorry I am late' },
+      { ko: 'しつもんが あります', roman: 'shi-tsu-mon ga a-ri-ma-su', en: 'I have a question' },
+    ], J),
+    vocabLesson('health', 'Health & the doctor', 'びょういん, くすり, ねつ, けが', [
+      { ko: 'びょういん', roman: 'byō-in', en: 'hospital', picture: '🏥' },
+      { ko: 'くすり', roman: 'ku-su-ri', en: 'medicine', picture: '💊' },
+      { ko: 'ねつ', roman: 'ne-tsu', en: 'fever', picture: '🤒' },
+      { ko: 'かぜ', roman: 'ka-ze', en: 'a cold', picture: '🤧' },
+      { ko: 'けが', roman: 'ke-ga', en: 'injury', picture: '🩹' },
+      { ko: 'きゅうきゅうしゃ', roman: 'kyū-kyū-sha', en: 'ambulance', picture: '🚑' },
+      { ko: 'ほけんしょう', roman: 'ho-ken-shō', en: 'health insurance card', picture: '💳' },
+    ], J),
+    vocabLesson('living', 'Living in Japan', 'ごみ, ざいりゅうカード, ぎんこう', [
+      { ko: 'ごみ', roman: 'go-mi', en: 'rubbish', picture: '🗑️' },
+      { ko: 'もえる ごみ', roman: 'mo-e-ru go-mi', en: 'burnable rubbish', picture: '🔥' },
+      { ko: 'しやくしょ', roman: 'shi-ya-ku-sho', en: 'city office', picture: '🏛️' },
+      { ko: 'ざいりゅうカード', roman: 'za-i-ryū kā-do', en: 'residence card', picture: '🪪' },
+      { ko: 'ぎんこう', roman: 'gin-kō', en: 'bank', picture: '🏦' },
+      { ko: 'ゆうびんきょく', roman: 'yū-bin-kyo-ku', en: 'post office', picture: '📮' },
+      { ko: 'やちん', roman: 'ya-chin', en: 'rent', picture: '🔑' },
+      { ko: 'けいたい', roman: 'kei-ta-i', en: 'mobile phone', picture: '📱' },
+    ], J),
+    vocabLesson('shifts', 'Shifts & time off', 'シフト, はやばん, おそばん, ちこく', [
+      { ko: 'シフト', roman: 'shi-fu-to', en: 'shift (work rota)', picture: '📅' },
+      { ko: 'はやばん', roman: 'ha-ya-ban', en: 'early shift', picture: '🌅' },
+      { ko: 'おそばん', roman: 'o-so-ban', en: 'late shift', picture: '🌃' },
+      { ko: 'ちこく', roman: 'chi-ko-ku', en: 'being late', picture: '⏰' },
+      { ko: 'けっきん', roman: 'kek-kin', en: 'absence from work', picture: '🚫' },
+      { ko: 'ゆうきゅう', roman: 'yū-kyū', en: 'paid leave', picture: '🏖️' },
+      { ko: 'タイムカード', roman: 'ta-i-mu kā-do', en: 'time card', picture: '🕒' },
+    ], J),
+  ],
+};
+
+/** The four parts of JFT-Basic, each practised on everyday and workplace Japanese. */
+export const SSW_JFT: Unit = {
+  id: 'ssw-jft',
+  number: 10,
+  title: 'JFT-Basic Skills',
+  description: 'The four parts of the JFT-Basic test: signs and words, what to say, listening to instructions and reading notices.',
+  emoji: '📝',
+  lessons: [
+    vocabLesson('signs', 'Script: signs at work', '入口, 出口, 危険, 禁煙', [
+      { ko: '入口', roman: 'いりぐち · iriguchi', en: 'entrance' },
+      { ko: '出口', roman: 'でぐち · deguchi', en: 'exit' },
+      { ko: '危険', roman: 'きけん · kiken', en: 'danger', picture: '⚠️' },
+      { ko: '禁煙', roman: 'きんえん · kin’en', en: 'no smoking', picture: '🚭' },
+      { ko: '注意', roman: 'ちゅうい · chūi', en: 'caution' },
+      { ko: '非常口', roman: 'ひじょうぐち · hijōguchi', en: 'emergency exit', picture: '🏃' },
+      { ko: '立入禁止', roman: 'たちいりきんし · tachiiri kinshi', en: 'no entry', picture: '⛔' },
+      { ko: '押す', roman: 'おす · osu', en: 'push (on a door)', picture: '👉' },
+    ], J),
+    {
+      id: 'conversation',
+      title: 'Conversation: what do you say?',
+      summary: 'The right words for the moment',
+      exercises: [
+        { kind: 'teach', ko: 'いただきます', roman: 'i-ta-da-ki-ma-su', en: 'said before eating', picture: '🍚' },
+        { kind: 'teach', ko: 'ごちそうさまでした', roman: 'go-chi-sō-sa-ma de-shi-ta', en: 'said after eating', picture: '🙏' },
+        { kind: 'teach', ko: 'どういたしまして', roman: 'dō i-ta-shi-ma-shi-te', en: 'you’re welcome' },
+        { kind: 'teach', ko: 'いってきます', roman: 'it-te-ki-ma-su', en: 'I’m off (said when leaving home)', picture: '👋' },
+        { kind: 'choice', prompt: 'You leave work before your co-workers. What do you say?', options: ['おさきに しつれいします', 'いただきます', 'おかえりなさい', 'はじめまして'], answer: 0, explain: 'おさきに しつれいします: "excuse me for leaving before you".' },
+        { kind: 'choice', prompt: 'Your boss gives you an instruction and you understand it. What do you say?', options: ['はい、わかりました', 'いいえ、けっこうです', 'おやすみなさい', 'ごちそうさまでした'], answer: 0, explain: 'はい、わかりました: "yes, I understand".' },
+        { kind: 'choice', prompt: 'You did not catch what someone said. What do you say?', options: ['すみません、もう いちど おねがいします', 'おつかれさまでした', 'いってきます', 'どういたしまして'], answer: 0, explain: 'もう いちど おねがいします: "once more, please".' },
+        { kind: 'choice', prompt: 'Someone says ありがとうございます to you. What do you answer?', options: ['どういたしまして', 'いただきます', 'しつれいします', 'おめでとうございます'], answer: 0, explain: 'どういたしまして: "you’re welcome".' },
+        { kind: 'choice', prompt: 'You arrive late for work. What do you say first?', options: ['おくれて すみません', 'おさきに しつれいします', 'いってらっしゃい', 'ごちそうさまでした'], answer: 0, explain: 'おくれて すみません: "sorry I am late".' },
+        { kind: 'choice', prompt: 'You finish eating the lunch someone gave you. What do you say?', options: ['ごちそうさまでした', 'いただきます', 'いってきます', 'はじめまして'], answer: 0, explain: 'ごちそうさまでした is said after a meal, to thank for it.' },
+        { kind: 'match', prompt: 'Match the phrase to when you say it', pairs: [['いただきます', 'said before eating'], ['ごちそうさまでした', 'said after eating'], ['どういたしまして', 'you’re welcome'], ['いってきます', 'I’m off (said when leaving home)']] },
+      ],
+    },
+    {
+      id: 'listening',
+      title: 'Listening: instructions',
+      summary: 'Understand what you are asked to do',
+      exercises: [
+        { kind: 'teach', ko: 'はこんで ください', roman: 'ha-kon-de ku-da-sa-i', en: 'please carry it', picture: '📦' },
+        { kind: 'teach', ko: 'あらって ください', roman: 'a-rat-te ku-da-sa-i', en: 'please wash it', picture: '🧼' },
+        { kind: 'teach', ko: 'まって ください', roman: 'mat-te ku-da-sa-i', en: 'please wait', picture: '✋' },
+        { kind: 'teach', ko: 'はなして ください', roman: 'ha-na-shi-te ku-da-sa-i', en: 'please speak', picture: '🗣️' },
+        { kind: 'choice', prompt: 'Listen. What are you asked to do?', speak: 'これを あちらに はこんで ください。', listenOnly: true, options: ['Carry this over there.', 'Clean this over there.', 'Wait over there.', 'Throw this away.'], answer: 0, explain: 'これを あちらに はこんで ください: "please carry this over there".' },
+        { kind: 'choice', prompt: 'Listen. What are you asked to do?', speak: 'てを あらって ください。', listenOnly: true, options: ['Wash your hands.', 'Raise your hand.', 'Dry your hands.', 'Put on gloves.'], answer: 0, explain: 'てを あらって ください: "please wash your hands".' },
+        { kind: 'choice', prompt: 'Listen. When should you come tomorrow?', speak: 'あしたは はちじに きて ください。', listenOnly: true, options: ['At 8 o’clock', 'At 7 o’clock', 'At 9 o’clock', 'At 4 o’clock'], answer: 0, explain: 'はちじ is 8 o’clock: "please come at 8 tomorrow".' },
+        { kind: 'choice', prompt: 'Listen. What are you asked to do?', speak: 'ちょっと まって ください。', listenOnly: true, options: ['Wait a moment.', 'Come quickly.', 'Speak slowly.', 'Sit down.'], answer: 0, explain: 'ちょっと まって ください: "please wait a moment".' },
+        { kind: 'choice', prompt: 'Listen. What is the person asking?', speak: 'ゆっくり はなして ください。', listenOnly: true, options: ['Please speak slowly.', 'Please speak loudly.', 'Please write it down.', 'Please read it again.'], answer: 0, explain: 'ゆっくり はなして ください: "please speak slowly".' },
+        { kind: 'choice', prompt: 'Listen. When does the break start?', speak: 'きゅうけいは じゅうにじからです。', listenOnly: true, options: ['At 12 o’clock', 'At 2 o’clock', 'At 10 o’clock', 'At 1 o’clock'], answer: 0, explain: 'じゅうにじ is 12 o’clock: "the break is from 12".' },
+        { kind: 'match', prompt: 'Match the instruction to its meaning', pairs: [['はこんで ください', 'please carry it'], ['あらって ください', 'please wash it'], ['まって ください', 'please wait'], ['はなして ください', 'please speak']] },
+      ],
+    },
+    {
+      id: 'reading',
+      title: 'Reading: notices',
+      summary: 'Read short notices and messages',
+      exercises: [
+        { kind: 'teach', ko: 'すわないで ください', roman: 'su-wa-na-i-de ku-da-sa-i', en: 'please do not smoke', picture: '🚭' },
+        { kind: 'teach', ko: 'だして ください', roman: 'da-shi-te ku-da-sa-i', en: 'please put it out', picture: '🗑️' },
+        { kind: 'teach', ko: 'はじまります', roman: 'ha-ji-ma-ri-ma-su', en: 'it starts', picture: '▶️' },
+        { kind: 'teach', ko: 'ぬいで ください', roman: 'nu-i-de ku-da-sa-i', en: 'please take it off', picture: '👞' },
+        { kind: 'choice', prompt: 'What does the notice say?', ko: 'あしたは やすみです。', options: ['Tomorrow is a day off.', 'Today is a day off.', 'Tomorrow is a workday.', 'The shop opens tomorrow.'], answer: 0, explain: 'あした = tomorrow, やすみ = day off.' },
+        { kind: 'choice', prompt: 'What does the sign ask?', ko: 'ここで たばこを すわないで ください。', options: ['Do not smoke here.', 'Smoke only here.', 'Do not eat here.', 'Do not sit here.'], answer: 0, explain: 'たばこを すわないで ください: "please do not smoke".' },
+        { kind: 'choice', prompt: 'When should you put out the rubbish?', ko: 'ごみは もくようびに だして ください。', options: ['On Thursday', 'On Wednesday', 'On Friday', 'Every day'], answer: 0, explain: 'もくようび is Thursday.' },
+        { kind: 'choice', prompt: 'When does the meeting start?', ko: 'かいぎは さんじに はじまります。', options: ['At 3 o’clock', 'At 2 o’clock', 'At 4 o’clock', 'At 1 o’clock'], answer: 0, explain: 'さんじ is 3 o’clock; かいぎ is a meeting.' },
+        { kind: 'choice', prompt: 'What should you do here?', ko: 'くつを ぬいで ください。', options: ['Take off your shoes.', 'Put on your shoes.', 'Wash your shoes.', 'Buy new shoes.'], answer: 0, explain: 'くつ = shoes, ぬいで ください = please take off.' },
+        { kind: 'match', prompt: 'Match the words to their meaning', pairs: [['すわないで ください', 'please do not smoke'], ['だして ください', 'please put it out'], ['はじまります', 'it starts'], ['ぬいで ください', 'please take it off']] },
+      ],
+    },
+    vocabLesson('everyday-a2', 'Words for getting things done', 'よやく, うけつけ, きっぷ, れんらく', [
+      { ko: 'よやく', roman: 'yo-ya-ku', en: 'reservation, booking', picture: '📒' },
+      { ko: 'うけつけ', roman: 'u-ke-tsu-ke', en: 'reception desk', picture: '🛎️' },
+      { ko: 'きっぷ', roman: 'kip-pu', en: 'ticket', picture: '🎫' },
+      { ko: 'のりかえ', roman: 'no-ri-ka-e', en: 'changing trains', picture: '🔁' },
+      { ko: 'ちず', roman: 'chi-zu', en: 'map', picture: '🗺️' },
+      { ko: 'れんらく', roman: 'ren-ra-ku', en: 'contact, getting in touch', picture: '📞' },
+      { ko: 'しゅっぱつ', roman: 'shup-pa-tsu', en: 'departure', picture: '🛫' },
+      { ko: 'とうちゃく', roman: 'tō-cha-ku', en: 'arrival', picture: '🛬' },
+    ], J),
+  ],
+};
+
+/** Caregiving (介護), the largest SSW field: the body, daily care, helping someone move, care-home words and how someone feels. */
+export const SSW_CARE: Unit = {
+  id: 'ssw-care',
+  number: 11,
+  title: 'Caregiving',
+  description: 'SSW field 介護: the body, daily care, helping someone move, care-home words and asking how someone feels.',
+  emoji: '🧓',
+  lessons: [
+    vocabLesson('care-body', 'The body', 'あたま, て, あし, せなか', [
+      { ko: 'あたま', roman: 'a-ta-ma', en: 'head' },
+      { ko: 'て', roman: 'te', en: 'hand', picture: '✋' },
+      { ko: 'あし', roman: 'a-shi', en: 'leg, foot', picture: '🦵' },
+      { ko: 'め', roman: 'me', en: 'eye', picture: '👁️' },
+      { ko: 'みみ', roman: 'mi-mi', en: 'ear', picture: '👂' },
+      { ko: 'くち', roman: 'ku-chi', en: 'mouth', picture: '👄' },
+      { ko: 'は', roman: 'ha', en: 'tooth', picture: '🦷' },
+      { ko: 'せなか', roman: 'se-na-ka', en: 'back (of the body)' },
+      { ko: 'こし', roman: 'ko-shi', en: 'lower back, hips' },
+    ], J),
+    vocabLesson('daily-care', 'Daily care', 'しょくじ, にゅうよく, はいせつ, きがえ', [
+      { ko: 'しょくじ', roman: 'sho-ku-ji', en: 'meal', picture: '🍽️' },
+      { ko: 'にゅうよく', roman: 'nyū-yo-ku', en: 'bathing', picture: '🛁' },
+      { ko: 'はいせつ', roman: 'ha-i-se-tsu', en: 'going to the toilet (care term)', picture: '🚽' },
+      { ko: 'きがえ', roman: 'ki-ga-e', en: 'changing clothes', picture: '👕' },
+      { ko: 'はみがき', roman: 'ha-mi-ga-ki', en: 'brushing teeth', picture: '🪥' },
+      { ko: 'おむつ', roman: 'o-mu-tsu', en: 'incontinence pad, diaper' },
+      { ko: 'くるまいす', roman: 'ku-ru-ma-i-su', en: 'wheelchair', picture: '🦽' },
+      { ko: 'ベッド', roman: 'bed-do', en: 'bed', picture: '🛏️' },
+    ], J),
+    vocabLesson('helping', 'Helping someone move', 'たって ください, ゆっくり, あぶない', [
+      { ko: 'たって ください', roman: 'tat-te ku-da-sa-i', en: 'please stand up', picture: '🧍' },
+      { ko: 'すわって ください', roman: 'su-wat-te ku-da-sa-i', en: 'please sit down', picture: '🪑' },
+      { ko: 'ゆっくり', roman: 'yuk-ku-ri', en: 'slowly', picture: '🐢' },
+      { ko: 'だいじょうぶですか', roman: 'da-i-jō-bu de-su ka', en: 'are you all right?', picture: '🤲' },
+      { ko: 'あぶない', roman: 'a-bu-na-i', en: 'watch out! (dangerous)', picture: '⚠️' },
+      { ko: 'てつだいます', roman: 'te-tsu-da-i-ma-su', en: 'I will help you' },
+      { ko: 'てすり', roman: 'te-su-ri', en: 'handrail' },
+    ], J),
+    vocabLesson('care-home', 'Care-home words', 'かいご, りようしゃ, きろく, たいおん', [
+      { ko: 'かいご', roman: 'ka-i-go', en: 'nursing care' },
+      { ko: 'りようしゃ', roman: 'ri-yō-sha', en: 'resident (person receiving care)', picture: '🧓' },
+      { ko: 'かぞく', roman: 'ka-zo-ku', en: 'family', picture: '👪' },
+      { ko: 'しせつ', roman: 'shi-se-tsu', en: 'care facility', picture: '🏢' },
+      { ko: 'きろく', roman: 'ki-ro-ku', en: 'care record, notes', picture: '📝' },
+      { ko: 'たいおん', roman: 'ta-i-on', en: 'body temperature', picture: '🌡️' },
+      { ko: 'けつあつ', roman: 'ke-tsu-a-tsu', en: 'blood pressure', picture: '🩺' },
+    ], J),
+    vocabLesson('feelings', 'How do you feel?', 'いたいですか, さむいですか, ねむいです', [
+      { ko: 'いたいですか', roman: 'i-ta-i de-su ka', en: 'does it hurt?', picture: '🤕' },
+      { ko: 'さむいですか', roman: 'sa-mu-i de-su ka', en: 'are you cold?', picture: '🥶' },
+      { ko: 'のどが かわきました', roman: 'no-do ga ka-wa-ki-ma-shi-ta', en: 'I am thirsty', picture: '🥤' },
+      { ko: 'おなかが すきました', roman: 'o-na-ka ga su-ki-ma-shi-ta', en: 'I am hungry', picture: '🍙' },
+      { ko: 'トイレに いきたいです', roman: 'to-i-re ni i-ki-ta-i de-su', en: 'I want to go to the toilet', picture: '🚻' },
+      { ko: 'きもちが わるいです', roman: 'ki-mo-chi ga wa-ru-i de-su', en: 'I feel sick', picture: '🤢' },
+      { ko: 'ねむいです', roman: 'ne-mu-i de-su', en: 'I am sleepy', picture: '😴' },
+    ], J),
+  ],
+};
+
+/** Food service (外食): serving customers, the kitchen, cooking, hygiene and taking orders. */
+export const SSW_FOOD: Unit = {
+  id: 'ssw-food',
+  number: 12,
+  title: 'Food Service',
+  description: 'SSW field 外食業: welcoming customers, the kitchen, cooking words, hygiene and the bill.',
+  emoji: '🍜',
+  lessons: [
+    vocabLesson('customers', 'Serving customers', 'いらっしゃいませ, かしこまりました', [
+      { ko: 'いらっしゃいませ', roman: 'i-ras-sha-i-ma-se', en: 'welcome (to customers)', picture: '🙇' },
+      { ko: 'なんめいさまですか', roman: 'nan-mei-sa-ma de-su ka', en: 'how many in your party?', picture: '👥' },
+      { ko: 'しょうしょう おまちください', roman: 'shō-shō o-ma-chi ku-da-sa-i', en: 'please wait a moment (polite)', picture: '⏳' },
+      { ko: 'ごちゅうもんは おきまりですか', roman: 'go-chū-mon wa o-ki-ma-ri de-su ka', en: 'are you ready to order?', picture: '📝' },
+      { ko: 'かしこまりました', roman: 'ka-shi-ko-ma-ri-ma-shi-ta', en: 'certainly (I understand)', picture: '👌' },
+      { ko: 'おまたせしました', roman: 'o-ma-ta-se-shi-ma-shi-ta', en: 'sorry to keep you waiting', picture: '🍛' },
+      { ko: 'ありがとうございました', roman: 'a-ri-ga-tō go-za-i-ma-shi-ta', en: 'thank you (as a customer leaves)', picture: '🙏' },
+    ], J),
+    vocabLesson('kitchen', 'In the kitchen', 'ほうちょう, まないた, なべ, さら', [
+      { ko: 'ちゅうぼう', roman: 'chū-bō', en: 'restaurant kitchen', picture: '🧑‍🍳' },
+      { ko: 'ほうちょう', roman: 'hō-chō', en: 'kitchen knife', picture: '🔪' },
+      { ko: 'まないた', roman: 'ma-na-i-ta', en: 'chopping board' },
+      { ko: 'なべ', roman: 'na-be', en: 'pot, pan', picture: '🍲' },
+      { ko: 'フライパン', roman: 'fu-ra-i-pan', en: 'frying pan', picture: '🍳' },
+      { ko: 'さら', roman: 'sa-ra', en: 'plate, dish', picture: '🍽️' },
+      { ko: 'あらいもの', roman: 'a-ra-i-mo-no', en: 'washing-up', picture: '🧽' },
+      { ko: 'れいとうこ', roman: 'rei-tō-ko', en: 'freezer', picture: '🧊' },
+    ], J),
+    vocabLesson('cooking', 'Cooking words', 'きる, やく, にる, あげる', [
+      { ko: 'きる', roman: 'ki-ru', en: 'to cut', picture: '🔪' },
+      { ko: 'やく', roman: 'ya-ku', en: 'to grill, to bake', picture: '🔥' },
+      { ko: 'にる', roman: 'ni-ru', en: 'to simmer, to boil', picture: '🍲' },
+      { ko: 'あげる', roman: 'a-ge-ru', en: 'to deep-fry', picture: '🍤' },
+      { ko: 'あらう', roman: 'a-ra-u', en: 'to wash', picture: '🚰' },
+      { ko: 'もりつける', roman: 'mo-ri-tsu-ke-ru', en: 'to arrange food on a plate', picture: '🍱' },
+      { ko: 'あたためる', roman: 'a-ta-ta-me-ru', en: 'to heat up', picture: '♨️' },
+    ], J),
+    vocabLesson('hygiene', 'Hygiene & safety', 'てあらい, しょうどく, てぶくろ, マスク', [
+      { ko: 'てあらい', roman: 'te-a-ra-i', en: 'hand washing', picture: '🧼' },
+      { ko: 'しょうどく', roman: 'shō-do-ku', en: 'disinfection', picture: '🧴' },
+      { ko: 'てぶくろ', roman: 'te-bu-ku-ro', en: 'gloves', picture: '🧤' },
+      { ko: 'マスク', roman: 'ma-su-ku', en: 'face mask', picture: '😷' },
+      { ko: 'しょくちゅうどく', roman: 'sho-ku-chū-do-ku', en: 'food poisoning', picture: '🤮' },
+      { ko: 'アレルギー', roman: 'a-re-ru-gī', en: 'allergy', picture: '🥜' },
+      { ko: 'しょうみきげん', roman: 'shō-mi-ki-gen', en: 'best-before date', picture: '📅' },
+      { ko: 'せいけつ', roman: 'sei-ke-tsu', en: 'clean, hygienic', picture: '✨' },
+    ], J),
+    vocabLesson('orders', 'Menu & the bill', 'メニュー, ちゅうもん, おかいけい, もちかえり', [
+      { ko: 'メニュー', roman: 'me-nyū', en: 'menu', picture: '📋' },
+      { ko: 'ちゅうもん', roman: 'chū-mon', en: 'order', picture: '✍️' },
+      { ko: 'おかいけい', roman: 'o-ka-i-kei', en: 'the bill', picture: '🧾' },
+      { ko: 'レジ', roman: 're-ji', en: 'cash register', picture: '🏧' },
+      { ko: 'おつり', roman: 'o-tsu-ri', en: 'change (money back)', picture: '🪙' },
+      { ko: 'もちかえり', roman: 'mo-chi-ka-e-ri', en: 'takeaway', picture: '🥡' },
+      { ko: 'ていしょく', roman: 'tei-sho-ku', en: 'set meal', picture: '🍱' },
+      { ko: 'のみもの', roman: 'no-mi-mo-no', en: 'drink', picture: '🥤' },
+    ], J),
+  ],
+};
+
+/** Agriculture (農業): the farm, crops, farm work, livestock, and weather and safety outdoors. */
+export const SSW_FARM: Unit = {
+  id: 'ssw-farm',
+  number: 13,
+  title: 'Agriculture',
+  description: 'SSW field 農業: the farm, crops, farm work, animals, and weather and safety outdoors.',
+  emoji: '🌾',
+  lessons: [
+    vocabLesson('farm', 'On the farm', 'はたけ, たんぼ, トラクター, ひりょう', [
+      { ko: 'はたけ', roman: 'ha-ta-ke', en: 'field (for vegetables)', picture: '🌱' },
+      { ko: 'たんぼ', roman: 'tan-bo', en: 'rice paddy', picture: '🌾' },
+      { ko: 'のうじょう', roman: 'nō-jō', en: 'farm', picture: '🏡' },
+      { ko: 'ビニールハウス', roman: 'bi-nī-ru ha-u-su', en: 'plastic greenhouse' },
+      { ko: 'そうこ', roman: 'sō-ko', en: 'storehouse', picture: '🏚️' },
+      { ko: 'トラクター', roman: 'to-ra-ku-tā', en: 'tractor', picture: '🚜' },
+      { ko: 'つち', roman: 'tsu-chi', en: 'soil, earth', picture: '🟫' },
+      { ko: 'ひりょう', roman: 'hi-ryō', en: 'fertiliser', picture: '🧪' },
+    ], J),
+    vocabLesson('crops', 'Crops', 'こめ, トマト, きゅうり, いちご', [
+      { ko: 'こめ', roman: 'ko-me', en: 'rice (uncooked)', picture: '🌾' },
+      { ko: 'トマト', roman: 'to-ma-to', en: 'tomato', picture: '🍅' },
+      { ko: 'きゅうり', roman: 'kyū-ri', en: 'cucumber', picture: '🥒' },
+      { ko: 'いちご', roman: 'i-chi-go', en: 'strawberry', picture: '🍓' },
+      { ko: 'じゃがいも', roman: 'ja-ga-i-mo', en: 'potato', picture: '🥔' },
+      { ko: 'たまねぎ', roman: 'ta-ma-ne-gi', en: 'onion', picture: '🧅' },
+      { ko: 'にんじん', roman: 'nin-jin', en: 'carrot', picture: '🥕' },
+      { ko: 'キャベツ', roman: 'kya-be-tsu', en: 'cabbage', picture: '🥬' },
+    ], J),
+    vocabLesson('farm-work', 'Farm work', 'うえる, しゅうかく, くさとり, はこづめ', [
+      { ko: 'たねを まく', roman: 'ta-ne o ma-ku', en: 'to sow seeds', picture: '🌱' },
+      { ko: 'うえる', roman: 'u-e-ru', en: 'to plant', picture: '🪴' },
+      { ko: 'みずを やる', roman: 'mi-zu o ya-ru', en: 'to water (plants)', picture: '🚿' },
+      { ko: 'くさとり', roman: 'ku-sa-to-ri', en: 'weeding', picture: '🌿' },
+      { ko: 'しゅうかく', roman: 'shū-ka-ku', en: 'harvest', picture: '🧺' },
+      { ko: 'はこづめ', roman: 'ha-ko-zu-me', en: 'packing into boxes', picture: '📦' },
+      { ko: 'はこぶ', roman: 'ha-ko-bu', en: 'to carry', picture: '🛒' },
+    ], J),
+    vocabLesson('livestock', 'Animals', 'うし, ぶた, にわとり, えさ', [
+      { ko: 'うし', roman: 'u-shi', en: 'cow', picture: '🐄' },
+      { ko: 'ぶた', roman: 'bu-ta', en: 'pig', picture: '🐖' },
+      { ko: 'にわとり', roman: 'ni-wa-to-ri', en: 'chicken', picture: '🐓' },
+      { ko: 'えさ', roman: 'e-sa', en: 'animal feed', picture: '🌽' },
+      { ko: 'ぎゅうしゃ', roman: 'gyū-sha', en: 'cowshed', picture: '🛖' },
+      { ko: 'とりごや', roman: 'to-ri-go-ya', en: 'henhouse', picture: '🐣' },
+      { ko: 'そうじ', roman: 'sō-ji', en: 'cleaning', picture: '🧹' },
+    ], J),
+    vocabLesson('outdoors', 'Weather & safety outdoors', 'ねっちゅうしょう, たいふう, かみなり', [
+      { ko: 'ねっちゅうしょう', roman: 'net-chū-shō', en: 'heatstroke', picture: '🥵' },
+      { ko: 'すいぶん', roman: 'su-i-bun', en: 'fluids (water to drink)', picture: '💧' },
+      { ko: 'たいふう', roman: 'ta-i-fū', en: 'typhoon', picture: '🌀' },
+      { ko: 'かみなり', roman: 'ka-mi-na-ri', en: 'thunder, lightning', picture: '⚡' },
+      { ko: 'のうやく', roman: 'nō-ya-ku', en: 'pesticide' },
+      { ko: 'ながぐつ', roman: 'na-ga-gu-tsu', en: 'rubber boots', picture: '👢' },
+      { ko: 'ぐんて', roman: 'gun-te', en: 'cotton work gloves', picture: '🧤' },
+    ], J),
+  ],
+};

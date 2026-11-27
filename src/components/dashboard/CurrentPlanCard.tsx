@@ -9,6 +9,8 @@ import { formatPlanName, usagePercent } from '@/lib/subscriptions';
 
 interface CurrentPlanCardProps {
   user?: UserProfile | null;
+  /** False where nothing is AI-marked (CDS and NCC are multiple choice): the AI gradings quota is hidden. */
+  aiGraded?: boolean;
 }
 
 /** "2026-09-23" → "Sep 23, 2026", and whole days from today (null if unparseable). */
@@ -34,7 +36,7 @@ function toneFor(percentUsed: number): Tone {
   return 'ok';
 }
 
-export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
+export default function CurrentPlanCard({ user, aiGraded = true }: CurrentPlanCardProps) {
   const sub = user?.subscription;
   if (!sub) return <CurrentPlanCardSkeleton />;
 
@@ -78,7 +80,7 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
       validity={validity}
       quotas={[
         { label: 'Practice', percentUsed: subTestsPercent, unlimited: sub.unlimited },
-        { label: 'AI grading', percentUsed: gradingsPercent, locked: notActivated },
+        ...(aiGraded ? [{ label: 'AI grading', percentUsed: gradingsPercent, locked: notActivated }] : []),
         // An institution's full mocks are paid in AI credits, so there is no count to show.
         ...(sub.fullMocksFromPool ? [] : [{ label: 'Mocks', percentUsed: mocksPercent, locked: notActivated }]),
       ]}
@@ -168,6 +170,7 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
             accent="text-indigo-500"
           />
 
+          {aiGraded && (
           <QuotaGauge
             title="AI gradings"
             percentUsed={gradingsPercent}
@@ -182,6 +185,7 @@ export default function CurrentPlanCard({ user }: CurrentPlanCardProps) {
             accent="text-emerald-500"
             locked={notActivated ? lockedHint : undefined}
           />
+          )}
 
           {!sub.fullMocksFromPool && (
             <QuotaGauge

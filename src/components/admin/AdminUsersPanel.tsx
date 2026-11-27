@@ -301,6 +301,8 @@ export default function AdminUsersPanel() {
                       <option value="IELTS">IELTS</option>
                       <option value="EPS_TOPIK">EPS-TOPIK</option>
                       <option value="JLPT">JLPT</option>
+                      <option value="CDS">CDS</option>
+                      <option value="NCC">NCC</option>
                     </select>
                   </td>
                   <td className="py-3 pr-3 text-right font-bold text-amber-600 dark:text-amber-400 tabular-nums whitespace-nowrap">

@@ -42,7 +42,7 @@ import { SCALE } from '@/components/practice/PracticeResultCard';
 import { matchesTypeKey, SYLLABUS, typeKey } from '@/lib/syllabus';
 import { SkillType, ExamType, Evaluation, Mistake, MistakeAnalytics, MockAttempt, PracticeAttempt, isInstitutionStudent, isPremiumUser, isCdsSchemaExam } from '@/lib/types';
 import { PteHistoryEntry } from '@/lib/pteMock/types';
-import { DEFAULT_PLANS, formatPlanName, premiumPlanIdFor } from '@/lib/subscriptions';
+import { DEFAULT_PLANS, formatPlanName, formatPlanPrice, premiumPlanIdFor } from '@/lib/subscriptions';
 import AskInstitution from '@/components/common/AskInstitution';
 import PracticeResultDialog from '@/components/practice/PracticeResultDialog';
 import { cdsSetLink, useCdsMocks, useCdsSets } from '@/cds/cdsShared';
@@ -579,7 +579,7 @@ export default function MistakesPage({ embedded = false }: { embedded?: boolean 
                   <ArrowRight className="w-4 h-4" />
                 </Button>
                 <p className="text-[11px] text-muted-foreground font-medium">
-                  {formatPlanName(offer.id)} is NPR {offer.priceNPR.toLocaleString('en-US')} a month · Instant access to all premium features
+                  {formatPlanName(offer.id)} is {formatPlanPrice(offer, activeExam)} {offer.id === 'cds_annual' ? 'a year' : 'a month'} · Instant access to all premium features
                 </p>
               </div>
               )}

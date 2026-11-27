@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { BookOpen, Headphones, Lightbulb, ListOrdered } from 'lucide-react';
+import { BookOpen, Headphones, Lightbulb, ListOrdered, Sparkles } from 'lucide-react';
 import type { ChoiceExercise, MatchExercise, TaskIntroExercise, TeachExercise } from '@/data/learnKorean/types';
 import { getTaskMetadata } from '@/lib/taskMetadata';
 import { taskInstruction } from '@/lib/syllabus';
@@ -35,15 +35,18 @@ export function TeachCard({ ex, voice }: { ex: TeachExercise; voice: LearnVoice 
   // A single kana or jamo is a letter, not a word.
   const letter = Array.from(ex.ko.trim()).length === 1 && /[ぁ-んァ-ンㄱ-ㅣ]/.test(ex.ko);
   // Letters and short words are the whole card; phrases need room to wrap.
-  const glyph = Array.from(ex.ko).length <= 3 ? 'text-7xl sm:text-8xl' : 'text-4xl sm:text-5xl';
+  const glyph = Array.from(ex.ko).length <= 3 ? 'text-7xl sm:text-8xl' : 'text-3xl sm:text-5xl';
   return (
     <div className="space-y-5">
-      <p className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">{letter ? 'New letter' : 'New word'}</p>
+      <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+        <Sparkles className="h-3.5 w-3.5" aria-hidden />
+        {letter ? 'New letter' : 'New word'}
+      </p>
       <div className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-sm text-center">
         <div className="absolute right-4 top-4">
           <SpeakButton text={ex.speak ?? ex.ko} voice={voice} autoPlay />
         </div>
-        <div className="px-6 pt-10 pb-7 sm:pt-12">
+        <div className="px-6 pt-16 pb-7">
           {ex.picture && <div className="mb-4 text-6xl sm:text-7xl leading-none" aria-hidden>{ex.picture}</div>}
           <p lang={course.lang} className={`font-display ${glyph} font-bold leading-tight text-foreground break-keep`}>
             {ex.ko}
@@ -92,29 +95,51 @@ export function ChoiceCard({ ex, voice, selected, checked, onSelect }: ChoicePro
     wrong: 'border-rose-400 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-100',
   };
 
+  // A letter or short word is the centre of the question; a sentence stays readable size.
+  const shortKo = showKo && Array.from(showKo.replace(/[[\]]/g, '')).length <= 4;
+  // Short answers (sounds, letters) sit two by two as big tiles; longer ones stay a list.
+  const shortOptions = !ex.pictureOptions && ex.options.every(o => Array.from(o).length <= 6);
+  const hasStimulus = Boolean(ex.speak || ex.picture || showKo);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground">{ex.prompt}</h2>
 
-      <div className="flex items-center gap-4 flex-wrap">
-        {ex.speak && <SpeakButton text={ex.speak} voice={voice} size={ex.listenOnly ? 'lg' : 'sm'} autoPlay />}
-        {ex.picture && <div className="text-7xl leading-none" aria-hidden>{ex.picture}</div>}
-        {showKo &&
-          (ex.sign ? (
-            <div lang={course.lang} className="rounded-xl border-4 border-rose-600 bg-white px-6 py-3 font-display text-3xl font-black text-rose-600 shadow-md">
-              {showKo}
+      {hasStimulus && (
+        <div className={`relative flex min-h-[9rem] flex-col items-center justify-center gap-4 rounded-3xl border border-border bg-card px-6 text-center shadow-sm ${ex.speak && !ex.listenOnly && showKo ? "pt-16 pb-7" : "py-7"}`}>
+          {ex.speak && !ex.listenOnly && showKo ? (
+            <div className="absolute right-4 top-4">
+              <SpeakButton text={ex.speak} voice={voice} autoPlay />
             </div>
           ) : (
-            <p lang={course.lang} className="font-display text-2xl sm:text-3xl font-bold text-foreground leading-snug break-keep">
-              <Marked text={showKo} />
-            </p>
-          ))}
-      </div>
+            ex.speak && (
+              <div className="flex flex-col items-center gap-2">
+                <SpeakButton text={ex.speak} voice={voice} size={ex.listenOnly ? 'lg' : 'sm'} autoPlay />
+                {ex.listenOnly && voice === 'ready' && <span className="text-sm font-semibold text-sky-600 dark:text-sky-400">Tap to play</span>}
+              </div>
+            )
+          )}
+          {ex.picture && <div className="text-7xl leading-none" aria-hidden>{ex.picture}</div>}
+          {showKo &&
+            (ex.sign ? (
+              <div lang={course.lang} className="rounded-xl border-4 border-rose-600 bg-white px-6 py-3 font-display text-3xl font-black text-rose-600 shadow-md">
+                {showKo}
+              </div>
+            ) : (
+              <p
+                lang={course.lang}
+                className={`font-display font-bold text-foreground break-keep ${shortKo ? 'text-7xl sm:text-8xl leading-tight' : 'text-2xl sm:text-3xl leading-snug'}`}
+              >
+                <Marked text={showKo} />
+              </p>
+            ))}
+        </div>
+      )}
       {ex.listenOnly && voice === 'none' && !checked && (
         <p className="text-xs text-muted-foreground">No {course.language} voice on this device, so the words are shown instead.</p>
       )}
 
-      <div className={ex.pictureOptions ? 'grid grid-cols-2 gap-3' : 'grid gap-3'}>
+      <div className={ex.pictureOptions || shortOptions ? 'grid grid-cols-2 gap-3' : 'grid gap-3'}>
         {order.map(i => [ex.options[i], i] as const).map(([option, i]) => (
           <button
             key={i}
@@ -130,7 +155,7 @@ export function ChoiceCard({ ex, voice, selected, checked, onSelect }: ChoicePro
                   : undefined
             }
             className={`rounded-2xl border-2 border-b-4 px-4 text-left font-semibold transition-colors active:translate-y-0.5 disabled:active:translate-y-0 ${
-              ex.pictureOptions ? 'py-6 text-center text-5xl' : 'py-3.5 text-base break-keep'
+              ex.pictureOptions ? 'py-6 text-center text-5xl' : shortOptions ? 'py-5 text-center text-2xl font-bold' : 'py-3.5 text-base break-keep'
             } ${tileClass[tileState(i)]}`}
           >
             {ex.pictureOptions ? option : <Marked text={option} />}

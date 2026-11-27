@@ -11,7 +11,7 @@ import RequireAuth from '@/components/auth/RequireAuth';
 import { shouldShowOnboarding } from '@/components/onboarding/onboarding';
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
 import { useClipboardGuard } from '@/lib/hooks/useClipboardGuard';
-import { isAdmin } from '@/lib/types';
+import { isAdmin, isCdsSchemaExam } from '@/lib/types';
 import { isInstitutionPath } from '@/institution/paths';
 import DictionaryPopup from '@/components/dictionary/DictionaryPopup';
 
@@ -28,6 +28,7 @@ const PROTECTED_PREFIXES = [
   '/practice',
   '/mocks',
   '/institute-mock',
+  '/learn',
   '/mistakes',
   '/subscription',
   '/diagnostic',
@@ -39,7 +40,7 @@ const PROTECTED_PREFIXES = [
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const navigationType = useNavigationType();
-  const { user, loading, activeTestSession, setActiveTestSession } = useApp();
+  const { user, loading, activeTestSession, setActiveTestSession, activeExam } = useApp();
   const toast = useToast();
 
   // A new screen opens at its top, as it does in an app. Going back (POP)
@@ -218,7 +219,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <>
     <div
       onClickCapture={handleContainerClickCapture}
-      className={`${showTabBar ? '[--mobile-nav-h:calc(4rem+env(safe-area-inset-bottom))]' : '[--mobile-nav-h:0px]'} lg:[--mobile-nav-h:0px] min-h-screen app-backdrop text-foreground flex flex-col transition-colors duration-200`}
+      className={`${showTabBar ? '[--mobile-nav-h:calc(4rem+env(safe-area-inset-bottom))]' : '[--mobile-nav-h:0px]'} lg:[--mobile-nav-h:0px] min-h-screen app-backdrop ${isCdsSchemaExam(activeExam) ? 'app-backdrop-india' : ''} text-foreground flex flex-col transition-colors duration-200`}
     >
       <div
         // --app-header-h: a locked test hides the header, so pages sized to "the screen minus the header" get the whole screen.

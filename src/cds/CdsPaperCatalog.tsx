@@ -22,9 +22,18 @@ export default function CdsPaperCatalog({ tabs, papers, attempts, plan, paperTyp
   const exam = useCdsExam();
   const ncc = exam === 'NCC';
   const track = useCdsTrack(!ncc);
-  const route = ncc ? [] : cdsPapersFor(track);
+  const route = ncc
+    ? [
+        { type: 'ncc_b', name: "'B' Certificate" },
+        { type: 'ncc_c', name: "'C' Certificate" },
+      ]
+    : cdsPapersFor(track);
   // OTA sees English and GK only, unless a link asks for Maths by name. NCC lists its B and C mocks.
-  const shown = ncc ? papers : paperType ? papers.filter(p => p.paperType === paperType) : papers.filter(p => route.some(r => r.type === p.paperType));
+  const shown = paperType
+    ? papers.filter(p => p.paperType === paperType)
+    : ncc
+      ? papers
+      : papers.filter(p => route.some(r => r.type === p.paperType));
   const items = cdsPaperItems(shown, attempts);
   const chip = (active: boolean) =>
     `rounded-full border px-3 py-1 text-xs font-bold transition-colors ${
@@ -55,7 +64,7 @@ export default function CdsPaperCatalog({ tabs, papers, attempts, plan, paperTyp
       <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-5">
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <nav aria-label={ncc ? 'NCC papers' : 'CDS papers'} className="flex flex-wrap gap-2">
-            {!ncc && <Link to="/mocks" className={chip(!paperType)}>All papers</Link>}
+            <Link to="/mocks" className={chip(!paperType)}>All papers</Link>
             {route.map(p => (
               <Link key={p.type} to={`/mocks?paper=${p.type}`} className={chip(paperType === p.type)}>
                 {p.name}

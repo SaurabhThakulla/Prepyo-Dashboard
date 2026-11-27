@@ -1,6 +1,6 @@
 import { FilePenLine, GraduationCap, Home, LucideIcon, PlayCircle, ShieldCheck, Timer, UserRound } from 'lucide-react';
 import { EXAM_LABELS, ExamType, isAdmin, UserProfile } from '@/lib/types';
-import { courseForExam } from '@/data/learnCourses';
+import { courseForExam, hasLearnCourse } from '@/data/learnCourses';
 
 /**
  * The phone layout's bottom tab bar, and the top bar that goes with it.
@@ -103,7 +103,7 @@ export function mobileTitle(pathname: string, searchParams: URLSearchParams, act
   if (pathname.startsWith('/institute-mock')) return 'Institute Mock';
   if (pathname === '/diagnostic') return 'Level check';
   if (pathname === '/learn/review') return 'Review words';
-  if (pathname.startsWith('/learn')) return courseForExam(activeExam).title;
+  if (pathname.startsWith('/learn')) return hasLearnCourse(activeExam) ? courseForExam(activeExam).title : 'Prepyo';
   if (pathname.startsWith('/tutorials')) return 'Video Lessons';
   if (pathname === '/materials') return 'Materials';
   if (pathname === ME_HREF) return 'Me';

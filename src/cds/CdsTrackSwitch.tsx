@@ -31,7 +31,7 @@ export default function CdsTrackSwitch() {
   };
 
   return (
-    <div role="group" aria-label="CDS academy" className="inline-flex rounded-xl bg-white/15 p-1 backdrop-blur-sm">
+    <div role="group" aria-label="CDS academy" className="inline-flex rounded-xl bg-[#000080]/10 dark:bg-white/15 p-1 backdrop-blur-sm">
       {CDS_TRACKS.map(track => (
         <button
           key={track.id}
@@ -41,7 +41,7 @@ export default function CdsTrackSwitch() {
           disabled={saving}
           onClick={() => void choose(track.id)}
           className={`rounded-lg px-3 py-1.5 text-sm font-bold whitespace-nowrap transition-colors disabled:opacity-70 ${
-            track.id === current ? 'bg-white text-primary shadow-sm' : 'text-white/85 hover:bg-white/10'
+            track.id === current ? 'bg-[#000080] text-white dark:bg-white dark:text-primary shadow-sm' : 'text-[#000080]/85 hover:bg-[#000080]/10 dark:text-white/85 dark:hover:bg-white/10'
           }`}
         >
           {track.label}

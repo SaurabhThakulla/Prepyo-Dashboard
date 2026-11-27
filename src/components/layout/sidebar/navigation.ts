@@ -39,7 +39,7 @@ import type { CdsTrack, NccWing } from '@/cds/cdsApi';
 const JLPT_SECTION_ICON: Record<JlptSection, LucideIcon> = { vocabulary: Languages, 'grammar-reading': BookOpen, listening: Headphones };
 import { hasMaterials, providersFor } from '@/data/materials';
 import { courseForExam, hasLearnCourse, LearnCourse, lessonCount } from '@/data/learnCourses';
-import { dueCount, EMPTY_PROGRESS, LearnProgress, learnedWords, lessonState } from '@/lib/learn/progress';
+import { dueCount, EMPTY_PROGRESS, LearnProgress, learnedWords, lessonState, lockedReason } from '@/lib/learn/progress';
 import { SYLLABUS, syllabusFor, taskSummary, typeKey } from '@/lib/syllabus';
 import { typeIdsFor } from '@/lib/readingTypes';
 import { EXAM_LABELS, ExamType, ieltsModuleOf, isAdmin, SkillType, skillsFor, UserProfile } from '@/lib/types';
@@ -520,12 +520,12 @@ function learnSection(progress: LearnProgress, course: LearnCourse): PrimarySect
       },
       ...course.units.flatMap(unit =>
         unit.lessons.map((lesson, i): SecondaryNavItem => {
-          const state = lessonState(progress, unit, i);
+          const state = lessonState(progress, unit, i, course.units);
           return {
             href: lessonHref(unit.id, lesson.id),
             label: lesson.title,
             icon: state === 'done' ? CheckCircle2 : state === 'locked' ? Lock : PlayCircle,
-            sublabel: state === 'locked' ? `Locked · finish “${unit.lessons[i - 1].title}” first` : lesson.summary,
+            sublabel: state === 'locked' ? `Locked · ${lockedReason(unit, i, course.units)}` : lesson.summary,
             badge: state === 'done' ? 'Done' : undefined,
             group: `Unit ${unit.number} · ${unit.title}`,
             groupHref: `/learn?unit=${unit.id}`,

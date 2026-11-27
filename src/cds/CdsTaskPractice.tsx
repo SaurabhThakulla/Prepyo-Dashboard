@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import OptionContent, { MarkedText } from '@/components/practice/OptionContent';
 import QuestionDrawer from '@/components/practice/QuestionDrawer';
 import QuestionHeader from '@/components/practice/QuestionHeader';
-import PracticeActionBar, { ON_BAR } from '@/components/practice/flow/PracticeActionBar';
+import PracticeActionBar from '@/components/practice/flow/PracticeActionBar';
 import { ResultSummary, toneFor } from '@/components/practice/ResultParts';
 import { useToast } from '@/components/ui/toast';
 import { api, errorMessage } from '@/lib/api';
@@ -27,9 +27,9 @@ export const SET_SIZE = 5;
 
 // A question's level, coloured as the practice list colours it.
 const LEVEL_TONE: Record<string, string> = {
-  easy: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200',
-  medium: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200',
-  hard: 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-200',
+  easy: 'border border-emerald-500/25 bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
+  medium: 'border border-amber-500/25 bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
+  hard: 'border border-rose-500/25 bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300',
 };
 
 // The practice page's pill buttons, as on the other exams' practice.
@@ -54,7 +54,11 @@ export default function CdsTaskPractice() {
   const { papers, isPending: papersPending } = useCdsMocks(true);
   const ofPaper = papers.filter(p => p.paperType === paperType);
   const results = useQueries({
-    queries: ofPaper.map(paper => ({ queryKey: ['cds', 'paper', paper.id], queryFn: () => cdsApi.getPaper(paper.id) })),
+    queries: ofPaper.map(paper => ({
+      queryKey: ['cds', 'paper', paper.id],
+      queryFn: () => cdsApi.getPaper(paper.id),
+      staleTime: 5 * 60 * 1000,
+    })),
   });
   const loading = papersPending || results.some(r => r.isPending);
 
@@ -251,7 +255,9 @@ export default function CdsTaskPractice() {
                   const mark = setDone ? checked[q.id] : undefined;
                   const fill = mark
                     ? mark.isCorrect ? 'border-emerald-400 bg-emerald-500 text-white' : 'border-rose-400 bg-rose-500 text-white'
-                    : chosen[q.id] ? 'border-white bg-white text-[#13307f]' : 'border-white/40 text-white';
+                    : chosen[q.id]
+                      ? 'border-white bg-white text-[#13307f] dark:border-primary dark:bg-primary dark:text-primary-foreground'
+                      : 'border-white/40 text-white dark:border-border dark:text-muted-foreground dark:hover:border-primary/60 dark:hover:text-foreground';
                   return (
                     <button
                       key={q.id}
@@ -267,22 +273,22 @@ export default function CdsTaskPractice() {
               </div>
             }
             actions={
-              <Button variant="ghost" disabled={page === 0} onClick={() => goTo(page - 1)} className={`${PILL} ${ON_BAR} disabled:opacity-40`}>
+              <Button variant="ghost" disabled={page === 0} onClick={() => goTo(page - 1)} className={`${PILL} text-white hover:bg-white/15 hover:text-white dark:text-foreground dark:hover:bg-accent dark:hover:text-foreground disabled:opacity-40`}>
                 <ArrowLeft className="h-3.5 w-3.5" /> Previous set
               </Button>
             }
             // Where Next sits on the other exams' bar: this set's one action.
             end={
               !setDone ? (
-                <Button disabled={toCheck.length === 0 || checking} onClick={checkSet} className={`${PILL} bg-white text-[#13307f] hover:bg-white/90`}>
+                <Button disabled={toCheck.length === 0 || checking} onClick={checkSet} className={`${PILL} bg-white text-[#13307f] hover:bg-white/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90`}>
                   {checking ? 'Checking…' : `Submit set (${answeredCount}/${set.length})`}
                 </Button>
               ) : page < pages - 1 ? (
-                <Button onClick={() => goTo(page + 1)} className={`${PILL} bg-white text-[#13307f] hover:bg-white/90`}>
+                <Button onClick={() => goTo(page + 1)} className={`${PILL} bg-white text-[#13307f] hover:bg-white/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90`}>
                   Next {SET_SIZE} questions <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               ) : (
-                <Button asChild className={`${PILL} bg-white text-[#13307f] hover:bg-white/90`}>
+                <Button asChild className={`${PILL} bg-white text-[#13307f] hover:bg-white/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90`}>
                   <Link to={mocksHref}>Try a full paper</Link>
                 </Button>
               )
@@ -339,15 +345,15 @@ function PassageText({ text, blank, filled }: { text: string; blank?: string; fi
           const letter = part.slice(-2, -1);
           const none = /^no error/i.test(part);
           return (
-            <span key={part} className={`flex items-start gap-3 rounded-lg px-2.5 py-2 ${none ? 'bg-slate-100 dark:bg-slate-800' : 'bg-white dark:bg-slate-900'}`}>
+            <span key={part} className={`flex items-start gap-3 rounded-lg px-2.5 py-2 ${none ? 'bg-slate-100 dark:bg-muted/70' : 'border border-transparent bg-white dark:border-border dark:bg-card'}`}>
               <span
                 className={`flex h-7 min-w-[2.25rem] shrink-0 items-center justify-center rounded-md text-xs font-black ${
-                  none ? 'bg-slate-300 text-slate-700 dark:bg-slate-600 dark:text-slate-100' : 'bg-primary text-primary-foreground'
+                  none ? 'bg-slate-300 text-slate-700 dark:bg-muted dark:text-muted-foreground' : 'bg-primary text-primary-foreground'
                 }`}
               >
                 ({letter})
               </span>
-              <span className={`pt-0.5 ${none ? 'text-slate-600 dark:text-slate-300' : 'text-slate-900 dark:text-slate-100'}`}>
+              <span className={`pt-0.5 ${none ? 'text-slate-600 dark:text-muted-foreground' : 'text-foreground'}`}>
                 <MarkedText text={part.slice(0, -3).trim()} />
               </span>
             </span>
@@ -369,17 +375,17 @@ function PassageText({ text, blank, filled }: { text: string; blank?: string; fi
             <span
               key={line}
               className={`flex items-start gap-3 rounded-lg px-2.5 py-2 ${
-                fixed ? 'bg-slate-100 dark:bg-slate-800' : 'bg-white dark:bg-slate-900'
+                fixed ? 'bg-slate-100 dark:bg-muted/70' : 'border border-transparent bg-white dark:border-border dark:bg-card'
               }`}
             >
               <span
                 className={`flex h-7 min-w-[2.25rem] shrink-0 items-center justify-center rounded-md text-xs font-black ${
-                  fixed ? 'bg-slate-300 text-slate-700 dark:bg-slate-600 dark:text-slate-100' : 'bg-primary text-primary-foreground'
+                  fixed ? 'bg-slate-300 text-slate-700 dark:bg-muted dark:text-muted-foreground' : 'bg-primary text-primary-foreground'
                 }`}
               >
                 {label}
               </span>
-              <span className={`pt-0.5 ${fixed ? 'text-slate-600 dark:text-slate-300' : 'text-slate-900 dark:text-slate-100'}`}>
+              <span className={`pt-0.5 ${fixed ? 'text-slate-600 dark:text-muted-foreground' : 'text-foreground'}`}>
                 <MarkedText text={words.join(':').trim()} />
               </span>
             </span>
@@ -423,12 +429,12 @@ function QuestionView({
     // A solid card, so the page's dotted backdrop never shows through the text; Atkinson Hyperlegible is made for reading.
     <div
       id={`cds-q-${question.id}`}
-      className="scroll-mt-24 space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm font-['Atkinson_Hyperlegible',Inter,sans-serif] sm:p-5 dark:border-slate-700 dark:bg-slate-900"
+      className="scroll-mt-24 space-y-4 rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-sm font-['Atkinson_Hyperlegible',Inter,sans-serif] sm:p-5"
     >
       {/* The question across the top on a soft band, with its Help. */}
-      <div className="-mx-4 -mt-4 flex items-start gap-3 rounded-t-2xl border-b border-blue-100 bg-blue-50 px-4 py-3.5 sm:-mx-5 sm:-mt-5 sm:px-5 dark:border-blue-900/50 dark:bg-blue-950/40">
+      <div className="-mx-4 -mt-4 flex items-start gap-3 rounded-t-2xl border-b border-blue-100 bg-blue-50 px-4 py-3.5 sm:-mx-5 sm:-mt-5 sm:px-5 dark:border-border dark:bg-white/[0.035]">
         <span className="shrink-0 whitespace-nowrap rounded-md bg-primary px-2.5 py-1 text-sm font-bold tabular-nums text-primary-foreground">#{number}</span>
-        <h3 className={`min-w-0 flex-1 pt-0.5 text-[17px] font-bold leading-snug text-slate-900 whitespace-pre-line dark:text-slate-50 font-['Atkinson_Hyperlegible',Inter,sans-serif]`}>
+        <h3 className="min-w-0 flex-1 pt-0.5 text-[17px] font-bold leading-snug text-foreground whitespace-pre-line font-['Atkinson_Hyperlegible',Inter,sans-serif]">
           <MarkedText text={question.prompt} />
         </h3>
         {!result && (
@@ -437,7 +443,7 @@ function QuestionView({
             size="sm"
             onClick={onHelp}
             disabled={help !== undefined}
-            className="h-8 shrink-0 gap-1 rounded-full bg-white px-3 text-xs font-bold text-amber-700 shadow-sm hover:bg-amber-50 hover:text-amber-800 dark:bg-slate-800 dark:text-amber-400"
+            className="h-8 shrink-0 gap-1 rounded-full border border-amber-200/80 bg-white px-3 text-xs font-bold text-amber-700 shadow-sm hover:bg-amber-50 hover:text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20 dark:hover:text-amber-200"
           >
             {help === 'loading' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Lightbulb className="h-3.5 w-3.5" />}
             Help
@@ -448,19 +454,19 @@ function QuestionView({
       {/* Below it, two matching soft panels side by side on a wide screen: the text, and the answers. */}
       <div className={question.contextPassage || question.imageUrl ? 'grid gap-4 lg:grid-cols-2 lg:items-stretch' : ''}>
       {(question.contextPassage || question.imageUrl) && (
-        <div className="space-y-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Read</p>
+        <div className="space-y-3 rounded-xl border border-slate-200/70 bg-slate-50 p-4 dark:border-border/80 dark:bg-background/60">
+          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Read</p>
           {question.contextPassage && (
-            <div className="text-[16px] sm:text-[17px] font-medium leading-8 text-slate-900 whitespace-pre-line dark:text-slate-100">
+            <div className="text-[16px] sm:text-[17px] font-medium leading-8 text-foreground whitespace-pre-line">
               <PassageText text={question.contextPassage} blank={blank} filled={chosenText ? label(chosenText) : undefined} />
             </div>
           )}
-          {question.imageUrl && <img src={question.imageUrl} alt="" className="max-h-72 rounded-xl border border-border" />}
+          {question.imageUrl && <img src={question.imageUrl} alt="" className="max-h-72 rounded-xl border border-border bg-white p-1" />}
         </div>
       )}
 
-      <div className="space-y-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Choose your answer</p>
+      <div className="space-y-3 rounded-xl border border-slate-200/70 bg-slate-50 p-4 dark:border-border/80 dark:bg-background/60">
+        <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Choose your answer</p>
         <div className={question.contextPassage || question.imageUrl ? 'space-y-2' : 'grid gap-2 sm:grid-cols-2'}>
           {question.options?.map((option, optionIndex) => {
             const picked = answer === option.id;
@@ -468,16 +474,30 @@ function QuestionView({
             const wrong = result && picked && !right;
             // Solid fills and a border on every row: nothing behind shows through.
             const tone = right
-              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950'
+              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/15'
               : wrong
-                ? 'border-rose-500 bg-rose-50 dark:bg-rose-950'
+                ? 'border-rose-500 bg-rose-50 dark:bg-rose-500/15'
                 : picked
-                  ? 'border-primary bg-blue-50 dark:bg-blue-950'
-                  : 'border-transparent bg-white shadow-sm hover:border-primary/40 dark:bg-slate-900 dark:hover:border-primary/50';
+                  ? 'border-primary bg-blue-50 dark:bg-primary/15 dark:shadow-sm'
+                  : 'border-slate-200/70 bg-white shadow-sm hover:border-primary/40 dark:border-border dark:bg-card dark:hover:border-primary/60 dark:hover:bg-accent/50';
+            const dotTone = right
+              ? 'border-emerald-500 bg-emerald-500'
+              : wrong
+                ? 'border-rose-500 bg-rose-500'
+                : picked
+                  ? 'border-primary bg-primary'
+                  : 'border-slate-300 bg-white dark:border-muted-foreground/50 dark:bg-transparent';
+            const letterTone = right
+              ? 'text-emerald-700 dark:text-emerald-400'
+              : wrong
+                ? 'text-rose-700 dark:text-rose-400'
+                : picked
+                  ? 'text-primary'
+                  : 'text-muted-foreground';
             return (
               <label
                 key={option.id}
-                className={`flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-[16px] font-semibold leading-snug text-slate-900 transition-colors dark:text-slate-100 ${locked ? '' : 'cursor-pointer'} ${tone}`}
+                className={`flex items-center gap-3 rounded-xl border-2 px-4 py-3 text-[16px] font-semibold leading-snug text-foreground transition-colors ${locked ? '' : 'cursor-pointer'} ${tone}`}
               >
                 <input
                   type="radio"
@@ -486,12 +506,18 @@ function QuestionView({
                   checked={picked}
                   disabled={locked}
                   onChange={() => onChoose(option.id)}
-                  className="h-[18px] w-[18px] shrink-0 cursor-pointer accent-primary"
+                  className="peer sr-only"
                 />
-                <span className="w-4 shrink-0 font-bold text-slate-500 dark:text-slate-400">{option.id}</span>
+                <span
+                  aria-hidden
+                  className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40 ${dotTone}`}
+                >
+                  {(picked || right || wrong) && <span className="h-2 w-2 rounded-full bg-white" />}
+                </span>
+                <span className={`w-4 shrink-0 font-bold ${letterTone}`}>{option.id}</span>
                 <OptionContent option={{ ...option, text: label(option.text) }} index={optionIndex} />
-                {right && <CheckCircle2 className="ml-auto h-5 w-5 shrink-0 text-emerald-600" aria-label="Correct answer" />}
-                {wrong && <XCircle className="ml-auto h-5 w-5 shrink-0 text-rose-600" aria-label="Your answer, wrong" />}
+                {right && <CheckCircle2 className="ml-auto h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-label="Correct answer" />}
+                {wrong && <XCircle className="ml-auto h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" aria-label="Your answer, wrong" />}
               </label>
             );
           })}
@@ -501,7 +527,7 @@ function QuestionView({
 
       {help && help !== 'loading' && !result && (
         <div className="flex gap-3 rounded-xl border border-amber-300/60 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
-          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
           <div className="space-y-1">
             <p className="text-sm font-bold text-foreground">The answer is {help.correctOption}</p>
             {help.explanation && <p className="text-sm text-foreground/85">{cdsText(help.explanation)}</p>}
@@ -512,7 +538,7 @@ function QuestionView({
       {result && (
         <div className={`rounded-xl border p-4 space-y-1.5 ${result.isCorrect ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-rose-500/30 bg-rose-500/10'}`}>
           <p className="flex items-center gap-1.5 text-sm font-bold text-foreground">
-            {result.isCorrect ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <XCircle className="w-4 h-4 text-rose-600" />}
+            {result.isCorrect ? <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> : <XCircle className="w-4 h-4 text-rose-600 dark:text-rose-400" />}
             {result.isCorrect ? 'Correct' : `Not quite: the answer is ${result.correctOption}`}
           </p>
           {result.explanation && <p className="text-sm text-foreground/85">{cdsText(result.explanation)}</p>}

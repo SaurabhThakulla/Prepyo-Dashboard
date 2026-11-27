@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { useApp } from '@/context/AppContext';
 import { courseForExam, CourseId } from '@/data/learnCourses';
+import { canAccessLearn } from '@/components/auth/LearnCourseGuard';
 import { api } from '@/lib/api';
 import {
   completeLesson,
@@ -85,31 +86,35 @@ async function syncWithServer(key: string) {
 /** Progress in the given course, or in the one for the learner's exam. */
 export function useLearnProgress(course?: CourseId) {
   const { user, activeExam } = useApp();
+  const allowed = canAccessLearn(user, activeExam, course);
   const key = storageKey(course ?? courseForExam(activeExam).id, user?.id);
-  const progress = useSyncExternalStore(subscribe, () => read(key), () => EMPTY_PROGRESS);
+  const stored = useSyncExternalStore(subscribe, () => read(key), () => EMPTY_PROGRESS);
+  const progress = allowed ? stored : EMPTY_PROGRESS;
 
   useEffect(() => {
-    if (user?.id) void syncWithServer(key);
-  }, [user?.id, key]);
+    if (allowed && user?.id) void syncWithServer(key);
+  }, [allowed, user?.id, key]);
 
   const finishLesson = useCallback(
     (unitId: string, lessonId: string, mistakes: number) => {
+      if (!allowed) return 0;
       const result = completeLesson(read(key), unitId, lessonId, mistakes);
       write(key, result.progress);
       if (user?.id) save(key, result.progress);
       return result.earned;
     },
-    [key, user?.id],
+    [allowed, key, user?.id],
   );
 
   const finishReview = useCallback(
     (results: { ko: string; correct: boolean }[]) => {
+      if (!allowed) return 0;
       const result = completeReview(read(key), results);
       write(key, result.progress);
       if (user?.id) save(key, result.progress);
       return result.earned;
     },
-    [key, user?.id],
+    [allowed, key, user?.id],
   );
 
   return { progress, streak: currentStreak(progress), finishLesson, finishReview };

@@ -81,6 +81,8 @@ export interface Lesson {
   exercises: Exercise[];
   /** Exam-task lessons only: the practice page for the task this lesson introduces. */
   practice?: { code: string; skill: 'reading' | 'listening'; typeKey: string };
+  /** The unit test (lib/learn/unitTest): its questions are dealt when it starts. */
+  test?: boolean;
 }
 
 export interface Unit {

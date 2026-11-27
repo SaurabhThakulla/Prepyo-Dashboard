@@ -4,6 +4,7 @@ import { JAPANESE_UNITS } from './learnJapanese';
 import { LEARN_AUDIO_JA as JAPANESE_AUDIO } from './learnJapanese/audio';
 import type { Unit } from './learnKorean/types';
 import type { ExamType } from '@/lib/types';
+import { withUnitTests } from '@/lib/learn/unitTest';
 
 export type CourseId = 'korean' | 'japanese';
 
@@ -46,7 +47,7 @@ export const LEARN_COURSES: Record<CourseId, LearnCourse> = {
     tagline: 'Hangul to exam-ready, one small lesson at a time',
     intro:
       'Start from the alphabet. Short lessons, a few minutes each, take you through everyday and workplace Korean to every task in the test.',
-    units: KOREAN_UNITS,
+    units: withUnitTests(KOREAN_UNITS),
     taskUnitId: 'eps-topik',
     audio: KOREAN_AUDIO,
   },
@@ -60,7 +61,7 @@ export const LEARN_COURSES: Record<CourseId, LearnCourse> = {
     tagline: 'Hiragana to exam-ready, one small lesson at a time',
     intro:
       'Start from hiragana. Short lessons, a few minutes each, take you through katakana, everyday words, grammar and N5 kanji to every task in the test. Good for NAT-TEST 5Q too.',
-    units: JAPANESE_UNITS,
+    units: withUnitTests(JAPANESE_UNITS),
     taskUnitId: 'jlpt-n5',
     audio: JAPANESE_AUDIO,
   },

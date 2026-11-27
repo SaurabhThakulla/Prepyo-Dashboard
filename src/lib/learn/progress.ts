@@ -1,5 +1,5 @@
 import { COURSE, lessonKey, Unit } from '@/data/learnKorean';
-import type { ChoiceExercise } from '@/data/learnKorean/types';
+import type { ChoiceExercise, Lesson } from '@/data/learnKorean/types';
 
 /**
  * Progress through a beginner course (Korean, or Japanese): which lessons are
@@ -59,17 +59,35 @@ function daysBetween(from: string, to: string): number {
 }
 
 /**
- * Lessons open in order within a unit. The first lesson of every unit is
- * always open, so a learner who already reads Hangul can go straight to the
- * vocabulary or the exam tasks instead of being held behind lessons they do
- * not need. A unit of stand-alone lessons (the exam tasks) is open throughout.
+ * What must be finished before a lesson opens: the lesson before it in its
+ * unit, or, for a unit's first lesson, the nearest earlier unit's test (`units` is
+ * the whole course; without it a first lesson is open). The first unit, and a
+ * unit of stand-alone lessons (the exam tasks), need nothing.
  */
-export function lessonState(progress: LearnProgress, unit: Unit, index: number): LessonState {
+export function prerequisite(unit: Unit, index: number, units: Unit[] = []): { unit: Unit; lesson: Lesson } | undefined {
+  if (unit.anyOrder) return undefined;
+  if (index > 0) return { unit, lesson: unit.lessons[index - 1] };
+  // The nearest earlier unit with a test, so a unit after the exam tasks still waits for the one before them.
+  for (let i = units.findIndex(u => u.id === unit.id) - 1; i >= 0; i--) {
+    const test = units[i].lessons.find(l => l.test);
+    if (test) return { unit: units[i], lesson: test };
+  }
+  return undefined;
+}
+
+/** Lessons open in order, and a unit opens once the unit before it has passed its test. */
+export function lessonState(progress: LearnProgress, unit: Unit, index: number, units: Unit[] = []): LessonState {
   const lesson = unit.lessons[index];
   if (progress.completed[lessonKey(unit.id, lesson.id)]) return 'done';
-  if (index === 0 || unit.anyOrder) return 'open';
-  const previous = unit.lessons[index - 1];
-  return progress.completed[lessonKey(unit.id, previous.id)] ? 'open' : 'locked';
+  const needed = prerequisite(unit, index, units);
+  return !needed || progress.completed[lessonKey(needed.unit.id, needed.lesson.id)] ? 'open' : 'locked';
+}
+
+/** "Locked" with what opens it, for menus and the locked-lesson screen. */
+export function lockedReason(unit: Unit, index: number, units: Unit[] = []): string {
+  const needed = prerequisite(unit, index, units);
+  if (!needed) return 'Locked';
+  return needed.lesson.test ? `pass the Unit ${needed.unit.number} test first` : `finish “${needed.lesson.title}” first`;
 }
 
 /** The streak as it stands today: it lapses once a whole day passes without a lesson. */
@@ -152,7 +170,7 @@ export function dueCount(progress: LearnProgress, now: Date = new Date(), units:
 }
 
 /** Four options, the right one at a slot that varies, the rest from `pool`. */
-function fourOptions(pool: string[], right: string, slot: number): { options: string[]; answer: number } {
+export function fourOptions(pool: string[], right: string, slot: number): { options: string[]; answer: number } {
   const others = [...new Set(pool.filter(value => value !== right))];
   const picked: string[] = [];
   for (let i = 0; picked.length < 3 && i < others.length * 2; i++) {
@@ -261,7 +279,7 @@ export function mergeProgress(a: LearnProgress, b: LearnProgress): LearnProgress
 export function nextLesson(progress: LearnProgress, units: Unit[] = COURSE): { unit: Unit; index: number } | undefined {
   for (const unit of units) {
     for (let index = 0; index < unit.lessons.length; index++) {
-      if (lessonState(progress, unit, index) === 'open') return { unit, index };
+      if (lessonState(progress, unit, index, units) === 'open') return { unit, index };
     }
   }
   return undefined;
